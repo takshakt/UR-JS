@@ -29,7 +29,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // --- AUTOCOMPLETE HELPER FUNCTIONS ---
-
 function getCursorXY(textarea) {
     const mirror = document.createElement('div');
     const style = getComputedStyle(textarea);
@@ -128,31 +127,39 @@ function addFilterRegion() {
     regionElement.innerHTML = `
         <div class="region-header">
             <div class="region-title editable-title">
+                 <span class="toggle-icon">▼</span>
                  <span class="region-sequence">${newIndex}.</span>
                  <span class="title-display">${defaultName}</span>
                  <input type="text" class="title-input hidden" value="${defaultName}" />
             </div>
             <div class="region-controls">
-                <button class="btn btn-small region-move up" data-direction="up" title="Move Region Up">▲</button>
-                <button class="btn btn-small region-move down" data-direction="down" title="Move Region Down">▼</button>
-                <div class="btn btn-secondary validate-btn">Validate</div>
-                <div class="btn btn-danger delete-region">Delete</div>
+                <div class="control-group">
+                    <button class="btn btn-small region-move up" data-direction="up" title="Move Region Up">▲</button>
+                    <button class="btn btn-small region-move down" data-direction="down" title="Move Region Down">▼</button>
+                    <button class="btn btn-small btn-danger delete-region" title="Delete Region">×</button>
+                </div>
             </div>
         </div>
-        <div class="validation-messages" style="display: none; color: #d9534f; background-color: #fbecec; border: 1px solid; border-radius: 4px; padding: 10px; margin: 0 10px 10px 10px;"></div>
+        <div class="validation-messages" style="display: none;"></div>
         <div class="region-content">
             <div class="section">
-                <div class="section-title">1. Filters</div>
+                <div class="section-title"><span>Filters</span></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-stay-window" data-validates="stayWindow"><label for="${regionId}-stay-window">Stay Window</label><div class="field-content hidden"><label>From</label> <input type="date" class="stay-window-from" value="${formatDate(today)}"><label>To</label> <input type="date" class="stay-window-to" value="${formatDate(nextWeek)}"></div></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-load-time" data-validates="leadTime"><label for="${regionId}-load-time">Lead Time</label><div class="field-content hidden"><select class="load-time-select"><option value="">Select Type</option><option value="date_range">Date Range</option><option value="days">Day(s)</option><option value="weeks">Week(s)</option><option value="months">Month(s)</option></select><div class="lead-time-inputs"></div></div></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-days-of-week" data-validates="daysOfWeek"><label for="${regionId}-days-of-week">Day of Week</label><div class="field-content hidden"><div class="checkbox-group">${['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].map(day => `<div class="checkbox-item"><input type="checkbox" id="${regionId}-${day}" class="day-checkbox"><label for="${regionId}-${day}">${day.toUpperCase()}</label></div>`).join('')}</div></div></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-minimum-rate" data-validates="minimumRate"><label for="${regionId}-minimum-rate">Minimum Rate</label><div class="field-content hidden"><input type="number" value="4" min="0" class="minimum-rate-input"></div></div>
             </div>
             <div class="section">
-                <div class="section-header"><div class="section-title">2. Conditions & Expressions</div><div class="btn btn-small" id="${regionId}-add-condition">+ Add Condition</div></div>
+                <div class="section-title">
+                    <span>Conditions & Expressions</span>
+                    <div class="btn btn-small" id="${regionId}-add-condition">+ Add Condition</div>
+                </div>
                 <div class="conditions-container" id="${regionId}-conditions-container"></div>
             </div>
-            <div class="footer"><div class="btn btn-secondary save-region">Save Region</div></div>
+            <div class="footer">
+                <div class="btn btn-secondary validate-btn">Validate</div>
+                <div class="btn btn-secondary save-region">Save Region</div>
+            </div>
         </div>`;
 
     filterContainer.appendChild(regionElement);
@@ -173,18 +180,31 @@ function addCondition(regionId) {
     conditionElement.innerHTML = `
         <div class="condition-header">
             <div class="condition-title editable-title">
+                <span class="toggle-icon condition-toggle">▼</span>
+                <span class="condition-sequence">${conditionsContainer.children.length + 1}.</span>
                 <span class="title-display">${defaultName}</span>
                 <input type="text" class="title-input hidden" value="${defaultName}" />
             </div>
-            <div class="condition-controls">
-                <button class="condition-move up" data-direction="up" title="Move Up">▲</button>
-                <button class="condition-move down" data-direction="down" title="Move Down">▼</button>
-                <button class="condition-remove" title="Remove Condition">×</button>
+            <div class="control-group condition-controls">
+                <button class="btn btn-small condition-move up" data-direction="up" title="Move Up">▲</button>
+                <button class="btn btn-small condition-move down" data-direction="down" title="Move Down">▼</button>
+                <button class="btn btn-small btn-danger condition-remove" title="Remove Condition">×</button>
             </div>
         </div>
         <div class="condition-body" style="display: flex; align-items: flex-start; gap: 20px;">
-            <div class="condition-fields" style="flex: 1;"><div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold" data-validates="occupancyThreshold"><label for="${conditionId}-occupancy-threshold">Occupancy Threshold %</label><div class="field-content hidden"><select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input occupancy-value" value="80" min="0" max="100"></div></div><div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${staticData.propertyTypes.map(type => `<option value="${type}">${type}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div><div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-event-score" data-validates="eventScore"><label for="${conditionId}-event-score">Event Score</label><div class="field-content hidden"><select class="operator-select event-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input event-value" value="0" min="0"></div></div></div>
-            <div class="condition-expression" style="flex: 1.5;"><div class="section calculation-section"><div class="section-title">3. Expression/Calculation</div><div class="filter-row"><div class="filter-group"><select class="attribute-select"><option value="">Select Attribute</option>${staticData.attributes.map(attr => `<option value="${attr}">${attr}</option>`).join('')}</select><select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select></div></div><div class="expression-container"><label class="expression-label">Expression</label><textarea class="expression-textarea" placeholder="Type # for attributes or = for functions..."></textarea><div class="textarea-controls"><div class="expression-btn" data-action="clear" style="display: inline-block; width: auto;">Clear</div></div></div></div></div>
+            <div class="condition-fields" style="flex: 3;">
+                 <div class="section-title"><span>Conditions</span></div>
+                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold" data-validates="occupancyThreshold"><label for="${conditionId}-occupancy-threshold">Occupancy Threshold %</label><div class="field-content hidden"><select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input occupancy-value" value="80" min="0" max="100"></div></div>
+                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${staticData.propertyTypes.map(type => `<option value="${type}">${type}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div>
+                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-event-score" data-validates="eventScore"><label for="${conditionId}-event-score">Event Score</label><div class="field-content hidden"><select class="operator-select event-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input event-value" value="0" min="0"></div></div>
+            </div>
+            <div class="condition-expression" style="flex: 2; border-left: 1px solid #444; padding-left: 20px;">
+                 <div class="section calculation-section" style="padding: 0; border: none; background: none;">
+                    <div class="section-title"><span>Expression</span></div>
+                    <div class="filter-row"><div class="filter-group"><select class="attribute-select"><option value="">Select Attribute</option>${staticData.attributes.map(attr => `<option value="${attr}">${attr}</option>`).join('')}</select><select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select></div></div>
+                    <div class="expression-container"><textarea class="expression-textarea" placeholder="Type # for attributes or = for functions..."></textarea><div class="textarea-controls"><div class="btn btn-small" data-action="clear">Clear</div></div></div>
+                </div>
+            </div>
         </div>`;
 
     conditionsContainer.appendChild(conditionElement);
@@ -195,12 +215,20 @@ function addCondition(regionId) {
 function setupConditionEventListeners(conditionElement) {
     const regionId = conditionElement.closest('.filter-region').id;
     setupEditableTitle(conditionElement.querySelector('.editable-title'), 'condition', conditionElement.closest('.filter-region'));
+    
+    conditionElement.querySelector('.condition-header').addEventListener('click', (e) => {
+        if(e.target.closest('.control-group') || e.target.closest('.editable-title')) return;
+        conditionElement.classList.toggle('condition-collapsed');
+    });
+    
     conditionElement.querySelector('.condition-remove').addEventListener('click', () => {
-        conditionElement.remove();
-        updateConditionSequence(regionId);
+        if (confirm('Are you sure you want to delete this condition?')) {
+            conditionElement.remove();
+            updateConditionSequence(regionId);
+        }
     });
     conditionElement.querySelectorAll('.condition-move').forEach(button => {
-        button.addEventListener('click', (e) => moveCondition(conditionElement, e.target.dataset.direction));
+        button.addEventListener('click', () => moveCondition(conditionElement, button.dataset.direction));
     });
     conditionElement.querySelectorAll('.field-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => {
@@ -264,12 +292,14 @@ function setupRegionEventListeners(regionElement) {
     const regionId = regionElement.id;
     setupEditableTitle(regionElement.querySelector('.editable-title'), 'region');
     regionElement.querySelector('.region-header').addEventListener('click', e => {
-        if (e.target.closest('.btn') || e.target.closest('.editable-title')) return;
+        if (e.target.closest('.control-group') || e.target.closest('.validate-btn') || e.target.closest('.editable-title')) return;
         regionElement.classList.toggle('region-collapsed');
     });
     regionElement.querySelector('.delete-region').addEventListener('click', () => {
-        regionElement.remove();
-        updateRegionSequence();
+        if (confirm('Are you sure you want to delete this entire filter region?')) {
+            regionElement.remove();
+            updateRegionSequence();
+        }
     });
     regionElement.querySelectorAll('.region-move').forEach(button => {
         button.addEventListener('click', () => moveRegion(regionElement, button.dataset.direction));
@@ -405,6 +435,7 @@ function updateConditionSequence(regionId) {
     conditions.forEach((condition, index) => {
         const sequence = index + 1;
         condition.dataset.sequence = sequence;
+        condition.querySelector('.condition-sequence').textContent = `${sequence}. `;
         const display = condition.querySelector('.title-display');
         const input = condition.querySelector('.title-input');
         if (display.textContent.match(/^Condition \d+$/)) {
