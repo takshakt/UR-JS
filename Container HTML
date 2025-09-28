@@ -1,0 +1,19 @@
+<div class="container">
+    <!-- <div class="header">
+        <h1>SQL Expression Builder</h1>
+        <div class="btn" id="addRegionBtn">
+            <span>+</span> Add
+        </div>
+    </div> -->
+    <div class="btn" id="addRegionBtn">
+        <span>+</span> Add
+    </div>
+    <div id="filterContainer"></div>
+    
+    <div class="json-output" id="jsonOutput"></div>
+
+    <div class="page-footer">
+        <div id="validateAllBtn" class="btn btn-secondary">Validate</div>
+        <div id="saveAllBtn" class="btn">Save</div>
+    </div>
+</div>
