@@ -6,212 +6,140 @@ const staticData = {
 };
 
 let regionCounter = 0;
-// conditionCounter is now mainly for unique ID generation, sequence is derived from position
 let conditionCounter = 0;
 
 document.addEventListener('DOMContentLoaded', function() {
     addFilterRegion();
 
-    document.getElementById('addRegionBtn').addEventListener('click', function() {
-        addFilterRegion();
-    });
-
-    document.getElementById('saveAllBtn').addEventListener('click', function() {
-        saveAllRegions();
-    });
-
-    document.getElementById('toggleAllBtn').addEventListener('click', function() {
-        toggleAllRegions();
-    });
+    document.getElementById('addRegionBtn').addEventListener('click', addFilterRegion);
+    document.getElementById('saveAllBtn').addEventListener('click', saveAllRegions);
+    document.getElementById('toggleAllBtn').addEventListener('click', toggleAllRegions);
 });
 
 
-// Function to create a new filter region (MODIFIED)
+// Function to create a new filter region
 function addFilterRegion() {
     regionCounter++;
     const regionId = `region-${regionCounter}`;
-
     const filterContainer = document.getElementById('filterContainer');
-
     const regionElement = document.createElement('div');
     regionElement.className = 'filter-region';
     regionElement.id = regionId;
 
-    // Set default dates (today and 7 days from today)
     const today = new Date();
     const nextWeek = new Date();
     nextWeek.setDate(today.getDate() + 7);
-
-    const formatDate = (date) => {
-        return date.toISOString().split('T')[0];
-    };
+    const formatDate = (date) => date.toISOString().split('T')[0];
 
     regionElement.innerHTML = `
         <div class="region-header">
-            <div class="region-title">
-                <span class="toggle-icon">▼</span>
-                Filter Region ${regionCounter}
-            </div>
+            <div class="region-title"><span class="toggle-icon">▼</span> Filter Region ${regionCounter}</div>
             <div class="region-controls">
                 <div class="btn btn-secondary validate-btn">Validate</div>
                 <div class="btn btn-danger delete-region">Delete</div>
             </div>
         </div>
-
+        <div class="validation-messages" style="display: none; color: #d9534f; background-color: #fbecec; border: 1px solid; border-radius: 4px; padding: 10px; margin: 0 10px 10px 10px;"></div>
         <div class="region-content">
             <div class="section">
                 <div class="section-title">1. Filters</div>
-
                 <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${regionId}-stay-window">
+                    <input type="checkbox" class="field-checkbox" id="${regionId}-stay-window" data-validates="stayWindow">
                     <label for="${regionId}-stay-window">Stay Window</label>
                     <div class="field-content hidden">
-                        <label>From</label>
-                        <input type="date" class="stay-window-from" value="${formatDate(today)}">
-                        <label>To</label>
-                        <input type="date" class="stay-window-to" value="${formatDate(nextWeek)}">
+                        <label>From</label> <input type="date" class="stay-window-from" value="${formatDate(today)}">
+                        <label>To</label> <input type="date" class="stay-window-to" value="${formatDate(nextWeek)}">
                     </div>
                 </div>
-
                 <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${regionId}-load-time">
+                    <input type="checkbox" class="field-checkbox" id="${regionId}-load-time" data-validates="leadTime">
                     <label for="${regionId}-load-time">Lead Time</label>
                     <div class="field-content hidden">
                         <select class="load-time-select">
-                            <option value="">Select Type</option>
-                            <option value="date_range">Date Range</option>
-                            <option value="days">Day(s)</option>
-                            <option value="weeks">Week(s)</option>
-                            <option value="months">Month(s)</option>
+                            <option value="">Select Type</option><option value="date_range">Date Range</option><option value="days">Day(s)</option><option value="weeks">Week(s)</option><option value="months">Month(s)</option>
                         </select>
                         <div class="lead-time-inputs"></div>
                     </div>
                 </div>
-
                 <div class="field-container">
                     <input type="checkbox" class="field-checkbox" id="${regionId}-days-of-week">
                     <label for="${regionId}-days-of-week">Day of Week</label>
                     <div class="field-content hidden">
                         <div class="checkbox-group">
+                            ${['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].map(day => `
                             <div class="checkbox-item">
-                                <input type="checkbox" id="${regionId}-sun" class="day-checkbox" >
-                                <label for="${regionId}-sun">SUN</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="${regionId}-mon" class="day-checkbox" >
-                                <label for="${regionId}-mon">MON</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="${regionId}-tue" class="day-checkbox" >
-                                <label for="${regionId}-tue">TUE</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="${regionId}-wed" class="day-checkbox" >
-                                <label for="${regionId}-wed">WED</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="${regionId}-thu" class="day-checkbox" >
-                                <label for="${regionId}-thu">THU</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="${regionId}-fri" class="day-checkbox" >
-                                <label for="${regionId}-fri">FRI</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="${regionId}-sat" class="day-checkbox" >
-                                <label for="${regionId}-sat">SAT</label>
-                            </div>
+                                <input type="checkbox" id="${regionId}-${day}" class="day-checkbox"><label for="${regionId}-${day}">${day.toUpperCase()}</label>
+                            </div>`).join('')}
                         </div>
                     </div>
                 </div>
-
                 <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${regionId}-minimum-rate">
+                    <input type="checkbox" class="field-checkbox" id="${regionId}-minimum-rate" data-validates="minimumRate">
                     <label for="${regionId}-minimum-rate">Minimum Rate</label>
                     <div class="field-content hidden">
                         <input type="number" value="4" min="0" class="minimum-rate-input">
                     </div>
                 </div>
             </div>
-
             <div class="section">
                 <div class="section-header">
                     <div class="section-title">2. Conditions & Expressions</div>
                     <div class="btn btn-small" id="${regionId}-add-condition">+ Add Condition</div>
                 </div>
-
-                <div class="conditions-container" id="${regionId}-conditions-container">
-                </div>
+                <div class="conditions-container" id="${regionId}-conditions-container"></div>
             </div>
-
             <div class="footer">
                 <div class="btn btn-secondary save-region">Save Region</div>
             </div>
-        </div>
-    `;
+        </div>`;
 
     filterContainer.appendChild(regionElement);
-
-    // Add event listeners for the region
     setupRegionEventListeners(regionElement, regionId);
-
-    // Add initial condition
     addCondition(regionId);
 }
 
-// Function to add a new condition to a region (MODIFIED)
+// Function to add a new condition to a region
 function addCondition(regionId) {
     conditionCounter++;
     const conditionId = `condition-${regionId}-${conditionCounter}`;
     const conditionsContainer = document.getElementById(`${regionId}-conditions-container`);
-
     const conditionElement = document.createElement('div');
     conditionElement.className = 'condition-group';
     conditionElement.id = conditionId;
 
     conditionElement.innerHTML = `
         <div class="condition-header">
-            <div class="condition-title">Condition X</div> <div class="condition-controls">
+            <div class="condition-title">Condition X</div>
+            <div class="condition-controls">
                 <button class="condition-move up" data-direction="up" title="Move Up">▲</button>
                 <button class="condition-move down" data-direction="down" title="Move Down">▼</button>
-                <button class="condition-remove" data-condition="${conditionId}" title="Remove Condition">×</button>
+                <button class="condition-remove" title="Remove Condition">×</button>
             </div>
         </div>
         <div class="condition-body" style="display: flex; align-items: flex-start; gap: 20px;">
             <div class="condition-fields" style="flex: 1;">
                 <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold">
+                    <input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold" data-validates="occupancyThreshold">
                     <label for="${conditionId}-occupancy-threshold">Occupancy Threshold %</label>
                     <div class="field-content hidden">
-                        <select class="operator-select occupancy-operator">
-                            ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
-                        </select>
+                        <select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
                         <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
                     </div>
                 </div>
-
                 <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking">
+                    <input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking">
                     <label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label>
                     <div class="field-content hidden">
-                        <select class="property-type-select property-type">
-                            <option value="">Select Type</option>
-                            ${staticData.propertyTypes.map(type => `<option value="${type}">${type}</option>`).join('')}
-                        </select>
-                        <select class="operator-select property-operator">
-                            ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
-                        </select>
+                        <select class="property-type-select property-type"><option value="">Select Type</option>${staticData.propertyTypes.map(type => `<option value="${type}">${type}</option>`).join('')}</select>
+                        <select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
                         <input type="text" class="value-input property-value" placeholder="Value">
                     </div>
                 </div>
-
                 <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${conditionId}-event-score">
+                    <input type="checkbox" class="field-checkbox" id="${conditionId}-event-score" data-validates="eventScore">
                     <label for="${conditionId}-event-score">Event Score</label>
                     <div class="field-content hidden">
-                        <select class="operator-select event-operator">
-                            ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
-                        </select>
+                        <select class="operator-select event-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
                         <input type="number" class="value-input event-value" value="0" min="0">
                     </div>
                 </div>
@@ -219,469 +147,361 @@ function addCondition(regionId) {
             <div class="condition-expression" style="flex: 1.5;">
                  <div class="section calculation-section">
                     <div class="section-title">3. Expression/Calculation</div>
-
                     <div class="filter-row">
                         <div class="filter-group">
-                            <select class="attribute-select">
-                                <option value="">Select Attribute</option>
-                                ${staticData.attributes.map(attr => `<option value="${attr}">${attr}</option>`).join('')}
-                            </select>
-                            <select class="operator-select expression-operator">
-                                <option value="">Select Operator</option>
-                                ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
-                            </select>
-                            <select class="function-select">
-                                <option value="">Select Function</option>
-                                ${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}
-                            </select>
+                            <select class="attribute-select"><option value="">Select Attribute</option>${staticData.attributes.map(attr => `<option value="${attr}">${attr}</option>`).join('')}</select>
+                            <select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
+                            <select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select>
                         </div>
                     </div>
-
                     <div class="expression-container">
                         <label class="expression-label">Expression</label>
-                        <textarea class="expression-textarea" placeholder="Write your expression here or build it using the controls"></textarea>
+                        <textarea class="expression-textarea" placeholder="Build your expression..."></textarea>
                         <div class="textarea-controls">
                             <div class="expression-btn" data-action="clear" style="display: inline-block; width: auto;">Clear</div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    `;
+        </div>`;
 
     conditionsContainer.appendChild(conditionElement);
-
-    // Set up event listeners for the condition
     setupConditionEventListeners(conditionElement);
-    // Update sequence after adding a new condition
     updateConditionSequence(conditionsContainer.closest('.filter-region').id);
 }
 
-/**
- * Updates the sequence number displayed in the condition titles and disables
- * move buttons for first/last elements.
- * @param {string} regionId The ID of the parent filter region.
- */
-function updateConditionSequence(regionId) {
-    const container = document.getElementById(`${regionId}-conditions-container`);
-    if (!container) return;
-
-    const conditions = container.querySelectorAll('.condition-group');
-    const total = conditions.length;
-
-    conditions.forEach((condition, index) => {
-        const sequence = index + 1;
-        const titleElement = condition.querySelector('.condition-title');
-        const upBtn = condition.querySelector('.condition-move.up');
-        const downBtn = condition.querySelector('.condition-move.down');
-
-        if (titleElement) {
-            titleElement.textContent = `Condition ${sequence}`;
-        }
-
-        if (upBtn) {
-            upBtn.disabled = sequence === 1;
-        }
-
-        if (downBtn) {
-            downBtn.disabled = sequence === total;
-        }
-
-        condition.dataset.sequence = sequence;
-    });
-}
-
-/**
- * Moves a condition up or down in the DOM.
- * @param {HTMLElement} conditionElement The condition to move.
- * @param {string} direction 'up' or 'down'.
- */
-function moveCondition(conditionElement, direction) {
-    const parent = conditionElement.parentNode;
-    if (!parent) return;
-
-    const conditions = Array.from(parent.querySelectorAll('.condition-group'));
-    const currentIndex = conditions.indexOf(conditionElement);
-
-    if (direction === 'up' && currentIndex > 0) {
-        parent.insertBefore(conditionElement, conditions[currentIndex - 1]);
-    } else if (direction === 'down' && currentIndex < conditions.length - 1) {
-        parent.insertBefore(conditionElement, conditions[currentIndex + 2] || null);
-    }
-
-    const regionId = conditionElement.closest('.filter-region').id;
-    updateConditionSequence(regionId);
-}
-
-// Function to set up event listeners for a single condition
+// Function to set up event listeners for a single condition (MODIFIED)
 function setupConditionEventListeners(conditionElement) {
     const regionId = conditionElement.closest('.filter-region').id;
 
-    // --- Standard Listeners (Remove, Move, Checkboxes) ---
-    conditionElement.querySelector('.condition-remove').addEventListener('click', function() {
+    conditionElement.querySelector('.condition-remove').addEventListener('click', () => {
         conditionElement.remove();
         updateConditionSequence(regionId);
-        updateJsonOutput();
     });
 
     conditionElement.querySelectorAll('.condition-move').forEach(button => {
-        button.addEventListener('click', function() {
-            moveCondition(conditionElement, this.dataset.direction);
-        });
+        button.addEventListener('click', (e) => moveCondition(conditionElement, e.target.dataset.direction));
     });
 
     conditionElement.querySelectorAll('.field-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const fieldContainer = this.closest('.field-container');
-            const fieldContent = fieldContainer.querySelector('.field-content');
-            if (this.checked) {
-                fieldContainer.classList.add('enabled');
-                fieldContent.classList.remove('hidden');
-            } else {
-                fieldContainer.classList.remove('enabled');
-                fieldContent.classList.add('hidden');
-            }
+        checkbox.addEventListener('change', (e) => {
+            const fieldContent = e.target.closest('.field-container').querySelector('.field-content');
+            if (fieldContent) fieldContent.classList.toggle('hidden', !e.target.checked);
         });
     });
 
-    // --- Expression Area Functionality ---
     const calculationSection = conditionElement.querySelector('.calculation-section');
+    if (!calculationSection) return;
     const expressionTextarea = calculationSection.querySelector('.expression-textarea');
     const attributeSelect = calculationSection.querySelector('.attribute-select');
     const operatorSelect = calculationSection.querySelector('.expression-operator');
     const functionSelect = calculationSection.querySelector('.function-select');
 
-    // --- Clear Button ---
-    calculationSection.querySelector('[data-action="clear"]').addEventListener('click', function() {
+    calculationSection.querySelector('[data-action="clear"]').addEventListener('click', () => {
         expressionTextarea.value = '';
         expressionTextarea.focus();
     });
 
-    // --- Dropdowns insert text directly at the cursor ---
-    attributeSelect.addEventListener('change', function() {
-        if (this.value) {
-            insertAtCursor(expressionTextarea, this.value);
-            this.value = ''; // Reset dropdown to its placeholder
+    attributeSelect.addEventListener('change', (e) => {
+        if (e.target.value) {
+            // Add # delimiters around the attribute
+            insertAtCursor(expressionTextarea, `#${e.target.value}#`);
+            e.target.value = '';
         }
     });
-
-    operatorSelect.addEventListener('change', function() {
-        if (this.value) {
-            insertAtCursor(expressionTextarea, ` ${this.value} `);
-            this.value = ''; // Reset dropdown to its placeholder
+    operatorSelect.addEventListener('change', (e) => {
+        if (e.target.value) {
+            insertAtCursor(expressionTextarea, ` ${e.target.value} `);
+            e.target.value = '';
         }
     });
-
-    functionSelect.addEventListener('change', function() {
-        if (this.value) {
-            const funcText = `${this.value}()`;
+    functionSelect.addEventListener('change', (e) => {
+        if (e.target.value) {
+            const funcText = `${e.target.value}()`;
             insertAtCursor(expressionTextarea, funcText);
-            // Move cursor inside the new parentheses
             const newCursorPos = expressionTextarea.selectionStart - 1;
             expressionTextarea.setSelectionRange(newCursorPos, newCursorPos);
-            this.value = ''; // Reset dropdown to its placeholder
+            e.target.value = '';
         }
     });
-}
-
-
-// Function to insert text at cursor position in a textarea
-function insertAtCursor(textarea, text) {
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    const before = textarea.value.substring(0, start);
-    const after = textarea.value.substring(end, textarea.value.length);
-
-    textarea.value = before + text + after;
-    // Place cursor after the inserted text
-    textarea.selectionStart = textarea.selectionEnd = start + text.length;
-    textarea.focus();
 }
 
 // Function to set up event listeners for a region
 function setupRegionEventListeners(regionElement, regionId) {
-    regionElement.querySelector('.region-header').addEventListener('click', function(e) {
+    regionElement.querySelector('.region-header').addEventListener('click', e => {
         if (e.target.closest('.btn')) return;
         regionElement.classList.toggle('region-collapsed');
     });
 
-    regionElement.querySelector('.delete-region').addEventListener('click', function() {
+    regionElement.querySelector('.delete-region').addEventListener('click', () => {
         regionElement.remove();
         updateRegionTitles();
-        updateJsonOutput();
     });
 
-    regionElement.querySelector('.validate-btn').addEventListener('click', function() {
-        const regionData = getRegionData(regionElement, regionId);
-        document.getElementById('jsonOutput').textContent =
-            `Validation for ${regionId}:\n` + JSON.stringify(regionData, null, 2);
+    regionElement.querySelector(`#${regionId}-add-condition`).addEventListener('click', () => addCondition(regionId));
+
+    regionElement.querySelector('.validate-btn').addEventListener('click', () => {
+        const { isValid, errors } = validateRegion(regionElement);
+        const messageDiv = regionElement.querySelector('.validation-messages');
+        if (isValid) {
+            messageDiv.style.display = 'none';
+            alert('Validation successful!');
+        } else {
+            messageDiv.innerHTML = `<ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
+            messageDiv.style.display = 'block';
+        }
     });
 
-    regionElement.querySelector('.save-region').addEventListener('click', function() {
-        const regionData = getRegionData(regionElement, regionId);
-        document.getElementById('jsonOutput').textContent =
-            `Saved data for ${regionId}:\n` + JSON.stringify(regionData, null, 2);
+    regionElement.querySelector('.save-region').addEventListener('click', () => {
+        const { isValid, errors } = validateRegion(regionElement);
+        const messageDiv = regionElement.querySelector('.validation-messages');
+        if (isValid) {
+            messageDiv.style.display = 'none';
+            const regionData = getRegionData(regionElement, regionId);
+            document.getElementById('jsonOutput').textContent = `Saved data for ${regionId}:\n` + JSON.stringify(regionData, null, 2);
+            alert('Region saved successfully!');
+        } else {
+            messageDiv.innerHTML = `<ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
+            messageDiv.style.display = 'block';
+        }
     });
 
-    regionElement.querySelector(`#${regionId}-add-condition`).addEventListener('click', function() {
-        addCondition(regionId);
-    });
-
-    const mainCheckboxes = regionElement.querySelectorAll('.section:first-child .field-checkbox');
-    mainCheckboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const fieldContainer = this.closest('.field-container');
-            const fieldContent = fieldContainer.querySelector('.field-content');
-
-            if (this.checked) {
-                fieldContainer.classList.add('enabled');
-                if (fieldContent) fieldContent.classList.remove('hidden');
-            } else {
-                fieldContainer.classList.remove('enabled');
-                if (fieldContent) fieldContent.classList.add('hidden');
-            }
+    regionElement.querySelectorAll('.section:first-child .field-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const fieldContent = e.target.closest('.field-container').querySelector('.field-content');
+            if (fieldContent) fieldContent.classList.toggle('hidden', !e.target.checked);
         });
     });
 
     const leadTimeSelect = regionElement.querySelector('.load-time-select');
     if (leadTimeSelect) {
-        leadTimeSelect.addEventListener('change', function() {
-            const selectedValue = this.value;
-            const inputsContainer = this.nextElementSibling;
+        leadTimeSelect.addEventListener('change', (e) => {
+            const selectedValue = e.target.value;
+            const inputsContainer = e.target.nextElementSibling;
             inputsContainer.innerHTML = '';
-
             if (selectedValue === 'date_range') {
-                inputsContainer.innerHTML = `
-                    <label>From</label>
-                    <input type="date" class="lead-time-from">
-                    <label>To</label>
-                    <input type="date" class="lead-time-to">
-                `;
+                inputsContainer.innerHTML = `<label>From</label><input type="date" class="lead-time-from"><label>To</label><input type="date" class="lead-time-to">`;
             } else if (['days', 'weeks', 'months'].includes(selectedValue)) {
                 const label = selectedValue.charAt(0).toUpperCase() + selectedValue.slice(1);
-                inputsContainer.innerHTML = `
-                    <label for="${regionId}-lead-time-value">Number of ${label}</label>
-                    <input type="number" id="${regionId}-lead-time-value" class="lead-time-value" min="1" placeholder="e.g., 7">
-                `;
+                inputsContainer.innerHTML = `<label>Number of ${label}</label><input type="number" class="lead-time-value" min="1">`;
             }
         });
     }
 }
 
-/**
- * Function to get data from a region.
- * @param {HTMLElement} regionElement The filter region DOM element.
- * @param {string} regionId The ID of the region.
- * @returns {Object} The region data object.
- */
-function getRegionData(regionElement, regionId) {
-    const data = {
-        id: regionId,
-        filters: {},
-        conditions: [],
-    };
+// --- VALIDATION FUNCTION (MODIFIED) ---
+function validateRegion(regionElement) {
+    const errors = [];
+    const regionName = regionElement.querySelector('.region-title').textContent.trim();
 
-    const filtersSection = regionElement.querySelector('.section:first-child');
-    if (filtersSection) {
-        // Stay Window
-        const stayWindowCheckbox = filtersSection.querySelector(`#${regionId}-stay-window`);
-        if (stayWindowCheckbox && stayWindowCheckbox.checked) {
-            const fieldContainer = stayWindowCheckbox.closest('.field-container');
-            const fromInput = fieldContainer.querySelector('.stay-window-from');
-            const toInput = fieldContainer.querySelector('.stay-window-to');
+    regionElement.classList.remove('invalid-region');
+    regionElement.querySelectorAll('.invalid-field').forEach(el => el.classList.remove('invalid-field'));
 
-            if (fromInput && toInput && fromInput.value && toInput.value) {
-                data.filters.stayWindow = {
-                    from: fromInput.value,
-                    to: toInput.value
-                };
+    regionElement.querySelectorAll('.section:first-child .field-container').forEach(fc => {
+        const checkbox = fc.querySelector('.field-checkbox');
+        if (!checkbox || !checkbox.checked) return;
+        const validationType = checkbox.dataset.validates;
+        if (validationType === 'stayWindow' && (!fc.querySelector('.stay-window-from')?.value || !fc.querySelector('.stay-window-to')?.value)) {
+            errors.push(`${regionName}: "Stay Window" is enabled but dates are missing.`);
+            fc.classList.add('invalid-field');
+        } else if (validationType === 'leadTime') {
+            const select = fc.querySelector('.load-time-select');
+            if (!select.value) {
+                errors.push(`${regionName}: "Lead Time" is enabled but no type is selected.`);
+                fc.classList.add('invalid-field');
+            } else if (select.value === 'date_range' && (!fc.querySelector('.lead-time-from')?.value || !fc.querySelector('.lead-time-to')?.value)) {
+                errors.push(`${regionName}: "Lead Time" date range is missing values.`);
+                fc.classList.add('invalid-field');
+            } else if (['days', 'weeks', 'months'].includes(select.value) && !fc.querySelector('.lead-time-value')?.value) {
+                errors.push(`${regionName}: "Lead Time" number of ${select.value} is missing.`);
+                fc.classList.add('invalid-field');
             }
+        } else if (validationType === 'minimumRate' && !fc.querySelector('.minimum-rate-input')?.value) {
+            errors.push(`${regionName}: "Minimum Rate" is enabled but the rate is missing.`);
+            fc.classList.add('invalid-field');
         }
+    });
 
-        // Lead Time
-        const leadTimeCheckbox = filtersSection.querySelector(`#${regionId}-load-time`);
-        if (leadTimeCheckbox && leadTimeCheckbox.checked) {
-            const fieldContainer = leadTimeCheckbox.closest('.field-container');
-            const leadTimeSelect = fieldContainer.querySelector('.load-time-select');
-
-            if (leadTimeSelect && leadTimeSelect.value) {
-                const type = leadTimeSelect.value;
-                const inputsContainer = fieldContainer.querySelector('.lead-time-inputs');
-
-                if (type === 'date_range') {
-                    const fromInput = inputsContainer.querySelector('.lead-time-from');
-                    const toInput = inputsContainer.querySelector('.lead-time-to');
-                    if (fromInput && toInput && fromInput.value && toInput.value) {
-                        data.filters.leadTime = {
-                            type: type,
-                            from: fromInput.value,
-                            to: toInput.value
-                        };
-                    }
-                } else if (['days', 'weeks', 'months'].includes(type)) {
-                    const valueInput = inputsContainer.querySelector('.lead-time-value');
-                    if (valueInput && valueInput.value) {
-                        data.filters.leadTime = {
-                            type: type,
-                            value: parseInt(valueInput.value, 10)
-                        };
-                    }
-                }
-            }
-        }
-
-        // Days of Week
-        const daysCheckbox = filtersSection.querySelector(`#${regionId}-days-of-week`);
-        if (daysCheckbox && daysCheckbox.checked) {
-            const dayMap = { sun: 1, mon: 2, tue: 3, wed: 4, thu: 5, fri: 6, sat: 7 };
-            const fieldContainer = daysCheckbox.closest('.field-container');
-            const dayCheckboxes = fieldContainer.querySelectorAll('.day-checkbox');
-
-            data.filters.daysOfWeek = [];
-            dayCheckboxes.forEach(checkbox => {
-                if (checkbox.checked) {
-                    const dayName = checkbox.id.split('-').pop();
-                    if (dayMap.hasOwnProperty(dayName)) {
-                        data.filters.daysOfWeek.push(dayMap[dayName]);
-                    }
-                }
-            });
-            data.filters.daysOfWeek.sort((a, b) => a - b);
-            if (data.filters.daysOfWeek.length === 0) {
-                delete data.filters.daysOfWeek;
-            }
-        }
-
-        // Minimum Rate
-        const minRateCheckbox = filtersSection.querySelector(`#${regionId}-minimum-rate`);
-        if (minRateCheckbox && minRateCheckbox.checked) {
-            const fieldContainer = minRateCheckbox.closest('.field-container');
-            const minRateInput = fieldContainer.querySelector('.minimum-rate-input');
-            if (minRateInput && minRateInput.value) {
-                data.filters.minimumRate = parseFloat(minRateInput.value);
-            }
-        }
-    }
-
-    const conditionsContainer = regionElement.querySelector('.conditions-container');
-    if (conditionsContainer) {
-        const conditionGroups = conditionsContainer.querySelectorAll('.condition-group');
-
-        conditionGroups.forEach((conditionGroup) => {
-            const sequence = parseInt(conditionGroup.dataset.sequence, 10);
-            const conditionData = {
-                id: conditionGroup.id,
-                sequence: sequence,
-            };
-            let isConditionActive = false;
-
-            // Occupancy Threshold
-            const occupancyCheckbox = conditionGroup.querySelector(`#${conditionGroup.id}-occupancy-threshold`);
-            if (occupancyCheckbox && occupancyCheckbox.checked) {
-                const operator = conditionGroup.querySelector('.occupancy-operator');
-                const value = conditionGroup.querySelector('.occupancy-value');
-                if (operator && value && value.value) {
-                    conditionData.occupancyThreshold = { operator: operator.value, value: parseFloat(value.value) };
-                    isConditionActive = true;
-                }
-            }
-
-            // Property Ranking
-            const propertyCheckbox = conditionGroup.querySelector(`#${conditionGroup.id}-property-ranking`);
-            if (propertyCheckbox && propertyCheckbox.checked) {
-                const type = conditionGroup.querySelector('.property-type');
-                const operator = conditionGroup.querySelector('.property-operator');
-                const value = conditionGroup.querySelector('.property-value');
-                if (type && type.value && operator && value && value.value) {
-                    const rankValue = parseInt(value.value, 10);
-                    conditionData.propertyRanking = {
-                        type: type.value,
-                        operator: operator.value,
-                        value: isNaN(rankValue) ? value.value : rankValue
-                    };
-                    isConditionActive = true;
-                }
-            }
-
-            // Event Score
-            const eventCheckbox = conditionGroup.querySelector(`#${conditionGroup.id}-event-score`);
-            if (eventCheckbox && eventCheckbox.checked) {
-                const operator = conditionGroup.querySelector('.event-operator');
-                const value = conditionGroup.querySelector('.event-value');
-                if (operator && value && value.value) {
-                    conditionData.eventScore = { operator: operator.value, value: parseFloat(value.value) };
-                    isConditionActive = true;
-                }
-            }
-
-            // Expression
-            const calculationSection = conditionGroup.querySelector('.calculation-section');
-            if (calculationSection) {
-                const expressionTextarea = calculationSection.querySelector('.expression-textarea');
-                if (expressionTextarea && expressionTextarea.value.trim()) {
-                    conditionData.expression = expressionTextarea.value.trim();
-                    isConditionActive = true;
-                }
-            }
-
-            if (isConditionActive) {
-                data.conditions.push(conditionData);
+    const conditions = regionElement.querySelectorAll('.condition-group');
+    let hasConditionWithoutExpression = false;
+    conditions.forEach(cond => {
+        const condTitle = cond.querySelector('.condition-title').textContent.trim();
+        cond.querySelectorAll('.condition-fields .field-container').forEach(fc => {
+            const checkbox = fc.querySelector('.field-checkbox');
+            if (!checkbox || !checkbox.checked) return;
+            const validationType = checkbox.dataset.validates;
+            if (validationType === 'occupancyThreshold' && !fc.querySelector('.occupancy-value')?.value) {
+                errors.push(`${condTitle}: "Occupancy Threshold" is enabled but value is missing.`);
+                fc.classList.add('invalid-field');
+            } else if (validationType === 'propertyRanking' && (!fc.querySelector('.property-type')?.value || !fc.querySelector('.property-value')?.value)) {
+                errors.push(`${condTitle}: "Property Ranking" is enabled but type or value is missing.`);
+                fc.classList.add('invalid-field');
+            } else if (validationType === 'eventScore' && !fc.querySelector('.event-value')?.value) {
+                errors.push(`${condTitle}: "Event Score" is enabled but value is missing.`);
+                fc.classList.add('invalid-field');
             }
         });
+
+        const expressionTextarea = cond.querySelector('.expression-textarea');
+        const expression = expressionTextarea.value.trim();
+        if (expression === '') {
+            hasConditionWithoutExpression = true;
+        } else {
+            let tempExpression = expression;
+            const errorsForThisExpression = [];
+            const attributeTokens = tempExpression.match(/#[^#]+#/g) || [];
+            for (const token of attributeTokens) {
+                const attributeName = token.slice(1, -1);
+                if (!staticData.attributes.includes(attributeName)) {
+                    errorsForThisExpression.push(`Invalid attribute: "${token}"`);
+                }
+            }
+            tempExpression = tempExpression.replace(/#[^#]+#/g, ' ');
+            const validNonAttrTokens = [...staticData.operators, ...staticData.functions].map(t => t.toLowerCase());
+            const remainingTokens = tempExpression.split(/[\s()]+/).filter(Boolean);
+            for (const token of remainingTokens) {
+                if (!isNaN(parseFloat(token))) continue;
+                if (!validNonAttrTokens.includes(token.toLowerCase())) {
+                    errorsForThisExpression.push(`Invalid keyword: "${token}"`);
+                }
+            }
+            if (errorsForThisExpression.length > 0) {
+                errors.push(`${condTitle} Expression Error: ${errorsForThisExpression.join(', ')}.`);
+                expressionTextarea.closest('.expression-container').classList.add('invalid-field');
+            }
+        }
+    });
+
+    if (conditions.length > 0 && hasConditionWithoutExpression) {
+        errors.push(`${regionName}: A condition is present but its expression is empty.`);
+        regionElement.classList.add('invalid-region');
     }
+
+    return { isValid: errors.length === 0, errors };
+}
+
+
+// --- UTILITY AND DATA GATHERING FUNCTIONS ---
+function getRegionData(regionElement, regionId) {
+    const data = { id: regionId, filters: {}, conditions: [] };
+    const filtersSection = regionElement.querySelector('.section:first-child');
+    if (filtersSection) {
+        if (filtersSection.querySelector(`#${regionId}-stay-window`)?.checked) {
+            data.filters.stayWindow = { from: filtersSection.querySelector('.stay-window-from')?.value, to: filtersSection.querySelector('.stay-window-to')?.value };
+        }
+        if (filtersSection.querySelector(`#${regionId}-load-time`)?.checked) {
+            const leadTimeSelect = filtersSection.querySelector('.load-time-select');
+            const type = leadTimeSelect.value;
+            if (type === 'date_range') {
+                data.filters.leadTime = { type, from: filtersSection.querySelector('.lead-time-from')?.value, to: filtersSection.querySelector('.lead-time-to')?.value };
+            } else if (type) {
+                data.filters.leadTime = { type, value: parseInt(filtersSection.querySelector('.lead-time-value')?.value, 10) };
+            }
+        }
+        if (filtersSection.querySelector(`#${regionId}-days-of-week`)?.checked) {
+            const dayMap = { sun: 1, mon: 2, tue: 3, wed: 4, thu: 5, fri: 6, sat: 7 };
+            data.filters.daysOfWeek = Array.from(filtersSection.querySelectorAll('.day-checkbox:checked')).map(cb => dayMap[cb.id.split('-').pop()]).sort((a, b) => a - b);
+        }
+        if (filtersSection.querySelector(`#${regionId}-minimum-rate`)?.checked) {
+            data.filters.minimumRate = parseFloat(filtersSection.querySelector('.minimum-rate-input')?.value);
+        }
+    }
+    regionElement.querySelectorAll('.condition-group').forEach(cond => {
+        const conditionData = { id: cond.id, sequence: parseInt(cond.dataset.sequence, 10) };
+        let isActive = false;
+        if (cond.querySelector(`#${cond.id}-occupancy-threshold`)?.checked) {
+            conditionData.occupancyThreshold = { operator: cond.querySelector('.occupancy-operator').value, value: parseFloat(cond.querySelector('.occupancy-value').value) };
+            isActive = true;
+        }
+        if (cond.querySelector(`#${cond.id}-property-ranking`)?.checked) {
+            const val = cond.querySelector('.property-value').value;
+            conditionData.propertyRanking = { type: cond.querySelector('.property-type').value, operator: cond.querySelector('.property-operator').value, value: isNaN(parseInt(val, 10)) ? val : parseInt(val, 10) };
+            isActive = true;
+        }
+        if (cond.querySelector(`#${cond.id}-event-score`)?.checked) {
+            conditionData.eventScore = { operator: cond.querySelector('.event-operator').value, value: parseFloat(cond.querySelector('.event-value').value) };
+            isActive = true;
+        }
+        const expression = cond.querySelector('.expression-textarea').value.trim();
+        if (expression) {
+            conditionData.expression = expression;
+            isActive = true;
+        }
+        if (isActive) data.conditions.push(conditionData);
+    });
     return data;
 }
 
-
-// Function to save all regions
 function saveAllRegions() {
     const regions = document.querySelectorAll('.filter-region');
-    const allData = {
-        regions: [],
-        timestamp: new Date().toISOString()
-    };
+    let allValid = true;
+    const allData = { regions: [], timestamp: new Date().toISOString() };
 
     regions.forEach(region => {
-        const regionId = region.id;
-        const regionData = getRegionData(region, regionId);
-        allData.regions.push(regionData);
-    });
-
-    document.getElementById('jsonOutput').textContent =
-        'All regions data:\n' + JSON.stringify(allData, null, 2);
-}
-
-// Function to toggle all regions
-function toggleAllRegions() {
-    const regions = document.querySelectorAll('.filter-region');
-    const toggleBtn = document.getElementById('toggleAllBtn');
-    const isAnyExpanded = Array.from(regions).some(r => !r.classList.contains('region-collapsed'));
-
-    regions.forEach(region => {
-        if (isAnyExpanded) {
-            region.classList.add('region-collapsed');
+        const { isValid, errors } = validateRegion(region);
+        const messageDiv = region.querySelector('.validation-messages');
+        if (!isValid) {
+            allValid = false;
+            messageDiv.innerHTML = `<ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
+            messageDiv.style.display = 'block';
         } else {
-            region.classList.remove('region-collapsed');
+            messageDiv.style.display = 'none';
+            allData.regions.push(getRegionData(region, region.id));
         }
     });
 
-    toggleBtn.textContent = isAnyExpanded ? 'Expand All' : 'Collapse All';
+    if (allValid) {
+        document.getElementById('jsonOutput').textContent = 'All regions data:\n' + JSON.stringify(allData, null, 2);
+        alert('All regions are valid and have been saved!');
+    } else {
+        alert('Please fix the errors in the highlighted regions before saving.');
+    }
 }
 
-// Function to update region titles after deletion
 function updateRegionTitles() {
-    const regions = document.querySelectorAll('.filter-region');
-    regions.forEach((region, index) => {
+    document.querySelectorAll('.filter-region').forEach((region, index) => {
         const titleElement = region.querySelector('.region-title');
         if (titleElement) {
-            const toggleIcon = titleElement.querySelector('.toggle-icon');
-            const iconHTML = toggleIcon ? toggleIcon.outerHTML : '<span class="toggle-icon">▼</span>';
+            const iconHTML = titleElement.querySelector('.toggle-icon')?.outerHTML || '';
             titleElement.innerHTML = `${iconHTML} Filter Region ${index + 1}`;
         }
     });
 }
 
-// Placeholder for updateJsonOutput
-function updateJsonOutput() {
-    // This function can be used to trigger a global JSON update if needed
+function updateConditionSequence(regionId) {
+    const container = document.getElementById(`${regionId}-conditions-container`);
+    if (!container) return;
+    const conditions = container.querySelectorAll('.condition-group');
+    conditions.forEach((condition, index) => {
+        const sequence = index + 1;
+        condition.querySelector('.condition-title').textContent = `Condition ${sequence}`;
+        condition.dataset.sequence = sequence;
+        condition.querySelector('.condition-move.up').disabled = (sequence === 1);
+        condition.querySelector('.condition-move.down').disabled = (sequence === conditions.length);
+    });
+}
+
+function moveCondition(conditionElement, direction) {
+    const parent = conditionElement.parentNode;
+    if (direction === 'up' && conditionElement.previousElementSibling) {
+        parent.insertBefore(conditionElement, conditionElement.previousElementSibling);
+    } else if (direction === 'down' && conditionElement.nextElementSibling) {
+        parent.insertBefore(conditionElement.nextElementSibling, conditionElement);
+    }
+    updateConditionSequence(parent.id.replace('-conditions-container', ''));
+}
+
+function insertAtCursor(textarea, text) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    textarea.value = textarea.value.substring(0, start) + text + textarea.value.substring(end);
+    textarea.selectionStart = textarea.selectionEnd = start + text.length;
+    textarea.focus();
+}
+
+function toggleAllRegions() {
+    const regions = document.querySelectorAll('.filter-region');
+    const isAnyExpanded = Array.from(regions).some(r => !r.classList.contains('region-collapsed'));
+    regions.forEach(region => region.classList.toggle('region-collapsed', isAnyExpanded));
+    document.getElementById('toggleAllBtn').textContent = isAnyExpanded ? 'Expand All' : 'Collapse All';
 }
