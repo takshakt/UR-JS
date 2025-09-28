@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-// Function to create a new filter region (Unchanged)
+// Function to create a new filter region (MODIFIED)
 function addFilterRegion() {
     regionCounter++;
     const regionId = `region-${regionCounter}`;
@@ -80,11 +80,12 @@ function addFilterRegion() {
                         <div class="field-content hidden">
                             <select class="load-time-select">
                                 <option value="">Select Type</option>
-                                <option value="current">Date Range</option>
-                                <option value="historical">Day(s)</option>
-                                <option value="historical">Weeks(s)</option>
-                                <option value="historical">Months(s)</option>
+                                <option value="date_range">Date Range</option>
+                                <option value="days">Day(s)</option>
+                                <option value="weeks">Week(s)</option>
+                                <option value="months">Month(s)</option>
                             </select>
+                            <div class="lead-time-inputs"></div>
                         </div>
                     </div>
 
@@ -327,7 +328,7 @@ function setupConditionEventListeners(conditionElement) {
     conditionElement.querySelector('.condition-remove').addEventListener('click', function() {
         conditionElement.remove();
         updateConditionSequence(regionId); // Update sequence after deletion
-        updateJsonOutput(); 
+        updateJsonOutput();
     });
 
     // Move buttons logic
@@ -392,8 +393,9 @@ function setupConditionEventListeners(conditionElement) {
         if (functionSelect.value) {
             insertAtCursor(expressionTextarea, `${functionSelect.value}()`);
             // Move cursor inside parentheses
-            const pos = expressionTextarea.value.indexOf('()') + 1;
+            const pos = expressionTextarea.selectionStart - 1;
             expressionTextarea.setSelectionRange(pos, pos);
+            expressionTextarea.focus();
         }
     });
 
@@ -434,7 +436,7 @@ function insertAtCursor(textarea, text) {
     textarea.focus();
 }
 
-// Function to set up event listeners for a region (Unchanged)
+// Function to set up event listeners for a region (MODIFIED)
 function setupRegionEventListeners(regionElement, regionId) {
     // Toggle collapse/expand
     regionElement.querySelector('.region-header').addEventListener('click', function(e) {
@@ -486,12 +488,41 @@ function setupRegionEventListeners(regionElement, regionId) {
             }
         });
     });
+
+    // --- NEW LOGIC FOR DYNAMIC LEAD TIME INPUTS ---
+    const leadTimeSelect = regionElement.querySelector('.load-time-select');
+    if (leadTimeSelect) {
+        leadTimeSelect.addEventListener('change', function() {
+            const selectedValue = this.value;
+            // The container is the next sibling element of the dropdown
+            const inputsContainer = this.nextElementSibling;
+
+            // Clear any previous inputs
+            inputsContainer.innerHTML = '';
+
+            if (selectedValue === 'date_range') {
+                inputsContainer.innerHTML = `
+                    <label>From</label>
+                    <input type="date" class="lead-time-from">
+                    <label>To</label>
+                    <input type="date" class="lead-time-to">
+                `;
+            } else if (['days', 'weeks', 'months'].includes(selectedValue)) {
+                // Capitalize the first letter of the selected value for the label
+                const label = selectedValue.charAt(0).toUpperCase() + selectedValue.slice(1);
+                inputsContainer.innerHTML = `
+                    <label for="${regionId}-lead-time-value">Number of ${label}</label>
+                    <input type="number" id="${regionId}-lead-time-value" class="lead-time-value" min="1" placeholder="e.g., 7">
+                `;
+            }
+        });
+    }
 }
 // -------------------------------------------------------------------------
 
 /**
  * Function to get data from a region.
- * MODIFIED: 'expression' is now always included, even if empty/null.
+ * MODIFIED: To handle dynamic 'Lead Time' inputs and new JSON structure.
  * @param {HTMLElement} regionElement The filter region DOM element.
  * @param {string} regionId The ID of the region.
  * @returns {Object} The region data object.
@@ -503,7 +534,7 @@ function getRegionData(regionElement, regionId) {
         conditions: [],
     };
 
-    // --- Get Filters data (Unchanged) ---
+    // --- Get Filters data (MODIFIED HERE) ---
     const filtersSection = regionElement.querySelector('.sections-container .section:nth-child(1)');
     if (filtersSection) {
         // Stay Window
@@ -528,7 +559,28 @@ function getRegionData(regionElement, regionId) {
             const loadTimeSelect = fieldContainer.querySelector('.load-time-select');
 
             if (loadTimeSelect && loadTimeSelect.value) {
-                data.filters.loadTime = loadTimeSelect.value;
+                const type = loadTimeSelect.value;
+                const inputsContainer = fieldContainer.querySelector('.lead-time-inputs');
+
+                if (type === 'date_range') {
+                    const fromInput = inputsContainer.querySelector('.lead-time-from');
+                    const toInput = inputsContainer.querySelector('.lead-time-to');
+                    if (fromInput && toInput && fromInput.value && toInput.value) {
+                        data.filters.loadTime = {
+                            type: type,
+                            from: fromInput.value,
+                            to: toInput.value
+                        };
+                    }
+                } else if (['days', 'weeks', 'months'].includes(type)) {
+                    const valueInput = inputsContainer.querySelector('.lead-time-value');
+                    if (valueInput && valueInput.value) {
+                        data.filters.loadTime = {
+                            type: type,
+                            value: valueInput.value
+                        };
+                    }
+                }
             }
         }
 
@@ -562,26 +614,25 @@ function getRegionData(regionElement, regionId) {
         }
     }
 
-    // --- Get Conditions and nested Expressions data (MODIFIED HERE) ---
+    // --- Get Conditions and nested Expressions data (Unchanged from your version) ---
     const conditionsSection = regionElement.querySelector('.sections-container .section:nth-child(2)');
     if (conditionsSection) {
         const conditionGroups = conditionsSection.querySelectorAll('.condition-group');
 
         conditionGroups.forEach((conditionGroup) => {
             const sequence = parseInt(conditionGroup.dataset.sequence, 10);
-            
+
             const conditionData = {
                 id: conditionGroup.id,
                 sequence: isNaN(sequence) ? 0 : sequence,
-                // Initialize fields
                 occupancyThreshold: null,
                 propertyRanking: null,
                 eventScore: null,
-                calculation: {}, 
-                expression: '', // Expression is initialized and will NOT be deleted
+                calculation: {},
+                expression: '',
             };
 
-            let isConditionActive = false; 
+            let isConditionActive = false;
 
             // 1. Occupancy Threshold
             const occupancyCheckbox = conditionGroup.querySelector('.field-container:nth-child(2) .field-checkbox');
@@ -617,11 +668,11 @@ function getRegionData(regionElement, regionId) {
                 }
             }
 
-            // Clean up conditionData by removing null properties for fields that weren't checked
+            // Clean up conditionData by removing null properties
             if (conditionData.occupancyThreshold === null) delete conditionData.occupancyThreshold;
             if (conditionData.propertyRanking === null) delete conditionData.propertyRanking;
             if (conditionData.eventScore === null) delete conditionData.eventScore;
-            
+
             // 4. Calculation and 5. Expression
             const calculationSection = conditionGroup.querySelector('.calculation-section');
             if (calculationSection) {
@@ -629,18 +680,16 @@ function getRegionData(regionElement, regionId) {
                 const operatorSelect = calculationSection.querySelector('.expression-operator');
                 const functionSelect = calculationSection.querySelector('.function-select');
                 const expressionTextarea = calculationSection.querySelector('.expression-textarea');
-                
-                // Only include calculation data if an attribute is selected
+
                 if (attributeSelect && attributeSelect.value) {
                     conditionData.calculation.attribute = attributeSelect.value;
                     if (operatorSelect) conditionData.calculation.operator = operatorSelect.value;
                     if (functionSelect) conditionData.calculation.function = functionSelect.value;
                     isConditionActive = true;
                 } else {
-                    delete conditionData.calculation; // Remove empty calculation object
+                    delete conditionData.calculation;
                 }
-                
-                // EXPRESSION IS ALWAYS INCLUDED (even if empty string)
+
                 if (expressionTextarea) {
                     conditionData.expression = expressionTextarea.value.trim();
                     if (conditionData.expression) {
@@ -649,10 +698,8 @@ function getRegionData(regionElement, regionId) {
                 }
             } else {
                 delete conditionData.calculation;
-                // Leave conditionData.expression = '' (as initialized)
             }
 
-            // ONLY add the condition to the array if it has *any* data saved
             if (isConditionActive) {
                 data.conditions.push(conditionData);
             }
@@ -705,11 +752,13 @@ function updateRegionTitles() {
         const titleElement = region.querySelector('.region-title');
         if (titleElement) {
             const toggleIcon = titleElement.querySelector('.toggle-icon');
-            titleElement.textContent = `Filter Region ${index + 1}`;
-            titleElement.prepend(toggleIcon); // Re-insert the toggle icon
+            // Ensure the icon is preserved before updating text content
+            const iconHTML = toggleIcon ? toggleIcon.outerHTML : '<span class="toggle-icon">▼</span>';
+            titleElement.innerHTML = `${iconHTML} Filter Region ${index + 1}`;
         }
     });
 }
+
 
 // Placeholder for updateJsonOutput (Unchanged)
 function updateJsonOutput() {
