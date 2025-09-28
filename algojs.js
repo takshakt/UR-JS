@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-// Function to create a new filter region (MODIFIED)
+// Function to create a new filter region
 function addFilterRegion() {
     regionCounter++;
     const regionId = `region-${regionCounter}`;
@@ -160,8 +160,8 @@ function addFilterRegion() {
     // Add initial condition
     addCondition(regionId);
 }
-// -------------------------------------------------------------------------
-// Function to add a new condition to a region (Unchanged)
+
+// Function to add a new condition to a region
 function addCondition(regionId) {
     conditionCounter++;
     const conditionId = `condition-${regionId}-${conditionCounter}`;
@@ -257,10 +257,10 @@ function addCondition(regionId) {
     // Update sequence after adding a new condition
     updateConditionSequence(conditionsContainer.closest('.filter-region').id);
 }
-// -------------------------------------------------------------------------
+
 /**
  * Updates the sequence number displayed in the condition titles and disables
- * move buttons for first/last elements. (Unchanged)
+ * move buttons for first/last elements.
  * @param {string} regionId The ID of the parent filter region.
  */
 function updateConditionSequence(regionId) {
@@ -280,23 +280,20 @@ function updateConditionSequence(regionId) {
             titleElement.textContent = `Condition ${sequence}`;
         }
 
-        // Disable UP button for the first element
         if (upBtn) {
             upBtn.disabled = sequence === 1;
         }
 
-        // Disable DOWN button for the last element
         if (downBtn) {
             downBtn.disabled = sequence === total;
         }
 
-        // Store sequence on the element for easy data retrieval
         condition.dataset.sequence = sequence;
     });
 }
 
 /**
- * Moves a condition up or down in the DOM. (Unchanged)
+ * Moves a condition up or down in the DOM.
  * @param {HTMLElement} conditionElement The condition to move.
  * @param {string} direction 'up' or 'down'.
  */
@@ -310,35 +307,29 @@ function moveCondition(conditionElement, direction) {
     if (direction === 'up' && currentIndex > 0) {
         parent.insertBefore(conditionElement, conditions[currentIndex - 1]);
     } else if (direction === 'down' && currentIndex < conditions.length - 1) {
-        // To move down, insert after the next sibling.
-        // We use insertBefore on the element *after* the target position.
         parent.insertBefore(conditionElement, conditions[currentIndex + 2] || null);
     }
 
-    // Re-sequence all conditions in this region after the move
     const regionId = conditionElement.closest('.filter-region').id;
     updateConditionSequence(regionId);
 }
-// -------------------------------------------------------------------------
-// Function to set up event listeners for a single condition (Unchanged)
+
+// Function to set up event listeners for a single condition
 function setupConditionEventListeners(conditionElement) {
     const regionId = conditionElement.closest('.filter-region').id;
 
-    // Remove button logic
     conditionElement.querySelector('.condition-remove').addEventListener('click', function() {
         conditionElement.remove();
-        updateConditionSequence(regionId); // Update sequence after deletion
+        updateConditionSequence(regionId);
         updateJsonOutput();
     });
 
-    // Move buttons logic
     conditionElement.querySelectorAll('.condition-move').forEach(button => {
         button.addEventListener('click', function() {
             moveCondition(conditionElement, this.dataset.direction);
         });
     });
 
-    // Show/hide fields based on condition checkbox state
     const checkboxes = conditionElement.querySelectorAll('.field-checkbox');
     checkboxes.forEach(checkbox => {
         checkbox.addEventListener('change', function() {
@@ -355,57 +346,48 @@ function setupConditionEventListeners(conditionElement) {
         });
     });
 
-    // Expression area functionality - TARGETING ELEMENTS WITHIN THIS CONDITION
     const calculationSection = conditionElement.querySelector('.calculation-section');
     const expressionTextarea = calculationSection.querySelector('.expression-textarea');
     const attributeSelect = calculationSection.querySelector('.attribute-select');
     const operatorSelect = calculationSection.querySelector('.expression-operator');
     const functionSelect = calculationSection.querySelector('.function-select');
 
-    // Expression control buttons
     const clearBtn = calculationSection.querySelector('.expression-btn[data-action="clear"]');
     const appendAttrBtn = calculationSection.querySelector('.expression-btn[data-action="append-attribute"]');
     const appendOpBtn = calculationSection.querySelector('.expression-btn[data-action="append-operator"]');
     const appendFuncBtn = calculationSection.querySelector('.expression-btn[data-action="append-function"]');
 
-    // Clear expression
     clearBtn.addEventListener('click', function() {
         expressionTextarea.value = '';
         expressionTextarea.focus();
     });
 
-    // Append attribute at cursor position
     appendAttrBtn.addEventListener('click', function() {
         if (attributeSelect.value) {
             insertAtCursor(expressionTextarea, attributeSelect.value);
         }
     });
 
-    // Append operator at cursor position
     appendOpBtn.addEventListener('click', function() {
         if (operatorSelect.value) {
             insertAtCursor(expressionTextarea, ` ${operatorSelect.value} `);
         }
     });
 
-    // Append function at cursor position
     appendFuncBtn.addEventListener('click', function() {
         if (functionSelect.value) {
             insertAtCursor(expressionTextarea, `${functionSelect.value}()`);
-            // Move cursor inside parentheses
             const pos = expressionTextarea.selectionStart - 1;
             expressionTextarea.setSelectionRange(pos, pos);
             expressionTextarea.focus();
         }
     });
 
-    // Auto-fill expression when dropdowns change (only if expression is empty)
     const updateExpression = () => {
         const attribute = attributeSelect.value;
         const operator = operatorSelect.value;
         const func = functionSelect.value;
 
-        // Only auto-fill if expression is empty
         if (!expressionTextarea.value.trim()) {
             if (attribute && operator && func) {
                 expressionTextarea.value = `${func}(${attribute}) ${operator} value`;
@@ -421,10 +403,9 @@ function setupConditionEventListeners(conditionElement) {
     operatorSelect.addEventListener('change', updateExpression);
     functionSelect.addEventListener('change', updateExpression);
 }
-// -------------------------------------------------------------------------
 
 
-// Function to insert text at cursor position in a textarea (Unchanged)
+// Function to insert text at cursor position in a textarea
 function insertAtCursor(textarea, text) {
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
@@ -436,43 +417,35 @@ function insertAtCursor(textarea, text) {
     textarea.focus();
 }
 
-// Function to set up event listeners for a region (MODIFIED)
+// Function to set up event listeners for a region
 function setupRegionEventListeners(regionElement, regionId) {
-    // Toggle collapse/expand
     regionElement.querySelector('.region-header').addEventListener('click', function(e) {
-        // Don't toggle if clicking on buttons inside the header
         if (e.target.closest('.btn')) return;
-
         regionElement.classList.toggle('region-collapsed');
     });
 
-    // Delete region
     regionElement.querySelector('.delete-region').addEventListener('click', function() {
         regionElement.remove();
         updateRegionTitles();
         updateJsonOutput();
     });
 
-    // Validate region
     regionElement.querySelector('.validate-btn').addEventListener('click', function() {
         const regionData = getRegionData(regionElement, regionId);
         document.getElementById('jsonOutput').textContent =
             `Validation for ${regionId}:\n` + JSON.stringify(regionData, null, 2);
     });
 
-    // Save region
     regionElement.querySelector('.save-region').addEventListener('click', function() {
         const regionData = getRegionData(regionElement, regionId);
         document.getElementById('jsonOutput').textContent =
             `Saved data for ${regionId}:\n` + JSON.stringify(regionData, null, 2);
     });
 
-    // Add condition button
     regionElement.querySelector(`#${regionId}-add-condition`).addEventListener('click', function() {
         addCondition(regionId);
     });
 
-    // Show/hide fields based on checkbox state in main section
     const mainCheckboxes = regionElement.querySelectorAll('.section:nth-child(1) .field-checkbox');
     mainCheckboxes.forEach(checkbox => {
         checkbox.addEventListener('change', function() {
@@ -489,15 +462,11 @@ function setupRegionEventListeners(regionElement, regionId) {
         });
     });
 
-    // --- NEW LOGIC FOR DYNAMIC LEAD TIME INPUTS ---
     const leadTimeSelect = regionElement.querySelector('.load-time-select');
     if (leadTimeSelect) {
         leadTimeSelect.addEventListener('change', function() {
             const selectedValue = this.value;
-            // The container is the next sibling element of the dropdown
             const inputsContainer = this.nextElementSibling;
-
-            // Clear any previous inputs
             inputsContainer.innerHTML = '';
 
             if (selectedValue === 'date_range') {
@@ -508,7 +477,6 @@ function setupRegionEventListeners(regionElement, regionId) {
                     <input type="date" class="lead-time-to">
                 `;
             } else if (['days', 'weeks', 'months'].includes(selectedValue)) {
-                // Capitalize the first letter of the selected value for the label
                 const label = selectedValue.charAt(0).toUpperCase() + selectedValue.slice(1);
                 inputsContainer.innerHTML = `
                     <label for="${regionId}-lead-time-value">Number of ${label}</label>
@@ -518,11 +486,10 @@ function setupRegionEventListeners(regionElement, regionId) {
         });
     }
 }
-// -------------------------------------------------------------------------
 
 /**
  * Function to get data from a region.
- * MODIFIED: To handle dynamic 'Lead Time' inputs and new JSON structure.
+ * MODIFIED: Renamed 'loadTime' to 'leadTime' and converts string numbers to actual numbers.
  * @param {HTMLElement} regionElement The filter region DOM element.
  * @param {string} regionId The ID of the region.
  * @returns {Object} The region data object.
@@ -534,7 +501,6 @@ function getRegionData(regionElement, regionId) {
         conditions: [],
     };
 
-    // --- Get Filters data (MODIFIED HERE) ---
     const filtersSection = regionElement.querySelector('.sections-container .section:nth-child(1)');
     if (filtersSection) {
         // Stay Window
@@ -544,7 +510,7 @@ function getRegionData(regionElement, regionId) {
             const fromInput = fieldContainer.querySelector('.stay-window-from');
             const toInput = fieldContainer.querySelector('.stay-window-to');
 
-            if (fromInput && toInput) {
+            if (fromInput && toInput && fromInput.value && toInput.value) {
                 data.filters.stayWindow = {
                     from: fromInput.value,
                     to: toInput.value
@@ -552,21 +518,21 @@ function getRegionData(regionElement, regionId) {
             }
         }
 
-        // Load Time
-        const loadTimeCheckbox = filtersSection.querySelector(`#${regionId}-load-time`);
-        if (loadTimeCheckbox && loadTimeCheckbox.checked) {
-            const fieldContainer = loadTimeCheckbox.closest('.field-container');
-            const loadTimeSelect = fieldContainer.querySelector('.load-time-select');
+        // Lead Time (MODIFIED: Renamed property and converting value to number)
+        const leadTimeCheckbox = filtersSection.querySelector(`#${regionId}-load-time`);
+        if (leadTimeCheckbox && leadTimeCheckbox.checked) {
+            const fieldContainer = leadTimeCheckbox.closest('.field-container');
+            const leadTimeSelect = fieldContainer.querySelector('.load-time-select');
 
-            if (loadTimeSelect && loadTimeSelect.value) {
-                const type = loadTimeSelect.value;
+            if (leadTimeSelect && leadTimeSelect.value) {
+                const type = leadTimeSelect.value;
                 const inputsContainer = fieldContainer.querySelector('.lead-time-inputs');
 
                 if (type === 'date_range') {
                     const fromInput = inputsContainer.querySelector('.lead-time-from');
                     const toInput = inputsContainer.querySelector('.lead-time-to');
                     if (fromInput && toInput && fromInput.value && toInput.value) {
-                        data.filters.loadTime = {
+                        data.filters.leadTime = {
                             type: type,
                             from: fromInput.value,
                             to: toInput.value
@@ -575,9 +541,9 @@ function getRegionData(regionElement, regionId) {
                 } else if (['days', 'weeks', 'months'].includes(type)) {
                     const valueInput = inputsContainer.querySelector('.lead-time-value');
                     if (valueInput && valueInput.value) {
-                        data.filters.loadTime = {
+                        data.filters.leadTime = {
                             type: type,
-                            value: valueInput.value
+                            value: parseInt(valueInput.value, 10)
                         };
                     }
                 }
@@ -587,6 +553,7 @@ function getRegionData(regionElement, regionId) {
         // Days of Week
         const daysCheckbox = filtersSection.querySelector(`#${regionId}-days-of-week`);
         if (daysCheckbox && daysCheckbox.checked) {
+            const dayMap = { sun: 1, mon: 2, tue: 3, wed: 4, thu: 5, fri: 6, sat: 7 };
             const fieldContainer = daysCheckbox.closest('.field-container');
             const dayCheckboxes = fieldContainer.querySelectorAll('.day-checkbox');
 
@@ -594,86 +561,80 @@ function getRegionData(regionElement, regionId) {
             dayCheckboxes.forEach(checkbox => {
                 if (checkbox.checked) {
                     const dayName = checkbox.id.split('-').pop();
-                    data.filters.daysOfWeek.push(dayName.toUpperCase());
+                    if (dayMap.hasOwnProperty(dayName)) {
+                        data.filters.daysOfWeek.push(dayMap[dayName]);
+                    }
                 }
             });
+            data.filters.daysOfWeek.sort((a, b) => a - b);
             if (data.filters.daysOfWeek.length === 0) {
                 delete data.filters.daysOfWeek;
             }
         }
 
-        // Minimum Rate
+        // Minimum Rate (MODIFIED: Converting value to number)
         const minRateCheckbox = filtersSection.querySelector(`#${regionId}-minimum-rate`);
         if (minRateCheckbox && minRateCheckbox.checked) {
             const fieldContainer = minRateCheckbox.closest('.field-container');
             const minRateInput = fieldContainer.querySelector('.minimum-rate-input');
-
-            if (minRateInput) {
-                data.filters.minimumRate = minRateInput.value;
+            if (minRateInput && minRateInput.value) {
+                data.filters.minimumRate = parseFloat(minRateInput.value);
             }
         }
     }
 
-    // --- Get Conditions and nested Expressions data (Unchanged from your version) ---
     const conditionsSection = regionElement.querySelector('.sections-container .section:nth-child(2)');
     if (conditionsSection) {
         const conditionGroups = conditionsSection.querySelectorAll('.condition-group');
 
         conditionGroups.forEach((conditionGroup) => {
             const sequence = parseInt(conditionGroup.dataset.sequence, 10);
-
             const conditionData = {
                 id: conditionGroup.id,
-                sequence: isNaN(sequence) ? 0 : sequence,
-                occupancyThreshold: null,
-                propertyRanking: null,
-                eventScore: null,
-                calculation: {},
-                expression: '',
+                sequence: sequence,
             };
-
             let isConditionActive = false;
 
-            // 1. Occupancy Threshold
-            const occupancyCheckbox = conditionGroup.querySelector('.field-container:nth-child(2) .field-checkbox');
+            // Occupancy Threshold (MODIFIED: Converting value to number)
+            const occupancyCheckbox = conditionGroup.querySelector(`#${conditionGroup.id}-occupancy-threshold`);
             if (occupancyCheckbox && occupancyCheckbox.checked) {
-                const operator = conditionGroup.querySelector('.field-container:nth-child(2) .occupancy-operator');
-                const value = conditionGroup.querySelector('.field-container:nth-child(2) .occupancy-value');
-                if (operator && value) {
-                    conditionData.occupancyThreshold = { operator: operator.value, value: value.value };
+                const operator = conditionGroup.querySelector('.occupancy-operator');
+                const value = conditionGroup.querySelector('.occupancy-value');
+                if (operator && value && value.value) {
+                    conditionData.occupancyThreshold = { operator: operator.value, value: parseFloat(value.value) };
                     isConditionActive = true;
                 }
             }
 
-            // 2. Property Ranking
-            const propertyCheckbox = conditionGroup.querySelector('.field-container:nth-child(3) .field-checkbox');
+            // Property Ranking (MODIFIED: Converting value to number)
+            const propertyCheckbox = conditionGroup.querySelector(`#${conditionGroup.id}-property-ranking`);
             if (propertyCheckbox && propertyCheckbox.checked) {
-                const type = conditionGroup.querySelector('.field-container:nth-child(3) .property-type');
-                const operator = conditionGroup.querySelector('.field-container:nth-child(3) .property-operator');
-                const value = conditionGroup.querySelector('.field-container:nth-child(3) .property-value');
-                if (type && type.value && operator && value) {
-                    conditionData.propertyRanking = { type: type.value, operator: operator.value, value: value.value };
+                const type = conditionGroup.querySelector('.property-type');
+                const operator = conditionGroup.querySelector('.property-operator');
+                const value = conditionGroup.querySelector('.property-value');
+                if (type && type.value && operator && value && value.value) {
+                    const rankValue = parseInt(value.value, 10);
+                    conditionData.propertyRanking = {
+                        type: type.value,
+                        operator: operator.value,
+                        value: isNaN(rankValue) ? value.value : rankValue
+                    };
                     isConditionActive = true;
                 }
             }
 
-            // 3. Event Score
-            const eventCheckbox = conditionGroup.querySelector('.field-container:nth-child(4) .field-checkbox');
+            // Event Score (MODIFIED: Converting value to number)
+            const eventCheckbox = conditionGroup.querySelector(`#${conditionGroup.id}-event-score`);
             if (eventCheckbox && eventCheckbox.checked) {
-                const operator = conditionGroup.querySelector('.field-container:nth-child(4) .event-operator');
-                const value = conditionGroup.querySelector('.field-container:nth-child(4) .event-value');
-                if (operator && value) {
-                    conditionData.eventScore = { operator: operator.value, value: value.value };
+                const operator = conditionGroup.querySelector('.event-operator');
+                const value = conditionGroup.querySelector('.event-value');
+                if (operator && value && value.value) {
+                    conditionData.eventScore = { operator: operator.value, value: parseFloat(value.value) };
                     isConditionActive = true;
                 }
             }
 
-            // Clean up conditionData by removing null properties
-            if (conditionData.occupancyThreshold === null) delete conditionData.occupancyThreshold;
-            if (conditionData.propertyRanking === null) delete conditionData.propertyRanking;
-            if (conditionData.eventScore === null) delete conditionData.eventScore;
-
-            // 4. Calculation and 5. Expression
+            // Calculation and Expression
             const calculationSection = conditionGroup.querySelector('.calculation-section');
             if (calculationSection) {
                 const attributeSelect = calculationSection.querySelector('.attribute-select');
@@ -682,22 +643,18 @@ function getRegionData(regionElement, regionId) {
                 const expressionTextarea = calculationSection.querySelector('.expression-textarea');
 
                 if (attributeSelect && attributeSelect.value) {
-                    conditionData.calculation.attribute = attributeSelect.value;
-                    if (operatorSelect) conditionData.calculation.operator = operatorSelect.value;
-                    if (functionSelect) conditionData.calculation.function = functionSelect.value;
+                    conditionData.calculation = {
+                        attribute: attributeSelect.value,
+                        operator: operatorSelect.value,
+                        function: functionSelect.value
+                    };
                     isConditionActive = true;
-                } else {
-                    delete conditionData.calculation;
                 }
 
-                if (expressionTextarea) {
+                if (expressionTextarea && expressionTextarea.value.trim()) {
                     conditionData.expression = expressionTextarea.value.trim();
-                    if (conditionData.expression) {
-                        isConditionActive = true;
-                    }
+                    isConditionActive = true;
                 }
-            } else {
-                delete conditionData.calculation;
             }
 
             if (isConditionActive) {
@@ -705,12 +662,11 @@ function getRegionData(regionElement, regionId) {
             }
         });
     }
-
     return data;
 }
-// -------------------------------------------------------------------------
 
-// Function to save all regions (Unchanged)
+
+// Function to save all regions
 function saveAllRegions() {
     const regions = document.querySelectorAll('.filter-region');
     const allData = {
@@ -728,40 +684,37 @@ function saveAllRegions() {
         'All regions data:\n' + JSON.stringify(allData, null, 2);
 }
 
-// Function to toggle all regions (Unchanged)
+// Function to toggle all regions
 function toggleAllRegions() {
     const regions = document.querySelectorAll('.filter-region');
     const toggleBtn = document.getElementById('toggleAllBtn');
-    const allCollapsed = regions[0] && regions[0].classList.contains('region-collapsed');
+    const isAnyExpanded = Array.from(regions).some(r => !r.classList.contains('region-collapsed'));
 
     regions.forEach(region => {
-        if (allCollapsed) {
-            region.classList.remove('region-collapsed');
-        } else {
+        if (isAnyExpanded) {
             region.classList.add('region-collapsed');
+        } else {
+            region.classList.remove('region-collapsed');
         }
     });
 
-    toggleBtn.textContent = allCollapsed ? 'Collapse All' : 'Expand All';
+    toggleBtn.textContent = isAnyExpanded ? 'Expand All' : 'Collapse All';
 }
 
-// Function to update region titles after deletion (Unchanged)
+// Function to update region titles after deletion
 function updateRegionTitles() {
     const regions = document.querySelectorAll('.filter-region');
     regions.forEach((region, index) => {
         const titleElement = region.querySelector('.region-title');
         if (titleElement) {
             const toggleIcon = titleElement.querySelector('.toggle-icon');
-            // Ensure the icon is preserved before updating text content
             const iconHTML = toggleIcon ? toggleIcon.outerHTML : '<span class="toggle-icon">▼</span>';
             titleElement.innerHTML = `${iconHTML} Filter Region ${index + 1}`;
         }
     });
 }
 
-
-// Placeholder for updateJsonOutput (Unchanged)
+// Placeholder for updateJsonOutput
 function updateJsonOutput() {
-    // Optionally update the overall JSON display
-    // e.g., document.getElementById('jsonOutput').textContent = '...';
+    // This function can be used to trigger a global JSON update if needed
 }
