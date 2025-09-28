@@ -25,7 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
     addFilterRegion();
     document.getElementById('addRegionBtn').addEventListener('click', addFilterRegion);
     document.getElementById('saveAllBtn').addEventListener('click', saveAllRegions);
-    document.getElementById('toggleAllBtn').addEventListener('click', toggleAllRegions);
+    document.getElementById('validateAllBtn').addEventListener('click', validateAllRegions);
 });
 
 // --- AUTOCOMPLETE HELPER FUNCTIONS ---
@@ -156,10 +156,6 @@ function addFilterRegion() {
                 </div>
                 <div class="conditions-container" id="${regionId}-conditions-container"></div>
             </div>
-            <div class="footer">
-                <div class="btn btn-secondary validate-btn">Validate</div>
-                <div class="btn btn-secondary save-region">Save Region</div>
-            </div>
         </div>`;
 
     filterContainer.appendChild(regionElement);
@@ -202,7 +198,7 @@ function addCondition(regionId) {
                  <div class="section calculation-section" style="padding: 0; border: none; background: none;">
                     <div class="section-title"><span>Expression</span></div>
                     <div class="filter-row"><div class="filter-group"><select class="attribute-select"><option value="">Select Attribute</option>${staticData.attributes.map(attr => `<option value="${attr}">${attr}</option>`).join('')}</select><select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select></div></div>
-                    <div class="expression-container"><textarea class="expression-textarea" placeholder="Type # for attributes or = for functions..."></textarea><div class="textarea-controls"><div class="btn btn-small" data-action="clear">Clear</div></div></div>
+                    <div class="expression-container"><textarea class="expression-textarea" placeholder="Type # for attributes or = for functions..."></textarea><div class="textarea-controls"><div class="btn btn-small" data-action="clear">Clear</div><div class="btn btn-small btn-secondary" data-action="validate-expression">Validate</div></div></div>
                 </div>
             </div>
         </div>`;
@@ -242,10 +238,24 @@ function setupConditionEventListeners(conditionElement) {
     const attributeSelect = calculationSection.querySelector('.attribute-select');
     const operatorSelect = calculationSection.querySelector('.expression-operator');
     const functionSelect = calculationSection.querySelector('.function-select');
+    
     calculationSection.querySelector('[data-action="clear"]').addEventListener('click', () => {
         expressionTextarea.value = '';
         expressionTextarea.focus();
     });
+
+    calculationSection.querySelector('[data-action="validate-expression"]').addEventListener('click', () => {
+        const {isValid, errors} = validateSingleExpression(expressionTextarea);
+        expressionTextarea.classList.remove('valid-expression', 'invalid-expression');
+        if(isValid) {
+            expressionTextarea.classList.add('valid-expression');
+            setTimeout(() => expressionTextarea.classList.remove('valid-expression'), 2000);
+        } else {
+            expressionTextarea.classList.add('invalid-expression');
+            alert(`Expression Error:\n- ${errors.join('\n- ')}`);
+        }
+    });
+
     expressionTextarea.addEventListener('input', (e) => {
         const text = e.target.value;
         const cursorPos = e.target.selectionStart;
@@ -305,30 +315,7 @@ function setupRegionEventListeners(regionElement) {
         button.addEventListener('click', () => moveRegion(regionElement, button.dataset.direction));
     });
     regionElement.querySelector(`#${regionId}-add-condition`).addEventListener('click', () => addCondition(regionId));
-    regionElement.querySelector('.validate-btn').addEventListener('click', () => {
-        const { isValid, errors } = validateRegion(regionElement);
-        const messageDiv = regionElement.querySelector('.validation-messages');
-        if (isValid) {
-            messageDiv.style.display = 'none';
-            alert('Validation successful!');
-        } else {
-            messageDiv.innerHTML = `<ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
-            messageDiv.style.display = 'block';
-        }
-    });
-    regionElement.querySelector('.save-region').addEventListener('click', () => {
-        const { isValid, errors } = validateRegion(regionElement);
-        const messageDiv = regionElement.querySelector('.validation-messages');
-        if (isValid) {
-            messageDiv.style.display = 'none';
-            const regionData = getRegionData(regionElement);
-            document.getElementById('jsonOutput').textContent = `Saved data for ${regionData.name}:\n` + JSON.stringify(regionData, null, 2);
-            alert('Region saved successfully!');
-        } else {
-            messageDiv.innerHTML = `<ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
-            messageDiv.style.display = 'block';
-        }
-    });
+    
     regionElement.querySelectorAll('.section:first-child .field-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => {
             const fieldContent = e.target.closest('.field-container').querySelector('.field-content');
@@ -459,6 +446,37 @@ function moveCondition(conditionElement, direction) {
 }
 
 // --- VALIDATION & DATA FUNCTIONS ---
+function validateSingleExpression(expressionTextarea) {
+    const errors = [];
+    const expression = expressionTextarea.value.trim();
+    if(expression === '') {
+        errors.push('Expression cannot be empty.');
+    } else {
+        let tempExpression = expression;
+        const attributeTokens = tempExpression.match(/#[^#]+#/g) || [];
+        for (const token of attributeTokens) {
+            if (!staticData.attributes.includes(token.slice(1, -1))) errors.push(`Invalid attribute: "${token}"`);
+        }
+        tempExpression = tempExpression.replace(/#[^#]+#/g, '1');
+        staticData.functions.forEach(func => {
+            const funcRegex = new RegExp(`${func}\\([^)]*\\)`, 'gi');
+            tempExpression = tempExpression.replace(funcRegex, '1');
+        });
+        if (staticData.operators.some(op => tempExpression.includes(` ${op} `))) {
+             errors.push('Expression must result in a numerical value, not a boolean.');
+        }
+        const validKeywords = [...staticData.expressionOperators, ...staticData.functions].map(t => t.toLowerCase());
+        const remainingTokens = tempExpression.split(/[\s()]+/).filter(Boolean);
+        for (const token of remainingTokens) {
+            if (!isNaN(parseFloat(token))) continue;
+            if (!validKeywords.includes(token.toLowerCase())) {
+                errors.push(`Invalid keyword: "${token}"`);
+            }
+        }
+    }
+    return { isValid: errors.length === 0, errors };
+}
+
 function validateRegion(regionElement) {
     const errors = [];
     const regionId = regionElement.id;
@@ -519,15 +537,10 @@ function validateRegion(regionElement) {
             errors.push(`${condTitle}: Expression cannot be empty when a condition field is checked.`);
             cond.querySelector('.expression-container').classList.add('invalid-field');
         } else if (expression !== '') {
-            let tempExpression = expression;
-            tempExpression = tempExpression.replace(/#[^#]+#/g, '1');
-            staticData.functions.forEach(func => {
-                const funcRegex = new RegExp(`${func}\\([^)]*\\)`, 'gi');
-                tempExpression = tempExpression.replace(funcRegex, '1');
-            });
-            if (staticData.operators.some(op => tempExpression.includes(` ${op} `))) {
-                 errors.push(`${condTitle}: Expression must result in a numerical value, not a boolean.`);
-                 cond.querySelector('.expression-container').classList.add('invalid-field');
+            const { isValid, errors: expErrors } = validateSingleExpression(cond.querySelector('.expression-textarea'));
+            if (!isValid) {
+                errors.push(`${condTitle} Expression Error: ${expErrors.join(', ')}.`);
+                cond.querySelector('.expression-container').classList.add('invalid-field');
             }
         }
         cond.querySelectorAll('.condition-fields .field-checkbox:checked').forEach(checkbox => {
@@ -608,6 +621,28 @@ function getRegionData(regionElement) {
     return data;
 }
 
+function validateAllRegions() {
+    let allValid = true;
+    document.querySelectorAll('.filter-region').forEach(region => {
+        const { isValid, errors } = validateRegion(region);
+        const messageDiv = region.querySelector('.validation-messages');
+        messageDiv.style.display = 'none'; // Clear previous messages
+        if (!isValid) {
+            allValid = false;
+            messageDiv.innerHTML = `<ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
+            messageDiv.style.display = 'block';
+        }
+    });
+
+    if (allValid) {
+        alert('All regions are valid!');
+    } else {
+        alert('Please fix the errors in the highlighted regions.');
+    }
+    return allValid;
+}
+
+
 function saveAllRegions() {
     const regions = document.querySelectorAll('.filter-region');
     let allValid = true;
@@ -667,11 +702,4 @@ function insertAtCursor(textarea, text) {
     textarea.value = textarea.value.substring(0, start) + text + textarea.value.substring(end);
     textarea.selectionStart = textarea.selectionEnd = start + text.length;
     textarea.focus();
-}
-
-function toggleAllRegions() {
-    const regions = document.querySelectorAll('.filter-region');
-    const isAnyExpanded = Array.from(regions).some(r => !r.classList.contains('region-collapsed'));
-    regions.forEach(region => region.classList.toggle('region-collapsed', isAnyExpanded));
-    document.getElementById('toggleAllBtn').textContent = isAnyExpanded ? 'Expand All' : 'Collapse All';
 }
