@@ -1,8 +1,9 @@
 const staticData = {
-    operators: ['=', '!=', '>', '<', '>=', '<=', 'Contains', 'Starts with'],
+    operators: ['=', '!=', '>', '<', '>=', '<='],
+    expressionOperators: ['+', '-', '/', '*'],
     attributes: ['Occupancy', 'ADR', 'RevPAR', 'Booking Pace', 'Market Share'],
     propertyTypes: ['Hotel', 'Motel', 'Resort', 'Apartment', 'Vacation Rental'],
-    functions: ['Average', 'Sum', 'Count', 'Max', 'Min', 'Standard Deviation']
+    functions: ['Average', 'Sum', 'Count', 'Max', 'Min']
 };
 
 let regionCounter = 0;
@@ -98,7 +99,7 @@ function addFilterRegion() {
     addCondition(regionId);
 }
 
-// Function to add a new condition to a region
+// Function to add a new condition to a region (MODIFIED)
 function addCondition(regionId) {
     conditionCounter++;
     const conditionId = `condition-${regionId}-${conditionCounter}`;
@@ -150,7 +151,7 @@ function addCondition(regionId) {
                     <div class="filter-row">
                         <div class="filter-group">
                             <select class="attribute-select"><option value="">Select Attribute</option>${staticData.attributes.map(attr => `<option value="${attr}">${attr}</option>`).join('')}</select>
-                            <select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
+                            <select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
                             <select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select>
                         </div>
                     </div>
@@ -170,7 +171,7 @@ function addCondition(regionId) {
     updateConditionSequence(conditionsContainer.closest('.filter-region').id);
 }
 
-// Function to set up event listeners for a single condition (MODIFIED)
+// Function to set up event listeners for a single condition
 function setupConditionEventListeners(conditionElement) {
     const regionId = conditionElement.closest('.filter-region').id;
 
@@ -204,7 +205,6 @@ function setupConditionEventListeners(conditionElement) {
 
     attributeSelect.addEventListener('change', (e) => {
         if (e.target.value) {
-            // Add # delimiters around the attribute
             insertAtCursor(expressionTextarea, `#${e.target.value}#`);
             e.target.value = '';
         }
@@ -357,7 +357,7 @@ function validateRegion(regionElement) {
                 }
             }
             tempExpression = tempExpression.replace(/#[^#]+#/g, ' ');
-            const validNonAttrTokens = [...staticData.operators, ...staticData.functions].map(t => t.toLowerCase());
+            const validNonAttrTokens = [...staticData.operators, ...staticData.expressionOperators, ...staticData.functions].map(t => t.toLowerCase());
             const remainingTokens = tempExpression.split(/[\s()]+/).filter(Boolean);
             for (const token of remainingTokens) {
                 if (!isNaN(parseFloat(token))) continue;
