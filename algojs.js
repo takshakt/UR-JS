@@ -8,17 +8,121 @@ const staticData = {
 
 let regionCounter = 0;
 let conditionCounter = 0;
+let autocompleteContainer = null;
+let activeAutocompleteIndex = -1;
 
 document.addEventListener('DOMContentLoaded', function() {
-    addFilterRegion();
+    autocompleteContainer = document.createElement('div');
+    autocompleteContainer.id = 'expression-autocomplete';
+    document.body.appendChild(autocompleteContainer);
 
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.expression-textarea')) {
+            hideAutocomplete();
+        }
+    });
+
+    addFilterRegion();
     document.getElementById('addRegionBtn').addEventListener('click', addFilterRegion);
     document.getElementById('saveAllBtn').addEventListener('click', saveAllRegions);
     document.getElementById('toggleAllBtn').addEventListener('click', toggleAllRegions);
 });
 
+// --- NEW & UPDATED AUTOCOMPLETE FUNCTIONS ---
 
-// Function to create a new filter region
+function getCursorXY(textarea) {
+    const mirror = document.createElement('div');
+    const style = getComputedStyle(textarea);
+    const rect = textarea.getBoundingClientRect();
+    const properties = [
+        'boxSizing', 'width', 'height',
+        'fontFamily', 'fontSize', 'fontWeight', 'fontStyle',
+        'letterSpacing', 'lineHeight', 'textTransform', 'wordSpacing', 'whiteSpace', 'wordWrap',
+        'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+        'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth'
+    ];
+
+    properties.forEach(prop => { mirror.style[prop] = style[prop]; });
+    mirror.style.position = 'absolute';
+    mirror.style.visibility = 'hidden';
+    mirror.style.top = `${textarea.offsetTop}px`;
+    mirror.style.left = `${textarea.offsetLeft}px`;
+
+    const cursorPos = textarea.selectionStart;
+    mirror.innerHTML = textarea.value.substring(0, cursorPos).replace(/\n/g, '<br>') + '<span id="cursor-span"></span>';
+    document.body.appendChild(mirror);
+
+    const span = document.getElementById('cursor-span');
+    const coords = {
+        top: rect.top + span.offsetTop - textarea.scrollTop + window.scrollY,
+        left: rect.left + span.offsetLeft - textarea.scrollLeft + window.scrollX
+    };
+    
+    document.body.removeChild(mirror);
+    return coords;
+}
+
+function showAutocomplete(textarea, items, options) {
+    if (!autocompleteContainer) return;
+    autocompleteContainer.innerHTML = '';
+    activeAutocompleteIndex = -1;
+
+    if (items.length === 0) {
+        hideAutocomplete();
+        return;
+    }
+
+    items.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'autocomplete-item';
+        div.textContent = item;
+
+        div.addEventListener('mouseover', () => setActiveAutocompleteItem(index));
+
+        div.addEventListener('click', () => {
+            const startPos = textarea.selectionStart;
+            const textBefore = textarea.value.substring(0, startPos - 1);
+            const textAfter = textarea.value.substring(startPos);
+            let textToInsert = (options.type === 'attribute') ? `#${item}#` : `${item}()`;
+            
+            textarea.value = textBefore + textToInsert + textAfter;
+            
+            let newCursorPos = (textBefore + textToInsert).length;
+            if (options.type === 'function') newCursorPos--;
+            
+            textarea.focus();
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+            hideAutocomplete();
+        });
+        autocompleteContainer.appendChild(div);
+    });
+    
+    const coords = getCursorXY(textarea);
+    autocompleteContainer.style.left = `${coords.left}px`;
+    autocompleteContainer.style.top = `${coords.top + 20}px`; // Position slightly below cursor
+    autocompleteContainer.style.display = 'block';
+    setActiveAutocompleteItem(0); // Highlight first item
+}
+
+function hideAutocomplete() {
+    if (autocompleteContainer) {
+        autocompleteContainer.style.display = 'none';
+        activeAutocompleteIndex = -1;
+    }
+}
+
+function setActiveAutocompleteItem(index) {
+    if (!autocompleteContainer) return;
+    const items = autocompleteContainer.querySelectorAll('.autocomplete-item');
+    if (index < 0 || index >= items.length) return;
+
+    items.forEach(item => item.classList.remove('autocomplete-active'));
+    items[index].classList.add('autocomplete-active');
+    items[index].scrollIntoView({ block: 'nearest' });
+    activeAutocompleteIndex = index;
+}
+
+// --- EXISTING CODE (with modifications) ---
 function addFilterRegion() {
     regionCounter++;
     const regionId = `region-${regionCounter}`;
@@ -99,7 +203,6 @@ function addFilterRegion() {
     addCondition(regionId);
 }
 
-// Function to add a new condition to a region (MODIFIED)
 function addCondition(regionId) {
     conditionCounter++;
     const conditionId = `condition-${regionId}-${conditionCounter}`;
@@ -157,7 +260,7 @@ function addCondition(regionId) {
                     </div>
                     <div class="expression-container">
                         <label class="expression-label">Expression</label>
-                        <textarea class="expression-textarea" placeholder="Build your expression..."></textarea>
+                        <textarea class="expression-textarea" placeholder="Type # for attributes or = for functions..."></textarea>
                         <div class="textarea-controls">
                             <div class="expression-btn" data-action="clear" style="display: inline-block; width: auto;">Clear</div>
                         </div>
@@ -171,7 +274,6 @@ function addCondition(regionId) {
     updateConditionSequence(conditionsContainer.closest('.filter-region').id);
 }
 
-// Function to set up event listeners for a single condition
 function setupConditionEventListeners(conditionElement) {
     const regionId = conditionElement.closest('.filter-region').id;
 
@@ -203,6 +305,52 @@ function setupConditionEventListeners(conditionElement) {
         expressionTextarea.focus();
     });
 
+    // --- Autocomplete Event Listeners (MODIFIED) ---
+    expressionTextarea.addEventListener('input', (e) => {
+        const text = e.target.value;
+        const cursorPos = e.target.selectionStart;
+        const lastChar = text.substring(cursorPos - 1, cursorPos);
+
+        if (lastChar === '#') {
+            showAutocomplete(e.target, staticData.attributes, { type: 'attribute' });
+        } else if (lastChar === '=') {
+            showAutocomplete(e.target, staticData.functions, { type: 'function' });
+        } else {
+            hideAutocomplete();
+        }
+    });
+
+    expressionTextarea.addEventListener('keydown', (e) => {
+        if (autocompleteContainer.style.display !== 'block') return;
+
+        const items = autocompleteContainer.querySelectorAll('.autocomplete-item');
+        if (!items.length) return;
+
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                activeAutocompleteIndex = (activeAutocompleteIndex + 1) % items.length;
+                setActiveAutocompleteItem(activeAutocompleteIndex);
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                activeAutocompleteIndex = (activeAutocompleteIndex - 1 + items.length) % items.length;
+                setActiveAutocompleteItem(activeAutocompleteIndex);
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (activeAutocompleteIndex > -1) {
+                    items[activeAutocompleteIndex].click();
+                }
+                hideAutocomplete();
+                break;
+            case 'Escape':
+                hideAutocomplete();
+                break;
+        }
+    });
+    // --- End Autocomplete ---
+
     attributeSelect.addEventListener('change', (e) => {
         if (e.target.value) {
             insertAtCursor(expressionTextarea, `#${e.target.value}#`);
@@ -226,7 +374,6 @@ function setupConditionEventListeners(conditionElement) {
     });
 }
 
-// Function to set up event listeners for a region
 function setupRegionEventListeners(regionElement, regionId) {
     regionElement.querySelector('.region-header').addEventListener('click', e => {
         if (e.target.closest('.btn')) return;
@@ -289,7 +436,6 @@ function setupRegionEventListeners(regionElement, regionId) {
     }
 }
 
-// --- VALIDATION FUNCTION (MODIFIED) ---
 function validateRegion(regionElement) {
     const errors = [];
     const regionName = regionElement.querySelector('.region-title').textContent.trim();
@@ -381,7 +527,6 @@ function validateRegion(regionElement) {
 }
 
 
-// --- UTILITY AND DATA GATHERING FUNCTIONS ---
 function getRegionData(regionElement, regionId) {
     const data = { id: regionId, filters: {}, conditions: [] };
     const filtersSection = regionElement.querySelector('.section:first-child');
