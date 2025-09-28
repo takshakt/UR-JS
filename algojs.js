@@ -489,7 +489,7 @@ function setupRegionEventListeners(regionElement, regionId) {
 
 /**
  * Function to get data from a region.
- * MODIFIED: Renamed 'loadTime' to 'leadTime' and converts string numbers to actual numbers.
+ * MODIFIED: Removed the 'calculation' object from the JSON output.
  * @param {HTMLElement} regionElement The filter region DOM element.
  * @param {string} regionId The ID of the region.
  * @returns {Object} The region data object.
@@ -518,7 +518,7 @@ function getRegionData(regionElement, regionId) {
             }
         }
 
-        // Lead Time (MODIFIED: Renamed property and converting value to number)
+        // Lead Time
         const leadTimeCheckbox = filtersSection.querySelector(`#${regionId}-load-time`);
         if (leadTimeCheckbox && leadTimeCheckbox.checked) {
             const fieldContainer = leadTimeCheckbox.closest('.field-container');
@@ -572,7 +572,7 @@ function getRegionData(regionElement, regionId) {
             }
         }
 
-        // Minimum Rate (MODIFIED: Converting value to number)
+        // Minimum Rate
         const minRateCheckbox = filtersSection.querySelector(`#${regionId}-minimum-rate`);
         if (minRateCheckbox && minRateCheckbox.checked) {
             const fieldContainer = minRateCheckbox.closest('.field-container');
@@ -595,7 +595,7 @@ function getRegionData(regionElement, regionId) {
             };
             let isConditionActive = false;
 
-            // Occupancy Threshold (MODIFIED: Converting value to number)
+            // Occupancy Threshold
             const occupancyCheckbox = conditionGroup.querySelector(`#${conditionGroup.id}-occupancy-threshold`);
             if (occupancyCheckbox && occupancyCheckbox.checked) {
                 const operator = conditionGroup.querySelector('.occupancy-operator');
@@ -606,7 +606,7 @@ function getRegionData(regionElement, regionId) {
                 }
             }
 
-            // Property Ranking (MODIFIED: Converting value to number)
+            // Property Ranking
             const propertyCheckbox = conditionGroup.querySelector(`#${conditionGroup.id}-property-ranking`);
             if (propertyCheckbox && propertyCheckbox.checked) {
                 const type = conditionGroup.querySelector('.property-type');
@@ -623,7 +623,7 @@ function getRegionData(regionElement, regionId) {
                 }
             }
 
-            // Event Score (MODIFIED: Converting value to number)
+            // Event Score
             const eventCheckbox = conditionGroup.querySelector(`#${conditionGroup.id}-event-score`);
             if (eventCheckbox && eventCheckbox.checked) {
                 const operator = conditionGroup.querySelector('.event-operator');
@@ -634,23 +634,10 @@ function getRegionData(regionElement, regionId) {
                 }
             }
 
-            // Calculation and Expression
+            // Expression (MODIFIED HERE)
             const calculationSection = conditionGroup.querySelector('.calculation-section');
             if (calculationSection) {
-                const attributeSelect = calculationSection.querySelector('.attribute-select');
-                const operatorSelect = calculationSection.querySelector('.expression-operator');
-                const functionSelect = calculationSection.querySelector('.function-select');
                 const expressionTextarea = calculationSection.querySelector('.expression-textarea');
-
-                if (attributeSelect && attributeSelect.value) {
-                    conditionData.calculation = {
-                        attribute: attributeSelect.value,
-                        operator: operatorSelect.value,
-                        function: functionSelect.value
-                    };
-                    isConditionActive = true;
-                }
-
                 if (expressionTextarea && expressionTextarea.value.trim()) {
                     conditionData.expression = expressionTextarea.value.trim();
                     isConditionActive = true;
