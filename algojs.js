@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('toggleAllBtn').addEventListener('click', toggleAllRegions);
 });
 
-// --- NEW & UPDATED AUTOCOMPLETE FUNCTIONS ---
+// --- AUTOCOMPLETE HELPER FUNCTIONS ---
 
 function getCursorXY(textarea) {
     const mirror = document.createElement('div');
@@ -86,16 +86,16 @@ function showAutocomplete(textarea, items, options) {
             let textToInsert = '';
 
             if (options.type === 'attribute') {
-                textToInsert = `#${item}# `; // Add space
+                textToInsert = `#${item}# `;
             } else if (options.type === 'function') {
-                textToInsert = `${item}() `; // Add space
+                textToInsert = `${item}() `;
             }
             
             textarea.value = textBefore + textToInsert + textAfter;
             
             let newCursorPos = (textBefore + textToInsert).length;
             if (options.type === 'function') {
-                newCursorPos -= 2; // Move from after the space to inside the ()
+                newCursorPos -= 2;
             }
             
             textarea.focus();
@@ -130,7 +130,7 @@ function setActiveAutocompleteItem(index) {
     activeAutocompleteIndex = index;
 }
 
-// --- EXISTING CODE (with modifications) ---
+// --- UI AND EVENT FUNCTIONS ---
 function addFilterRegion() {
     regionCounter++;
     const regionId = `region-${regionCounter}`;
@@ -175,7 +175,7 @@ function addFilterRegion() {
                     </div>
                 </div>
                 <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${regionId}-days-of-week">
+                    <input type="checkbox" class="field-checkbox" id="${regionId}-days-of-week" data-validates="daysOfWeek">
                     <label for="${regionId}-days-of-week">Day of Week</label>
                     <div class="field-content hidden">
                         <div class="checkbox-group">
@@ -440,153 +440,124 @@ function setupRegionEventListeners(regionElement, regionId) {
 // --- VALIDATION FUNCTION (MODIFIED) ---
 function validateRegion(regionElement) {
     const errors = [];
+    const regionId = regionElement.id;
     const regionName = regionElement.querySelector('.region-title').textContent.trim();
-
     regionElement.classList.remove('invalid-region');
     regionElement.querySelectorAll('.invalid-field').forEach(el => el.classList.remove('invalid-field'));
 
-    const signatures = []; // For duplicate checking
+    const signatures = [];
 
-    // --- PASS 1: Check for missing values and gather signatures for duplicate check ---
-    regionElement.querySelectorAll('.section:first-child .field-container').forEach(fc => {
-        const checkbox = fc.querySelector('.field-checkbox');
-        if (!checkbox || !checkbox.checked) return;
+    // --- Create a single composite signature for the entire filter set ---
+    const filterContainer = regionElement.querySelector('.section:first-child');
+    const checkedFilters = filterContainer.querySelectorAll('.field-checkbox:checked');
+    const individualFilterSignatures = [];
+
+    checkedFilters.forEach(checkbox => {
+        const fc = checkbox.closest('.field-container');
         const validationType = checkbox.dataset.validates;
-        let signature = null;
-        if (validationType === 'stayWindow') {
-            const from = fc.querySelector('.stay-window-from')?.value;
-            const to = fc.querySelector('.stay-window-to')?.value;
-            if (!from || !to) {
-                errors.push(`${regionName}: "Stay Window" is enabled but dates are missing.`);
+        let signaturePart = null;
+        
+        if(validationType === 'daysOfWeek') {
+            const checkedDays = Array.from(fc.querySelectorAll('.day-checkbox:checked')).map(cb => cb.id.split('-').pop()).sort();
+            if (checkedDays.length > 0) {
+                 signaturePart = `daysOfWeek:${checkedDays.join(',')}`;
+            } else {
+                 errors.push(`${regionName}: "Day of Week" is enabled but no days are selected.`);
+                 fc.classList.add('invalid-field');
+            }
+        } else {
+            const inputs = Array.from(fc.querySelectorAll('input:not([type=checkbox]), select'));
+            if (inputs.some(i => !i.value)) {
+                errors.push(`${regionName}: A value is missing for the "${fc.querySelector('label').textContent.trim()}" filter.`);
                 fc.classList.add('invalid-field');
             } else {
-                signature = `stayWindow:${from}:${to}`;
-            }
-        } else if (validationType === 'leadTime') {
-            const select = fc.querySelector('.load-time-select');
-            if (!select.value) {
-                errors.push(`${regionName}: "Lead Time" is enabled but no type is selected.`);
-                fc.classList.add('invalid-field');
-            } else if (select.value === 'date_range') {
-                const from = fc.querySelector('.lead-time-from')?.value;
-                const to = fc.querySelector('.lead-time-to')?.value;
-                if (!from || !to) {
-                    errors.push(`${regionName}: "Lead Time" date range is missing values.`);
-                    fc.classList.add('invalid-field');
-                } else {
-                    signature = `leadTime:range:${from}:${to}`;
-                }
-            } else if (['days', 'weeks', 'months'].includes(select.value)) {
-                const val = fc.querySelector('.lead-time-value')?.value;
-                if (!val) {
-                    errors.push(`${regionName}: "Lead Time" number of ${select.value} is missing.`);
-                    fc.classList.add('invalid-field');
-                } else {
-                    signature = `leadTime:${select.value}:${val}`;
-                }
-            }
-        } else if (validationType === 'minimumRate') {
-            const val = fc.querySelector('.minimum-rate-input')?.value;
-            if (!val) {
-                errors.push(`${regionName}: "Minimum Rate" is enabled but the rate is missing.`);
-                fc.classList.add('invalid-field');
-            } else {
-                signature = `minimumRate:${val}`;
+                signaturePart = `${validationType}:${inputs.map(i => i.value).join(':')}`;
             }
         }
-        if (signature) signatures.push({ signature, element: fc });
+        
+        if (signaturePart) {
+            individualFilterSignatures.push(signaturePart);
+        }
     });
+    
+    // --- New Cross-Filter Validation: Stay Window required for relative Lead Time ---
+    const leadTimeCheckbox = filterContainer.querySelector(`#${regionId}-load-time`);
+    const leadTimeSelect = filterContainer.querySelector('.load-time-select');
+    const stayWindowCheckbox = filterContainer.querySelector(`#${regionId}-stay-window`);
+    if (leadTimeCheckbox.checked && leadTimeSelect.value && leadTimeSelect.value !== 'date_range' && !stayWindowCheckbox.checked) {
+        errors.push(`${regionName}: Stay Window is required when using a relative Lead Time (Days, Weeks, Months).`);
+        leadTimeCheckbox.closest('.field-container').classList.add('invalid-field');
+        stayWindowCheckbox.closest('.field-container').classList.add('invalid-field');
+    }
 
+    if (individualFilterSignatures.length > 0) {
+        const compositeFilterSignature = individualFilterSignatures.sort().join('|');
+        signatures.push({ signature: compositeFilterSignature, element: filterContainer, type: 'filter' });
+    } else if (checkedFilters.length === 0) {
+        signatures.push({ signature: 'filters:empty', element: filterContainer, type: 'filter' });
+    }
+    
     const conditions = regionElement.querySelectorAll('.condition-group');
-    let hasConditionWithoutExpression = false;
     conditions.forEach(cond => {
         const condTitle = cond.querySelector('.condition-title').textContent.trim();
-        cond.querySelectorAll('.condition-fields .field-container').forEach(fc => {
-            const checkbox = fc.querySelector('.field-checkbox');
-            if (!checkbox || !checkbox.checked) return;
+        const isActive = !!cond.querySelector('.field-checkbox:checked');
+        const expression = cond.querySelector('.expression-textarea').value.trim();
+
+        if (!isActive && expression === '') {
+            signatures.push({ signature: 'condition:empty', element: cond, type: 'condition' });
+            return; 
+        }
+
+        if (isActive && expression === '') {
+            errors.push(`${condTitle}: Expression cannot be empty when a condition field is checked.`);
+            cond.querySelector('.expression-container').classList.add('invalid-field');
+        } else if (expression !== '') {
+            let tempExpression = expression;
+            const errorsForThisExpression = [];
+            tempExpression = tempExpression.replace(/#[^#]+#/g, '1');
+            staticData.functions.forEach(func => {
+                const funcRegex = new RegExp(`${func}\\([^)]*\\)`, 'gi');
+                tempExpression = tempExpression.replace(funcRegex, '1');
+            });
+            if (staticData.operators.some(op => tempExpression.includes(` ${op} `))) {
+                 errorsForThisExpression.push('Expression must result in a numerical value, not a boolean. Avoid using =, >, <, etc.');
+            }
+            if (errorsForThisExpression.length > 0) {
+                errors.push(`${condTitle} Expression Error: ${errorsForThisExpression.join(', ')}.`);
+                cond.querySelector('.expression-container').classList.add('invalid-field');
+            }
+        }
+        
+        cond.querySelectorAll('.condition-fields .field-checkbox:checked').forEach(checkbox => {
+            const fc = checkbox.closest('.field-container');
             const validationType = checkbox.dataset.validates;
             let signature = null;
             if (validationType === 'occupancyThreshold') {
                 const val = fc.querySelector('.occupancy-value')?.value;
-                if (!val) {
-                    errors.push(`${condTitle}: "Occupancy Threshold" is enabled but value is missing.`);
-                    fc.classList.add('invalid-field');
-                } else {
-                    signature = `occupancy:${fc.querySelector('.occupancy-operator').value}:${val}`;
-                }
+                if (!val) errors.push(`${condTitle}: "Occupancy Threshold" is missing a value.`);
+                else signature = `occupancy:${fc.querySelector('.occupancy-operator').value}:${val}`;
             } else if (validationType === 'propertyRanking') {
-                const type = fc.querySelector('.property-type')?.value;
-                const val = fc.querySelector('.property-value')?.value;
-                if (!type || !val) {
-                    errors.push(`${condTitle}: "Property Ranking" is enabled but type or value is missing.`);
-                    fc.classList.add('invalid-field');
-                } else {
-                    signature = `ranking:${type}:${fc.querySelector('.property-operator').value}:${val}`;
-                }
+                const type = fc.querySelector('.property-type')?.value, val = fc.querySelector('.property-value')?.value;
+                if (!type || !val) errors.push(`${condTitle}: "Property Ranking" is missing a type or value.`);
+                else signature = `ranking:${type}:${fc.querySelector('.property-operator').value}:${val}`;
             } else if (validationType === 'eventScore') {
                 const val = fc.querySelector('.event-value')?.value;
-                if (!val) {
-                    errors.push(`${condTitle}: "Event Score" is enabled but value is missing.`);
-                    fc.classList.add('invalid-field');
-                } else {
-                    signature = `eventScore:${fc.querySelector('.event-operator').value}:${val}`;
-                }
+                if (!val) errors.push(`${condTitle}: "Event Score" is missing a value.`);
+                else signature = `eventScore:${fc.querySelector('.event-operator').value}:${val}`;
             }
-            if (signature) signatures.push({ signature, element: fc });
+            if (signature) signatures.push({ signature, element: fc, type: 'condition' });
+            if (errors.length > 0 && !fc.classList.contains('invalid-field')) fc.classList.add('invalid-field');
         });
-
-        const expressionTextarea = cond.querySelector('.expression-textarea');
-        const expression = expressionTextarea.value.trim();
-        if (expression === '') {
-            hasConditionWithoutExpression = true;
-        } else {
-            // Expression validation (syntax and type)
-            let tempExpression = expression;
-            const errorsForThisExpression = [];
-            const attributeTokens = tempExpression.match(/#[^#]+#/g) || [];
-            for (const token of attributeTokens) {
-                const attributeName = token.slice(1, -1);
-                if (!staticData.attributes.includes(attributeName)) errorsForThisExpression.push(`Invalid attribute: "${token}"`);
-            }
-            tempExpression = tempExpression.replace(/#[^#]+#/g, '1'); // Replace attributes with a number
-            staticData.functions.forEach(func => {
-                const funcRegex = new RegExp(`${func}\\([^)]*\\)`, 'g');
-                tempExpression = tempExpression.replace(funcRegex, '1'); // Replace function calls with a number
-            });
-
-            if (staticData.operators.some(op => tempExpression.includes(op))) {
-                 errorsForThisExpression.push('Expression must result in a numerical value, not a boolean (true/false). Avoid using =, >, <, etc.');
-            }
-
-            const validKeywords = [...staticData.expressionOperators, ...staticData.functions].map(t => t.toLowerCase());
-            const remainingTokens = tempExpression.split(/[\s()]+/).filter(Boolean);
-            for (const token of remainingTokens) {
-                if (!isNaN(parseFloat(token))) continue;
-                if (!validKeywords.includes(token.toLowerCase())) {
-                    errorsForThisExpression.push(`Invalid keyword: "${token}"`);
-                }
-            }
-            if (errorsForThisExpression.length > 0) {
-                errors.push(`${condTitle} Expression Error: ${errorsForThisExpression.join(', ')}.`);
-                expressionTextarea.closest('.expression-container').classList.add('invalid-field');
-            }
-        }
     });
-
-    if (conditions.length > 0 && hasConditionWithoutExpression) {
-        errors.push(`${regionName}: A condition is present but its expression is empty.`);
-        regionElement.classList.add('invalid-region');
-    }
     
-    // --- PASS 2: Check for duplicate signatures ---
+    // --- Intra-Region Duplicate Check ---
     const signatureCounts = signatures.reduce((acc, { signature }) => {
         acc[signature] = (acc[signature] || 0) + 1;
         return acc;
     }, {});
     const duplicateSignatures = Object.keys(signatureCounts).filter(sig => signatureCounts[sig] > 1);
-
     if (duplicateSignatures.length > 0) {
-        errors.push('Duplicate filter or condition values are not allowed.');
+        errors.push('Duplicate filters or conditions found within this region.');
         signatures.forEach(({ signature, element }) => {
             if (duplicateSignatures.includes(signature)) {
                 element.classList.add('invalid-field');
@@ -594,7 +565,7 @@ function validateRegion(regionElement) {
         });
     }
 
-    return { isValid: errors.length === 0, errors: [...new Set(errors)] }; // Return unique errors
+    return { isValid: errors.length === 0, errors: [...new Set(errors)], signatures };
 }
 
 
@@ -653,21 +624,48 @@ function saveAllRegions() {
     const regions = document.querySelectorAll('.filter-region');
     let allValid = true;
     const allData = { regions: [], timestamp: new Date().toISOString() };
+    const allSignatures = [];
 
     regions.forEach(region => {
-        const { isValid, errors } = validateRegion(region);
+        const { isValid, errors, signatures } = validateRegion(region);
         const messageDiv = region.querySelector('.validation-messages');
+        messageDiv.style.display = 'none';
         if (!isValid) {
             allValid = false;
             messageDiv.innerHTML = `<ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
             messageDiv.style.display = 'block';
-        } else {
-            messageDiv.style.display = 'none';
-            allData.regions.push(getRegionData(region, region.id));
         }
+        allSignatures.push(...signatures.map(s => ({ ...s, region })));
     });
 
+    const filterSignatures = allSignatures.filter(s => s.type === 'filter');
+    const signatureCounts = filterSignatures.reduce((acc, { signature }) => {
+        acc[signature] = (acc[signature] || 0) + 1;
+        return acc;
+    }, {});
+    const duplicateSignatures = Object.keys(signatureCounts).filter(sig => signatureCounts[sig] > 1);
+
+    if (duplicateSignatures.length > 0) {
+        allValid = false;
+        const errorRegions = new Set();
+        filterSignatures.forEach(({ signature, element, region }) => {
+            if (duplicateSignatures.includes(signature)) {
+                region.classList.add('invalid-region');
+                errorRegions.add(region);
+            }
+        });
+        errorRegions.forEach(region => {
+            const messageDiv = region.querySelector('.validation-messages');
+            const newError = '<li>Error: This entire set of filters is a duplicate of another region.</li>';
+            if (!messageDiv.innerHTML.includes(newError)) {
+                 messageDiv.innerHTML = (messageDiv.innerHTML || '<ul></ul>').slice(0, -5) + newError + '</ul>';
+            }
+            messageDiv.style.display = 'block';
+        });
+    }
+
     if (allValid) {
+        regions.forEach(region => allData.regions.push(getRegionData(region, region.id)));
         document.getElementById('jsonOutput').textContent = 'All regions data:\n' + JSON.stringify(allData, null, 2);
         alert('All regions are valid and have been saved!');
     } else {
