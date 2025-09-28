@@ -35,29 +35,24 @@ function getCursorXY(textarea) {
     const style = getComputedStyle(textarea);
     const rect = textarea.getBoundingClientRect();
     const properties = [
-        'boxSizing', 'width', 'height',
-        'fontFamily', 'fontSize', 'fontWeight', 'fontStyle',
+        'boxSizing', 'width', 'height', 'fontFamily', 'fontSize', 'fontWeight', 'fontStyle',
         'letterSpacing', 'lineHeight', 'textTransform', 'wordSpacing', 'whiteSpace', 'wordWrap',
         'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
         'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth'
     ];
-
     properties.forEach(prop => { mirror.style[prop] = style[prop]; });
     mirror.style.position = 'absolute';
     mirror.style.visibility = 'hidden';
     mirror.style.top = `${textarea.offsetTop}px`;
     mirror.style.left = `${textarea.offsetLeft}px`;
-
     const cursorPos = textarea.selectionStart;
     mirror.innerHTML = textarea.value.substring(0, cursorPos).replace(/\n/g, '<br>') + '<span id="cursor-span"></span>';
     document.body.appendChild(mirror);
-
     const span = document.getElementById('cursor-span');
     const coords = {
         top: rect.top + span.offsetTop - textarea.scrollTop + window.scrollY,
         left: rect.left + span.offsetLeft - textarea.scrollLeft + window.scrollX
     };
-    
     document.body.removeChild(mirror);
     return coords;
 }
@@ -66,45 +61,29 @@ function showAutocomplete(textarea, items, options) {
     if (!autocompleteContainer) return;
     autocompleteContainer.innerHTML = '';
     activeAutocompleteIndex = -1;
-
     if (items.length === 0) {
         hideAutocomplete();
         return;
     }
-
     items.forEach((item, index) => {
         const div = document.createElement('div');
         div.className = 'autocomplete-item';
         div.textContent = item;
-
         div.addEventListener('mouseover', () => setActiveAutocompleteItem(index));
-
         div.addEventListener('click', () => {
             const startPos = textarea.selectionStart;
             const textBefore = textarea.value.substring(0, startPos - 1);
             const textAfter = textarea.value.substring(startPos);
-            let textToInsert = '';
-
-            if (options.type === 'attribute') {
-                textToInsert = `#${item}# `;
-            } else if (options.type === 'function') {
-                textToInsert = `${item}() `;
-            }
-            
+            let textToInsert = (options.type === 'attribute') ? `#${item}# ` : `${item}() `;
             textarea.value = textBefore + textToInsert + textAfter;
-            
             let newCursorPos = (textBefore + textToInsert).length;
-            if (options.type === 'function') {
-                newCursorPos -= 2;
-            }
-            
+            if (options.type === 'function') newCursorPos -= 2;
             textarea.focus();
             textarea.setSelectionRange(newCursorPos, newCursorPos);
             hideAutocomplete();
         });
         autocompleteContainer.appendChild(div);
     });
-    
     const coords = getCursorXY(textarea);
     autocompleteContainer.style.left = `${coords.left}px`;
     autocompleteContainer.style.top = `${coords.top + 20}px`;
@@ -123,7 +102,6 @@ function setActiveAutocompleteItem(index) {
     if (!autocompleteContainer) return;
     const items = autocompleteContainer.querySelectorAll('.autocomplete-item');
     if (index < 0 || index >= items.length) return;
-
     items.forEach(item => item.classList.remove('autocomplete-active'));
     items[index].classList.add('autocomplete-active');
     items[index].scrollIntoView({ block: 'nearest' });
@@ -132,9 +110,12 @@ function setActiveAutocompleteItem(index) {
 
 // --- UI AND EVENT FUNCTIONS ---
 function addFilterRegion() {
+    const filterContainer = document.getElementById('filterContainer');
+    const newIndex = filterContainer.children.length + 1;
     regionCounter++;
     const regionId = `region-${regionCounter}`;
-    const filterContainer = document.getElementById('filterContainer');
+    const defaultName = `Filter Region ${newIndex}`;
+    
     const regionElement = document.createElement('div');
     regionElement.className = 'filter-region';
     regionElement.id = regionId;
@@ -146,8 +127,14 @@ function addFilterRegion() {
 
     regionElement.innerHTML = `
         <div class="region-header">
-            <div class="region-title"><span class="toggle-icon">▼</span> Filter Region ${regionCounter}</div>
+            <div class="region-title editable-title">
+                 <span class="region-sequence">${newIndex}.</span>
+                 <span class="title-display">${defaultName}</span>
+                 <input type="text" class="title-input hidden" value="${defaultName}" />
+            </div>
             <div class="region-controls">
+                <button class="btn btn-small region-move up" data-direction="up" title="Move Region Up">▲</button>
+                <button class="btn btn-small region-move down" data-direction="down" title="Move Region Down">▼</button>
                 <div class="btn btn-secondary validate-btn">Validate</div>
                 <div class="btn btn-danger delete-region">Delete</div>
             </div>
@@ -156,72 +143,39 @@ function addFilterRegion() {
         <div class="region-content">
             <div class="section">
                 <div class="section-title">1. Filters</div>
-                <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${regionId}-stay-window" data-validates="stayWindow">
-                    <label for="${regionId}-stay-window">Stay Window</label>
-                    <div class="field-content hidden">
-                        <label>From</label> <input type="date" class="stay-window-from" value="${formatDate(today)}">
-                        <label>To</label> <input type="date" class="stay-window-to" value="${formatDate(nextWeek)}">
-                    </div>
-                </div>
-                <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${regionId}-load-time" data-validates="leadTime">
-                    <label for="${regionId}-load-time">Lead Time</label>
-                    <div class="field-content hidden">
-                        <select class="load-time-select">
-                            <option value="">Select Type</option><option value="date_range">Date Range</option><option value="days">Day(s)</option><option value="weeks">Week(s)</option><option value="months">Month(s)</option>
-                        </select>
-                        <div class="lead-time-inputs"></div>
-                    </div>
-                </div>
-                <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${regionId}-days-of-week" data-validates="daysOfWeek">
-                    <label for="${regionId}-days-of-week">Day of Week</label>
-                    <div class="field-content hidden">
-                        <div class="checkbox-group">
-                            ${['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].map(day => `
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="${regionId}-${day}" class="day-checkbox"><label for="${regionId}-${day}">${day.toUpperCase()}</label>
-                            </div>`).join('')}
-                        </div>
-                    </div>
-                </div>
-                <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${regionId}-minimum-rate" data-validates="minimumRate">
-                    <label for="${regionId}-minimum-rate">Minimum Rate</label>
-                    <div class="field-content hidden">
-                        <input type="number" value="4" min="0" class="minimum-rate-input">
-                    </div>
-                </div>
+                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-stay-window" data-validates="stayWindow"><label for="${regionId}-stay-window">Stay Window</label><div class="field-content hidden"><label>From</label> <input type="date" class="stay-window-from" value="${formatDate(today)}"><label>To</label> <input type="date" class="stay-window-to" value="${formatDate(nextWeek)}"></div></div>
+                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-load-time" data-validates="leadTime"><label for="${regionId}-load-time">Lead Time</label><div class="field-content hidden"><select class="load-time-select"><option value="">Select Type</option><option value="date_range">Date Range</option><option value="days">Day(s)</option><option value="weeks">Week(s)</option><option value="months">Month(s)</option></select><div class="lead-time-inputs"></div></div></div>
+                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-days-of-week" data-validates="daysOfWeek"><label for="${regionId}-days-of-week">Day of Week</label><div class="field-content hidden"><div class="checkbox-group">${['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].map(day => `<div class="checkbox-item"><input type="checkbox" id="${regionId}-${day}" class="day-checkbox"><label for="${regionId}-${day}">${day.toUpperCase()}</label></div>`).join('')}</div></div></div>
+                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-minimum-rate" data-validates="minimumRate"><label for="${regionId}-minimum-rate">Minimum Rate</label><div class="field-content hidden"><input type="number" value="4" min="0" class="minimum-rate-input"></div></div>
             </div>
             <div class="section">
-                <div class="section-header">
-                    <div class="section-title">2. Conditions & Expressions</div>
-                    <div class="btn btn-small" id="${regionId}-add-condition">+ Add Condition</div>
-                </div>
+                <div class="section-header"><div class="section-title">2. Conditions & Expressions</div><div class="btn btn-small" id="${regionId}-add-condition">+ Add Condition</div></div>
                 <div class="conditions-container" id="${regionId}-conditions-container"></div>
             </div>
-            <div class="footer">
-                <div class="btn btn-secondary save-region">Save Region</div>
-            </div>
+            <div class="footer"><div class="btn btn-secondary save-region">Save Region</div></div>
         </div>`;
 
     filterContainer.appendChild(regionElement);
-    setupRegionEventListeners(regionElement, regionId);
+    setupRegionEventListeners(regionElement);
     addCondition(regionId);
+    updateRegionSequence();
 }
 
 function addCondition(regionId) {
     conditionCounter++;
-    const conditionId = `condition-${regionId}-${conditionCounter}`;
+    const conditionId = `condition-${regionCounter}-${conditionCounter}`;
     const conditionsContainer = document.getElementById(`${regionId}-conditions-container`);
+    const defaultName = `Condition ${conditionsContainer.children.length + 1}`;
     const conditionElement = document.createElement('div');
     conditionElement.className = 'condition-group';
     conditionElement.id = conditionId;
 
     conditionElement.innerHTML = `
         <div class="condition-header">
-            <div class="condition-title">Condition X</div>
+            <div class="condition-title editable-title">
+                <span class="title-display">${defaultName}</span>
+                <input type="text" class="title-input hidden" value="${defaultName}" />
+            </div>
             <div class="condition-controls">
                 <button class="condition-move up" data-direction="up" title="Move Up">▲</button>
                 <button class="condition-move down" data-direction="down" title="Move Down">▼</button>
@@ -229,129 +183,60 @@ function addCondition(regionId) {
             </div>
         </div>
         <div class="condition-body" style="display: flex; align-items: flex-start; gap: 20px;">
-            <div class="condition-fields" style="flex: 1;">
-                <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold" data-validates="occupancyThreshold">
-                    <label for="${conditionId}-occupancy-threshold">Occupancy Threshold %</label>
-                    <div class="field-content hidden">
-                        <select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
-                        <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
-                    </div>
-                </div>
-                <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking">
-                    <label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label>
-                    <div class="field-content hidden">
-                        <select class="property-type-select property-type"><option value="">Select Type</option>${staticData.propertyTypes.map(type => `<option value="${type}">${type}</option>`).join('')}</select>
-                        <select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
-                        <input type="text" class="value-input property-value" placeholder="Value">
-                    </div>
-                </div>
-                <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${conditionId}-event-score" data-validates="eventScore">
-                    <label for="${conditionId}-event-score">Event Score</label>
-                    <div class="field-content hidden">
-                        <select class="operator-select event-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
-                        <input type="number" class="value-input event-value" value="0" min="0">
-                    </div>
-                </div>
-            </div>
-            <div class="condition-expression" style="flex: 1.5;">
-                 <div class="section calculation-section">
-                    <div class="section-title">3. Expression/Calculation</div>
-                    <div class="filter-row">
-                        <div class="filter-group">
-                            <select class="attribute-select"><option value="">Select Attribute</option>${staticData.attributes.map(attr => `<option value="${attr}">${attr}</option>`).join('')}</select>
-                            <select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
-                            <select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select>
-                        </div>
-                    </div>
-                    <div class="expression-container">
-                        <label class="expression-label">Expression</label>
-                        <textarea class="expression-textarea" placeholder="Type # for attributes or = for functions..."></textarea>
-                        <div class="textarea-controls">
-                            <div class="expression-btn" data-action="clear" style="display: inline-block; width: auto;">Clear</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div class="condition-fields" style="flex: 1;"><div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold" data-validates="occupancyThreshold"><label for="${conditionId}-occupancy-threshold">Occupancy Threshold %</label><div class="field-content hidden"><select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input occupancy-value" value="80" min="0" max="100"></div></div><div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${staticData.propertyTypes.map(type => `<option value="${type}">${type}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div><div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-event-score" data-validates="eventScore"><label for="${conditionId}-event-score">Event Score</label><div class="field-content hidden"><select class="operator-select event-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input event-value" value="0" min="0"></div></div></div>
+            <div class="condition-expression" style="flex: 1.5;"><div class="section calculation-section"><div class="section-title">3. Expression/Calculation</div><div class="filter-row"><div class="filter-group"><select class="attribute-select"><option value="">Select Attribute</option>${staticData.attributes.map(attr => `<option value="${attr}">${attr}</option>`).join('')}</select><select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select></div></div><div class="expression-container"><label class="expression-label">Expression</label><textarea class="expression-textarea" placeholder="Type # for attributes or = for functions..."></textarea><div class="textarea-controls"><div class="expression-btn" data-action="clear" style="display: inline-block; width: auto;">Clear</div></div></div></div></div>
         </div>`;
 
     conditionsContainer.appendChild(conditionElement);
     setupConditionEventListeners(conditionElement);
-    updateConditionSequence(conditionsContainer.closest('.filter-region').id);
+    updateConditionSequence(regionId);
 }
 
 function setupConditionEventListeners(conditionElement) {
     const regionId = conditionElement.closest('.filter-region').id;
-
+    setupEditableTitle(conditionElement.querySelector('.editable-title'), 'condition', conditionElement.closest('.filter-region'));
     conditionElement.querySelector('.condition-remove').addEventListener('click', () => {
         conditionElement.remove();
         updateConditionSequence(regionId);
     });
-
     conditionElement.querySelectorAll('.condition-move').forEach(button => {
         button.addEventListener('click', (e) => moveCondition(conditionElement, e.target.dataset.direction));
     });
-
     conditionElement.querySelectorAll('.field-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => {
             const fieldContent = e.target.closest('.field-container').querySelector('.field-content');
             if (fieldContent) fieldContent.classList.toggle('hidden', !e.target.checked);
         });
     });
-
     const calculationSection = conditionElement.querySelector('.calculation-section');
     if (!calculationSection) return;
     const expressionTextarea = calculationSection.querySelector('.expression-textarea');
     const attributeSelect = calculationSection.querySelector('.attribute-select');
     const operatorSelect = calculationSection.querySelector('.expression-operator');
     const functionSelect = calculationSection.querySelector('.function-select');
-
     calculationSection.querySelector('[data-action="clear"]').addEventListener('click', () => {
         expressionTextarea.value = '';
         expressionTextarea.focus();
     });
-
     expressionTextarea.addEventListener('input', (e) => {
         const text = e.target.value;
         const cursorPos = e.target.selectionStart;
         const lastChar = text.substring(cursorPos - 1, cursorPos);
-        if (lastChar === '#') {
-            showAutocomplete(e.target, staticData.attributes, { type: 'attribute' });
-        } else if (lastChar === '=') {
-            showAutocomplete(e.target, staticData.functions, { type: 'function' });
-        } else {
-            hideAutocomplete();
-        }
+        if (lastChar === '#') showAutocomplete(e.target, staticData.attributes, { type: 'attribute' });
+        else if (lastChar === '=') showAutocomplete(e.target, staticData.functions, { type: 'function' });
+        else hideAutocomplete();
     });
-
     expressionTextarea.addEventListener('keydown', (e) => {
         if (autocompleteContainer.style.display !== 'block') return;
         const items = autocompleteContainer.querySelectorAll('.autocomplete-item');
         if (!items.length) return;
         switch (e.key) {
-            case 'ArrowDown':
-                e.preventDefault();
-                activeAutocompleteIndex = (activeAutocompleteIndex + 1) % items.length;
-                setActiveAutocompleteItem(activeAutocompleteIndex);
-                break;
-            case 'ArrowUp':
-                e.preventDefault();
-                activeAutocompleteIndex = (activeAutocompleteIndex - 1 + items.length) % items.length;
-                setActiveAutocompleteItem(activeAutocompleteIndex);
-                break;
-            case 'Enter':
-                e.preventDefault();
-                if (activeAutocompleteIndex > -1) items[activeAutocompleteIndex].click();
-                hideAutocomplete();
-                break;
-            case 'Escape':
-                hideAutocomplete();
-                break;
+            case 'ArrowDown': e.preventDefault(); activeAutocompleteIndex = (activeAutocompleteIndex + 1) % items.length; setActiveAutocompleteItem(activeAutocompleteIndex); break;
+            case 'ArrowUp': e.preventDefault(); activeAutocompleteIndex = (activeAutocompleteIndex - 1 + items.length) % items.length; setActiveAutocompleteItem(activeAutocompleteIndex); break;
+            case 'Enter': e.preventDefault(); if (activeAutocompleteIndex > -1) items[activeAutocompleteIndex].click(); hideAutocomplete(); break;
+            case 'Escape': hideAutocomplete(); break;
         }
     });
-
     attributeSelect.addEventListener('change', (e) => {
         if (e.target.value) {
             insertAtCursor(expressionTextarea, `#${e.target.value}# `);
@@ -375,19 +260,21 @@ function setupConditionEventListeners(conditionElement) {
     });
 }
 
-function setupRegionEventListeners(regionElement, regionId) {
+function setupRegionEventListeners(regionElement) {
+    const regionId = regionElement.id;
+    setupEditableTitle(regionElement.querySelector('.editable-title'), 'region');
     regionElement.querySelector('.region-header').addEventListener('click', e => {
-        if (e.target.closest('.btn')) return;
+        if (e.target.closest('.btn') || e.target.closest('.editable-title')) return;
         regionElement.classList.toggle('region-collapsed');
     });
-
     regionElement.querySelector('.delete-region').addEventListener('click', () => {
         regionElement.remove();
-        updateRegionTitles();
+        updateRegionSequence();
     });
-
+    regionElement.querySelectorAll('.region-move').forEach(button => {
+        button.addEventListener('click', () => moveRegion(regionElement, button.dataset.direction));
+    });
     regionElement.querySelector(`#${regionId}-add-condition`).addEventListener('click', () => addCondition(regionId));
-
     regionElement.querySelector('.validate-btn').addEventListener('click', () => {
         const { isValid, errors } = validateRegion(regionElement);
         const messageDiv = regionElement.querySelector('.validation-messages');
@@ -399,28 +286,25 @@ function setupRegionEventListeners(regionElement, regionId) {
             messageDiv.style.display = 'block';
         }
     });
-
     regionElement.querySelector('.save-region').addEventListener('click', () => {
         const { isValid, errors } = validateRegion(regionElement);
         const messageDiv = regionElement.querySelector('.validation-messages');
         if (isValid) {
             messageDiv.style.display = 'none';
-            const regionData = getRegionData(regionElement, regionId);
-            document.getElementById('jsonOutput').textContent = `Saved data for ${regionId}:\n` + JSON.stringify(regionData, null, 2);
+            const regionData = getRegionData(regionElement);
+            document.getElementById('jsonOutput').textContent = `Saved data for ${regionData.name}:\n` + JSON.stringify(regionData, null, 2);
             alert('Region saved successfully!');
         } else {
             messageDiv.innerHTML = `<ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
             messageDiv.style.display = 'block';
         }
     });
-
     regionElement.querySelectorAll('.section:first-child .field-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', (e) => {
             const fieldContent = e.target.closest('.field-container').querySelector('.field-content');
             if (fieldContent) fieldContent.classList.toggle('hidden', !e.target.checked);
         });
     });
-
     const leadTimeSelect = regionElement.querySelector('.load-time-select');
     if (leadTimeSelect) {
         leadTimeSelect.addEventListener('change', (e) => {
@@ -437,17 +321,121 @@ function setupRegionEventListeners(regionElement, regionId) {
     }
 }
 
-// --- VALIDATION FUNCTION (MODIFIED) ---
+// --- UTILITY FUNCTIONS ---
+function setupEditableTitle(titleContainer, scope, scopeElement = document) {
+    const display = titleContainer.querySelector('.title-display');
+    const input = titleContainer.querySelector('.title-input');
+    display.addEventListener('click', () => {
+        display.classList.add('hidden');
+        input.classList.remove('hidden');
+        input.focus();
+        input.select();
+    });
+    const saveChanges = () => {
+        const newName = input.value.trim();
+        const oldName = display.textContent;
+        if (newName === '' || newName === oldName) {
+            input.value = oldName;
+            input.classList.add('hidden');
+            display.classList.remove('hidden');
+            return;
+        }
+        let isDuplicate = false;
+        const selector = scope === 'region' ? '.filter-region .title-display' : '.condition-group .title-display';
+        const elementsToCheck = scope === 'region' ? document.querySelectorAll(selector) : scopeElement.querySelectorAll(selector);
+        elementsToCheck.forEach(el => {
+            if (el !== display && el.textContent.trim().toLowerCase() === newName.toLowerCase()) {
+                isDuplicate = true;
+            }
+        });
+        if (isDuplicate) {
+            alert(`Error: The name "${newName}" is already in use. Please choose a unique name.`);
+            input.focus();
+            input.select();
+            return;
+        }
+        display.textContent = newName;
+        input.classList.add('hidden');
+        display.classList.remove('hidden');
+    };
+    input.addEventListener('blur', saveChanges);
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveChanges();
+        } else if (e.key === 'Escape') {
+            input.value = display.textContent;
+            input.classList.add('hidden');
+            display.classList.remove('hidden');
+        }
+    });
+}
+
+function updateRegionSequence() {
+    document.querySelectorAll('.filter-region').forEach((region, index) => {
+        const sequence = index + 1;
+        region.dataset.sequence = sequence;
+        region.querySelector('.region-sequence').textContent = `${sequence}. `;
+        const display = region.querySelector('.title-display');
+        const input = region.querySelector('.title-input');
+        if (display.textContent.match(/^Filter Region \d+$/)) {
+            const newName = `Filter Region ${sequence}`;
+            display.textContent = newName;
+            input.value = newName;
+        }
+        region.querySelector('.region-move.up').disabled = (sequence === 1);
+        region.querySelector('.region-move.down').disabled = (sequence === document.querySelectorAll('.filter-region').length);
+    });
+}
+
+function moveRegion(regionElement, direction) {
+    const parent = regionElement.parentNode;
+    if (direction === 'up' && regionElement.previousElementSibling) {
+        parent.insertBefore(regionElement, regionElement.previousElementSibling);
+    } else if (direction === 'down' && regionElement.nextElementSibling) {
+        parent.insertBefore(regionElement.nextElementSibling, regionElement);
+    }
+    updateRegionSequence();
+}
+
+function updateConditionSequence(regionId) {
+    const container = document.getElementById(`${regionId}-conditions-container`);
+    if (!container) return;
+    const conditions = container.querySelectorAll('.condition-group');
+    conditions.forEach((condition, index) => {
+        const sequence = index + 1;
+        condition.dataset.sequence = sequence;
+        const display = condition.querySelector('.title-display');
+        const input = condition.querySelector('.title-input');
+        if (display.textContent.match(/^Condition \d+$/)) {
+            const newName = `Condition ${sequence}`;
+            display.textContent = newName;
+            input.value = newName;
+        }
+        condition.querySelector('.condition-move.up').disabled = (sequence === 1);
+        condition.querySelector('.condition-move.down').disabled = (sequence === conditions.length);
+    });
+}
+
+function moveCondition(conditionElement, direction) {
+    const parent = conditionElement.parentNode;
+    if (direction === 'up' && conditionElement.previousElementSibling) {
+        parent.insertBefore(conditionElement, conditionElement.previousElementSibling);
+    } else if (direction === 'down' && conditionElement.nextElementSibling) {
+        parent.insertBefore(conditionElement.nextElementSibling, conditionElement);
+    }
+    updateConditionSequence(parent.id.replace('-conditions-container', ''));
+}
+
+// --- VALIDATION & DATA FUNCTIONS ---
 function validateRegion(regionElement) {
     const errors = [];
     const regionId = regionElement.id;
-    const regionName = regionElement.querySelector('.region-title').textContent.trim();
+    const regionName = regionElement.querySelector('.title-display').textContent.trim();
     regionElement.classList.remove('invalid-region');
     regionElement.querySelectorAll('.invalid-field').forEach(el => el.classList.remove('invalid-field'));
 
     const signatures = [];
-
-    // --- Create a single composite signature for the entire filter set ---
     const filterContainer = regionElement.querySelector('.section:first-child');
     const checkedFilters = filterContainer.querySelectorAll('.field-checkbox:checked');
     const individualFilterSignatures = [];
@@ -456,101 +444,75 @@ function validateRegion(regionElement) {
         const fc = checkbox.closest('.field-container');
         const validationType = checkbox.dataset.validates;
         let signaturePart = null;
-        
         if(validationType === 'daysOfWeek') {
             const checkedDays = Array.from(fc.querySelectorAll('.day-checkbox:checked')).map(cb => cb.id.split('-').pop()).sort();
-            if (checkedDays.length > 0) {
-                 signaturePart = `daysOfWeek:${checkedDays.join(',')}`;
-            } else {
-                 errors.push(`${regionName}: "Day of Week" is enabled but no days are selected.`);
-                 fc.classList.add('invalid-field');
-            }
+            if (checkedDays.length > 0) signaturePart = `daysOfWeek:${checkedDays.join(',')}`;
+            else errors.push(`${regionName}: "Day of Week" is enabled but no days are selected.`);
         } else {
             const inputs = Array.from(fc.querySelectorAll('input:not([type=checkbox]), select'));
             if (inputs.some(i => !i.value)) {
                 errors.push(`${regionName}: A value is missing for the "${fc.querySelector('label').textContent.trim()}" filter.`);
-                fc.classList.add('invalid-field');
             } else {
                 signaturePart = `${validationType}:${inputs.map(i => i.value).join(':')}`;
             }
         }
-        
-        if (signaturePart) {
-            individualFilterSignatures.push(signaturePart);
-        }
+        if (signaturePart) individualFilterSignatures.push(signaturePart);
+        else fc.classList.add('invalid-field');
     });
-    
-    // --- New Cross-Filter Validation: Stay Window required for relative Lead Time ---
+
     const leadTimeCheckbox = filterContainer.querySelector(`#${regionId}-load-time`);
     const leadTimeSelect = filterContainer.querySelector('.load-time-select');
     const stayWindowCheckbox = filterContainer.querySelector(`#${regionId}-stay-window`);
-    if (leadTimeCheckbox.checked && leadTimeSelect.value && leadTimeSelect.value !== 'date_range' && !stayWindowCheckbox.checked) {
+    if (leadTimeCheckbox?.checked && leadTimeSelect?.value && leadTimeSelect.value !== 'date_range' && !stayWindowCheckbox?.checked) {
         errors.push(`${regionName}: Stay Window is required when using a relative Lead Time (Days, Weeks, Months).`);
         leadTimeCheckbox.closest('.field-container').classList.add('invalid-field');
         stayWindowCheckbox.closest('.field-container').classList.add('invalid-field');
     }
 
-    if (individualFilterSignatures.length > 0) {
-        const compositeFilterSignature = individualFilterSignatures.sort().join('|');
-        signatures.push({ signature: compositeFilterSignature, element: filterContainer, type: 'filter' });
-    } else if (checkedFilters.length === 0) {
+    if (checkedFilters.length > 0) {
+        signatures.push({ signature: individualFilterSignatures.sort().join('|'), element: filterContainer, type: 'filter' });
+    } else {
         signatures.push({ signature: 'filters:empty', element: filterContainer, type: 'filter' });
     }
     
     const conditions = regionElement.querySelectorAll('.condition-group');
     conditions.forEach(cond => {
-        const condTitle = cond.querySelector('.condition-title').textContent.trim();
+        const condTitle = cond.querySelector('.title-display').textContent.trim();
         const isActive = !!cond.querySelector('.field-checkbox:checked');
         const expression = cond.querySelector('.expression-textarea').value.trim();
-
         if (!isActive && expression === '') {
             signatures.push({ signature: 'condition:empty', element: cond, type: 'condition' });
             return; 
         }
-
         if (isActive && expression === '') {
             errors.push(`${condTitle}: Expression cannot be empty when a condition field is checked.`);
             cond.querySelector('.expression-container').classList.add('invalid-field');
         } else if (expression !== '') {
             let tempExpression = expression;
-            const errorsForThisExpression = [];
             tempExpression = tempExpression.replace(/#[^#]+#/g, '1');
             staticData.functions.forEach(func => {
                 const funcRegex = new RegExp(`${func}\\([^)]*\\)`, 'gi');
                 tempExpression = tempExpression.replace(funcRegex, '1');
             });
             if (staticData.operators.some(op => tempExpression.includes(` ${op} `))) {
-                 errorsForThisExpression.push('Expression must result in a numerical value, not a boolean. Avoid using =, >, <, etc.');
-            }
-            if (errorsForThisExpression.length > 0) {
-                errors.push(`${condTitle} Expression Error: ${errorsForThisExpression.join(', ')}.`);
-                cond.querySelector('.expression-container').classList.add('invalid-field');
+                 errors.push(`${condTitle}: Expression must result in a numerical value, not a boolean.`);
+                 cond.querySelector('.expression-container').classList.add('invalid-field');
             }
         }
-        
         cond.querySelectorAll('.condition-fields .field-checkbox:checked').forEach(checkbox => {
             const fc = checkbox.closest('.field-container');
-            const validationType = checkbox.dataset.validates;
             let signature = null;
-            if (validationType === 'occupancyThreshold') {
-                const val = fc.querySelector('.occupancy-value')?.value;
-                if (!val) errors.push(`${condTitle}: "Occupancy Threshold" is missing a value.`);
-                else signature = `occupancy:${fc.querySelector('.occupancy-operator').value}:${val}`;
-            } else if (validationType === 'propertyRanking') {
-                const type = fc.querySelector('.property-type')?.value, val = fc.querySelector('.property-value')?.value;
-                if (!type || !val) errors.push(`${condTitle}: "Property Ranking" is missing a type or value.`);
-                else signature = `ranking:${type}:${fc.querySelector('.property-operator').value}:${val}`;
-            } else if (validationType === 'eventScore') {
-                const val = fc.querySelector('.event-value')?.value;
-                if (!val) errors.push(`${condTitle}: "Event Score" is missing a value.`);
-                else signature = `eventScore:${fc.querySelector('.event-operator').value}:${val}`;
+            const inputs = Array.from(fc.querySelectorAll('input:not([type=checkbox]), select'));
+            if (inputs.some(i => !i.value)) {
+                 errors.push(`${condTitle}: A value for "${fc.querySelector('label').textContent.trim()}" is missing.`);
+                 fc.classList.add('invalid-field');
+            } else {
+                 signature = `${checkbox.dataset.validates}:${inputs.map(i => i.value).join(':')}`;
+                 signatures.push({ signature, element: fc, type: 'condition' });
             }
-            if (signature) signatures.push({ signature, element: fc, type: 'condition' });
-            if (errors.length > 0 && !fc.classList.contains('invalid-field')) fc.classList.add('invalid-field');
         });
     });
     
-    // --- Intra-Region Duplicate Check ---
     const signatureCounts = signatures.reduce((acc, { signature }) => {
         acc[signature] = (acc[signature] || 0) + 1;
         return acc;
@@ -559,63 +521,58 @@ function validateRegion(regionElement) {
     if (duplicateSignatures.length > 0) {
         errors.push('Duplicate filters or conditions found within this region.');
         signatures.forEach(({ signature, element }) => {
-            if (duplicateSignatures.includes(signature)) {
-                element.classList.add('invalid-field');
-            }
+            if (duplicateSignatures.includes(signature)) element.classList.add('invalid-field');
         });
     }
 
     return { isValid: errors.length === 0, errors: [...new Set(errors)], signatures };
 }
 
-
-// --- UTILITY AND DATA GATHERING FUNCTIONS ---
-function getRegionData(regionElement, regionId) {
-    const data = { id: regionId, filters: {}, conditions: [] };
+function getRegionData(regionElement) {
+    const data = {
+        id: regionElement.id,
+        name: regionElement.querySelector('.title-display').textContent.trim(),
+        sequence: parseInt(regionElement.dataset.sequence, 10),
+        filters: {},
+        conditions: []
+    };
+    const regionId = regionElement.id;
     const filtersSection = regionElement.querySelector('.section:first-child');
     if (filtersSection) {
-        if (filtersSection.querySelector(`#${regionId}-stay-window`)?.checked) {
-            data.filters.stayWindow = { from: filtersSection.querySelector('.stay-window-from')?.value, to: filtersSection.querySelector('.stay-window-to')?.value };
-        }
+        if (filtersSection.querySelector(`#${regionId}-stay-window`)?.checked) data.filters.stayWindow = { from: filtersSection.querySelector('.stay-window-from')?.value, to: filtersSection.querySelector('.stay-window-to')?.value };
         if (filtersSection.querySelector(`#${regionId}-load-time`)?.checked) {
             const leadTimeSelect = filtersSection.querySelector('.load-time-select');
             const type = leadTimeSelect.value;
-            if (type === 'date_range') {
-                data.filters.leadTime = { type, from: filtersSection.querySelector('.lead-time-from')?.value, to: filtersSection.querySelector('.lead-time-to')?.value };
-            } else if (type) {
-                data.filters.leadTime = { type, value: parseInt(filtersSection.querySelector('.lead-time-value')?.value, 10) };
-            }
+            if (type === 'date_range') data.filters.leadTime = { type, from: filtersSection.querySelector('.lead-time-from')?.value, to: filtersSection.querySelector('.lead-time-to')?.value };
+            else if (type) data.filters.leadTime = { type, value: parseInt(filtersSection.querySelector('.lead-time-value')?.value, 10) };
         }
         if (filtersSection.querySelector(`#${regionId}-days-of-week`)?.checked) {
             const dayMap = { sun: 1, mon: 2, tue: 3, wed: 4, thu: 5, fri: 6, sat: 7 };
             data.filters.daysOfWeek = Array.from(filtersSection.querySelectorAll('.day-checkbox:checked')).map(cb => dayMap[cb.id.split('-').pop()]).sort((a, b) => a - b);
         }
-        if (filtersSection.querySelector(`#${regionId}-minimum-rate`)?.checked) {
-            data.filters.minimumRate = parseFloat(filtersSection.querySelector('.minimum-rate-input')?.value);
-        }
+        if (filtersSection.querySelector(`#${regionId}-minimum-rate`)?.checked) data.filters.minimumRate = parseFloat(filtersSection.querySelector('.minimum-rate-input')?.value);
     }
     regionElement.querySelectorAll('.condition-group').forEach(cond => {
-        const conditionData = { id: cond.id, sequence: parseInt(cond.dataset.sequence, 10) };
-        let isActive = false;
-        if (cond.querySelector(`#${cond.id}-occupancy-threshold`)?.checked) {
-            conditionData.occupancyThreshold = { operator: cond.querySelector('.occupancy-operator').value, value: parseFloat(cond.querySelector('.occupancy-value').value) };
-            isActive = true;
-        }
+        const isActive = !!cond.querySelector('.field-checkbox:checked') || cond.querySelector('.expression-textarea').value.trim() !== '';
+        if (!isActive) return;
+
+        const conditionData = {
+            id: cond.id,
+            name: cond.querySelector('.title-display').textContent.trim(),
+            sequence: parseInt(cond.dataset.sequence, 10)
+        };
+        
+        if (cond.querySelector(`#${cond.id}-occupancy-threshold`)?.checked) conditionData.occupancyThreshold = { operator: cond.querySelector('.occupancy-operator').value, value: parseFloat(cond.querySelector('.occupancy-value').value) };
         if (cond.querySelector(`#${cond.id}-property-ranking`)?.checked) {
             const val = cond.querySelector('.property-value').value;
             conditionData.propertyRanking = { type: cond.querySelector('.property-type').value, operator: cond.querySelector('.property-operator').value, value: isNaN(parseInt(val, 10)) ? val : parseInt(val, 10) };
-            isActive = true;
         }
-        if (cond.querySelector(`#${cond.id}-event-score`)?.checked) {
-            conditionData.eventScore = { operator: cond.querySelector('.event-operator').value, value: parseFloat(cond.querySelector('.event-value').value) };
-            isActive = true;
-        }
+        if (cond.querySelector(`#${cond.id}-event-score`)?.checked) conditionData.eventScore = { operator: cond.querySelector('.event-operator').value, value: parseFloat(cond.querySelector('.event-value').value) };
+        
         const expression = cond.querySelector('.expression-textarea').value.trim();
-        if (expression) {
-            conditionData.expression = expression;
-            isActive = true;
-        }
-        if (isActive) data.conditions.push(conditionData);
+        if (expression) conditionData.expression = expression;
+        
+        data.conditions.push(conditionData);
     });
     return data;
 }
@@ -665,45 +622,12 @@ function saveAllRegions() {
     }
 
     if (allValid) {
-        regions.forEach(region => allData.regions.push(getRegionData(region, region.id)));
+        regions.forEach(region => allData.regions.push(getRegionData(region)));
         document.getElementById('jsonOutput').textContent = 'All regions data:\n' + JSON.stringify(allData, null, 2);
         alert('All regions are valid and have been saved!');
     } else {
         alert('Please fix the errors in the highlighted regions before saving.');
     }
-}
-
-function updateRegionTitles() {
-    document.querySelectorAll('.filter-region').forEach((region, index) => {
-        const titleElement = region.querySelector('.region-title');
-        if (titleElement) {
-            const iconHTML = titleElement.querySelector('.toggle-icon')?.outerHTML || '';
-            titleElement.innerHTML = `${iconHTML} Filter Region ${index + 1}`;
-        }
-    });
-}
-
-function updateConditionSequence(regionId) {
-    const container = document.getElementById(`${regionId}-conditions-container`);
-    if (!container) return;
-    const conditions = container.querySelectorAll('.condition-group');
-    conditions.forEach((condition, index) => {
-        const sequence = index + 1;
-        condition.querySelector('.condition-title').textContent = `Condition ${sequence}`;
-        condition.dataset.sequence = sequence;
-        condition.querySelector('.condition-move.up').disabled = (sequence === 1);
-        condition.querySelector('.condition-move.down').disabled = (sequence === conditions.length);
-    });
-}
-
-function moveCondition(conditionElement, direction) {
-    const parent = conditionElement.parentNode;
-    if (direction === 'up' && conditionElement.previousElementSibling) {
-        parent.insertBefore(conditionElement, conditionElement.previousElementSibling);
-    } else if (direction === 'down' && conditionElement.nextElementSibling) {
-        parent.insertBefore(conditionElement.nextElementSibling, conditionElement);
-    }
-    updateConditionSequence(parent.id.replace('-conditions-container', ''));
 }
 
 function insertAtCursor(textarea, text) {
