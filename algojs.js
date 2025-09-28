@@ -161,7 +161,7 @@ function addFilterRegion() {
     addCondition(regionId);
 }
 
-// Function to add a new condition to a region
+// Function to add a new condition to a region (MODIFIED)
 function addCondition(regionId) {
     conditionCounter++;
     const conditionId = `condition-${regionId}-${conditionCounter}`;
@@ -222,7 +222,6 @@ function addCondition(regionId) {
 
             <div class="filter-row">
                 <div class="filter-group">
-                    <label>Attributes</label>
                     <select class="attribute-select">
                         <option value="">Select Attribute</option>
                         ${staticData.attributes.map(attr => `<option value="${attr}">${attr}</option>`).join('')}
@@ -240,13 +239,10 @@ function addCondition(regionId) {
 
             <div class="expression-container">
                 <label class="expression-label">Expression</label>
-                <div class="expression-controls">
-                    <div class="expression-btn" data-action="clear">Clear</div>
-                    <div class="expression-btn" data-action="append-attribute">Add Attribute</div>
-                    <div class="expression-btn" data-action="append-operator">Add Operator</div>
-                    <div class="expression-btn" data-action="append-function">Add Function</div>
-                </div>
                 <textarea class="expression-textarea" placeholder="Write your expression here or build it using the controls"></textarea>
+                <div class="textarea-controls">
+                    <div class="expression-btn" data-action="clear">Clear</div>
+                </div>
             </div>
         </div>
     `;
@@ -353,27 +349,13 @@ function setupConditionEventListeners(conditionElement) {
     const operatorSelect = calculationSection.querySelector('.expression-operator');
     const functionSelect = calculationSection.querySelector('.function-select');
 
-    // --- Control Buttons ---
+    // --- Clear Button ---
     calculationSection.querySelector('.expression-btn[data-action="clear"]').addEventListener('click', function() {
         expressionTextarea.value = '';
         expressionTextarea.focus();
     });
-    calculationSection.querySelector('.expression-btn[data-action="append-attribute"]').addEventListener('click', function() {
-        if (attributeSelect.value) insertAtCursor(expressionTextarea, attributeSelect.value);
-    });
-    calculationSection.querySelector('.expression-btn[data-action="append-operator"]').addEventListener('click', function() {
-        if (operatorSelect.value) insertAtCursor(expressionTextarea, ` ${operatorSelect.value} `);
-    });
-    calculationSection.querySelector('.expression-btn[data-action="append-function"]').addEventListener('click', function() {
-        if (functionSelect.value) {
-            const funcText = `${functionSelect.value}()`;
-            insertAtCursor(expressionTextarea, funcText);
-            const newCursorPos = expressionTextarea.selectionStart - 1;
-            expressionTextarea.setSelectionRange(newCursorPos, newCursorPos);
-        }
-    });
 
-    // --- NEW BEHAVIOR: Dropdowns insert text directly at the cursor ---
+    // --- Dropdowns insert text directly at the cursor ---
     attributeSelect.addEventListener('change', function() {
         if (this.value) {
             insertAtCursor(expressionTextarea, this.value);
