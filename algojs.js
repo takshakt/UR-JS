@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-// Function to create a new filter region
+// Function to create a new filter region (MODIFIED)
 function addFilterRegion() {
     regionCounter++;
     const regionId = `region-${regionCounter}`;
@@ -59,90 +59,88 @@ function addFilterRegion() {
         </div>
 
         <div class="region-content">
-            <div class="sections-container">
-                <div class="section">
-                    <div class="section-title">1. Filters</div>
+            <div class="section">
+                <div class="section-title">1. Filters</div>
 
-                    <div class="field-container">
-                        <input type="checkbox" class="field-checkbox" id="${regionId}-stay-window">
-                        <label for="${regionId}-stay-window">Stay Window</label>
-                        <div class="field-content hidden">
-                            <label>From</label>
-                            <input type="date" class="stay-window-from" value="${formatDate(today)}">
-                            <label>To</label>
-                            <input type="date" class="stay-window-to" value="${formatDate(nextWeek)}">
-                        </div>
+                <div class="field-container">
+                    <input type="checkbox" class="field-checkbox" id="${regionId}-stay-window">
+                    <label for="${regionId}-stay-window">Stay Window</label>
+                    <div class="field-content hidden">
+                        <label>From</label>
+                        <input type="date" class="stay-window-from" value="${formatDate(today)}">
+                        <label>To</label>
+                        <input type="date" class="stay-window-to" value="${formatDate(nextWeek)}">
                     </div>
+                </div>
 
-                    <div class="field-container">
-                        <input type="checkbox" class="field-checkbox" id="${regionId}-load-time">
-                        <label for="${regionId}-load-time">Lead Time</label>
-                        <div class="field-content hidden">
-                            <select class="load-time-select">
-                                <option value="">Select Type</option>
-                                <option value="date_range">Date Range</option>
-                                <option value="days">Day(s)</option>
-                                <option value="weeks">Week(s)</option>
-                                <option value="months">Month(s)</option>
-                            </select>
-                            <div class="lead-time-inputs"></div>
-                        </div>
+                <div class="field-container">
+                    <input type="checkbox" class="field-checkbox" id="${regionId}-load-time">
+                    <label for="${regionId}-load-time">Lead Time</label>
+                    <div class="field-content hidden">
+                        <select class="load-time-select">
+                            <option value="">Select Type</option>
+                            <option value="date_range">Date Range</option>
+                            <option value="days">Day(s)</option>
+                            <option value="weeks">Week(s)</option>
+                            <option value="months">Month(s)</option>
+                        </select>
+                        <div class="lead-time-inputs"></div>
                     </div>
+                </div>
 
-                    <div class="field-container">
-                        <input type="checkbox" class="field-checkbox" id="${regionId}-days-of-week">
-                        <label for="${regionId}-days-of-week">Day of Week</label>
-                        <div class="field-content hidden">
-                            <div class="checkbox-group">
-                                <div class="checkbox-item">
-                                    <input type="checkbox" id="${regionId}-sun" class="day-checkbox" >
-                                    <label for="${regionId}-sun">SUN</label>
-                                </div>
-                                <div class="checkbox-item">
-                                    <input type="checkbox" id="${regionId}-mon" class="day-checkbox" >
-                                    <label for="${regionId}-mon">MON</label>
-                                </div>
-                                <div class="checkbox-item">
-                                    <input type="checkbox" id="${regionId}-tue" class="day-checkbox" >
-                                    <label for="${regionId}-tue">TUE</label>
-                                </div>
-                                <div class="checkbox-item">
-                                    <input type="checkbox" id="${regionId}-wed" class="day-checkbox" >
-                                    <label for="${regionId}-wed">WED</label>
-                                </div>
-                                <div class="checkbox-item">
-                                    <input type="checkbox" id="${regionId}-thu" class="day-checkbox" >
-                                    <label for="${regionId}-thu">THU</label>
-                                </div>
-                                <div class="checkbox-item">
-                                    <input type="checkbox" id="${regionId}-fri" class="day-checkbox" >
-                                    <label for="${regionId}-fri">FRI</label>
-                                </div>
-                                <div class="checkbox-item">
-                                    <input type="checkbox" id="${regionId}-sat" class="day-checkbox" >
-                                    <label for="${regionId}-sat">SAT</label>
-                                </div>
+                <div class="field-container">
+                    <input type="checkbox" class="field-checkbox" id="${regionId}-days-of-week">
+                    <label for="${regionId}-days-of-week">Day of Week</label>
+                    <div class="field-content hidden">
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="${regionId}-sun" class="day-checkbox" >
+                                <label for="${regionId}-sun">SUN</label>
                             </div>
-                        </div>
-                    </div>
-
-                    <div class="field-container">
-                        <input type="checkbox" class="field-checkbox" id="${regionId}-minimum-rate">
-                        <label for="${regionId}-minimum-rate">Minimum Rate</label>
-                        <div class="field-content hidden">
-                            <input type="number" value="4" min="0" class="minimum-rate-input">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="${regionId}-mon" class="day-checkbox" >
+                                <label for="${regionId}-mon">MON</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="${regionId}-tue" class="day-checkbox" >
+                                <label for="${regionId}-tue">TUE</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="${regionId}-wed" class="day-checkbox" >
+                                <label for="${regionId}-wed">WED</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="${regionId}-thu" class="day-checkbox" >
+                                <label for="${regionId}-thu">THU</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="${regionId}-fri" class="day-checkbox" >
+                                <label for="${regionId}-fri">FRI</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="${regionId}-sat" class="day-checkbox" >
+                                <label for="${regionId}-sat">SAT</label>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="section">
-                    <div class="section-header">
-                        <div class="section-title">2. Conditions & Expressions</div>
-                        <div class="btn btn-small" id="${regionId}-add-condition">+ Add Condition</div>
+                <div class="field-container">
+                    <input type="checkbox" class="field-checkbox" id="${regionId}-minimum-rate">
+                    <label for="${regionId}-minimum-rate">Minimum Rate</label>
+                    <div class="field-content hidden">
+                        <input type="number" value="4" min="0" class="minimum-rate-input">
                     </div>
+                </div>
+            </div>
 
-                    <div class="conditions-container" id="${regionId}-conditions-container">
-                    </div>
+            <div class="section">
+                <div class="section-header">
+                    <div class="section-title">2. Conditions & Expressions</div>
+                    <div class="btn btn-small" id="${regionId}-add-condition">+ Add Condition</div>
+                </div>
+
+                <div class="conditions-container" id="${regionId}-conditions-container">
                 </div>
             </div>
 
@@ -179,69 +177,73 @@ function addCondition(regionId) {
                 <button class="condition-remove" data-condition="${conditionId}" title="Remove Condition">×</button>
             </div>
         </div>
+        <div class="condition-body" style="display: flex; align-items: flex-start; gap: 20px;">
+            <div class="condition-fields" style="flex: 1;">
+                <div class="field-container">
+                    <input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold">
+                    <label for="${conditionId}-occupancy-threshold">Occupancy Threshold %</label>
+                    <div class="field-content hidden">
+                        <select class="operator-select occupancy-operator">
+                            ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
+                        </select>
+                        <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
+                    </div>
+                </div>
 
-        <div class="field-container">
-            <input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold">
-            <label for="${conditionId}-occupancy-threshold">Occupancy Threshold %</label>
-            <div class="field-content hidden">
-                <select class="operator-select occupancy-operator">
-                    ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
-                </select>
-                <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
-            </div>
-        </div>
+                <div class="field-container">
+                    <input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking">
+                    <label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label>
+                    <div class="field-content hidden">
+                        <select class="property-type-select property-type">
+                            <option value="">Select Type</option>
+                            ${staticData.propertyTypes.map(type => `<option value="${type}">${type}</option>`).join('')}
+                        </select>
+                        <select class="operator-select property-operator">
+                            ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
+                        </select>
+                        <input type="text" class="value-input property-value" placeholder="Value">
+                    </div>
+                </div>
 
-        <div class="field-container">
-            <input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking">
-            <label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label>
-            <div class="field-content hidden">
-                <select class="property-type-select property-type">
-                    <option value="">Select Type</option>
-                    ${staticData.propertyTypes.map(type => `<option value="${type}">${type}</option>`).join('')}
-                </select>
-                <select class="operator-select property-operator">
-                    ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
-                </select>
-                <input type="text" class="value-input property-value" placeholder="Value">
-            </div>
-        </div>
-
-        <div class="field-container">
-            <input type="checkbox" class="field-checkbox" id="${conditionId}-event-score">
-            <label for="${conditionId}-event-score">Event Score</label>
-            <div class="field-content hidden">
-                <select class="operator-select event-operator">
-                    ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
-                </select>
-                <input type="number" class="value-input event-value" value="0" min="0">
-            </div>
-        </div>
-
-        <div class="section calculation-section">
-            <div class="section-title">3. Expression/Calculation</div>
-
-            <div class="filter-row">
-                <div class="filter-group">
-                    <select class="attribute-select">
-                        <option value="">Select Attribute</option>
-                        ${staticData.attributes.map(attr => `<option value="${attr}">${attr}</option>`).join('')}
-                    </select>
-                    <select class="operator-select expression-operator">
-                        <option value="">Select Operator</option>
-                        ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
-                    </select>
-                    <select class="function-select">
-                        <option value="">Select Function</option>
-                        ${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}
-                    </select>
+                <div class="field-container">
+                    <input type="checkbox" class="field-checkbox" id="${conditionId}-event-score">
+                    <label for="${conditionId}-event-score">Event Score</label>
+                    <div class="field-content hidden">
+                        <select class="operator-select event-operator">
+                            ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
+                        </select>
+                        <input type="number" class="value-input event-value" value="0" min="0">
+                    </div>
                 </div>
             </div>
+            <div class="condition-expression" style="flex: 1.5;">
+                 <div class="section calculation-section">
+                    <div class="section-title">3. Expression/Calculation</div>
 
-            <div class="expression-container">
-                <label class="expression-label">Expression</label>
-                <textarea class="expression-textarea" placeholder="Write your expression here or build it using the controls"></textarea>
-                <div class="textarea-controls">
-                    <div class="expression-btn" data-action="clear" style="display: inline-block; width: auto;">Clear</div>
+                    <div class="filter-row">
+                        <div class="filter-group">
+                            <select class="attribute-select">
+                                <option value="">Select Attribute</option>
+                                ${staticData.attributes.map(attr => `<option value="${attr}">${attr}</option>`).join('')}
+                            </select>
+                            <select class="operator-select expression-operator">
+                                <option value="">Select Operator</option>
+                                ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
+                            </select>
+                            <select class="function-select">
+                                <option value="">Select Function</option>
+                                ${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="expression-container">
+                        <label class="expression-label">Expression</label>
+                        <textarea class="expression-textarea" placeholder="Write your expression here or build it using the controls"></textarea>
+                        <div class="textarea-controls">
+                            <div class="expression-btn" data-action="clear" style="display: inline-block; width: auto;">Clear</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -425,7 +427,7 @@ function setupRegionEventListeners(regionElement, regionId) {
         addCondition(regionId);
     });
 
-    const mainCheckboxes = regionElement.querySelectorAll('.section:nth-child(1) .field-checkbox');
+    const mainCheckboxes = regionElement.querySelectorAll('.section:first-child .field-checkbox');
     mainCheckboxes.forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const fieldContainer = this.closest('.field-container');
@@ -479,7 +481,7 @@ function getRegionData(regionElement, regionId) {
         conditions: [],
     };
 
-    const filtersSection = regionElement.querySelector('.sections-container .section:nth-child(1)');
+    const filtersSection = regionElement.querySelector('.section:first-child');
     if (filtersSection) {
         // Stay Window
         const stayWindowCheckbox = filtersSection.querySelector(`#${regionId}-stay-window`);
@@ -561,9 +563,9 @@ function getRegionData(regionElement, regionId) {
         }
     }
 
-    const conditionsSection = regionElement.querySelector('.sections-container .section:nth-child(2)');
-    if (conditionsSection) {
-        const conditionGroups = conditionsSection.querySelectorAll('.condition-group');
+    const conditionsContainer = regionElement.querySelector('.conditions-container');
+    if (conditionsContainer) {
+        const conditionGroups = conditionsContainer.querySelectorAll('.condition-group');
 
         conditionGroups.forEach((conditionGroup) => {
             const sequence = parseInt(conditionGroup.dataset.sequence, 10);
