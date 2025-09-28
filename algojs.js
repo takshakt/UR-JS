@@ -228,6 +228,7 @@ function addCondition(regionId) {
                         ${staticData.attributes.map(attr => `<option value="${attr}">${attr}</option>`).join('')}
                     </select>
                     <select class="operator-select expression-operator">
+                        <option value="">Select Operator</option>
                         ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
                     </select>
                     <select class="function-select">
@@ -245,7 +246,7 @@ function addCondition(regionId) {
                     <div class="expression-btn" data-action="append-operator">Add Operator</div>
                     <div class="expression-btn" data-action="append-function">Add Function</div>
                 </div>
-                <textarea class="expression-textarea" placeholder="Write your expression here or use the buttons above to add elements"></textarea>
+                <textarea class="expression-textarea" placeholder="Write your expression here or build it using the controls"></textarea>
             </div>
         </div>
     `;
@@ -314,10 +315,11 @@ function moveCondition(conditionElement, direction) {
     updateConditionSequence(regionId);
 }
 
-// Function to set up event listeners for a single condition
+// Function to set up event listeners for a single condition (MODIFIED)
 function setupConditionEventListeners(conditionElement) {
     const regionId = conditionElement.closest('.filter-region').id;
 
+    // --- Standard Listeners (Remove, Move, Checkboxes) ---
     conditionElement.querySelector('.condition-remove').addEventListener('click', function() {
         conditionElement.remove();
         updateConditionSequence(regionId);
@@ -330,12 +332,10 @@ function setupConditionEventListeners(conditionElement) {
         });
     });
 
-    const checkboxes = conditionElement.querySelectorAll('.field-checkbox');
-    checkboxes.forEach(checkbox => {
+    conditionElement.querySelectorAll('.field-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function() {
             const fieldContainer = this.closest('.field-container');
             const fieldContent = fieldContainer.querySelector('.field-content');
-
             if (this.checked) {
                 fieldContainer.classList.add('enabled');
                 fieldContent.classList.remove('hidden');
@@ -346,62 +346,58 @@ function setupConditionEventListeners(conditionElement) {
         });
     });
 
+    // --- Expression Area Functionality ---
     const calculationSection = conditionElement.querySelector('.calculation-section');
     const expressionTextarea = calculationSection.querySelector('.expression-textarea');
     const attributeSelect = calculationSection.querySelector('.attribute-select');
     const operatorSelect = calculationSection.querySelector('.expression-operator');
     const functionSelect = calculationSection.querySelector('.function-select');
 
-    const clearBtn = calculationSection.querySelector('.expression-btn[data-action="clear"]');
-    const appendAttrBtn = calculationSection.querySelector('.expression-btn[data-action="append-attribute"]');
-    const appendOpBtn = calculationSection.querySelector('.expression-btn[data-action="append-operator"]');
-    const appendFuncBtn = calculationSection.querySelector('.expression-btn[data-action="append-function"]');
-
-    clearBtn.addEventListener('click', function() {
+    // --- Control Buttons ---
+    calculationSection.querySelector('.expression-btn[data-action="clear"]').addEventListener('click', function() {
         expressionTextarea.value = '';
         expressionTextarea.focus();
     });
-
-    appendAttrBtn.addEventListener('click', function() {
-        if (attributeSelect.value) {
-            insertAtCursor(expressionTextarea, attributeSelect.value);
-        }
+    calculationSection.querySelector('.expression-btn[data-action="append-attribute"]').addEventListener('click', function() {
+        if (attributeSelect.value) insertAtCursor(expressionTextarea, attributeSelect.value);
     });
-
-    appendOpBtn.addEventListener('click', function() {
-        if (operatorSelect.value) {
-            insertAtCursor(expressionTextarea, ` ${operatorSelect.value} `);
-        }
+    calculationSection.querySelector('.expression-btn[data-action="append-operator"]').addEventListener('click', function() {
+        if (operatorSelect.value) insertAtCursor(expressionTextarea, ` ${operatorSelect.value} `);
     });
-
-    appendFuncBtn.addEventListener('click', function() {
+    calculationSection.querySelector('.expression-btn[data-action="append-function"]').addEventListener('click', function() {
         if (functionSelect.value) {
-            insertAtCursor(expressionTextarea, `${functionSelect.value}()`);
-            const pos = expressionTextarea.selectionStart - 1;
-            expressionTextarea.setSelectionRange(pos, pos);
-            expressionTextarea.focus();
+            const funcText = `${functionSelect.value}()`;
+            insertAtCursor(expressionTextarea, funcText);
+            const newCursorPos = expressionTextarea.selectionStart - 1;
+            expressionTextarea.setSelectionRange(newCursorPos, newCursorPos);
         }
     });
 
-    const updateExpression = () => {
-        const attribute = attributeSelect.value;
-        const operator = operatorSelect.value;
-        const func = functionSelect.value;
-
-        if (!expressionTextarea.value.trim()) {
-            if (attribute && operator && func) {
-                expressionTextarea.value = `${func}(${attribute}) ${operator} value`;
-            } else if (attribute && operator) {
-                expressionTextarea.value = `${attribute} ${operator} value`;
-            } else if (attribute) {
-                expressionTextarea.value = `${attribute} = value`;
-            }
+    // --- NEW BEHAVIOR: Dropdowns insert text directly at the cursor ---
+    attributeSelect.addEventListener('change', function() {
+        if (this.value) {
+            insertAtCursor(expressionTextarea, this.value);
+            this.value = ''; // Reset dropdown to its placeholder
         }
-    };
+    });
 
-    attributeSelect.addEventListener('change', updateExpression);
-    operatorSelect.addEventListener('change', updateExpression);
-    functionSelect.addEventListener('change', updateExpression);
+    operatorSelect.addEventListener('change', function() {
+        if (this.value) {
+            insertAtCursor(expressionTextarea, ` ${this.value} `);
+            this.value = ''; // Reset dropdown to its placeholder
+        }
+    });
+
+    functionSelect.addEventListener('change', function() {
+        if (this.value) {
+            const funcText = `${this.value}()`;
+            insertAtCursor(expressionTextarea, funcText);
+            // Move cursor inside the new parentheses
+            const newCursorPos = expressionTextarea.selectionStart - 1;
+            expressionTextarea.setSelectionRange(newCursorPos, newCursorPos);
+            this.value = ''; // Reset dropdown to its placeholder
+        }
+    });
 }
 
 
@@ -413,6 +409,7 @@ function insertAtCursor(textarea, text) {
     const after = textarea.value.substring(end, textarea.value.length);
 
     textarea.value = before + text + after;
+    // Place cursor after the inserted text
     textarea.selectionStart = textarea.selectionEnd = start + text.length;
     textarea.focus();
 }
@@ -489,7 +486,6 @@ function setupRegionEventListeners(regionElement, regionId) {
 
 /**
  * Function to get data from a region.
- * MODIFIED: Removed the 'calculation' object from the JSON output.
  * @param {HTMLElement} regionElement The filter region DOM element.
  * @param {string} regionId The ID of the region.
  * @returns {Object} The region data object.
@@ -634,7 +630,7 @@ function getRegionData(regionElement, regionId) {
                 }
             }
 
-            // Expression (MODIFIED HERE)
+            // Expression
             const calculationSection = conditionGroup.querySelector('.calculation-section');
             if (calculationSection) {
                 const expressionTextarea = calculationSection.querySelector('.expression-textarea');
