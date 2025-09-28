@@ -241,7 +241,7 @@ function addCondition(regionId) {
                 <label class="expression-label">Expression</label>
                 <textarea class="expression-textarea" placeholder="Write your expression here or build it using the controls"></textarea>
                 <div class="textarea-controls">
-                    <div class="expression-btn" data-action="clear">Clear</div>
+                    <div class="expression-btn" data-action="clear" style="display: inline-block; width: auto;">Clear</div>
                 </div>
             </div>
         </div>
@@ -311,7 +311,7 @@ function moveCondition(conditionElement, direction) {
     updateConditionSequence(regionId);
 }
 
-// Function to set up event listeners for a single condition (MODIFIED)
+// Function to set up event listeners for a single condition
 function setupConditionEventListeners(conditionElement) {
     const regionId = conditionElement.closest('.filter-region').id;
 
@@ -350,7 +350,7 @@ function setupConditionEventListeners(conditionElement) {
     const functionSelect = calculationSection.querySelector('.function-select');
 
     // --- Clear Button ---
-    calculationSection.querySelector('.expression-btn[data-action="clear"]').addEventListener('click', function() {
+    calculationSection.querySelector('[data-action="clear"]').addEventListener('click', function() {
         expressionTextarea.value = '';
         expressionTextarea.focus();
     });
