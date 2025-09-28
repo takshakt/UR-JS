@@ -83,12 +83,20 @@ function showAutocomplete(textarea, items, options) {
             const startPos = textarea.selectionStart;
             const textBefore = textarea.value.substring(0, startPos - 1);
             const textAfter = textarea.value.substring(startPos);
-            let textToInsert = (options.type === 'attribute') ? `#${item}#` : `${item}()`;
+            let textToInsert = '';
+
+            if (options.type === 'attribute') {
+                textToInsert = `#${item}# `; // Add space
+            } else if (options.type === 'function') {
+                textToInsert = `${item}() `; // Add space
+            }
             
             textarea.value = textBefore + textToInsert + textAfter;
             
             let newCursorPos = (textBefore + textToInsert).length;
-            if (options.type === 'function') newCursorPos--;
+            if (options.type === 'function') {
+                newCursorPos -= 2; // Move from after the space to inside the ()
+            }
             
             textarea.focus();
             textarea.setSelectionRange(newCursorPos, newCursorPos);
@@ -99,9 +107,9 @@ function showAutocomplete(textarea, items, options) {
     
     const coords = getCursorXY(textarea);
     autocompleteContainer.style.left = `${coords.left}px`;
-    autocompleteContainer.style.top = `${coords.top + 20}px`; // Position slightly below cursor
+    autocompleteContainer.style.top = `${coords.top + 20}px`;
     autocompleteContainer.style.display = 'block';
-    setActiveAutocompleteItem(0); // Highlight first item
+    setActiveAutocompleteItem(0);
 }
 
 function hideAutocomplete() {
@@ -305,12 +313,10 @@ function setupConditionEventListeners(conditionElement) {
         expressionTextarea.focus();
     });
 
-    // --- Autocomplete Event Listeners (MODIFIED) ---
     expressionTextarea.addEventListener('input', (e) => {
         const text = e.target.value;
         const cursorPos = e.target.selectionStart;
         const lastChar = text.substring(cursorPos - 1, cursorPos);
-
         if (lastChar === '#') {
             showAutocomplete(e.target, staticData.attributes, { type: 'attribute' });
         } else if (lastChar === '=') {
@@ -322,10 +328,8 @@ function setupConditionEventListeners(conditionElement) {
 
     expressionTextarea.addEventListener('keydown', (e) => {
         if (autocompleteContainer.style.display !== 'block') return;
-
         const items = autocompleteContainer.querySelectorAll('.autocomplete-item');
         if (!items.length) return;
-
         switch (e.key) {
             case 'ArrowDown':
                 e.preventDefault();
@@ -339,9 +343,7 @@ function setupConditionEventListeners(conditionElement) {
                 break;
             case 'Enter':
                 e.preventDefault();
-                if (activeAutocompleteIndex > -1) {
-                    items[activeAutocompleteIndex].click();
-                }
+                if (activeAutocompleteIndex > -1) items[items[activeAutocompleteIndex].click()];
                 hideAutocomplete();
                 break;
             case 'Escape':
@@ -349,11 +351,10 @@ function setupConditionEventListeners(conditionElement) {
                 break;
         }
     });
-    // --- End Autocomplete ---
 
     attributeSelect.addEventListener('change', (e) => {
         if (e.target.value) {
-            insertAtCursor(expressionTextarea, `#${e.target.value}#`);
+            insertAtCursor(expressionTextarea, `#${e.target.value}# `);
             e.target.value = '';
         }
     });
@@ -365,9 +366,9 @@ function setupConditionEventListeners(conditionElement) {
     });
     functionSelect.addEventListener('change', (e) => {
         if (e.target.value) {
-            const funcText = `${e.target.value}()`;
+            const funcText = `${e.target.value}() `;
             insertAtCursor(expressionTextarea, funcText);
-            const newCursorPos = expressionTextarea.selectionStart - 1;
+            const newCursorPos = expressionTextarea.selectionStart - 2;
             expressionTextarea.setSelectionRange(newCursorPos, newCursorPos);
             e.target.value = '';
         }
@@ -525,7 +526,6 @@ function validateRegion(regionElement) {
 
     return { isValid: errors.length === 0, errors };
 }
-
 
 function getRegionData(regionElement, regionId) {
     const data = { id: regionId, filters: {}, conditions: [] };
