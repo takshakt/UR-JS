@@ -3,15 +3,14 @@ const staticData = {
     expressionOperators: ['+', '-', '/', '*'],
     attributes: ['Occupancy', 'ADR', 'RevPAR', 'Booking Pace', 'Market Share'],
     propertyTypes: ['Hotel', 'Motel', 'Resort', 'Apartment', 'Vacation Rental'],
-    functions: ['Average', 'Sum', 'Count', 'Max', 'Min']
+    functions: ['Average', 'Sum', 'Count', 'Max', 'Min'],
+    occupancyAttributes: ['OCC1', 'OCC2']
 };
 
 let regionCounter = 0;
 let conditionCounter = 0;
 let autocompleteContainer = null;
 let activeAutocompleteIndex = -1;
-
-var savedJsonString = null; 
 
 document.addEventListener('DOMContentLoaded', function() {
     autocompleteContainer = document.createElement('div');
@@ -24,216 +23,56 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- INITIAL PAGE LOAD LOGIC ---
-    // On page load, get the initial JSON from your APEX page item
-    // *** Replace P1_SAVED_CONFIG_JSON with the actual name of your page item ***
+    // This is the user's function to load data, now integrated.
+    // It's called from their APEX Dynamic Actions (e.g., on Page Load and on LoV change).
+    // If you need to test without APEX, you can call loadFromJSON(testData) here.
+    // For a blank start in a non-APEX environment, call addFilterRegion();
     
-  //  load_data_expression();
-    
-
- 
+    document.getElementById('addRegionBtn').addEventListener('click', addFilterRegion);
+    document.getElementById('saveAllBtn').addEventListener('click', saveAllRegions);
+    document.getElementById('validateAllBtn').addEventListener('click', validateAllRegions);
 });
 
+// --- APEX DATA LOADING FUNCTION ---
+function load_data_expression() {
+    const algoListVal = apex.item("P1050_ALGO_LIST").getValue();
+    const versionVal = apex.item("P1050_VERSION").getValue();
+    const beforeParen = versionVal ? versionVal.split("(")[0].trim() : "";
 
-
-function load_data_expression(){
-    
-    var algo_list_val = document.getElementById('P1050_ALGO_LIST');
-    var version_val = document.getElementById("P1050_VERSION").value;
-    let beforeParen = version_val.split("(")[0].trim();
-
-    console.log('algo_list_val:>',algo_list_val.options[ algo_list_val.selectedIndex].value);
-    console.log('version_val:>',beforeParen);
-    apex.server.process(
-                'AJX_MANAGE_ALGO',
-                { x01: 'SELECT'
-                  ,x02: algo_list_val.options[ algo_list_val.selectedIndex].value
-                  ,x03:  beforeParen
-                  },
-                {
-                    success: function(data) { 
-                        console.log('data[0].l_payload:>>>>',data[0].l_payload);
-                        console.log('algo_list:>>', document.getElementById('P1050_ALGO_LIST').options[ document.getElementById('P1050_ALGO_LIST').selectedIndex].value); 
-                           // showSuccessMessage( ` From Package:>  ${ data[0].l_payload } `);  
-                           savedJsonString =  data[0].l_payload;
-                           
-                        
-                        let savedData = null;
-                        try {
-                        if(savedJsonString) {
-                            savedData = JSON.parse(savedJsonString);
-                        }
-                        } catch (e) {
-                        console.error("Failed to parse initial JSON data:", e);
-                        savedData = null; 
-                        }
-
-                        // Load from the parsed data, or create a fresh region if no data exists
-                        if (savedData && savedData.regions && savedData.regions.length > 0) {
-                        console.log('savedData:>',savedData);
-                        loadFromJSON(savedData);
-
-                        } else {
-                        addFilterRegion();
-                        }
-                        // --- END INITIAL PAGE LOAD LOGIC ---
-
-                       // document.getElementById('addRegionBtn').addEventListener('click', addFilterRegion);
-                        //document.getElementById('saveAllBtn').addEventListener('click', saveAllRegions);
-                      //  document.getElementById('validateAllBtn').addEventListener('click', validateAllRegions);
-
-
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        console.error('AJAX Error::>>>'+ errorThrown );
-                    }
-                }
-            );
-addFilterRegion();
- document.getElementById('addRegionBtn').addEventListener('click', addFilterRegion);
-                        document.getElementById('saveAllBtn').addEventListener('click', saveAllRegions);
-                        document.getElementById('validateAllBtn').addEventListener('click', validateAllRegions);
-
-}
-
-function loadFromJSON(savedData) {
-    const filterContainer = document.getElementById('filterContainer');
-    // Clear any existing regions (like the default one added on page load)
-    filterContainer.innerHTML = '';
-    
-    if (!savedData || !savedData.regions) {
-        console.error("Invalid or empty data provided to loadFromJSON.");
-        // If there's no saved data, add one default empty region to start.
-        addFilterRegion();
+    if (!algoListVal) {
+        loadFromJSON(null); // Load a blank state if no algorithm is selected
         return;
     }
 
-    // Create and populate each region from the saved data
-    savedData.regions.forEach(regionData => {
-        addFilterRegion(); // Creates a new, empty region
-        // Find the region we just created (it will be the last one)
-        const newRegionElement = filterContainer.lastElementChild;
-        if (newRegionElement) {
-            populateRegion(newRegionElement, regionData);
-        }
-    });
+    apex.util.showSpinner();
 
-    // After all regions are created and populated, update sequences and move buttons
-    updateRegionSequence();
-    document.querySelectorAll('.filter-region').forEach(region => {
-        updateConditionSequence(region.id);
-    });
-}
-
-/**
- * Populates a single filter region's UI elements based on its data object.
- * @param {HTMLElement} regionElement The DOM element for the filter region.
- * @param {object} regionData The JSON object for this specific region.
- */
-function populateRegion(regionElement, regionData) {
-    const regionId = regionElement.id;
-
-    // 1. Set custom name and sequence
-    regionElement.dataset.sequence = regionData.sequence;
-    const titleDisplay = regionElement.querySelector('.title-display');
-    const titleInput = regionElement.querySelector('.title-input');
-    if (titleDisplay && titleInput) {
-        titleDisplay.textContent = regionData.name;
-        titleInput.value = regionData.name;
-    }
-
-    // 2. Populate Filters
-    if (regionData.filters) {
-        for (const [filterKey, filterValue] of Object.entries(regionData.filters)) {
-            // Find the checkbox for this filter
-            const filterCheckbox = regionElement.querySelector(`[data-validates="${filterKey}"]`);
-            if (!filterCheckbox) continue;
-
-            // Check the box and dispatch a change event to show the fields
-            filterCheckbox.checked = true;
-            filterCheckbox.dispatchEvent(new Event('change'));
-
-            // Populate the specific filter's inputs
-            if (filterKey === 'stayWindow') {
-                regionElement.querySelector('.stay-window-from').value = filterValue.from;
-                regionElement.querySelector('.stay-window-to').value = filterValue.to;
-            } else if (filterKey === 'leadTime') {
-                const select = regionElement.querySelector('.load-time-select');
-                select.value = filterValue.type;
-                // Dispatch change event to create the dynamic date/number inputs
-                select.dispatchEvent(new Event('change'));
-                if (filterValue.type === 'date_range') {
-                    regionElement.querySelector('.lead-time-from').value = filterValue.from;
-                    regionElement.querySelector('.lead-time-to').value = filterValue.to;
-                } else {
-                    regionElement.querySelector('.lead-time-value').value = filterValue.value;
+    apex.server.process(
+        'AJX_MANAGE_ALGO', {
+            x01: 'SELECT',
+            x02: algoListVal,
+            x03: beforeParen
+        }, {
+            success: function(data) {
+                const savedJsonString = data && data[0] ? data[0].l_payload : null;
+                let savedData = null;
+                if (savedJsonString && savedJsonString.trim() !== '') {
+                    try {
+                        savedData = JSON.parse(savedJsonString);
+                    } catch (e) {
+                        console.error("Failed to parse JSON data from server:", e);
+                        apex.message.alert("The selected configuration data is invalid and could not be loaded.");
+                    }
                 }
-            } else if (filterKey === 'daysOfWeek') {
-                const dayMap = { 1: 'sun', 2: 'mon', 3: 'tue', 4: 'wed', 5: 'thu', 6: 'fri', 7: 'sat' };
-                filterValue.forEach(dayNumber => {
-                    const dayCheckbox = regionElement.querySelector(`#${regionId}-${dayMap[dayNumber]}`);
-                    if (dayCheckbox) dayCheckbox.checked = true;
-                });
-            } else if (filterKey === 'minimumRate') {
-                regionElement.querySelector('.minimum-rate-input').value = filterValue;
+                loadFromJSON(savedData);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('AJAX Error:', errorThrown);
+                apex.message.alert("An error occurred while fetching the configuration from the server.");
             }
         }
-    }
-
-    // 3. Populate Conditions
-    const conditionsContainer = regionElement.querySelector('.conditions-container');
-    conditionsContainer.innerHTML = ''; // Clear the default empty condition
-
-    if (regionData.conditions && regionData.conditions.length > 0) {
-        regionData.conditions.forEach(conditionData => {
-            addCondition(regionId);
-            const newConditionElement = conditionsContainer.lastElementChild;
-            if (newConditionElement) {
-                populateCondition(newConditionElement, conditionData);
-            }
-        });
-    }
-}
-
-/**
- * Populates a single condition's UI elements based on its data object.
- * @param {HTMLElement} conditionElement The DOM element for the condition group.
- * @param {object} conditionData The JSON object for this specific condition.
- */
-function populateCondition(conditionElement, conditionData) {
-    // 1. Set custom name and sequence
-    conditionElement.dataset.sequence = conditionData.sequence;
-    const titleDisplay = conditionElement.querySelector('.title-display');
-    const titleInput = conditionElement.querySelector('.title-input');
-    if (titleDisplay && titleInput) {
-        titleDisplay.textContent = conditionData.name;
-        titleInput.value = conditionData.name;
-    }
-
-    // 2. Populate condition fields
-    for (const [key, data] of Object.entries(conditionData)) {
-        const checkbox = conditionElement.querySelector(`[data-validates="${key}"]`);
-        if (checkbox) {
-            checkbox.checked = true;
-            checkbox.dispatchEvent(new Event('change'));
-            
-            // Populate inputs within the now-visible field
-            const fieldContent = checkbox.closest('.field-container').querySelector('.field-content');
-            if (key === 'occupancyThreshold' || key === 'eventScore') {
-                fieldContent.querySelector('.operator-select').value = data.operator;
-                fieldContent.querySelector('.value-input').value = data.value;
-            } else if (key === 'propertyRanking') {
-                fieldContent.querySelector('.property-type-select').value = data.type;
-                fieldContent.querySelector('.operator-select').value = data.operator;
-                fieldContent.querySelector('.value-input').value = data.value;
-            }
-        }
-    }
-
-    // 3. Populate Expression
-    if (conditionData.expression) {
-        conditionElement.querySelector('.expression-textarea').value = conditionData.expression;
-    }
+    ).always(function() {
+        apex.util.hideSpinner();
+    });
 }
 
 
@@ -399,7 +238,18 @@ function addCondition(regionId) {
         <div class="condition-body" style="display: flex; align-items: flex-start; gap: 20px;">
             <div class="condition-fields" style="flex: 3;">
                  <div class="section-title"><span>Conditions</span></div>
-                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold" data-validates="occupancyThreshold"><label for="${conditionId}-occupancy-threshold">Occupancy Threshold %</label><div class="field-content hidden"><select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input occupancy-value" value="80" min="0" max="100"></div></div>
+                <div class="field-container">
+                    <input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold" data-validates="occupancyThreshold">
+                    <label for="${conditionId}-occupancy-threshold">Occupancy Threshold %</label>
+                    <div class="field-content hidden">
+                        <select class="occupancy-attribute-select">
+                            <option value="">Select Attribute</option>
+                            ${staticData.occupancyAttributes.map(op => `<option value="${op}">${op}</option>`).join('')}
+                        </select>
+                        <select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
+                        <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
+                    </div>
+                </div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${staticData.propertyTypes.map(type => `<option value="${type}">${type}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-event-score" data-validates="eventScore"><label for="${conditionId}-event-score">Event Score</label><div class="field-content hidden"><select class="operator-select event-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input event-value" value="0" min="0"></div></div>
             </div>
@@ -754,13 +604,18 @@ function validateRegion(regionElement) {
         }
         cond.querySelectorAll('.condition-fields .field-checkbox:checked').forEach(checkbox => {
             const fc = checkbox.closest('.field-container');
+            const validationType = checkbox.dataset.validates;
             let signature = null;
             const inputs = Array.from(fc.querySelectorAll('input:not([type=checkbox]), select'));
             if (inputs.some(i => !i.value)) {
                  errors.push(`${condTitle}: A value for "${fc.querySelector('label').textContent.trim()}" is missing.`);
                  fc.classList.add('invalid-field');
             } else {
-                 signature = `${checkbox.dataset.validates}:${inputs.map(i => i.value).join(':')}`;
+                 if (validationType === 'occupancyThreshold') {
+                     signature = `${validationType}:${inputs.map(i => i.value).join(':')}`;
+                 } else {
+                     signature = `${validationType}:${inputs.map(i => i.value).join(':')}`;
+                 }
                  signatures.push({ signature, element: fc, type: 'condition' });
             }
         });
@@ -815,7 +670,13 @@ function getRegionData(regionElement) {
             sequence: parseInt(cond.dataset.sequence, 10)
         };
         
-        if (cond.querySelector(`#${cond.id}-occupancy-threshold`)?.checked) conditionData.occupancyThreshold = { operator: cond.querySelector('.occupancy-operator').value, value: parseFloat(cond.querySelector('.occupancy-value').value) };
+        if (cond.querySelector(`#${cond.id}-occupancy-threshold`)?.checked) {
+            conditionData.occupancyThreshold = {
+                attribute: cond.querySelector('.occupancy-attribute-select').value,
+                operator: cond.querySelector('.occupancy-operator').value,
+                value: parseFloat(cond.querySelector('.occupancy-value').value)
+            };
+        }
         if (cond.querySelector(`#${cond.id}-property-ranking`)?.checked) {
             const val = cond.querySelector('.property-value').value;
             conditionData.propertyRanking = { type: cond.querySelector('.property-type').value, operator: cond.querySelector('.property-operator').value, value: isNaN(parseInt(val, 10)) ? val : parseInt(val, 10) };
@@ -835,7 +696,7 @@ function validateAllRegions() {
     document.querySelectorAll('.filter-region').forEach(region => {
         const { isValid, errors } = validateRegion(region);
         const messageDiv = region.querySelector('.validation-messages');
-        messageDiv.style.display = 'none'; // Clear previous messages
+        messageDiv.style.display = 'none';
         if (!isValid) {
             allValid = false;
             messageDiv.innerHTML = `<ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
@@ -854,7 +715,6 @@ function validateAllRegions() {
 function saveAllRegions() {
     const regions = document.querySelectorAll('.filter-region');
     let allValid = true;
-   // const allData = { regions: [], timestamp: new Date().toISOString() };
     const allData = { regions: [] };
     const allSignatures = [];
 
@@ -898,34 +758,11 @@ function saveAllRegions() {
 
     if (allValid) {
         regions.forEach(region => allData.regions.push(getRegionData(region)));
-        document.getElementById('jsonOutput').textContent = 'All regions data:\n' + JSON.stringify(allData, null, 2);
-        const algo_list = document.getElementById('P1050_ALGO_LIST');
-        apex.server.process(
-                'AJX_MANAGE_ALGO',
-                { x01: 'INSERT'
-                  ,x02: algo_list.options[algo_list.selectedIndex].value 
-                  ,x03: JSON.stringify(allData, null, 2) 
-                  },
-                {
-                    success: function(data) { 
-                        console.log('algo_list:>>',algo_list.options[algo_list.selectedIndex].value);
-                        console.log('-->>',JSON.stringify(allData, null, 2));
-                            showSuccessMessage( ` From Package:>  ${ data[0].l_message } `);  
-                        
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        console.error('AJAX Error::>>>'+ errorThrown );
-                    }
-                }
-            );
-
+        apex.item("P1050_ALGO_EXPRESSION_DS").setValue(JSON.stringify(allData, null, 2));
         alert('All regions are valid and have been saved!');
     } else {
         alert('Please fix the errors in the highlighted regions before saving.');
     }
-}
-function showSuccessMessage(message) {
-    apex.message.showPageSuccess(message);
 }
 
 function insertAtCursor(textarea, text) {
@@ -934,4 +771,121 @@ function insertAtCursor(textarea, text) {
     textarea.value = textarea.value.substring(0, start) + text + textarea.value.substring(end);
     textarea.selectionStart = textarea.selectionEnd = start + text.length;
     textarea.focus();
+}
+
+// --- LOADER FUNCTIONS ---
+function loadFromJSON(savedData) {
+    const filterContainer = document.getElementById('filterContainer');
+    filterContainer.innerHTML = '';
+    
+    if (!savedData || !savedData.regions || savedData.regions.length === 0) {
+        addFilterRegion();
+        return;
+    }
+
+    savedData.regions.forEach(regionData => {
+        addFilterRegion();
+        const newRegionElement = filterContainer.lastElementChild;
+        if (newRegionElement) {
+            populateRegion(newRegionElement, regionData);
+        }
+    });
+
+    updateRegionSequence();
+    document.querySelectorAll('.filter-region').forEach(region => {
+        updateConditionSequence(region.id);
+    });
+}
+
+function populateRegion(regionElement, regionData) {
+    const regionId = regionElement.id;
+
+    regionElement.dataset.sequence = regionData.sequence;
+    const titleDisplay = regionElement.querySelector('.title-display');
+    const titleInput = regionElement.querySelector('.title-input');
+    if (titleDisplay && titleInput) {
+        titleDisplay.textContent = regionData.name;
+        titleInput.value = regionData.name;
+    }
+
+    if (regionData.filters) {
+        for (const [filterKey, filterValue] of Object.entries(regionData.filters)) {
+            const filterCheckbox = regionElement.querySelector(`[data-validates="${filterKey}"]`);
+            if (!filterCheckbox) continue;
+            filterCheckbox.checked = true;
+            filterCheckbox.dispatchEvent(new Event('change'));
+
+            if (filterKey === 'stayWindow') {
+                regionElement.querySelector('.stay-window-from').value = filterValue.from;
+                regionElement.querySelector('.stay-window-to').value = filterValue.to;
+            } else if (filterKey === 'leadTime') {
+                const select = regionElement.querySelector('.load-time-select');
+                select.value = filterValue.type;
+                select.dispatchEvent(new Event('change'));
+                if (filterValue.type === 'date_range') {
+                    regionElement.querySelector('.lead-time-from').value = filterValue.from;
+                    regionElement.querySelector('.lead-time-to').value = filterValue.to;
+                } else {
+                    regionElement.querySelector('.lead-time-value').value = filterValue.value;
+                }
+            } else if (filterKey === 'daysOfWeek') {
+                const dayMap = { 1: 'sun', 2: 'mon', 3: 'tue', 4: 'wed', 5: 'thu', 6: 'fri', 7: 'sat' };
+                filterValue.forEach(dayNumber => {
+                    const dayCheckbox = regionElement.querySelector(`#${regionId}-${dayMap[dayNumber]}`);
+                    if (dayCheckbox) dayCheckbox.checked = true;
+                });
+            } else if (filterKey === 'minimumRate') {
+                regionElement.querySelector('.minimum-rate-input').value = filterValue;
+            }
+        }
+    }
+
+    const conditionsContainer = regionElement.querySelector('.conditions-container');
+    conditionsContainer.innerHTML = '';
+
+    if (regionData.conditions && regionData.conditions.length > 0) {
+        regionData.conditions.forEach(conditionData => {
+            addCondition(regionId);
+            const newConditionElement = conditionsContainer.lastElementChild;
+            if (newConditionElement) {
+                populateCondition(newConditionElement, conditionData);
+            }
+        });
+    }
+}
+
+function populateCondition(conditionElement, conditionData) {
+    conditionElement.dataset.sequence = conditionData.sequence;
+    const titleDisplay = conditionElement.querySelector('.title-display');
+    const titleInput = conditionElement.querySelector('.title-input');
+    if (titleDisplay && titleInput) {
+        titleDisplay.textContent = conditionData.name;
+        titleInput.value = conditionData.name;
+    }
+
+    for (const [key, data] of Object.entries(conditionData)) {
+        const checkbox = conditionElement.querySelector(`[data-validates="${key}"]`);
+        if (checkbox) {
+            checkbox.checked = true;
+            checkbox.dispatchEvent(new Event('change'));
+            
+            const fieldContent = checkbox.closest('.field-container').querySelector('.field-content');
+            if (key === 'occupancyThreshold') {
+                fieldContent.querySelector('.occupancy-attribute-select').value = data.attribute;
+                fieldContent.querySelector('.operator-select').value = data.operator;
+                fieldContent.querySelector('.value-input').value = data.value;
+            } else if (key === 'eventScore') {
+                fieldContent.querySelector('.operator-select').value = data.operator;
+                fieldContent.querySelector('.value-input').value = data.value;
+            } else if (key === 'propertyRanking') {
+                fieldContent.querySelector('.property-type-select').value = data.type;
+                fieldContent.querySelector('.operator-select').value = data.operator;
+                fieldContent.querySelector('.value-input').value = data.value;
+            }
+        }
+    }
+
+    if (conditionData.expression) {
+        conditionElement.querySelector('.expression-textarea').value = conditionData.expression;
+    }
 }
