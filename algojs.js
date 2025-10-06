@@ -1,14 +1,18 @@
 const staticData = {
     operators: ['=', '!=', '>', '<', '>=', '<='],
     expressionOperators: ['+', '-', '/', '*'],
-    attributes: ['OWN HOTEL RANK (LOS)', 'COMP SET R1 RATE (LOS)', 'COMP SET R2 RATE (LOS)','COMP SET R3 RATE (LOS)','COMP SET R4 RATE (LOS)', 'COMP SET R5 RATE (LOS)','OWN HOTEL RATE (LOS)', 'CURRENT RATE (RMS)'],
-    propertyTypes: ['LoS1', 'LoS3', 'LoS1 7D Change'],
-    functions: ['Average', 'Sum', 'Count', 'Max', 'Min'],
-    occupancyAttributes: ['MY OTB (LOS1)', 'MY OTB (LOS3)']
+    functions: ['Average', 'Sum', 'Count', 'Max', 'Min']
+};
+
+let dynamicData = {
+    attributes: [],
+    propertyTypes: [],
+    occupancyAttributes: []
 };
 
 let regionCounter = 0;
 let conditionCounter = 0;
+let lovRequestCounter = 0;
 let autocompleteContainer = null;
 let activeAutocompleteIndex = -1;
 
@@ -23,56 +27,124 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // This is the user's function to load data, now integrated.
-    // It's called from their APEX Dynamic Actions (e.g., on Page Load and on LoV change).
-    // If you need to test without APEX, you can call loadFromJSON(testData) here.
-    // For a blank start in a non-APEX environment, call addFilterRegion();
-    
     document.getElementById('addRegionBtn').addEventListener('click', addFilterRegion);
     document.getElementById('saveAllBtn').addEventListener('click', saveAllRegions);
     document.getElementById('validateAllBtn').addEventListener('click', validateAllRegions);
 });
 
-// --- APEX DATA LOADING FUNCTION ---
+// --- APEX DATA LOADING FUNCTIONS ---
+// Replace your entire load_data_expression function with this one
 function load_data_expression() {
+    const hotelId = apex.item("P_HOTEL_ID").getValue();
     const algoListVal = apex.item("P1050_ALGO_LIST").getValue();
     const versionVal = apex.item("P1050_VERSION").getValue();
     const beforeParen = versionVal ? versionVal.split("(")[0].trim() : "";
 
-    if (!algoListVal) {
-        loadFromJSON(null); // Load a blank state if no algorithm is selected
-        return;
-    }
+    // Step 1: Fetch the LOV data first
+    fetchAndApplyLovData(hotelId)
+        .then(() => {
+            // This block only runs AFTER fetchAndApplyLovData is successful
 
-    apex.util.showSpinner();
+            // If there's no algorithm selected, just build a default UI and stop.
+            if (!algoListVal) {
+                loadFromJSON(null);
+                return;
+            }
 
-    apex.server.process(
-        'AJX_MANAGE_ALGO', {
-            x01: 'SELECT',
-            x02: algoListVal,
-            x03: beforeParen
-        }, {
-            success: function(data) {
-                const savedJsonString = data && data[0] ? data[0].l_payload : null;
-                let savedData = null;
-                if (savedJsonString && savedJsonString.trim() !== '') {
-                    try {
-                        savedData = JSON.parse(savedJsonString);
-                    } catch (e) {
-                        console.error("Failed to parse JSON data from server:", e);
-                        apex.message.alert("The selected configuration data is invalid and could not be loaded.");
+            // Step 2: Now that LOVs are loaded, fetch the saved algorithm
+            apex.util.showSpinner();
+            apex.server.process(
+                'AJX_MANAGE_ALGO',
+                { x01: 'SELECT', x02: algoListVal, x03: beforeParen },
+                {
+                    success: function(data) {
+                        const savedJsonString = data && data[0] ? data[0].l_payload : null;
+                        let savedData = null;
+                        if (savedJsonString && savedJsonString.trim() !== '') {
+                            try {
+                                savedData = JSON.parse(savedJsonString);
+                            } catch (e) {
+                                console.error("Failed to parse JSON data:", e);
+                                apex.message.alert("The selected configuration is invalid.");
+                            }
+                        }
+                        // Step 3: ONLY NOW, with all data present, build the UI
+                        loadFromJSON(savedData);
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.error('AJAX Error:', errorThrown);
+                        apex.message.alert("An error occurred while fetching the configuration.");
                     }
                 }
-                loadFromJSON(savedData);
+            ).always(() => apex.util.hideSpinner());
+        })
+        .catch(error => {
+            console.error("A critical error occurred in the loading sequence:", error);
+            apex.message.alert("A critical error occurred while initializing the page.");
+        });
+}
+
+
+function fetchAndApplyLovData(hotelId) {
+    return new Promise((resolve, reject) => {
+        if (!hotelId) {
+            dynamicData = { attributes: [], propertyTypes: [], occupancyAttributes: [] };
+            updateAllDropdowns();
+            return resolve();
+        }
+
+        const spinner = apex.widget.waitPopup();
+
+        apex.server.process('GET_LOV_DATA', { x01: hotelId }, {
+            success: function(data) {
+                spinner.remove();
+                try {
+                    const parsedData = (typeof data === 'string') ? JSON.parse(data) : data;
+                    if (parsedData.error) {
+                        console.error("Error from GET_LOV_DATA:", parsedData.error);
+                        return reject(parsedData.error);
+                    }
+                    dynamicData = parsedData; // Store the data
+                    updateAllDropdowns(); // Update any existing dropdowns
+                    resolve(); // Signal success
+                } catch (e) {
+                    console.error("Failed to parse LoV data:", e);
+                    reject(e);
+                }
             },
             error: function(jqXHR, textStatus, errorThrown) {
-                console.error('AJAX Error:', errorThrown);
-                apex.message.alert("An error occurred while fetching the configuration from the server.");
-            }
-        }
-    ).always(function() {
-        apex.util.hideSpinner();
+                spinner.remove();
+                console.error("Failed to fetch LoV data:", textStatus, errorThrown);
+                reject(errorThrown);
+            },
+            dataType: "json"
+        });
     });
+}
+
+function updateAllDropdowns() {
+    const populateSelect = (selectElement, dataArray, prompt) => {
+        if (!selectElement) return;
+        const currentValue = selectElement.value;
+        selectElement.innerHTML = '';
+        const promptOption = document.createElement('option');
+        promptOption.value = '';
+        promptOption.textContent = prompt;
+        selectElement.appendChild(promptOption);
+        dataArray.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item;
+            option.textContent = item;
+            selectElement.appendChild(option);
+        });
+        if (dataArray.includes(currentValue)) {
+            selectElement.value = currentValue;
+        }
+    };
+
+    document.querySelectorAll('.attribute-select').forEach(el => populateSelect(el, dynamicData.attributes, 'Select Attribute'));
+    document.querySelectorAll('.property-type-select').forEach(el => populateSelect(el, dynamicData.propertyTypes, 'Select Type'));
+    document.querySelectorAll('.occupancy-attribute-select').forEach(el => populateSelect(el, dynamicData.occupancyAttributes, 'Select Attribute'));
 }
 
 
@@ -213,6 +285,7 @@ function addFilterRegion() {
 }
 
 function addCondition(regionId) {
+    console.log('Inside addCondition, attributes count:', (dynamicData.attributes || []).length);
     conditionCounter++;
     const conditionId = `condition-${regionCounter}-${conditionCounter}`;
     const conditionsContainer = document.getElementById(`${regionId}-conditions-container`);
@@ -244,19 +317,19 @@ function addCondition(regionId) {
                     <div class="field-content hidden">
                         <select class="occupancy-attribute-select">
                             <option value="">Select Attribute</option>
-                            ${staticData.occupancyAttributes.map(op => `<option value="${op}">${op}</option>`).join('')}
+                            ${(dynamicData.occupancyAttributes || []).map(op => `<option value="${op}">${op}</option>`).join('')}
                         </select>
                         <select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
                         <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
                     </div>
                 </div>
-                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${staticData.propertyTypes.map(type => `<option value="${type}">${type}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div>
+                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${(dynamicData.propertyTypes || []).map(type => `<option value="${type}">${type}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-event-score" data-validates="eventScore"><label for="${conditionId}-event-score">Event Score</label><div class="field-content hidden"><select class="operator-select event-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input event-value" value="0" min="0"></div></div>
             </div>
             <div class="condition-expression" style="flex: 2; border-left: 1px solid #444; padding-left: 20px;">
                  <div class="section calculation-section" style="padding: 0; border: none; background: none;">
                     <div class="section-title"><span>Expression</span></div>
-                    <div class="filter-row"><div class="filter-group"><select class="attribute-select"><option value="">Select Attribute</option>${staticData.attributes.map(attr => `<option value="${attr}">${attr}</option>`).join('')}</select><select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select></div></div>
+                    <div class="filter-row"><div class="filter-group"><select class="attribute-select"><option value="">Select Attribute</option>${(dynamicData.attributes || []).map(attr => `<option value="${attr}">${attr}</option>`).join('')}</select><select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select></div></div>
                     <div class="expression-container"><textarea class="expression-textarea" placeholder="Type # for attributes or = for functions..."></textarea><div class="textarea-controls"><div class="btn btn-small" data-action="clear">Clear</div><div class="btn btn-small btn-secondary" data-action="validate-expression">Validate</div></div></div>
                 </div>
             </div>
@@ -319,7 +392,7 @@ function setupConditionEventListeners(conditionElement) {
         const text = e.target.value;
         const cursorPos = e.target.selectionStart;
         const lastChar = text.substring(cursorPos - 1, cursorPos);
-        if (lastChar === '#') showAutocomplete(e.target, staticData.attributes, { type: 'attribute' });
+        if (lastChar === '#') showAutocomplete(e.target, dynamicData.attributes, { type: 'attribute' });
         else if (lastChar === '=') showAutocomplete(e.target, staticData.functions, { type: 'function' });
         else hideAutocomplete();
     });
@@ -514,7 +587,7 @@ function validateSingleExpression(expressionTextarea) {
         let tempExpression = expression;
         const attributeTokens = tempExpression.match(/#[^#]+#/g) || [];
         for (const token of attributeTokens) {
-            if (!staticData.attributes.includes(token.slice(1, -1))) errors.push(`Invalid attribute: "${token}"`);
+            if (!dynamicData.attributes.includes(token.slice(1, -1))) errors.push(`Invalid attribute: "${token}"`);
         }
         tempExpression = tempExpression.replace(/#[^#]+#/g, '1');
         staticData.functions.forEach(func => {
@@ -611,11 +684,7 @@ function validateRegion(regionElement) {
                  errors.push(`${condTitle}: A value for "${fc.querySelector('label').textContent.trim()}" is missing.`);
                  fc.classList.add('invalid-field');
             } else {
-                 if (validationType === 'occupancyThreshold') {
-                     signature = `${validationType}:${inputs.map(i => i.value).join(':')}`;
-                 } else {
-                     signature = `${validationType}:${inputs.map(i => i.value).join(':')}`;
-                 }
+                 signature = `${validationType}:${inputs.map(i => i.value).join(':')}`;
                  signatures.push({ signature, element: fc, type: 'condition' });
             }
         });
@@ -759,7 +828,7 @@ function saveAllRegions() {
     if (allValid) {
         regions.forEach(region => allData.regions.push(getRegionData(region)));
         apex.item("P1050_ALGO_EXPRESSION_DS").setValue(JSON.stringify(allData, null, 2));
-        alert('All regions are valid and have been saved!');
+        apex.message.showPageSuccess("All regions are valid and have been saved!");
     } else {
         alert('Please fix the errors in the highlighted regions before saving.');
     }
@@ -775,6 +844,7 @@ function insertAtCursor(textarea, text) {
 
 // --- LOADER FUNCTIONS ---
 function loadFromJSON(savedData) {
+
     const filterContainer = document.getElementById('filterContainer');
     filterContainer.innerHTML = '';
     
