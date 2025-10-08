@@ -796,6 +796,7 @@ function validateAllRegions() {
 }
 
 function saveAllRegions() {
+    // --- Step 1: Validation (Unchanged) ---
     const regions = document.querySelectorAll('.filter-region');
     let allValid = true;
     const allData = { regions: [] };
@@ -813,13 +814,13 @@ function saveAllRegions() {
         allSignatures.push(...signatures.map(s => ({ ...s, region })));
     });
 
+    // ... (The rest of your validation logic for duplicates remains here) ...
     const filterSignatures = allSignatures.filter(s => s.type === 'filter');
     const signatureCounts = filterSignatures.reduce((acc, { signature }) => {
         acc[signature] = (acc[signature] || 0) + 1;
         return acc;
     }, {});
     const duplicateSignatures = Object.keys(signatureCounts).filter(sig => signatureCounts[sig] > 1);
-
     if (duplicateSignatures.length > 0) {
         allValid = false;
         const errorRegions = new Set();
@@ -839,14 +840,80 @@ function saveAllRegions() {
         });
     }
 
+
+    // --- Step 2: AJAX Call ---
     if (allValid) {
         regions.forEach(region => allData.regions.push(getRegionData(region)));
-        apex.item("P1050_ALGO_EXPRESSION_DS").setValue(JSON.stringify(allData, null, 2));
-        apex.message.showPageSuccess("All regions are valid and have been saved!");
+        const jsonPayloadString = JSON.stringify(allData, null, 2);
+        
+        const algoListValue = apex.item("P1050_ALGO_LIST").getValue();
+        const algoName = apex.item("P1050_NAME").getValue();
+        const algoDesc = apex.item("P1050_DESCRIPTION").getValue();
+        const hotelId = apex.item("P1050_HOTEL_LIST").getValue(); // NEW: Get the hotel ID
+
+        let mode = '';
+        let ajaxPayload = {};
+
+        // Use the safer check for the "Create New" case
+        if (algoListValue === '00' || !algoListValue) {
+            mode = 'I';
+            if (!algoName) {
+                alert('Please provide a name for the new algorithm.');
+                return;
+            }
+            if (!hotelId) { // Safety check for hotel ID
+                alert('A valid hotel must be selected to create a new algorithm.');
+                return;
+            }
+            ajaxPayload = { 
+                x01: mode, 
+                x03: algoName, 
+                x04: algoDesc,
+                x05: hotelId // ADDED: Pass the hotel ID as parameter x05
+            };
+        } else {
+            mode = 'U';
+            ajaxPayload = { 
+                x01: mode, 
+                x02: algoListValue 
+            };
+        }
+        
+        // Split the large JSON string into an array (for older APEX compatibility)
+        const chunks = jsonPayloadString.match(/[\s\S]{1,4000}/g) || [];
+        ajaxPayload.f01 = chunks; 
+
+        apex.util.showSpinner();
+        
+        apex.server.process(
+            'SAVE_ALGORITHM_DATA',
+            ajaxPayload,
+            {
+                success: function(pData) {
+                    if (pData.success) {
+                        apex.message.showPageSuccess(pData.message);
+                        apex.submit('SAVE');
+                    } else {
+                        console.error("Server-side save error:", pData.message);
+                        apex.message.alert("Save failed: " + pData.message);
+                    }
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    console.error("AJAX call failed:", errorThrown);
+                    apex.message.alert("A critical error occurred while trying to save.");
+                },
+                dataType: "json"
+            }
+        ).always(() => {
+            apex.util.hideSpinner();
+        });
+
     } else {
         alert('Please fix the errors in the highlighted regions before saving.');
     }
 }
+
+
 
 function insertAtCursor(textarea, text) {
     const start = textarea.selectionStart;
