@@ -43,7 +43,7 @@ function load_data_expression() {
         return;
     }
 
-    apex.util.showSpinner();
+    var lSpinner$ = apex.util.showSpinner();
     apex.server.process(
         'AJX_MANAGE_ALGO',
         { x01: 'SELECT', x02: algoListVal, x03: beforeParen },
@@ -66,7 +66,7 @@ function load_data_expression() {
                 apex.message.alert("An error occurred while fetching the configuration.");
             }
         }
-    ).always(() => apex.util.hideSpinner());
+    ).always(() => lSpinner$.remove());
 }
 
 
