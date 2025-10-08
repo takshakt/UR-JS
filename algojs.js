@@ -33,59 +33,49 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // --- APEX DATA LOADING FUNCTIONS ---
-// Replace your entire load_data_expression function with this one
 function load_data_expression() {
-    const hotelId = apex.item("P_HOTEL_ID").getValue();
     const algoListVal = apex.item("P1050_ALGO_LIST").getValue();
     const versionVal = apex.item("P1050_VERSION").getValue();
     const beforeParen = versionVal ? versionVal.split("(")[0].trim() : "";
 
-    // Step 1: Fetch the LOV data first
-    fetchAndApplyLovData(hotelId)
-        .then(() => {
-            // This block only runs AFTER fetchAndApplyLovData is successful
+    if (!algoListVal) {
+        loadFromJSON(null);
+        return;
+    }
 
-            // If there's no algorithm selected, just build a default UI and stop.
-            if (!algoListVal) {
-                loadFromJSON(null);
-                return;
-            }
-
-            // Step 2: Now that LOVs are loaded, fetch the saved algorithm
-            apex.util.showSpinner();
-            apex.server.process(
-                'AJX_MANAGE_ALGO',
-                { x01: 'SELECT', x02: algoListVal, x03: beforeParen },
-                {
-                    success: function(data) {
-                        const savedJsonString = data && data[0] ? data[0].l_payload : null;
-                        let savedData = null;
-                        if (savedJsonString && savedJsonString.trim() !== '') {
-                            try {
-                                savedData = JSON.parse(savedJsonString);
-                            } catch (e) {
-                                console.error("Failed to parse JSON data:", e);
-                                apex.message.alert("The selected configuration is invalid.");
-                            }
-                        }
-                        // Step 3: ONLY NOW, with all data present, build the UI
-                        loadFromJSON(savedData);
-                    },
-                    error: function(jqXHR, textStatus, errorThrown) {
-                        console.error('AJAX Error:', errorThrown);
-                        apex.message.alert("An error occurred while fetching the configuration.");
+    apex.util.showSpinner();
+    apex.server.process(
+        'AJX_MANAGE_ALGO',
+        { x01: 'SELECT', x02: algoListVal, x03: beforeParen },
+        {
+            success: function(data) {
+                const savedJsonString = data && data[0] ? data[0].l_payload : null;
+                let savedData = null;
+                if (savedJsonString && savedJsonString.trim() !== '') {
+                    try {
+                        savedData = JSON.parse(savedJsonString);
+                    } catch (e) {
+                        console.error("Failed to parse JSON data:", e);
+                        apex.message.alert("The selected configuration is invalid.");
                     }
                 }
-            ).always(() => apex.util.hideSpinner());
-        })
-        .catch(error => {
-            console.error("A critical error occurred in the loading sequence:", error);
-            apex.message.alert("A critical error occurred while initializing the page.");
-        });
+                loadFromJSON(savedData);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error('AJAX Error loading algorithm:', errorThrown);
+                apex.message.alert("An error occurred while fetching the configuration.");
+            }
+        }
+    ).always(() => apex.util.hideSpinner());
 }
 
 
 function fetchAndApplyLovData(hotelId) {
+    // --- DIAGNOSTIC TRACE ---
+    console.warn('fetchAndApplyLovData() was called. See trace below.');
+    console.trace();
+    // --- END TRACE ---
+
     return new Promise((resolve, reject) => {
         if (!hotelId) {
             dynamicData = { attributes: [], propertyTypes: [], occupancyAttributes: [] };
@@ -104,9 +94,9 @@ function fetchAndApplyLovData(hotelId) {
                         console.error("Error from GET_LOV_DATA:", parsedData.error);
                         return reject(parsedData.error);
                     }
-                    dynamicData = parsedData; // Store the data
-                    updateAllDropdowns(); // Update any existing dropdowns
-                    resolve(); // Signal success
+                    dynamicData = parsedData;
+                    updateAllDropdowns();
+                    resolve();
                 } catch (e) {
                     console.error("Failed to parse LoV data:", e);
                     reject(e);
@@ -123,30 +113,54 @@ function fetchAndApplyLovData(hotelId) {
 }
 
 function updateAllDropdowns() {
+    // --- DIAGNOSTIC TRACE ---
+    console.warn('updateAllDropdowns() was called. See trace below. Check if dynamicData is empty.');
+    // Log a copy of the data to see its state at this exact moment
+    console.log('Current dynamicData:', JSON.parse(JSON.stringify(dynamicData)));
+    console.trace();
+    // --- END TRACE ---
+
     const populateSelect = (selectElement, dataArray, prompt) => {
-        if (!selectElement) return;
+        if (!selectElement) {
+            console.error('populateSelect was called with a non-existent element.');
+            return;
+        }
+
         const currentValue = selectElement.value;
         selectElement.innerHTML = '';
         const promptOption = document.createElement('option');
         promptOption.value = '';
         promptOption.textContent = prompt;
         selectElement.appendChild(promptOption);
+
+        if (!dataArray || !Array.isArray(dataArray)) {
+            return;
+        }
+
         dataArray.forEach(item => {
             const option = document.createElement('option');
             option.value = item;
             option.textContent = item;
             selectElement.appendChild(option);
         });
+
         if (dataArray.includes(currentValue)) {
             selectElement.value = currentValue;
         }
     };
 
-    document.querySelectorAll('.attribute-select').forEach(el => populateSelect(el, dynamicData.attributes, 'Select Attribute'));
-    document.querySelectorAll('.property-type-select').forEach(el => populateSelect(el, dynamicData.propertyTypes, 'Select Type'));
-    document.querySelectorAll('.occupancy-attribute-select').forEach(el => populateSelect(el, dynamicData.occupancyAttributes, 'Select Attribute'));
-}
+    document.querySelectorAll('.attribute-select').forEach(el => {
+        populateSelect(el, dynamicData.attributes, 'Select Attribute');
+    });
 
+    document.querySelectorAll('.property-type-select').forEach(el => {
+        populateSelect(el, dynamicData.propertyTypes, 'Select Type');
+    });
+
+    document.querySelectorAll('.occupancy-attribute-select').forEach(el => {
+        populateSelect(el, dynamicData.occupancyAttributes, 'Select Attribute');
+    });
+}
 
 // --- AUTOCOMPLETE HELPER FUNCTIONS ---
 function getCursorXY(textarea) {
@@ -844,6 +858,10 @@ function insertAtCursor(textarea, text) {
 
 // --- LOADER FUNCTIONS ---
 function loadFromJSON(savedData) {
+    // --- DIAGNOSTIC TRACE ---
+    console.warn('loadFromJSON() was called. See trace below.');
+    console.trace();
+    // --- END TRACE ---
 
     const filterContainer = document.getElementById('filterContainer');
     filterContainer.innerHTML = '';
@@ -959,3 +977,4 @@ function populateCondition(conditionElement, conditionData) {
         conditionElement.querySelector('.expression-textarea').value = conditionData.expression;
     }
 }
+
