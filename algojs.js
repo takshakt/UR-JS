@@ -147,12 +147,18 @@ function updateAllDropdowns() {
 
         dataArray.forEach(item => {
             const option = document.createElement('option');
-            option.value = item;
-            option.textContent = item;
+            // option.value = item;
+            // option.textContent = item;
+            option.value = item.id;
+            option.textContent = item.name;
             selectElement.appendChild(option);
+
+            if (item.id === currentValue) {
+                valueExists = true;
+            }
         });
 
-        if (dataArray.includes(currentValue)) {
+        if (valueExists) {
             selectElement.value = currentValue;
         }
     };
@@ -209,13 +215,18 @@ function showAutocomplete(textarea, items, options) {
     items.forEach((item, index) => {
         const div = document.createElement('div');
         div.className = 'autocomplete-item';
-        div.textContent = item;
+        // div.textContent = item;
+        div.textContent = (options.type === 'attribute') ? item.name : item;
         div.addEventListener('mouseover', () => setActiveAutocompleteItem(index));
         div.addEventListener('click', () => {
             const startPos = textarea.selectionStart;
             const textBefore = textarea.value.substring(0, startPos - 1);
             const textAfter = textarea.value.substring(startPos);
-            let textToInsert = (options.type === 'attribute') ? `#${item}# ` : `${item}() `;
+
+            // let textToInsert = (options.type === 'attribute') ? `#${item}# ` : `${item}() `;
+            const itemName = (options.type === 'attribute') ? item.name : item;
+            let textToInsert = (options.type === 'attribute') ? `#${itemName}# ` : `${itemName}() `;
+            
             textarea.value = textBefore + textToInsert + textAfter;
             let newCursorPos = (textBefore + textToInsert).length;
             if (options.type === 'function') newCursorPos -= 2;
@@ -306,6 +317,62 @@ function addFilterRegion() {
     updateRegionSequence();
 }
 
+// function addCondition(regionId) {
+//     console.log('Inside addCondition, attributes count:', (dynamicData.attributes || []).length);
+//     conditionCounter++;
+//     const conditionId = `condition-${regionCounter}-${conditionCounter}`;
+//     const conditionsContainer = document.getElementById(`${regionId}-conditions-container`);
+//     const defaultName = `Condition ${conditionsContainer.children.length + 1}`;
+//     const conditionElement = document.createElement('div');
+//     conditionElement.className = 'condition-group';
+//     conditionElement.id = conditionId;
+
+//     conditionElement.innerHTML = `
+//         <div class="condition-header">
+//             <div class="condition-title editable-title">
+//                 <span class="toggle-icon condition-toggle">▼</span>
+//                 <span class="condition-sequence">${conditionsContainer.children.length + 1}.</span>
+//                 <span class="title-display">${defaultName}</span>
+//                 <input type="text" class="title-input hidden" value="${defaultName}" />
+//             </div>
+//             <div class="control-group condition-controls">
+//                 <button class="btn btn-small condition-move up" data-direction="up" title="Move Up">▲</button>
+//                 <button class="btn btn-small condition-move down" data-direction="down" title="Move Down">▼</button>
+//                 <button class="btn btn-small btn-danger condition-remove" title="Remove Condition">×</button>
+//             </div>
+//         </div>
+//         <div class="condition-body" style="display: flex; align-items: flex-start; gap: 20px;">
+//             <div class="condition-fields" style="flex: 3;">
+//                  <div class="section-title"><span>Conditions</span></div>
+//                 <div class="field-container">
+//                     <input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold" data-validates="occupancyThreshold">
+//                     <label for="${conditionId}-occupancy-threshold">Occupancy Threshold %</label>
+//                     <div class="field-content hidden">
+//                         <select class="occupancy-attribute-select">
+//                             <option value="">Select Attribute</option>
+//                             ${(dynamicData.occupancyAttributes || []).map(op => `<option value="${op}">${op}</option>`).join('')}
+//                         </select>
+//                         <select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
+//                         <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
+//                     </div>
+//                 </div>
+//                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${(dynamicData.propertyTypes || []).map(type => `<option value="${type}">${type}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div>
+//                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-event-score" data-validates="eventScore"><label for="${conditionId}-event-score">Event Score</label><div class="field-content hidden"><select class="operator-select event-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input event-value" value="0" min="0"></div></div>
+//             </div>
+//             <div class="condition-expression" style="flex: 2; border-left: 1px solid #444; padding-left: 20px;">
+//                  <div class="section calculation-section" style="padding: 0; border: none; background: none;">
+//                     <div class="section-title"><span>Expression</span></div>
+//                     <div class="filter-row"><div class="filter-group"><select class="attribute-select"><option value="">Select Attribute</option>${(dynamicData.attributes || []).map(attr => `<option value="${attr}">${attr}</option>`).join('')}</select><select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select></div></div>
+//                     <div class="expression-container"><textarea class="expression-textarea" placeholder="Type # for attributes or = for functions..."></textarea><div class="textarea-controls"><div class="btn btn-small" data-action="clear">Clear</div><div class="btn btn-small btn-secondary" data-action="validate-expression">Validate</div></div></div>
+//                 </div>
+//             </div>
+//         </div>`;
+
+//     conditionsContainer.appendChild(conditionElement);
+//     setupConditionEventListeners(conditionElement);
+//     updateConditionSequence(regionId);
+// }
+
 function addCondition(regionId) {
     console.log('Inside addCondition, attributes count:', (dynamicData.attributes || []).length);
     conditionCounter++;
@@ -332,26 +399,26 @@ function addCondition(regionId) {
         </div>
         <div class="condition-body" style="display: flex; align-items: flex-start; gap: 20px;">
             <div class="condition-fields" style="flex: 3;">
-                 <div class="section-title"><span>Conditions</span></div>
+                <div class="section-title"><span>Conditions</span></div>
                 <div class="field-container">
                     <input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold" data-validates="occupancyThreshold">
                     <label for="${conditionId}-occupancy-threshold">Occupancy Threshold %</label>
                     <div class="field-content hidden">
                         <select class="occupancy-attribute-select">
                             <option value="">Select Attribute</option>
-                            ${(dynamicData.occupancyAttributes || []).map(op => `<option value="${op}">${op}</option>`).join('')}
+                            ${(dynamicData.occupancyAttributes || []).map(op => `<option value="${op.id}">${op.name}</option>`).join('')}
                         </select>
                         <select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
                         <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
                     </div>
                 </div>
-                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${(dynamicData.propertyTypes || []).map(type => `<option value="${type}">${type}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div>
+                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${(dynamicData.propertyTypes || []).map(type => `<option value="${type.id}">${type.name}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-event-score" data-validates="eventScore"><label for="${conditionId}-event-score">Event Score</label><div class="field-content hidden"><select class="operator-select event-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input event-value" value="0" min="0"></div></div>
             </div>
             <div class="condition-expression" style="flex: 2; border-left: 1px solid #444; padding-left: 20px;">
-                 <div class="section calculation-section" style="padding: 0; border: none; background: none;">
+                <div class="section calculation-section" style="padding: 0; border: none; background: none;">
                     <div class="section-title"><span>Expression</span></div>
-                    <div class="filter-row"><div class="filter-group"><select class="attribute-select"><option value="">Select Attribute</option>${(dynamicData.attributes || []).map(attr => `<option value="${attr}">${attr}</option>`).join('')}</select><select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select></div></div>
+                    <div class="filter-row"><div class="filter-group"><select class="attribute-select"><option value="">Select Attribute</option>${(dynamicData.attributes || []).map(attr => `<option value="${attr.id}">${attr.name}</option>`).join('')}</select><select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select></div></div>
                     <div class="expression-container"><textarea class="expression-textarea" placeholder="Type # for attributes or = for functions..."></textarea><div class="textarea-controls"><div class="btn btn-small" data-action="clear">Clear</div><div class="btn btn-small btn-secondary" data-action="validate-expression">Validate</div></div></div>
                 </div>
             </div>
@@ -429,12 +496,29 @@ function setupConditionEventListeners(conditionElement) {
             case 'Escape': hideAutocomplete(); break;
         }
     });
+    // attributeSelect.addEventListener('change', (e) => {
+    //     if (e.target.value) {
+    //         insertAtCursor(expressionTextarea, `#${e.target.value}# `);
+    //         e.target.value = '';
+    //     }
+    // });
+
     attributeSelect.addEventListener('change', (e) => {
         if (e.target.value) {
-            insertAtCursor(expressionTextarea, `#${e.target.value}# `);
-            e.target.value = '';
+            // --- THIS IS THE FIX ---
+            // 1. Get the selected <option> element
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            // 2. Get its visible text
+            const attributeName = selectedOption.text;
+            
+            // 3. Insert the name, not the value (ID)
+            insertAtCursor(expressionTextarea, `#${attributeName}# `);
+            // -------------------------
+            
+            e.target.value = ''; // Reset the dropdown
         }
     });
+
     operatorSelect.addEventListener('change', (e) => {
         if (e.target.value) {
             insertAtCursor(expressionTextarea, ` ${e.target.value} `);
@@ -606,11 +690,25 @@ function validateSingleExpression(expressionTextarea) {
     if(expression === '') {
         errors.push('Expression cannot be empty.');
     } else {
+        // let tempExpression = expression;
+        // const attributeTokens = tempExpression.match(/#[^#]+#/g) || [];
+        // for (const token of attributeTokens) {
+        //     if (!dynamicData.attributes.includes(token.slice(1, -1))) errors.push(`Invalid attribute: "${token}"`);
+        // }
+
+        const validAttributeNames = dynamicData.attributes.map(attr => attr.name);
+        
         let tempExpression = expression;
         const attributeTokens = tempExpression.match(/#[^#]+#/g) || [];
+        
         for (const token of attributeTokens) {
-            if (!dynamicData.attributes.includes(token.slice(1, -1))) errors.push(`Invalid attribute: "${token}"`);
+            const attributeName = token.slice(1, -1); // Get the name from between the '#'
+            // 2. Check if the extracted name exists in our new array of names.
+            if (!validAttributeNames.includes(attributeName)) {
+                errors.push(`Invalid attribute: "${token}"`);
+            }
         }
+
         tempExpression = tempExpression.replace(/#[^#]+#/g, '1');
         staticData.functions.forEach(func => {
             const funcRegex = new RegExp(`${func}\\([^)]*\\)`, 'gi');
