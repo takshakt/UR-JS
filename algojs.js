@@ -873,8 +873,14 @@ function getRegionData(regionElement) {
         if (cond.querySelector(`#${cond.id}-event-score`)?.checked) conditionData.eventScore = { operator: cond.querySelector('.event-operator').value, value: parseFloat(cond.querySelector('.event-value').value) };
         
         const expression = cond.querySelector('.expression-textarea').value.trim();
-        if (expression) conditionData.expression = expression;
+        // if (expression) conditionData.expression = expression;
         
+        if (expression) {
+        // --- THIS IS THE CHANGE ---
+        // Convert the user-friendly expression (with names) to a storable expression (with IDs)
+        conditionData.expression = convertExpressionNamesToIds(expression);
+        }
+
         data.conditions.push(conditionData);
     });
     return data;
@@ -1146,8 +1152,49 @@ function populateCondition(conditionElement, conditionData) {
         }
     }
 
+    // if (conditionData.expression) {
+    //     conditionElement.querySelector('.expression-textarea').value = conditionData.expression;
+    // }
     if (conditionData.expression) {
-        conditionElement.querySelector('.expression-textarea').value = conditionData.expression;
+        // --- THIS IS THE CHANGE ---
+        // Convert the stored expression (with IDs) back to a user-friendly expression (with names)
+        const displayExpression = convertExpressionIdsToNames(conditionData.expression);
+        conditionElement.querySelector('.expression-textarea').value = displayExpression;
     }
 }
 
+/**
+ * Converts an expression string with attribute names to one with attribute IDs.
+ * e.g., "#Comp Set Rate# + 10" becomes "#ATTR_101# + 10"
+ * @param {string} expression - The expression string with names.
+ * @returns {string} The expression string with IDs.
+ */
+function convertExpressionNamesToIds(expression) {
+    if (!expression || !dynamicData.attributes) return expression;
+
+    // Create a quick lookup map of Name -> ID
+    const nameToIdMap = new Map(dynamicData.attributes.map(attr => [attr.name, attr.id]));
+
+    return expression.replace(/#([^#]+)#/g, (match, attributeName) => {
+        const foundId = nameToIdMap.get(attributeName);
+        return foundId ? `#${foundId}#` : match; // If not found, leave it as is
+    });
+}
+
+/**
+ * Converts an expression string with attribute IDs to one with attribute names.
+ * e.g., "#ATTR_101# + 10" becomes "#Comp Set Rate# + 10"
+ * @param {string} expression - The expression string with IDs.
+ * @returns {string} The expression string with names.
+ */
+function convertExpressionIdsToNames(expression) {
+    if (!expression || !dynamicData.attributes) return expression;
+
+    // Create a quick lookup map of ID -> Name
+    const idToNameMap = new Map(dynamicData.attributes.map(attr => [attr.id, attr.name]));
+    
+    return expression.replace(/#([^#]+)#/g, (match, attributeId) => {
+        const foundName = idToNameMap.get(attributeId);
+        return foundName ? `#${foundName}#` : match; // If not found, leave it as is
+    });
+}
