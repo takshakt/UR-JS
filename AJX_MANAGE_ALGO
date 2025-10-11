@@ -1,57 +1,88 @@
-declare
-  l_clob      clob;
-  l_status    varchar2(10);
-  l_message   clob;
-  l_icon      varchar2(50);
-  l_title     varchar2(100);
-  l_new_id    varchar2(64) := null; -- hex string for raw
-  l_payload   clob;
-  l_json_clob clob := null;
-begin
-  apex_json.initialize_clob_output;
-  apex_json.open_array;
-  apex_json.open_object;
+DECLARE
+    l_clob      CLOB;
+    l_status    VARCHAR2(20);
+    l_message   CLOB;
+    l_icon      VARCHAR2(50);
+    l_title     VARCHAR2(100);
+    l_payload   CLOB;
+BEGIN
+    -- Log the start of the process and all incoming parameters
+    APEX_DEBUG.MESSAGE('--- AJX_MANAGE_ALGO START ---');
+    APEX_DEBUG.MESSAGE('Mode (x01): %0', apex_application.g_x01);
+    APEX_DEBUG.MESSAGE('Algo ID (x02): %0', apex_application.g_x02);
+    APEX_DEBUG.MESSAGE('Version ID (x03): %0', apex_application.g_x03);
 
-  if apex_application.g_x01 = 'DELETE' then
-    null;
+    APEX_JSON.INITIALIZE_CLOB_OUTPUT;
+    APEX_JSON.OPEN_OBJECT; -- Open a single root JSON object for the response
 
-  elsif apex_application.g_x01 = 'SELECT' then
-    select expression
-      into l_payload
-      from ur_algo_versions
-     where algo_id = apex_application.g_x02
-       and version = apex_application.g_x03;
+    IF apex_application.g_x01 = 'SELECT' THEN
+        APEX_DEBUG.MESSAGE('Entering SELECT block...');
+        BEGIN
+            -- Using an inner BEGIN...EXCEPTION...END block to catch specific errors
+            
+            -- << BUG FIX >>: The WHERE clause now correctly uses the ID column, not the VERSION column.
+            SELECT EXPRESSION
+            INTO l_payload
+            FROM UR_ALGO_VERSIONS
+            WHERE ALGO_ID = apex_application.g_x02
+              AND ID = apex_application.g_x03; -- Corrected from "version ="
 
-    apex_json.write('status', 'SUCCESS');
-    apex_json.write('l_payload', l_payload);
+            APEX_DEBUG.MESSAGE('SELECT successful. Payload CLOB length: %0', DBMS_LOB.GETLENGTH(l_payload));
+            
+            -- Write success response
+            APEX_JSON.WRITE('success', true);
+            APEX_JSON.WRITE('message', 'Configuration loaded successfully.');
+            APEX_JSON.OPEN_ARRAY('data'); -- Nest the data in an array as per your original structure
+            APEX_JSON.OPEN_OBJECT;
+            APEX_JSON.WRITE('l_payload', l_payload);
+            APEX_JSON.CLOSE_OBJECT;
+            APEX_JSON.CLOSE_ARRAY;
 
-  elsif apex_application.g_x01 = 'INSERT' then
-    l_payload := '{"ALGO_ID":"' || apex_application.g_x02 || '","EXPRESSION": ' || apex_application.g_x03 || '}';
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                APEX_DEBUG.ERROR('NO_DATA_FOUND exception for Algo ID: %0 and Version ID: %1', apex_application.g_x02, apex_application.g_x03);
+                APEX_JSON.WRITE('success', false);
+                APEX_JSON.WRITE('message', 'Error: No configuration was found for the selected algorithm and version. The query returned no rows.');
+            WHEN OTHERS THEN
+                APEX_DEBUG.ERROR('Unhandled exception in SELECT block. SQLERRM: %0', SQLERRM);
+                APEX_JSON.WRITE('success', false);
+                APEX_JSON.WRITE('message', 'An unexpected database error occurred during select: ' || SQLERRM);
+        END;
 
-    graph_sql.proc_crud_json(
-      p_mode    => 'C',
-      p_table   => 'UR_ALGO_VERSIONS',
-      p_payload => l_payload,
-      p_debug   => 'N',
-      p_status  => l_status,
-      p_message => l_message,
-      p_icon    => l_icon,
-      p_title   => l_title
-    );
-  else
-    null;
-  end if;
+    ELSIF apex_application.g_x01 IN ('INSERT', 'UPDATE') THEN
+        -- Handle INSERT or UPDATE logic here if needed
+        APEX_DEBUG.MESSAGE('Entering INSERT/UPDATE block...');
+        -- Add your insert/update logic here if required
+        APEX_JSON.WRITE('success', false);
+        APEX_JSON.WRITE('message', 'Operation ' || apex_application.g_x01 || ' is not yet implemented.');
+        
+    ELSE
+        APEX_DEBUG.WARN('Invalid mode passed: %0', apex_application.g_x01);
+        APEX_JSON.WRITE('success', false);
+        APEX_JSON.WRITE('message', 'Invalid operation specified.');
+    END IF;
 
-  apex_json.write('l_message', l_message);
-  apex_json.close_object;
-  apex_json.close_array;
+    APEX_JSON.CLOSE_OBJECT; -- Close the root JSON object
+    l_clob := APEX_JSON.GET_CLOB_OUTPUT;
+    APEX_JSON.FREE_OUTPUT;
+    
+    APEX_DEBUG.MESSAGE('--- AJX_MANAGE_ALGO END ---');
+    HTP.P(l_clob);
 
-  l_clob := apex_json.get_clob_output;
-  apex_json.free_output;
-
-  htp.p(l_clob);
-
-exception
-  when others then
-    htp.p('{"error": "' || sqlerrm || '"}');
-end;
+EXCEPTION
+    WHEN OTHERS THEN
+        -- This is a critical failure handler. It catches errors in the main block structure.
+        APEX_DEBUG.ERROR(
+            'CRITICAL UNHANDLED EXCEPTION in AJX_MANAGE_ALGO. SQLERRM: %0. Backtrace: %1',
+            SQLERRM,
+            DBMS_UTILITY.FORMAT_ERROR_BACKTRACE
+        );
+        -- Ensure a valid JSON error is returned
+        APEX_JSON.INITIALIZE_CLOB_OUTPUT;
+        APEX_JSON.OPEN_OBJECT;
+        APEX_JSON.WRITE('success', false);
+        APEX_JSON.WRITE('message', 'A critical server error occurred: ' || SQLERRM);
+        APEX_JSON.CLOSE_OBJECT;
+        HTP.P(APEX_JSON.GET_CLOB_OUTPUT);
+        APEX_JSON.FREE_OUTPUT;
+END;
