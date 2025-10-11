@@ -1,0 +1,56 @@
+DECLARE
+    l_hotel_id VARCHAR2(255) := apex_application.g_x01;
+BEGIN
+      INSERT INTO debug_log(message) VALUES('--- l_hotel_id:>   '||l_hotel_id);
+    -- Initialize the internal JSON buffer
+    apex_json.initialize_clob_output;
+
+    -- Start the main JSON object
+    apex_json.open_object;
+
+    -- Fetch Attributes
+    apex_json.open_array('attributes');
+    -- *** REPLACE WITH YOUR QUERY FOR ATTRIBUTES ***
+    FOR rec IN (SELECT name || ' (' || (select name from ur_templates where id = a.template_id) || ')' AS name FROM ur_algo_attributes a WHERE hotel_id = l_hotel_id ORDER BY name) LOOP
+        apex_json.write(rec.name);
+    END LOOP;
+    apex_json.close_array;
+
+    -- Fetch Property Types
+    apex_json.open_array('propertyTypes');
+    -- *** REPLACE WITH YOUR QUERY FOR PROPERTY TYPES ***
+    FOR rec IN (SELECT name AS name FROM ur_templates WHERE hotel_id = l_hotel_id and type = 'RST' ORDER BY name) LOOP
+        apex_json.write(rec.name);
+    END LOOP;
+    apex_json.close_array;
+
+    -- Fetch Occupancy Attributes
+    apex_json.open_array('occupancyAttributes');
+    -- *** REPLACE WITH YOUR QUERY FOR OCCUPANCY ATTRIBUTES ***
+    FOR rec IN (SELECT a.name || ' ('|| t.name ||')' AS name FROM ur_algo_attributes a, ur_templates t WHERE 1 = 1 and a.template_id = t.id and a.hotel_id = l_hotel_id and ATTRIBUTE_QUALIFIER = 'OCCUPANCY' ORDER BY name) LOOP
+        apex_json.write(rec.name);
+    END LOOP;
+    apex_json.close_array;
+    
+    -- Add the static operators (these are not fetched from the DB in this example)
+    -- apex_json.write('operators',           apex_string.split('=:=!=>:=<:=>=:=<=', ':='));
+    -- apex_json.write('expressionOperators', apex_string.split('+:-:/:*', ':'));
+
+    -- Close the main JSON object
+    apex_json.close_object;
+
+    -- Set the response header and print the generated JSON
+    owa_util.mime_header('application/json', TRUE);
+    htp.p(apex_json.get_clob_output);
+    -- htp.p('{"success":"Successfully executed the AJAX Call"}');
+    
+    -- Free the resources used by the writer
+    -- apex_json.free_output;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Always free resources, even if an error occurs
+        apex_json.free_output; 
+        owa_util.mime_header('application/json', TRUE);
+        htp.p('{"error":"Could not fetch LoV data."}');
+END;
