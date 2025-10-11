@@ -36,20 +36,28 @@ document.addEventListener('DOMContentLoaded', function() {
 function load_data_expression() {
     const algoListVal = apex.item("P1050_ALGO_LIST").getValue();
     const versionVal = apex.item("P1050_VERSION").getValue();
-    const beforeParen = versionVal ? versionVal.split("(")[0].trim() : "";
+    // const beforeParen = versionVal ? versionVal.split("(")[0].trim() : "";
+    console.log(algoListVal);
+    console.log(versionVal);
+    // console.log(beforeParen);
+    
+
 
     if (!algoListVal) {
         loadFromJSON(null);
         return;
     }
 
+
     var lSpinner$ = apex.util.showSpinner();
     apex.server.process(
         'AJX_MANAGE_ALGO',
-        { x01: 'SELECT', x02: algoListVal, x03: beforeParen },
+        { x01: 'SELECT', x02: algoListVal, x03: versionVal },
         {
             success: function(data) {
-                const savedJsonString = data && data[0] ? data[0].l_payload : null;
+                console.log(data);
+                // const savedJsonString = data && data[0] ? data[0].l_payload : null;
+                const savedJsonString = data && data.data && data.data[0] ? data.data[0].l_payload : null;
                 let savedData = null;
                 if (savedJsonString && savedJsonString.trim() !== '') {
                     try {
@@ -62,13 +70,13 @@ function load_data_expression() {
                 loadFromJSON(savedData);
             },
             error: function(jqXHR, textStatus, errorThrown) {
+                console.log(errorThrown);
                 console.error('AJAX Error loading algorithm:', errorThrown);
                 apex.message.alert("An error occurred while fetching the configuration.");
             }
         }
     ).always(() => lSpinner$.remove());
 }
-
 
 function fetchAndApplyLovData(hotelId) {
     // --- DIAGNOSTIC TRACE ---
