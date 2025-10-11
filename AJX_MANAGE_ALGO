@@ -1,0 +1,57 @@
+declare
+  l_clob      clob;
+  l_status    varchar2(10);
+  l_message   clob;
+  l_icon      varchar2(50);
+  l_title     varchar2(100);
+  l_new_id    varchar2(64) := null; -- hex string for raw
+  l_payload   clob;
+  l_json_clob clob := null;
+begin
+  apex_json.initialize_clob_output;
+  apex_json.open_array;
+  apex_json.open_object;
+
+  if apex_application.g_x01 = 'DELETE' then
+    null;
+
+  elsif apex_application.g_x01 = 'SELECT' then
+    select expression
+      into l_payload
+      from ur_algo_versions
+     where algo_id = apex_application.g_x02
+       and version = apex_application.g_x03;
+
+    apex_json.write('status', 'SUCCESS');
+    apex_json.write('l_payload', l_payload);
+
+  elsif apex_application.g_x01 = 'INSERT' then
+    l_payload := '{"ALGO_ID":"' || apex_application.g_x02 || '","EXPRESSION": ' || apex_application.g_x03 || '}';
+
+    graph_sql.proc_crud_json(
+      p_mode    => 'C',
+      p_table   => 'UR_ALGO_VERSIONS',
+      p_payload => l_payload,
+      p_debug   => 'N',
+      p_status  => l_status,
+      p_message => l_message,
+      p_icon    => l_icon,
+      p_title   => l_title
+    );
+  else
+    null;
+  end if;
+
+  apex_json.write('l_message', l_message);
+  apex_json.close_object;
+  apex_json.close_array;
+
+  l_clob := apex_json.get_clob_output;
+  apex_json.free_output;
+
+  htp.p(l_clob);
+
+exception
+  when others then
+    htp.p('{"error": "' || sqlerrm || '"}');
+end;
