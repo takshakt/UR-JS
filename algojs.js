@@ -317,61 +317,6 @@ function addFilterRegion() {
     updateRegionSequence();
 }
 
-// function addCondition(regionId) {
-//     console.log('Inside addCondition, attributes count:', (dynamicData.attributes || []).length);
-//     conditionCounter++;
-//     const conditionId = `condition-${regionCounter}-${conditionCounter}`;
-//     const conditionsContainer = document.getElementById(`${regionId}-conditions-container`);
-//     const defaultName = `Condition ${conditionsContainer.children.length + 1}`;
-//     const conditionElement = document.createElement('div');
-//     conditionElement.className = 'condition-group';
-//     conditionElement.id = conditionId;
-
-//     conditionElement.innerHTML = `
-//         <div class="condition-header">
-//             <div class="condition-title editable-title">
-//                 <span class="toggle-icon condition-toggle">▼</span>
-//                 <span class="condition-sequence">${conditionsContainer.children.length + 1}.</span>
-//                 <span class="title-display">${defaultName}</span>
-//                 <input type="text" class="title-input hidden" value="${defaultName}" />
-//             </div>
-//             <div class="control-group condition-controls">
-//                 <button class="btn btn-small condition-move up" data-direction="up" title="Move Up">▲</button>
-//                 <button class="btn btn-small condition-move down" data-direction="down" title="Move Down">▼</button>
-//                 <button class="btn btn-small btn-danger condition-remove" title="Remove Condition">×</button>
-//             </div>
-//         </div>
-//         <div class="condition-body" style="display: flex; align-items: flex-start; gap: 20px;">
-//             <div class="condition-fields" style="flex: 3;">
-//                  <div class="section-title"><span>Conditions</span></div>
-//                 <div class="field-container">
-//                     <input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold" data-validates="occupancyThreshold">
-//                     <label for="${conditionId}-occupancy-threshold">Occupancy Threshold %</label>
-//                     <div class="field-content hidden">
-//                         <select class="occupancy-attribute-select">
-//                             <option value="">Select Attribute</option>
-//                             ${(dynamicData.occupancyAttributes || []).map(op => `<option value="${op}">${op}</option>`).join('')}
-//                         </select>
-//                         <select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
-//                         <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
-//                     </div>
-//                 </div>
-//                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${(dynamicData.propertyTypes || []).map(type => `<option value="${type}">${type}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div>
-//                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-event-score" data-validates="eventScore"><label for="${conditionId}-event-score">Event Score</label><div class="field-content hidden"><select class="operator-select event-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input event-value" value="0" min="0"></div></div>
-//             </div>
-//             <div class="condition-expression" style="flex: 2; border-left: 1px solid #444; padding-left: 20px;">
-//                  <div class="section calculation-section" style="padding: 0; border: none; background: none;">
-//                     <div class="section-title"><span>Expression</span></div>
-//                     <div class="filter-row"><div class="filter-group"><select class="attribute-select"><option value="">Select Attribute</option>${(dynamicData.attributes || []).map(attr => `<option value="${attr}">${attr}</option>`).join('')}</select><select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select></div></div>
-//                     <div class="expression-container"><textarea class="expression-textarea" placeholder="Type # for attributes or = for functions..."></textarea><div class="textarea-controls"><div class="btn btn-small" data-action="clear">Clear</div><div class="btn btn-small btn-secondary" data-action="validate-expression">Validate</div></div></div>
-//                 </div>
-//             </div>
-//         </div>`;
-
-//     conditionsContainer.appendChild(conditionElement);
-//     setupConditionEventListeners(conditionElement);
-//     updateConditionSequence(regionId);
-// }
 
 function addCondition(regionId) {
     console.log('Inside addCondition, attributes count:', (dynamicData.attributes || []).length);
@@ -496,12 +441,7 @@ function setupConditionEventListeners(conditionElement) {
             case 'Escape': hideAutocomplete(); break;
         }
     });
-    // attributeSelect.addEventListener('change', (e) => {
-    //     if (e.target.value) {
-    //         insertAtCursor(expressionTextarea, `#${e.target.value}# `);
-    //         e.target.value = '';
-    //     }
-    // });
+
 
     attributeSelect.addEventListener('change', (e) => {
         if (e.target.value) {
@@ -861,14 +801,20 @@ function getRegionData(regionElement) {
         
         if (cond.querySelector(`#${cond.id}-occupancy-threshold`)?.checked) {
             conditionData.occupancyThreshold = {
-                attribute: cond.querySelector('.occupancy-attribute-select').value,
+                // attribute: cond.querySelector('.occupancy-attribute-select').value,
+                attribute: `#${cond.querySelector('.occupancy-attribute-select').value}#`,
                 operator: cond.querySelector('.occupancy-operator').value,
                 value: parseFloat(cond.querySelector('.occupancy-value').value)
             };
         }
         if (cond.querySelector(`#${cond.id}-property-ranking`)?.checked) {
             const val = cond.querySelector('.property-value').value;
-            conditionData.propertyRanking = { type: cond.querySelector('.property-type').value, operator: cond.querySelector('.property-operator').value, value: isNaN(parseInt(val, 10)) ? val : parseInt(val, 10) };
+            conditionData.propertyRanking = { 
+                // type: cond.querySelector('.property-type').value, 
+                type: `#${cond.querySelector('.property-type').value}#`,
+                operator: cond.querySelector('.property-operator').value, 
+                value: isNaN(parseInt(val, 10)) ? val : parseInt(val, 10) 
+            };
         }
         if (cond.querySelector(`#${cond.id}-event-score`)?.checked) conditionData.eventScore = { operator: cond.querySelector('.event-operator').value, value: parseFloat(cond.querySelector('.event-value').value) };
         
@@ -1138,14 +1084,16 @@ function populateCondition(conditionElement, conditionData) {
             
             const fieldContent = checkbox.closest('.field-container').querySelector('.field-content');
             if (key === 'occupancyThreshold') {
-                fieldContent.querySelector('.occupancy-attribute-select').value = data.attribute;
+                // fieldContent.querySelector('.occupancy-attribute-select').value = data.attribute;
+                fieldContent.querySelector('.occupancy-attribute-select').value = data.attribute.replace(/#/g, '');
                 fieldContent.querySelector('.operator-select').value = data.operator;
                 fieldContent.querySelector('.value-input').value = data.value;
             } else if (key === 'eventScore') {
                 fieldContent.querySelector('.operator-select').value = data.operator;
                 fieldContent.querySelector('.value-input').value = data.value;
             } else if (key === 'propertyRanking') {
-                fieldContent.querySelector('.property-type-select').value = data.type;
+                // fieldContent.querySelector('.property-type-select').value = data.type;
+                fieldContent.querySelector('.property-type-select').value = data.type.replace(/#/g, '');
                 fieldContent.querySelector('.operator-select').value = data.operator;
                 fieldContent.querySelector('.value-input').value = data.value;
             }
