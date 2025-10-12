@@ -1,0 +1,403 @@
+CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
+
+  -- Map template_id to attribute_id for 'OWN PROPERTY RANK'
+  FUNCTION get_attribute_id_from_template(p_template_id VARCHAR2) RETURN VARCHAR2 IS
+    l_attr_id VARCHAR2(255);
+  BEGIN
+    SELECT id INTO l_attr_id
+    FROM ur_algo_attributes
+    WHERE template_id = p_template_id
+      AND name = 'OWN PROPERTY RANK'
+      AND ROWNUM = 1;
+    RETURN l_attr_id;
+  EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+      DBMS_OUTPUT.PUT_LINE('get_attribute_id_from_template: No attribute for template_id ' || p_template_id);
+      RETURN NULL;
+  END;
+
+  -- Get value for given date in staged data
+  FUNCTION get_value_for_date(p_data_table IN t_result_tab_obj, p_target_date IN DATE) RETURN NUMBER IS
+  BEGIN
+    IF p_data_table IS NULL THEN RETURN NULL; END IF;
+    FOR i IN 1 .. p_data_table.COUNT LOOP
+      IF p_data_table(i).stay_date = p_target_date THEN
+        RETURN p_data_table(i).evaluated_price;
+      END IF;
+    END LOOP;
+    RETURN NULL;
+  END;
+
+  FUNCTION build_dynamic_query(p_rules_json IN CLOB) RETURN CLOB IS
+    l_sql_select      CLOB := 'SELECT base.STAY_DATE, ';
+    l_sql_from        CLOB;
+    l_sql_where       CLOB := ' WHERE 1=1 ';
+    l_price_case_stmt CLOB := 'CASE ';
+    l_rule_case_stmt  CLOB := 'CASE ';
+
+    TYPE t_alias_map IS TABLE OF VARCHAR2(10) INDEX BY VARCHAR2(255);
+    l_aliases         t_alias_map;
+    l_alias_counter   PLS_INTEGER := 1;
+    l_base_alias      VARCHAR2(10);
+    l_current_id      VARCHAR2(255);
+    l_regions_count   PLS_INTEGER;
+
+    TYPE t_attr_tab IS TABLE OF VARCHAR2(255);
+    l_attr_collection t_attr_tab := t_attr_tab();
+
+    TYPE t_set_map IS TABLE OF BOOLEAN INDEX BY VARCHAR2(255);
+    l_unique_attrs t_set_map;
+
+    -- Temporary variables for JSON processing
+    l_occ_attr_raw VARCHAR2(255);
+    l_pr_template  VARCHAR2(255);
+    l_expr_raw     VARCHAR2(32767);
+
+    l_pos          PLS_INTEGER;
+    l_attr_in_expr VARCHAR2(255);
+
+  BEGIN
+    DBMS_OUTPUT.PUT_LINE('build_dynamic_query: Starting attribute discovery');
+
+    -- Extract all importance attributes
+    FOR cond_rec IN (
+      SELECT cond_json FROM JSON_TABLE(p_rules_json, '$.regions[*].conditions[*]' COLUMNS (cond_json CLOB FORMAT JSON PATH '$')) conds
+    ) LOOP
+      l_occ_attr_raw := JSON_VALUE(cond_rec.cond_json, '$.occupancyThreshold.attribute');
+      l_pr_template := JSON_VALUE(cond_rec.cond_json, '$.propertyRanking.type');
+      l_expr_raw := JSON_VALUE(cond_rec.cond_json, '$.expression');
+
+      IF l_occ_attr_raw IS NOT NULL THEN
+        l_unique_attrs(REGEXP_REPLACE(l_occ_attr_raw, '^#|#$', '')) := TRUE;
+        DBMS_OUTPUT.PUT_LINE('build_dynamic_query: Found occupancy attribute ' || l_occ_attr_raw);
+      END IF;
+
+      IF l_pr_template IS NOT NULL THEN
+        DECLARE l_pr_attr VARCHAR2(255); BEGIN
+          l_pr_attr := get_attribute_id_from_template(l_pr_template);
+          IF l_pr_attr IS NOT NULL THEN
+            l_unique_attrs(l_pr_attr) := TRUE;
+            DBMS_OUTPUT.PUT_LINE('build_dynamic_query: Mapped propertyRanking template ' || l_pr_template || ' to attribute ' || l_pr_attr);
+          END IF;
+        END;
+      END IF;
+
+      -- Extract all attr ids in expression
+      l_pos := 1;
+      LOOP
+        l_attr_in_expr := REGEXP_SUBSTR(l_expr_raw, '#[A-F0-9]+#', l_pos);
+        EXIT WHEN l_attr_in_expr IS NULL;
+        l_unique_attrs(REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '')) := TRUE;
+        l_pos := INSTR(l_expr_raw, l_attr_in_expr, l_pos) + LENGTH(l_attr_in_expr);
+      END LOOP;
+
+    END LOOP;
+
+    -- Transfer from associative array to collection
+    l_attr_collection.DELETE;
+    DECLARE l_key VARCHAR2(255); l_count INTEGER := 0;
+    BEGIN
+      l_key := l_unique_attrs.FIRST;
+      WHILE l_key IS NOT NULL LOOP
+        l_attr_collection.EXTEND;
+        l_attr_collection(l_attr_collection.COUNT) := l_key;
+        l_key := l_unique_attrs.NEXT(l_key);
+      END LOOP;
+    END;
+
+    IF l_attr_collection.COUNT = 0 THEN
+      DBMS_OUTPUT.PUT_LINE('build_dynamic_query: No attributes found');
+      RETURN q'[SELECT NULL, NULL, 'ERROR: No attributes found in JSON' FROM DUAL]';
+    END IF;
+
+    -- Assign aliases
+    FOR i IN 1 .. l_attr_collection.COUNT LOOP
+      l_aliases(l_attr_collection(i)) := 'a' || l_alias_counter;
+      DBMS_OUTPUT.PUT_LINE('build_dynamic_query: Alias ' || l_aliases(l_attr_collection(i)) || ' assigned to attribute ' || l_attr_collection(i));
+      l_alias_counter := l_alias_counter + 1;
+    END LOOP;
+
+    l_base_alias := l_aliases(l_attr_collection(1));
+
+    -- Build FROM clause
+    l_sql_from := ' FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => ''' || l_attr_collection(1) || ''')) ' || l_base_alias;
+    FOR i IN 2 .. l_attr_collection.COUNT LOOP
+      l_sql_from := l_sql_from
+        || ' LEFT JOIN TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => ''' || l_attr_collection(i) || ''')) '
+        || l_aliases(l_attr_collection(i))
+        || ' ON ' || l_base_alias || '.STAY_DATE = ' || l_aliases(l_attr_collection(i)) || '.STAY_DATE ';
+      DBMS_OUTPUT.PUT_LINE('build_dynamic_query: Added LEFT JOIN for attribute ' || l_attr_collection(i));
+    END LOOP;
+
+    -- Build WHERE clause filters from first region filters
+    FOR f IN (
+      SELECT stay_from, stay_to, lead_from, lead_to, days_of_week, min_rate
+      FROM JSON_TABLE(p_rules_json, '$.regions[0].filters' COLUMNS (
+             stay_from    DATE         PATH '$.stayWindow.from',
+             stay_to      DATE         PATH '$.stayWindow.to',
+             lead_from    DATE         PATH '$.leadTime.from',
+             lead_to      DATE         PATH '$.leadTime.to',
+             days_of_week VARCHAR2(100) FORMAT JSON PATH '$.daysOfWeek',
+             min_rate     NUMBER       PATH '$.minimumRate'
+           ))
+    ) LOOP
+      l_sql_where := l_sql_where || ' AND ' || l_base_alias || '.STAY_DATE BETWEEN TO_DATE(''' || TO_CHAR(f.stay_from, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'') AND TO_DATE(''' || TO_CHAR(f.stay_to, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'')';
+
+      l_sql_where := l_sql_where || ' AND TRUNC(SYSDATE) BETWEEN TO_DATE(''' || TO_CHAR(f.lead_from, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'') AND TO_DATE(''' || TO_CHAR(f.lead_to, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'')';
+
+      IF f.days_of_week IS NOT NULL AND f.days_of_week <> '[]' THEN
+        l_sql_where := l_sql_where || ' AND TO_CHAR('||l_base_alias||'.STAY_DATE, ''D'') IN (' || REPLACE(REPLACE(f.days_of_week, '[', ''), ']', '') || ') ';
+      END IF;
+
+      l_sql_where := l_sql_where || ' AND ' || l_base_alias || '.ATTRIBUTE_VALUE >= ' || f.min_rate;
+    END LOOP;
+
+    l_sql_where := l_sql_where || ' AND (' || l_base_alias || '.STAY_DATE = :b_stay_date_filter OR :b_stay_date_null_check IS NULL) ';
+
+    -- Build CASE statements per region and condition
+    l_regions_count := TO_NUMBER(JSON_VALUE(p_rules_json, '$.regions.size()'));
+
+    FOR i IN 0 .. l_regions_count - 1 LOOP
+      DECLARE
+        l_when_clause    VARCHAR2(32000) := 'WHEN (';
+        l_expr           VARCHAR2(4000)  := JSON_VALUE(p_rules_json, '$.regions[' || i || '].conditions[0].expression');
+        l_region_name    VARCHAR2(255)   := JSON_VALUE(p_rules_json, '$.regions[' || i || '].name');
+        l_cond_name      VARCHAR2(255)   := JSON_VALUE(p_rules_json, '$.regions[' || i || '].conditions[0].name');
+        l_full_rule_name VARCHAR2(512)   := REPLACE(l_region_name || ' / ' || l_cond_name, '''', '''''');
+      BEGIN
+        FOR j IN 0 .. TO_NUMBER(JSON_VALUE(p_rules_json, '$.regions[' || i || '].conditions.size()')) - 1 LOOP
+          DECLARE
+            l_cond_path       VARCHAR2(200) := '$.regions[' || i || '].conditions[' || j || ']';
+
+            l_occ_attr_raw    VARCHAR2(255) := JSON_VALUE(p_rules_json, l_cond_path || '.occupancyThreshold.attribute');
+            l_occ_attr        VARCHAR2(255) := REGEXP_REPLACE(NVL(l_occ_attr_raw, ''), '^#|#$', '');
+
+            l_pr_template_id  VARCHAR2(255) := JSON_VALUE(p_rules_json, l_cond_path || '.propertyRanking.type');
+            l_pr_attr         VARCHAR2(255) := get_attribute_id_from_template(l_pr_template_id);
+
+            l_occ_op          VARCHAR2(10) := JSON_VALUE(p_rules_json, l_cond_path || '.occupancyThreshold.operator');
+            l_occ_val         NUMBER       := TO_NUMBER(JSON_VALUE(p_rules_json, l_cond_path || '.occupancyThreshold.value'), NULL);
+
+            l_pr_op           VARCHAR2(10) := JSON_VALUE(p_rules_json, l_cond_path || '.propertyRanking.operator');
+            l_pr_val          NUMBER       := TO_NUMBER(JSON_VALUE(p_rules_json, l_cond_path || '.propertyRanking.value'), NULL);
+          BEGIN
+            IF l_occ_attr IS NOT NULL AND l_aliases.EXISTS(l_occ_attr) THEN
+              l_when_clause := l_when_clause || l_aliases(l_occ_attr) || '.ATTRIBUTE_VALUE ' || l_occ_op || ' ' || l_occ_val || ' AND ';
+            END IF;
+
+            IF l_pr_attr IS NOT NULL AND l_aliases.EXISTS(l_pr_attr) THEN
+              l_when_clause := l_when_clause || l_aliases(l_pr_attr) || '.ATTRIBUTE_VALUE ' || l_pr_op || ' ' || l_pr_val || ' AND ';
+            END IF;
+          END;
+        END LOOP;
+
+        l_when_clause := RTRIM(l_when_clause, ' AND ') || ')';
+
+        l_current_id := l_aliases.FIRST;
+        WHILE l_current_id IS NOT NULL LOOP
+          l_expr := REPLACE(l_expr, '#' || l_current_id || '#', l_aliases(l_current_id) || '.ATTRIBUTE_VALUE');
+          l_current_id := l_aliases.NEXT(l_current_id);
+        END LOOP;
+
+        l_price_case_stmt := l_price_case_stmt || l_when_clause || ' THEN ' || l_expr || ' ';
+        l_rule_case_stmt  := l_rule_case_stmt || l_when_clause || ' THEN ''' || l_full_rule_name || ''' ';
+      END;
+    END LOOP;
+
+    l_price_case_stmt := l_price_case_stmt || ' ELSE NULL END';
+    l_rule_case_stmt  := l_rule_case_stmt || ' ELSE ''No Rule Applied'' END';
+
+    l_sql_select := l_sql_select || l_price_case_stmt || ' AS EVALUATED_PRICE, ' || l_rule_case_stmt || ' AS APPLIED_RULE';
+
+    RETURN l_sql_select || l_sql_from || l_sql_where;
+  END build_dynamic_query;
+
+
+  FUNCTION EVALUATE(p_algo_id IN ur_algos.id%TYPE, p_stay_date IN DATE DEFAULT NULL)
+    RETURN t_result_tab_obj PIPELINED IS
+
+    l_rules_json   CLOB;
+    TYPE t_alias_map IS TABLE OF VARCHAR2(255) INDEX BY VARCHAR2(255);
+    l_aliases      t_alias_map;
+    l_current_id   VARCHAR2(255);
+    TYPE t_staged_data_map IS TABLE OF t_result_tab_obj INDEX BY VARCHAR2(255);
+    l_staged_data  t_staged_data_map;
+
+    l_distinct_dates sys.odcidatelist := sys.odcidatelist();
+
+  BEGIN
+    DBMS_OUTPUT.PUT_LINE('EVALUATE: Starting for algo_id ' || p_algo_id);
+
+    BEGIN
+      SELECT expression INTO l_rules_json FROM (
+        SELECT expression FROM ur_algo_versions WHERE algo_id = p_algo_id ORDER BY version DESC
+      ) WHERE ROWNUM = 1;
+      DBMS_OUTPUT.PUT_LINE('EVALUATE: Rules JSON fetched');
+    EXCEPTION
+      WHEN NO_DATA_FOUND THEN
+        PIPE ROW(t_result_rec_obj(NULL,NULL,'ERROR: Algorithm or latest version not found.'));
+        RETURN;
+    END;
+
+    -- Extract attributes similar to build_dynamic_query
+    FOR cond_rec IN (
+      SELECT cond_json FROM JSON_TABLE(l_rules_json, '$.regions[*].conditions[*]' COLUMNS (
+        cond_json CLOB FORMAT JSON PATH '$'
+      ))
+    ) LOOP
+      -- occupancyThreshold attribute
+      DECLARE
+        l_occ_attr_raw VARCHAR2(255) := JSON_VALUE(cond_rec.cond_json,'$.occupancyThreshold.attribute');
+        l_occ_attr VARCHAR2(255) := REGEXP_REPLACE(NVL(l_occ_attr_raw, ''), '^#|#$', '');
+        l_pr_template VARCHAR2(255) := REGEXP_REPLACE(NVL(JSON_VALUE(cond_rec.cond_json,'$.propertyRanking.type'), ''), '^#|#$', '');
+        l_pr_attr VARCHAR2(255);
+        l_expr_raw CLOB := JSON_VALUE(cond_rec.cond_json,'$.expression');
+        l_pos PLS_INTEGER := 1;
+        l_attr_in_expr VARCHAR2(255);
+        l_clean_attr VARCHAR2(255);
+      BEGIN
+        IF l_occ_attr IS NOT NULL AND NOT l_aliases.EXISTS(l_occ_attr) THEN
+          l_aliases(l_occ_attr) := l_occ_attr;
+          DBMS_OUTPUT.PUT_LINE('EVALUATE: Added occupancy attribute ' || l_occ_attr);
+        END IF;
+
+        IF l_pr_template IS NOT NULL THEN
+          l_pr_attr := get_attribute_id_from_template(l_pr_template);
+          IF l_pr_attr IS NOT NULL AND NOT l_aliases.EXISTS(l_pr_attr) THEN
+            l_aliases(l_pr_attr) := l_pr_attr;
+            DBMS_OUTPUT.PUT_LINE('EVALUATE: Added propertyRanking attribute ' || l_pr_attr);
+          END IF;
+        END IF;
+
+        -- Extract expression embedded attributes
+        LOOP
+          l_attr_in_expr := REGEXP_SUBSTR(l_expr_raw, '#[A-F0-9]+#', l_pos);
+          EXIT WHEN l_attr_in_expr IS NULL;
+          l_clean_attr := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '');
+          IF NOT l_aliases.EXISTS(l_clean_attr) THEN
+            l_aliases(l_clean_attr) := l_clean_attr;
+            DBMS_OUTPUT.PUT_LINE('EVALUATE: Added expr attribute ' || l_clean_attr);
+          END IF;
+          l_pos := INSTR(l_expr_raw, l_attr_in_expr, l_pos) + LENGTH(l_attr_in_expr);
+        END LOOP;
+      END;
+    END LOOP;
+
+    IF l_aliases.COUNT = 0 THEN
+      PIPE ROW(t_result_rec_obj(NULL,NULL,'ERROR: No attributes found in JSON'));
+      RETURN;
+    END IF;
+
+    -- Pre-fetch staged attribute data
+    l_current_id := l_aliases.FIRST;
+    WHILE l_current_id IS NOT NULL LOOP
+      DBMS_OUTPUT.PUT_LINE('EVALUATE: Fetching data for attribute ' || l_current_id);
+      SELECT t_result_rec_obj(stay_date, ATTRIBUTE_VALUE, NULL)
+      BULK COLLECT INTO l_staged_data(l_current_id)
+      FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id));
+      DBMS_OUTPUT.PUT_LINE('EVALUATE: Retrieved ' || NVL(l_staged_data(l_current_id).COUNT,0) || ' rows');
+
+      FOR i IN 1 .. NVL(l_staged_data(l_current_id).COUNT,0) LOOP
+        l_distinct_dates.EXTEND;
+        l_distinct_dates(l_distinct_dates.LAST) := l_staged_data(l_current_id)(i).stay_date;
+      END LOOP;
+
+      l_current_id := l_aliases.NEXT(l_current_id);
+    END LOOP;
+
+    -- Unique, sorted stay_dates list
+    SELECT DISTINCT COLUMN_VALUE
+    BULK COLLECT INTO l_distinct_dates
+    FROM TABLE(l_distinct_dates)
+    ORDER BY 1;
+    
+    DBMS_OUTPUT.PUT_LINE('EVALUATE: Distinct stay_dates found: ' || NVL(l_distinct_dates.COUNT,0));
+
+    -- Loop over stay_dates and evaluate rules
+    FOR d IN (SELECT COLUMN_VALUE AS stay_date FROM TABLE(l_distinct_dates)) LOOP
+      DECLARE
+        v_stay_date DATE := d.stay_date;
+        v_rule_matched BOOLEAN := FALSE;
+      BEGIN
+        DBMS_OUTPUT.PUT_LINE('EVALUATE: Processing stay_date ' || TO_CHAR(v_stay_date,'YYYY-MM-DD'));
+        PIPE ROW(t_result_rec_obj(NULL,NULL,'DEBUG: Processing stay_date ' || TO_CHAR(v_stay_date,'YYYY-MM-DD')));
+
+        IF p_stay_date IS NOT NULL AND v_stay_date != p_stay_date THEN
+          DBMS_OUTPUT.PUT_LINE('EVALUATE: Skipping due to stay_date filter');
+          CONTINUE;
+        END IF;
+
+        FOR region_rec IN (
+          SELECT region_name, stay_from, stay_to, lead_from, lead_to, conditions
+          FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (
+            region_name VARCHAR2(255) PATH '$.name',
+            stay_from DATE PATH '$.filters.stayWindow.from',
+            stay_to DATE PATH '$.filters.stayWindow.to',
+            lead_from DATE PATH '$.filters.leadTime.from',
+            lead_to DATE PATH '$.filters.leadTime.to',
+            conditions CLOB FORMAT JSON PATH '$.conditions'
+          ))
+        ) LOOP
+          DBMS_OUTPUT.PUT_LINE('EVALUATE: Checking region ' || region_rec.region_name);
+          PIPE ROW(t_result_rec_obj(NULL,NULL,'DEBUG: Region ' || region_rec.region_name));
+
+          IF NOT (v_stay_date BETWEEN region_rec.stay_from AND region_rec.stay_to) THEN
+            DBMS_OUTPUT.PUT_LINE('EVALUATE: Skipping due to stayWindow');
+            CONTINUE;
+          END IF;
+
+          IF NOT (TRUNC(SYSDATE) BETWEEN region_rec.lead_from AND region_rec.lead_to) THEN
+            DBMS_OUTPUT.PUT_LINE('EVALUATE: Skipping due to leadTime');
+            CONTINUE;
+          END IF;
+
+          FOR cond_rec IN (
+            SELECT cond_name, expr FROM JSON_TABLE(region_rec.conditions, '$[*]' COLUMNS (
+              cond_name VARCHAR2(255) PATH '$.name',
+              expr VARCHAR2(4000) PATH '$.expression'
+            ))
+          ) LOOP
+            DBMS_OUTPUT.PUT_LINE('EVALUATE: Evaluating condition ' || cond_rec.cond_name);
+            DECLARE
+              l_expr VARCHAR2(4000) := cond_rec.expr;
+              l_eval_result NUMBER;
+            BEGIN
+              l_current_id := l_aliases.FIRST;
+              WHILE l_current_id IS NOT NULL LOOP
+                DBMS_OUTPUT.PUT_LINE('EVALUATE: Replacing attr ' || l_current_id);
+                l_expr := REPLACE(l_expr, '#' || l_current_id || '#', TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)));
+                l_current_id := l_aliases.NEXT(l_current_id);
+              END LOOP;
+
+              DBMS_OUTPUT.PUT_LINE('EVALUATE: Executing expr: ' || l_expr);
+
+              EXECUTE IMMEDIATE 'SELECT ' || l_expr || ' FROM DUAL' INTO l_eval_result;
+
+              PIPE ROW(t_result_rec_obj(v_stay_date, l_eval_result, region_rec.region_name || ' / ' || cond_rec.cond_name));
+
+              v_rule_matched := TRUE;
+              GOTO next_date_loop;
+            END;
+          END LOOP;
+        END LOOP;
+
+        IF NOT v_rule_matched THEN
+          DBMS_OUTPUT.PUT_LINE('EVALUATE: No rule matched for date ' || TO_CHAR(v_stay_date, 'YYYY-MM-DD'));
+          PIPE ROW(t_result_rec_obj(v_stay_date, NULL, 'No Rule Applied'));
+        END IF;
+
+        <<next_date_loop>>
+        NULL;
+      END;
+    END LOOP;
+
+    DBMS_OUTPUT.PUT_LINE('EVALUATE: Completed all dates');
+    RETURN;
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('EVALUATE: Fatal error: ' || SQLERRM || ' at ' || DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+      PIPE ROW(t_result_rec_obj(NULL,NULL,'FATAL ERROR: ' || SQLERRM));
+      RETURN;
+  END EVALUATE;
+
+END ALGO_EVALUATOR_PKG;
