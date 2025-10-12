@@ -223,10 +223,17 @@ CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
     TYPE t_staged_data_map IS TABLE OF t_result_tab_obj INDEX BY VARCHAR2(255);
     l_staged_data  t_staged_data_map;
 
-    l_distinct_dates sys.odcidatelist := sys.odcidatelist();
+    -- Declare associative array as set
+    TYPE t_date_set IS TABLE OF BOOLEAN INDEX BY VARCHAR2(10);
+    l_date_set t_date_set;
+
+    -- Declare nested table for distinct dates
+    l_distinct_dates SYS.ODCIDATELIST := SYS.ODCIDATELIST();
 
   BEGIN
     DBMS_OUTPUT.PUT_LINE('EVALUATE: Starting for algo_id ' || p_algo_id);
+
+    l_distinct_dates := sys.odcidatelist(); 
 
     BEGIN
       SELECT expression INTO l_rules_json FROM (
@@ -296,21 +303,53 @@ CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
       BULK COLLECT INTO l_staged_data(l_current_id)
       FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id));
       DBMS_OUTPUT.PUT_LINE('EVALUATE: Retrieved ' || NVL(l_staged_data(l_current_id).COUNT,0) || ' rows');
+      DBMS_OUTPUT.PUT_LINE('Attribute ID: ' || l_current_id || ', Rows count: ' || NVL(l_staged_data(l_current_id).COUNT,0));
 
       FOR i IN 1 .. NVL(l_staged_data(l_current_id).COUNT,0) LOOP
         l_distinct_dates.EXTEND;
         l_distinct_dates(l_distinct_dates.LAST) := l_staged_data(l_current_id)(i).stay_date;
+            DBMS_OUTPUT.PUT_LINE('  Stay_Date=' 
+      || TO_CHAR(l_staged_data(l_current_id)(i).stay_date, 'YYYY-MM-DD') 
+      || ', Eval_Price=' || NVL(TO_CHAR(l_staged_data(l_current_id)(i).evaluated_price), 'NULL'));
+
+        l_date_set(TO_CHAR(l_staged_data(l_current_id)(i).stay_date, 'YYYY-MM-DD')) := TRUE;
+
       END LOOP;
 
       l_current_id := l_aliases.NEXT(l_current_id);
     END LOOP;
 
-    -- Unique, sorted stay_dates list
-    SELECT DISTINCT COLUMN_VALUE
+-- Print l_distinct_dates collection (sys.odcidatelist)
+
+    FOR i IN 1 .. NVL(l_distinct_dates.COUNT, 0) LOOP
+      DBMS_OUTPUT.PUT_LINE('Distinct stay_date #' || i || ': ' || TO_CHAR(l_distinct_dates(i), 'YYYY-MM-DD'));
+    END LOOP;
+
+    l_distinct_dates.DELETE;
+    DECLARE
+      v_str VARCHAR2(10);
+    BEGIN
+      v_str := l_date_set.FIRST;
+      WHILE v_str IS NOT NULL LOOP
+        IF l_date_set.EXISTS(v_str) THEN
+          l_distinct_dates.EXTEND;
+          l_distinct_dates(l_distinct_dates.COUNT) := TO_DATE(v_str, 'YYYY-MM-DD');
+        END IF;
+        v_str := l_date_set.NEXT(v_str);
+      END LOOP;
+    END;
+
+    -- -- Unique, sorted stay_dates list
+    -- SELECT DISTINCT COLUMN_VALUE
+    -- BULK COLLECT INTO l_distinct_dates
+    -- FROM TABLE(l_distinct_dates)
+    -- ORDER BY 1;
+
+    SELECT COLUMN_VALUE
     BULK COLLECT INTO l_distinct_dates
     FROM TABLE(l_distinct_dates)
     ORDER BY 1;
-    
+
     DBMS_OUTPUT.PUT_LINE('EVALUATE: Distinct stay_dates found: ' || NVL(l_distinct_dates.COUNT,0));
 
     -- Loop over stay_dates and evaluate rules
