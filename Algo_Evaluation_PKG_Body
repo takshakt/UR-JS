@@ -264,16 +264,24 @@ FUNCTION EVALUATE(p_algo_id IN ur_algos.id%TYPE, p_stay_date IN DATE DEFAULT NUL
     -- The final collection that will hold the clean, unique list
     l_distinct_dates    SYS.ODCIDATELIST := SYS.ODCIDATELIST();
 
+    l_hotel_id          ur_algos.hotel_id%TYPE;
+    TYPE t_event_score_map IS TABLE OF NUMBER INDEX BY VARCHAR2(10); -- Key: 'YYYY-MM-DD', Value: Score
+    l_event_scores      t_event_score_map;
+
 BEGIN
     DBMS_OUTPUT.PUT_LINE('EVALUATE: Starting for algo_id ' || p_algo_id);
 
     -- Fetch the latest algorithm rules
     BEGIN
-        SELECT expression INTO l_rules_json FROM (
-            SELECT expression FROM ur_algo_versions WHERE id = (select current_version_id from UR_ALGOS where id = p_algo_id)
-        );
-        
-        DBMS_OUTPUT.PUT_LINE('EVALUATE: Rules JSON fetched');
+
+        SELECT expression INTO l_rules_json FROM ur_algo_versions WHERE id = (select current_version_id from UR_ALGOS where id = p_algo_id);
+
+        select hotel_id into l_hotel_id
+        from UR_ALGOS
+        where id = p_algo_id;
+
+        DBMS_OUTPUT.PUT_LINE('EVALUATE: Rules JSON fetched for Hotel ID: ' || l_hotel_id);
+
 
         DECLARE
           l_offset PLS_INTEGER := 1;
@@ -350,6 +358,40 @@ BEGIN
         PIPE ROW(t_result_rec_obj(NULL, NULL, 'ERROR: No attributes found in JSON'));
         RETURN;
     END IF;
+
+    DBMS_OUTPUT.PUT_LINE('EVALUATE: Fetching event scores for hotel ' || l_hotel_id);
+
+    DECLARE
+        TYPE t_event_rec IS RECORD (
+            event_date_str VARCHAR2(10),
+            max_score      NUMBER
+        );
+        TYPE t_event_tab IS TABLE OF t_event_rec;
+        l_event_list t_event_tab;
+    BEGIN
+        -- This query expands date ranges into individual days and finds the MAX score for each day
+        SELECT
+            TO_CHAR(event_date, 'YYYY-MM-DD'),
+            MAX(score)
+        BULK COLLECT INTO l_event_list
+        FROM (
+            SELECT
+                e.event_start_date + level - 1 AS event_date,
+                (e.impact_level * e.impact_type) AS score
+            FROM ur_events e
+            WHERE e.hotel_id = l_hotel_id
+            CONNECT BY level <= e.event_end_date - e.event_start_date + 1
+                AND PRIOR e.id = e.id
+                AND PRIOR sys_guid() IS NOT NULL
+        )
+        GROUP BY event_date;
+
+        -- Populate the associative array for fast lookup
+        FOR i IN 1 .. l_event_list.COUNT LOOP
+            l_event_scores(l_event_list(i).event_date_str) := l_event_list(i).max_score;
+        END LOOP;
+        DBMS_OUTPUT.PUT_LINE('EVALUATE: Staged ' || l_event_scores.COUNT || ' unique event score dates.');
+    END;
 
     -- Stage 2: Pre-fetch data for all attributes and collect all stay dates
     l_current_id := l_aliases.FIRST;
@@ -494,7 +536,23 @@ BEGIN
                             END;
                         END IF;
 
-                        -- (Event Score placeholder remains here)
+                        -- FIX: Check Event Score (only if previous checks passed)
+                        IF v_condition_met AND cond_rec.es_val IS NOT NULL THEN
+                            DECLARE
+                                l_actual_event_score NUMBER := 0; -- Default to 0 if no event on this date
+                                l_date_key           VARCHAR2(10) := TO_CHAR(v_stay_date, 'YYYY-MM-DD');
+                            BEGIN
+                                -- Look up the pre-fetched score for the date
+                                IF l_event_scores.EXISTS(l_date_key) THEN
+                                    l_actual_event_score := l_event_scores(l_date_key);
+                                END IF;
+                                
+                                -- Perform the comparison
+                                EXECUTE IMMEDIATE 'BEGIN :result := CASE WHEN :val1 ' || cond_rec.es_op || ' :val2 THEN 1 ELSE 0 END; END;'
+                                    USING OUT l_check_result, IN l_actual_event_score, IN cond_rec.es_val;
+                                IF l_check_result = 0 THEN v_condition_met := FALSE; END IF;
+                            END;
+                        END IF;
 
                         -- 4. If all conditions were met, evaluate the expression
                         IF v_condition_met THEN
