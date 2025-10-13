@@ -56,6 +56,30 @@ CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
     RETURN NULL;
   END get_value_for_date;
 
+  -- Get DATE value for a given stay date from an attribute (queried directly)
+  FUNCTION get_date_attribute_for_stay(p_attribute_id IN VARCHAR2, p_target_date IN DATE) RETURN DATE IS
+    l_dt DATE;
+  BEGIN
+    -- First try assuming ATTRIBUTE_VALUE is DATE-typed
+    BEGIN
+      EXECUTE IMMEDIATE
+        'SELECT MAX(ATTRIBUTE_VALUE) FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => :attr)) WHERE STAY_DATE = :d'
+        INTO l_dt
+        USING p_attribute_id, p_target_date;
+    EXCEPTION WHEN OTHERS THEN
+      -- Fallback: try to convert via TO_DATE if ATTRIBUTE_VALUE is CHAR-like
+      BEGIN
+        EXECUTE IMMEDIATE
+          'SELECT MAX(TO_DATE(ATTRIBUTE_VALUE)) FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => :attr)) WHERE STAY_DATE = :d'
+          INTO l_dt
+          USING p_attribute_id, p_target_date;
+      EXCEPTION WHEN OTHERS THEN
+        l_dt := NULL;
+      END;
+    END;
+    RETURN l_dt;
+  END get_date_attribute_for_stay;
+
   -- Your original provided implementation
   FUNCTION build_dynamic_query(p_rules_json IN CLOB) RETURN CLOB IS
     l_sql_select      CLOB := 'SELECT base.STAY_DATE, ';
@@ -130,22 +154,76 @@ CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
         || ' ON ' || l_base_alias || '.STAY_DATE = ' || l_aliases(l_attr_collection(i)) || '.STAY_DATE ';
     END LOOP;
     FOR f IN (
-      SELECT stay_from, stay_to, lead_from, lead_to, days_of_week, min_rate
+      SELECT
+        stay_from,
+        stay_to,
+        lead_from,
+        lead_to,
+        lead_attr,
+        lead_attr2,
+        lead_type,
+        lead_value,
+        days_of_week,
+        min_rate
       FROM JSON_TABLE(p_rules_json, '$.regions[0].filters' COLUMNS (
-             stay_from    DATE         PATH '$.stayWindow.from',
-             stay_to      DATE         PATH '$.stayWindow.to',
-             lead_from    DATE         PATH '$.leadTime.from',
-             lead_to      DATE         PATH '$.leadTime.to',
-             days_of_week VARCHAR2(100) FORMAT JSON PATH '$.daysOfWeek',
-             min_rate     NUMBER       PATH '$.minimumRate'
+             stay_from    DATE           PATH '$.stayWindow.from',
+             stay_to      DATE           PATH '$.stayWindow.to',
+             lead_from    DATE           PATH '$.leadTime.from',
+             lead_to      DATE           PATH '$.leadTime.to',
+             lead_attr    VARCHAR2(255)  PATH '$.leadTime.attribute',
+             lead_attr2   VARCHAR2(255)  PATH '$.leadTime.leadTimeAttribute',
+             lead_type    VARCHAR2(20)   PATH '$.leadTime.type',
+             lead_value   NUMBER         PATH '$.leadTime.value',
+             days_of_week VARCHAR2(100)  FORMAT JSON PATH '$.daysOfWeek',
+             min_rate     NUMBER         PATH '$.minimumRate'
            ))
     ) LOOP
-      l_sql_where := l_sql_where || ' AND ' || l_base_alias || '.STAY_DATE BETWEEN TO_DATE(''' || TO_CHAR(f.stay_from, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'') AND TO_DATE(''' || TO_CHAR(f.stay_to, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'')';
-      l_sql_where := l_sql_where || ' AND TRUNC(SYSDATE) BETWEEN TO_DATE(''' || TO_CHAR(f.lead_from, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'') AND TO_DATE(''' || TO_CHAR(f.lead_to, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'')';
+      -- Stay window filter
+      IF f.stay_from IS NOT NULL AND f.stay_to IS NOT NULL THEN
+        l_sql_where := l_sql_where || ' AND ' || l_base_alias || '.STAY_DATE BETWEEN TO_DATE(''' || TO_CHAR(f.stay_from, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'') AND TO_DATE(''' || TO_CHAR(f.stay_to, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'')';
+      END IF;
+
+      -- Lead time filter based on attribute (date-based)
+      DECLARE
+        l_lt_attr_id VARCHAR2(255) := REGEXP_REPLACE(NVL(f.lead_attr, f.lead_attr2), '^#|#$', '');
+        l_type       VARCHAR2(20)  := LOWER(NVL(f.lead_type, ''));
+        l_threshold  VARCHAR2(4000);
+      BEGIN
+        IF l_lt_attr_id IS NOT NULL THEN
+          IF l_type = 'date_range' AND f.lead_from IS NOT NULL AND f.lead_to IS NOT NULL THEN
+            l_sql_where := l_sql_where || ' AND EXISTS (SELECT 1 FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => ''' || l_lt_attr_id || ''')) lt'
+                                           || ' WHERE lt.STAY_DATE = ' || l_base_alias || '.STAY_DATE'
+                                           || '   AND lt.ATTRIBUTE_VALUE BETWEEN TO_DATE(''' || TO_CHAR(f.lead_from, 'YYYY-MM-DD') || ''',''YYYY-MM-DD'')'
+                                           || '                       AND TO_DATE(''' || TO_CHAR(f.lead_to, 'YYYY-MM-DD') || ''',''YYYY-MM-DD''))';
+          ELSIF (l_type = 'days' OR l_type = 'weeks' OR l_type = 'months') AND f.lead_value IS NOT NULL THEN
+            IF l_type = 'days' THEN
+              l_threshold := l_base_alias || '.STAY_DATE - ' || TO_CHAR(f.lead_value);
+            ELSIF l_type = 'weeks' THEN
+              l_threshold := l_base_alias || '.STAY_DATE - ' || TO_CHAR(f.lead_value * 7);
+            ELSE
+              l_threshold := 'ADD_MONTHS(' || l_base_alias || '.STAY_DATE, -' || TO_CHAR(f.lead_value) || ')';
+            END IF;
+            l_sql_where := l_sql_where || ' AND EXISTS (SELECT 1 FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => ''' || l_lt_attr_id || ''')) lt'
+                                           || ' WHERE lt.STAY_DATE = ' || l_base_alias || '.STAY_DATE'
+                                           || '   AND lt.ATTRIBUTE_VALUE <= ' || l_threshold || ')';
+          END IF; -- else: no lead time constraint
+        ELSE
+          -- Fallback: if explicit attribute is not supplied but from/to exist, keep previous behavior
+          IF f.lead_from IS NOT NULL AND f.lead_to IS NOT NULL THEN
+            l_sql_where := l_sql_where || ' AND TRUNC(SYSDATE) BETWEEN TO_DATE(''' || TO_CHAR(f.lead_from, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'') AND TO_DATE(''' || TO_CHAR(f.lead_to, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'')';
+          END IF;
+        END IF;
+      END;
+
+      -- Day-of-week filter
       IF f.days_of_week IS NOT NULL AND f.days_of_week <> '[]' THEN
         l_sql_where := l_sql_where || ' AND TO_CHAR('||l_base_alias||'.STAY_DATE, ''D'') IN (' || REPLACE(REPLACE(f.days_of_week, '[', ''), ']', '') || ') ';
       END IF;
-      l_sql_where := l_sql_where || ' AND ' || l_base_alias || '.ATTRIBUTE_VALUE >= ' || f.min_rate;
+
+      -- Minimum rate filter
+      IF f.min_rate IS NOT NULL THEN
+        l_sql_where := l_sql_where || ' AND ' || l_base_alias || '.ATTRIBUTE_VALUE >= ' || f.min_rate;
+      END IF;
     END LOOP;
     l_sql_where := l_sql_where || ' AND (' || l_base_alias || '.STAY_DATE = :b_stay_date_filter OR :b_stay_date_null_check IS NULL) ';
     l_regions_count := TO_NUMBER(JSON_VALUE(p_rules_json, '$.regions.size()'));
@@ -311,18 +389,26 @@ CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
         v_stay_date DATE := d.stay_date;
         v_any_rule_matched_for_date BOOLEAN := FALSE;
         v_no_rule_population CLOB := NULL;
+        v_lead_time_json CLOB := 'null';
       BEGIN
         IF p_stay_date IS NOT NULL AND v_stay_date != p_stay_date THEN
           CONTINUE;
         END IF;
         FOR region_rec IN (
-          SELECT region_name, stay_from, stay_to, lead_from, lead_to, conditions, days_of_week, minimum_rate, sequence
+          SELECT region_name, stay_from, stay_to,
+                 lead_from, lead_to,
+                 lead_attr, lead_attr2, lead_type, lead_value,
+                 conditions, days_of_week, minimum_rate, sequence
           FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (
             region_name  VARCHAR2(255)   PATH '$.name',
             stay_from    DATE            PATH '$.filters.stayWindow.from',
             stay_to      DATE            PATH '$.filters.stayWindow.to',
             lead_from    DATE            PATH '$.filters.leadTime.from',
             lead_to      DATE            PATH '$.filters.leadTime.to',
+            lead_attr    VARCHAR2(255)   PATH '$.filters.leadTime.attribute',
+            lead_attr2   VARCHAR2(255)   PATH '$.filters.leadTime.leadTimeAttribute',
+            lead_type    VARCHAR2(20)    PATH '$.filters.leadTime.type',
+            lead_value   NUMBER          PATH '$.filters.leadTime.value',
             conditions   CLOB FORMAT JSON PATH '$.conditions',
             days_of_week VARCHAR2(100)   FORMAT JSON PATH '$.filters.daysOfWeek',
             minimum_rate NUMBER          PATH '$.filters.minimumRate',
@@ -331,7 +417,53 @@ CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
           ORDER BY sequence
         ) LOOP
           IF NOT (v_stay_date BETWEEN region_rec.stay_from AND region_rec.stay_to) THEN CONTINUE; END IF;
-          IF NOT (TRUNC(SYSDATE) BETWEEN region_rec.lead_from AND region_rec.lead_to) THEN CONTINUE; END IF;
+
+          -- Lead-time filtering driven by attribute/date logic
+          DECLARE
+            l_lt_attr_id        VARCHAR2(255) := REGEXP_REPLACE(NVL(region_rec.lead_attr2, region_rec.lead_attr), '^#|#$', '');
+            l_lt_type           VARCHAR2(20)  := LOWER(NVL(region_rec.lead_type, ''));
+            l_lt_value          NUMBER        := region_rec.lead_value;
+            l_lt_from           DATE          := region_rec.lead_from;
+            l_lt_to             DATE          := region_rec.lead_to;
+            l_lt_actual         DATE          := NULL;
+            l_lt_threshold      DATE          := NULL;
+          BEGIN
+            -- Default lead-time filter JSON (will be used in rule reporting if region passes)
+            v_lead_time_json := 'null';
+
+            IF l_lt_attr_id IS NOT NULL THEN
+              l_lt_actual := get_date_attribute_for_stay(l_lt_attr_id, v_stay_date);
+              IF l_lt_type = 'date_range' THEN
+                -- Require attribute date between from/to
+                IF l_lt_from IS NULL OR l_lt_to IS NULL OR l_lt_actual IS NULL OR NOT (l_lt_actual BETWEEN l_lt_from AND l_lt_to) THEN
+                  CONTINUE; -- region filtered out
+                END IF;
+                v_lead_time_json := '{"attribute":"' || l_lt_attr_id || '","type":"date_range","from":"' || TO_CHAR(l_lt_from,'YYYY-MM-DD') || '","to":"' || TO_CHAR(l_lt_to,'YYYY-MM-DD') || '","actual":' || CASE WHEN l_lt_actual IS NOT NULL THEN '"' || TO_CHAR(l_lt_actual,'YYYY-MM-DD') || '"' ELSE 'null' END || '}';
+              ELSIF l_lt_type IN ('days','weeks','months') AND l_lt_value IS NOT NULL THEN
+                IF l_lt_type = 'days' THEN
+                  l_lt_threshold := v_stay_date - l_lt_value;
+                ELSIF l_lt_type = 'weeks' THEN
+                  l_lt_threshold := v_stay_date - (l_lt_value * 7);
+                ELSE
+                  l_lt_threshold := ADD_MONTHS(v_stay_date, -l_lt_value);
+                END IF;
+                IF l_lt_actual IS NULL OR l_lt_actual > l_lt_threshold THEN
+                  CONTINUE; -- region filtered out
+                END IF;
+                v_lead_time_json := '{"attribute":"' || l_lt_attr_id || '","type":"' || l_lt_type || '","value":' || TO_CHAR(l_lt_value)
+                                     || ',"threshold":"' || TO_CHAR(l_lt_threshold,'YYYY-MM-DD') || '","actual":' || CASE WHEN l_lt_actual IS NOT NULL THEN '"' || TO_CHAR(l_lt_actual,'YYYY-MM-DD') || '"' ELSE 'null' END || '}';
+              ELSE
+                -- Attribute present but no valid type/value; pass-through, still include metadata
+                v_lead_time_json := '{"attribute":"' || l_lt_attr_id || '","type":' || CASE WHEN l_lt_type IS NOT NULL THEN '"' || l_lt_type || '"' ELSE 'null' END || ',"actual":' || CASE WHEN l_lt_actual IS NOT NULL THEN '"' || TO_CHAR(l_lt_actual,'YYYY-MM-DD') || '"' ELSE 'null' END || '}';
+              END IF;
+            ELSE
+              -- Backward compatibility: if no attribute, honor legacy from/to against SYSDATE if provided
+              IF l_lt_from IS NOT NULL AND l_lt_to IS NOT NULL THEN
+                IF NOT (TRUNC(SYSDATE) BETWEEN l_lt_from AND l_lt_to) THEN CONTINUE; END IF;
+                v_lead_time_json := '{"type":"legacy","from":"' || TO_CHAR(l_lt_from,'YYYY-MM-DD') || '","to":"' || TO_CHAR(l_lt_to,'YYYY-MM-DD') || '"}';
+              END IF;
+            END IF;
+          END;
           IF region_rec.days_of_week IS NOT NULL AND region_rec.days_of_week <> '[]' THEN
             IF INSTR(region_rec.days_of_week, TO_CHAR(v_stay_date, 'D')) = 0 THEN
               CONTINUE;
@@ -466,8 +598,8 @@ CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
                   || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"')
                   || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD')
                   || '", "filters":{'
-                      || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"'
-                      || ', "lead_window":"' || TO_CHAR(region_rec.lead_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.lead_to,'YYYY-MM-DD') || '"'
+                  || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"'
+                      || ', "lead_time":' || v_lead_time_json
                       || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END
                       || CASE WHEN region_rec.minimum_rate IS NOT NULL THEN ', "minimum_rate":' || TO_CHAR(region_rec.minimum_rate) ELSE '' END
                   || '}'
@@ -537,8 +669,8 @@ CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
                   || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"')
                   || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD')
                   || '", "filters":{'
-                    || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"'
-                    || ', "lead_window":"' || TO_CHAR(region_rec.lead_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.lead_to,'YYYY-MM-DD') || '"'
+                  || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"'
+                    || ', "lead_time":' || v_lead_time_json
                     || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END
                     || CASE WHEN region_rec.minimum_rate IS NOT NULL THEN ', "minimum_rate":' || TO_CHAR(region_rec.minimum_rate) ELSE '' END
                   || '}'
