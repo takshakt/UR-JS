@@ -387,7 +387,7 @@ BEGIN
             END IF;
 
             FOR region_rec IN (
-                SELECT region_name, stay_from, stay_to, lead_from, lead_to, conditions, days_of_week
+                SELECT region_name, stay_from, stay_to, lead_from, lead_to, conditions, days_of_week, minimum_rate -- FIX: Add minimum_rate to SELECT
                 FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (
                     region_name  VARCHAR2(255)   PATH '$.name',
                     stay_from    DATE            PATH '$.filters.stayWindow.from',
@@ -395,28 +395,23 @@ BEGIN
                     lead_from    DATE            PATH '$.filters.leadTime.from',
                     lead_to      DATE            PATH '$.filters.leadTime.to',
                     conditions   CLOB FORMAT JSON PATH '$.conditions',
-                    -- **THE FIX IS HERE:** Add FORMAT JSON to ensure the array is returned as a string
                     days_of_week VARCHAR2(100)   FORMAT JSON PATH '$.filters.daysOfWeek',
+                    -- FIX: Extract the minimumRate value as a number
+                    minimum_rate NUMBER          PATH '$.filters.minimumRate',
                     sequence     NUMBER          PATH '$.sequence'
                 ))
                 ORDER BY sequence
             ) LOOP
-                -- Check standard date filters first
-                DBMS_OUTPUT.PUT_LINE('Checking region: ' || region_rec.region_name || ', DaysOfWeek value: [' || NVL(region_rec.days_of_week, 'NULL') || ']');
-
+                -- Check all filters for the region
                 IF NOT (v_stay_date BETWEEN region_rec.stay_from AND region_rec.stay_to) THEN CONTINUE; END IF;
                 IF NOT (TRUNC(SYSDATE) BETWEEN region_rec.lead_from AND region_rec.lead_to) THEN CONTINUE; END IF;
-
-                -- FIX: Add the days of the week filter check
                 IF region_rec.days_of_week IS NOT NULL AND region_rec.days_of_week <> '[]' THEN
-                    -- This checks if the day number of the week is present in the JSON array string.
-                    -- For example, if the day is Saturday ('6') and the array is '[6,7]', it will find a match.
                     IF INSTR(region_rec.days_of_week, TO_CHAR(v_stay_date, 'D')) = 0 THEN
-                        CONTINUE; -- Skip this region if the day of the week does not match
+                        CONTINUE;
                     END IF;
                 END IF;
 
-                <<conditions_loop>> -- Named loop for conditions
+                <<conditions_loop>>
                 FOR cond_rec IN (
                     SELECT cond_name, expr
                     FROM JSON_TABLE(region_rec.conditions, '$[*]' COLUMNS (
@@ -427,26 +422,39 @@ BEGIN
                     ORDER BY sequence
                 ) LOOP
                     DECLARE
-                        l_expr        VARCHAR2(4000) := cond_rec.expr;
-                        l_eval_result NUMBER;
+                        l_expr              VARCHAR2(4000) := cond_rec.expr;
+                        l_eval_result       NUMBER;
+                        -- FIX: Variable to hold the final rule text
+                        l_applied_rule_text VARCHAR2(512);
                     BEGIN
-                        -- (Your existing condition evaluation logic remains here...)
+                        -- (Existing logic to replace attributes and evaluate expression)
                         l_current_id := l_aliases.FIRST;
                         WHILE l_current_id IS NOT NULL LOOP
                             l_expr := REPLACE(l_expr, '#' || l_current_id || '#', TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)));
                             l_current_id := l_aliases.NEXT(l_current_id);
                         END LOOP;
-
                         l_expr := REGEXP_REPLACE(
                             l_expr,
                             '(AVERAGE|SUM|COUNT|MAX|MIN)\s*\((.*?)\)',
                             'ALGO_EVALUATOR_PKG.GENERIC_MATH_EVAL(''\1'', ''\2'')',
                             1, 0, 'i'
                         );
-
                         EXECUTE IMMEDIATE 'SELECT ' || l_expr || ' FROM DUAL' INTO l_eval_result;
 
-                        PIPE ROW(t_result_rec_obj(v_stay_date, l_eval_result, region_rec.region_name || ' / ' || cond_rec.cond_name));
+                        -- FIX: Start building the rule text
+                        l_applied_rule_text := region_rec.region_name || ' / ' || cond_rec.cond_name;
+
+                        -- FIX: Check against the minimum rate
+                        IF region_rec.minimum_rate IS NOT NULL AND l_eval_result < region_rec.minimum_rate THEN
+                            -- Append the message to the rule text
+                            l_applied_rule_text := l_applied_rule_text || ' (Min rate applied)';
+                            -- Overwrite the calculated price with the minimum rate
+                            l_eval_result := region_rec.minimum_rate;
+                        END IF;
+
+                        -- Pipe the final, potentially adjusted, result
+                        PIPE ROW(t_result_rec_obj(v_stay_date, l_eval_result, l_applied_rule_text));
+                        
                         v_any_rule_matched_for_date := TRUE;
                         EXIT conditions_loop;
 
