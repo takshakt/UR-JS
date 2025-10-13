@@ -362,77 +362,86 @@ BEGIN
 
     DBMS_OUTPUT.PUT_LINE('EVALUATE: Distinct stay_dates found: ' || NVL(l_distinct_dates.COUNT,0));
 
-    -- Stage 4: Loop over each unique date and evaluate the rules
+-- Stage 4: Loop over each unique date and evaluate the rules
     FOR d IN (SELECT COLUMN_VALUE AS stay_date FROM TABLE(l_distinct_dates) ORDER BY COLUMN_VALUE) LOOP
         DECLARE
             v_stay_date DATE := d.stay_date;
-            v_rule_matched BOOLEAN := FALSE;
+            -- **FIX:** Flag to track if ANY rule has matched for this date
+            v_any_rule_matched_for_date BOOLEAN := FALSE;
         BEGIN
             IF p_stay_date IS NOT NULL AND v_stay_date != p_stay_date THEN
                 CONTINUE;
             END IF;
 
+            -- Loop through each REGION for the current date
             FOR region_rec IN (
                 SELECT region_name, stay_from, stay_to, lead_from, lead_to, conditions
                 FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (
                     region_name VARCHAR2(255) PATH '$.name',
-                    stay_from   DATE PATH '$.filters.stayWindow.from',
-                    stay_to     DATE PATH '$.filters.stayWindow.to',
-                    lead_from   DATE PATH '$.filters.leadTime.from',
-                    lead_to     DATE PATH '$.filters.leadTime.to',
-                    conditions  CLOB FORMAT JSON PATH '$.conditions'
+                    stay_from   DATE          PATH '$.filters.stayWindow.from',
+                    stay_to     DATE          PATH '$.filters.stayWindow.to',
+                    lead_from   DATE          PATH '$.filters.leadTime.from',
+                    lead_to     DATE          PATH '$.filters.leadTime.to',
+                    conditions  CLOB FORMAT JSON PATH '$.conditions',
+                    sequence    NUMBER        PATH '$.sequence'
                 ))
+                ORDER BY sequence
             ) LOOP
                 -- Check filters for the region
                 IF NOT (v_stay_date BETWEEN region_rec.stay_from AND region_rec.stay_to) THEN CONTINUE; END IF;
                 IF NOT (TRUNC(SYSDATE) BETWEEN region_rec.lead_from AND region_rec.lead_to) THEN CONTINUE; END IF;
 
+                <<conditions_loop>> -- Named loop for conditions
                 FOR cond_rec IN (
-                    SELECT cond_name, expr FROM JSON_TABLE(region_rec.conditions, '$[*]' COLUMNS (
+                    SELECT cond_name, expr
+                    FROM JSON_TABLE(region_rec.conditions, '$[*]' COLUMNS (
                         cond_name VARCHAR2(255) PATH '$.name',
-                        expr      VARCHAR2(4000) PATH '$.expression'
+                        expr      VARCHAR2(4000) PATH '$.expression',
+                        sequence  NUMBER        PATH '$.sequence'
                     ))
+                    ORDER BY sequence
                 ) LOOP
-                    -- This is the correct place to evaluate the expression
                     DECLARE
                         l_expr        VARCHAR2(4000) := cond_rec.expr;
                         l_eval_result NUMBER;
                     BEGIN
-                        -- Step A: Replace all attribute IDs with their numeric values.
+                        -- In a real scenario, you would check condition criteria (occupancy, etc.) here.
+                        -- If the criteria match, then proceed:
+
                         l_current_id := l_aliases.FIRST;
                         WHILE l_current_id IS NOT NULL LOOP
                             l_expr := REPLACE(l_expr, '#' || l_current_id || '#', TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)));
                             l_current_id := l_aliases.NEXT(l_current_id);
                         END LOOP;
 
-                        -- Step B: Transform custom math functions into calls to our helper function.
                         l_expr := REGEXP_REPLACE(
                             l_expr,
-                            '(AVERAGE|SUM|COUNT|MAX|MIN)\s*\((.*?)\)', -- Pattern: FUNCTION(values)
-                            'ALGO_EVALUATOR_PKG.GENERIC_MATH_EVAL(''\1'', ''\2'')', -- Replacement: HELPER('FUNCTION', 'values')
-                            1, 0, 'i' -- Case-insensitive search
+                            '(AVERAGE|SUM|COUNT|MAX|MIN)\s*\((.*?)\)',
+                            'ALGO_EVALUATOR_PKG.GENERIC_MATH_EVAL(''\1'', ''\2'')',
+                            1, 0, 'i'
                         );
-
-                        DBMS_OUTPUT.PUT_LINE('EVALUATE: Executing transformed expr: ' || l_expr);
 
                         EXECUTE IMMEDIATE 'SELECT ' || l_expr || ' FROM DUAL' INTO l_eval_result;
 
                         PIPE ROW(t_result_rec_obj(v_stay_date, l_eval_result, region_rec.region_name || ' / ' || cond_rec.cond_name));
-                        v_rule_matched := TRUE;
-                        GOTO next_date_loop; -- Exit loops for this date since a rule has been applied
+                        
+                        -- **FIX:** Set the flag to true because we found a match
+                        v_any_rule_matched_for_date := TRUE;
+                        
+                        -- Exit the inner conditions_loop and proceed to the next region
+                        EXIT conditions_loop;
+
                     END;
-                END LOOP; -- End conditions loop
+                END LOOP; -- End of the named conditions_loop
             END LOOP; -- End regions loop
 
-            IF NOT v_rule_matched THEN
+            -- **FIX:** After checking all regions, pipe "No Rule Applied" only if the flag is still false.
+            IF NOT v_any_rule_matched_for_date THEN
                 PIPE ROW(t_result_rec_obj(v_stay_date, NULL, 'No Rule Applied'));
             END IF;
 
-            <<next_date_loop>>
-            NULL;
         END;
     END LOOP; -- End unique dates loop
-
     DBMS_OUTPUT.PUT_LINE('EVALUATE: Completed all dates');
     RETURN;
 EXCEPTION
