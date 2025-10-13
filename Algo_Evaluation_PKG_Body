@@ -270,8 +270,9 @@ BEGIN
     -- Fetch the latest algorithm rules
     BEGIN
         SELECT expression INTO l_rules_json FROM (
-            SELECT expression FROM ur_algo_versions WHERE algo_id = p_algo_id ORDER BY version DESC
-        ) WHERE ROWNUM = 1;
+            SELECT expression FROM ur_algo_versions WHERE id = (select current_version_id from UR_ALGOS where id = p_algo_id)
+        );
+        
         DBMS_OUTPUT.PUT_LINE('EVALUATE: Rules JSON fetched');
 
         DECLARE
@@ -293,7 +294,7 @@ BEGIN
             RETURN;
     END;
 
-    -- Stage 1: Discover all unique attribute IDs from the rules
+-- Stage 1: Discover all unique attribute IDs from the rules
     FOR cond_rec IN (
         SELECT cond_json FROM JSON_TABLE(l_rules_json, '$.regions[*].conditions[*]' COLUMNS (
             cond_json CLOB FORMAT JSON PATH '$'
@@ -303,25 +304,35 @@ BEGIN
             l_occ_attr_raw  VARCHAR2(255) := JSON_VALUE(cond_rec.cond_json, '$.occupancyThreshold.attribute');
             l_occ_attr      VARCHAR2(255) := REGEXP_REPLACE(NVL(l_occ_attr_raw, ''), '^#|#$', '');
             l_pr_template   VARCHAR2(255) := JSON_VALUE(cond_rec.cond_json, '$.propertyRanking.type');
-            l_pr_attr       VARCHAR2(255);
+            l_pr_attr_id    VARCHAR2(255); -- Renamed for clarity
             l_expr_raw      CLOB          := JSON_VALUE(cond_rec.cond_json, '$.expression');
             l_pos           PLS_INTEGER   := 1;
             l_attr_in_expr  VARCHAR2(255);
             l_clean_attr    VARCHAR2(255);
         BEGIN
+            -- Add occupancy attribute
             IF l_occ_attr IS NOT NULL AND NOT l_aliases.EXISTS(l_occ_attr) THEN
                 l_aliases(l_occ_attr) := l_occ_attr;
                 DBMS_OUTPUT.PUT_LINE('EVALUATE: Added occupancy attribute ' || l_occ_attr);
             END IF;
 
+            -- **FIX IS HERE: Add diagnostics to the Property Ranking discovery**
             IF l_pr_template IS NOT NULL THEN
-                l_pr_attr := get_attribute_id_from_template(l_pr_template);
-                IF l_pr_attr IS NOT NULL AND NOT l_aliases.EXISTS(l_pr_attr) THEN
-                    l_aliases(l_pr_attr) := l_pr_attr;
-                    DBMS_OUTPUT.PUT_LINE('EVALUATE: Added propertyRanking attribute ' || l_pr_attr);
-                END IF;
+                DECLARE
+                    l_pr_template_id VARCHAR2(255) := REPLACE(l_pr_template, '#', '');
+                BEGIN
+                    DBMS_OUTPUT.PUT_LINE('Discovery -> Looking for Template ID: ' || l_pr_template_id);
+                    l_pr_attr_id := get_attribute_id_from_template(l_pr_template_id);
+                    DBMS_OUTPUT.PUT_LINE('Discovery -> Found Attribute ID: ' || NVL(l_pr_attr_id, 'NULL'));
+
+                    IF l_pr_attr_id IS NOT NULL AND NOT l_aliases.EXISTS(l_pr_attr_id) THEN
+                        l_aliases(l_pr_attr_id) := l_pr_attr_id;
+                        DBMS_OUTPUT.PUT_LINE('EVALUATE: Added propertyRanking attribute ' || l_pr_attr_id);
+                    END IF;
+                END;
             END IF;
 
+            -- Add expression attributes
             LOOP
                 l_attr_in_expr := REGEXP_SUBSTR(l_expr_raw, '#[A-F0-9]+#', l_pos);
                 EXIT WHEN l_attr_in_expr IS NULL;
@@ -387,7 +398,7 @@ BEGIN
             END IF;
 
             FOR region_rec IN (
-                SELECT region_name, stay_from, stay_to, lead_from, lead_to, conditions, days_of_week, minimum_rate -- FIX: Add minimum_rate to SELECT
+                SELECT region_name, stay_from, stay_to, lead_from, lead_to, conditions, days_of_week, minimum_rate
                 FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (
                     region_name  VARCHAR2(255)   PATH '$.name',
                     stay_from    DATE            PATH '$.filters.stayWindow.from',
@@ -396,7 +407,6 @@ BEGIN
                     lead_to      DATE            PATH '$.filters.leadTime.to',
                     conditions   CLOB FORMAT JSON PATH '$.conditions',
                     days_of_week VARCHAR2(100)   FORMAT JSON PATH '$.filters.daysOfWeek',
-                    -- FIX: Extract the minimumRate value as a number
                     minimum_rate NUMBER          PATH '$.filters.minimumRate',
                     sequence     NUMBER          PATH '$.sequence'
                 ))
@@ -413,53 +423,103 @@ BEGIN
 
                 <<conditions_loop>>
                 FOR cond_rec IN (
-                    SELECT cond_name, expr
+                    SELECT cond_name, expr,
+                           occ_attr, occ_op, occ_val,
+                           pr_type, pr_op, pr_val,
+                           es_op, es_val
                     FROM JSON_TABLE(region_rec.conditions, '$[*]' COLUMNS (
-                        cond_name VARCHAR2(255) PATH '$.name',
-                        expr      VARCHAR2(4000) PATH '$.expression',
-                        sequence  NUMBER        PATH '$.sequence'
+                        cond_name VARCHAR2(255)   PATH '$.name',
+                        expr      VARCHAR2(4000)  PATH '$.expression',
+                        sequence  NUMBER          PATH '$.sequence',
+                        occ_attr  VARCHAR2(255)   PATH '$.occupancyThreshold.attribute',
+                        occ_op    VARCHAR2(10)    PATH '$.occupancyThreshold.operator',
+                        occ_val   NUMBER          PATH '$.occupancyThreshold.value',
+                        pr_type   VARCHAR2(255)   PATH '$.propertyRanking.type',
+                        pr_op     VARCHAR2(10)    PATH '$.propertyRanking.operator',
+                        pr_val    NUMBER          PATH '$.propertyRanking.value',
+                        es_op     VARCHAR2(10)    PATH '$.eventScore.operator',
+                        es_val    NUMBER          PATH '$.eventScore.value'
                     ))
                     ORDER BY sequence
                 ) LOOP
                     DECLARE
                         l_expr              VARCHAR2(4000) := cond_rec.expr;
                         l_eval_result       NUMBER;
-                        -- FIX: Variable to hold the final rule text
                         l_applied_rule_text VARCHAR2(512);
+                        v_condition_met     BOOLEAN := TRUE;
+                        l_actual_value      NUMBER;
+                        l_check_result      NUMBER;
                     BEGIN
-                        -- (Existing logic to replace attributes and evaluate expression)
-                        l_current_id := l_aliases.FIRST;
-                        WHILE l_current_id IS NOT NULL LOOP
-                            l_expr := REPLACE(l_expr, '#' || l_current_id || '#', TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)));
-                            l_current_id := l_aliases.NEXT(l_current_id);
-                        END LOOP;
-                        l_expr := REGEXP_REPLACE(
-                            l_expr,
-                            '(AVERAGE|SUM|COUNT|MAX|MIN)\s*\((.*?)\)',
-                            'ALGO_EVALUATOR_PKG.GENERIC_MATH_EVAL(''\1'', ''\2'')',
-                            1, 0, 'i'
-                        );
-                        EXECUTE IMMEDIATE 'SELECT ' || l_expr || ' FROM DUAL' INTO l_eval_result;
-
-                        -- FIX: Start building the rule text
-                        l_applied_rule_text := region_rec.region_name || ' / ' || cond_rec.cond_name;
-
-                        -- FIX: Check against the minimum rate
-                        IF region_rec.minimum_rate IS NOT NULL AND l_eval_result < region_rec.minimum_rate THEN
-                            -- Append the message to the rule text
-                            l_applied_rule_text := l_applied_rule_text || ' (Min rate applied)';
-                            -- Overwrite the calculated price with the minimum rate
-                            l_eval_result := region_rec.minimum_rate;
+                        -- 1. Check Occupancy Threshold
+                        IF cond_rec.occ_attr IS NOT NULL THEN
+                            DECLARE
+                                l_occ_attr_id VARCHAR2(255) := REPLACE(cond_rec.occ_attr, '#', '');
+                            BEGIN
+                                IF l_staged_data.EXISTS(l_occ_attr_id) THEN
+                                    l_actual_value := get_value_for_date(l_staged_data(l_occ_attr_id), v_stay_date);
+                                    EXECUTE IMMEDIATE 'BEGIN :result := CASE WHEN :val1 ' || cond_rec.occ_op || ' :val2 THEN 1 ELSE 0 END; END;'
+                                        USING OUT l_check_result, IN l_actual_value, IN cond_rec.occ_val;
+                                    IF l_check_result = 0 THEN v_condition_met := FALSE; END IF;
+                                ELSE
+                                    v_condition_met := FALSE; -- Can't meet condition if data is missing
+                                END IF;
+                            END;
                         END IF;
 
-                        -- Pipe the final, potentially adjusted, result
-                        PIPE ROW(t_result_rec_obj(v_stay_date, l_eval_result, l_applied_rule_text));
-                        
-                        v_any_rule_matched_for_date := TRUE;
-                        EXIT conditions_loop;
+                        -- 2. Check Property Ranking (only if previous checks passed)
+                        IF v_condition_met AND cond_rec.pr_type IS NOT NULL THEN
+                            DECLARE
+                                l_pr_template_id VARCHAR2(255) := REPLACE(cond_rec.pr_type, '#', '');
+                                l_pr_attr_id     VARCHAR2(255);
+                            BEGIN
+                                -- **DIAGNOSTIC:** Let's see what we are trying to look up.
+                                DBMS_OUTPUT.PUT_LINE('Property Ranking Check -> Template ID: ' || l_pr_template_id);
 
+                                -- Map the template to the actual attribute ID
+                                l_pr_attr_id := get_attribute_id_from_template(l_pr_template_id);
+
+                                -- **DIAGNOSTIC:** Let's see what attribute ID was found.
+                                DBMS_OUTPUT.PUT_LINE('Property Ranking Check -> Found Attribute ID: ' || NVL(l_pr_attr_id, 'NULL'));
+
+                                -- Check if we found an attribute AND if we have data for it.
+                                IF l_pr_attr_id IS NOT NULL AND l_staged_data.EXISTS(l_pr_attr_id) THEN
+                                    l_actual_value := get_value_for_date(l_staged_data(l_pr_attr_id), v_stay_date);
+                                    EXECUTE IMMEDIATE 'BEGIN :result := CASE WHEN :val1 ' || cond_rec.pr_op || ' :val2 THEN 1 ELSE 0 END; END;'
+                                        USING OUT l_check_result, IN l_actual_value, IN cond_rec.pr_val;
+                                    IF l_check_result = 0 THEN v_condition_met := FALSE; END IF;
+                                ELSE
+                                    -- If we couldn't find the attribute or its data, the condition automatically fails.
+                                    v_condition_met := FALSE;
+                                END IF;
+                            END;
+                        END IF;
+
+                        -- (Event Score placeholder remains here)
+
+                        -- 4. If all conditions were met, evaluate the expression
+                        IF v_condition_met THEN
+                            -- (The rest of your evaluation logic remains unchanged)
+                            l_current_id := l_aliases.FIRST;
+                            WHILE l_current_id IS NOT NULL LOOP
+                                l_expr := REPLACE(l_expr, '#' || l_current_id || '#', TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)));
+                                l_current_id := l_aliases.NEXT(l_current_id);
+                            END LOOP;
+                            l_expr := REGEXP_REPLACE(
+                                l_expr, '(AVERAGE|SUM|COUNT|MAX|MIN)\s*\((.*?)\)',
+                                'ALGO_EVALUATOR_PKG.GENERIC_MATH_EVAL(''\1'', ''\2'')', 1, 0, 'i'
+                            );
+                            EXECUTE IMMEDIATE 'SELECT ' || l_expr || ' FROM DUAL' INTO l_eval_result;
+                            l_applied_rule_text := region_rec.region_name || ' / ' || cond_rec.cond_name;
+                            IF region_rec.minimum_rate IS NOT NULL AND l_eval_result < region_rec.minimum_rate THEN
+                                l_applied_rule_text := l_applied_rule_text || ' (Min rate applied)';
+                                l_eval_result := region_rec.minimum_rate;
+                            END IF;
+                            PIPE ROW(t_result_rec_obj(v_stay_date, l_eval_result, l_applied_rule_text));
+                            v_any_rule_matched_for_date := TRUE;
+                            EXIT conditions_loop;
+                        END IF;
                     END;
-                END LOOP; -- End of the named conditions_loop
+                END LOOP; -- End conditions_loop
             END LOOP; -- End regions loop
 
             IF NOT v_any_rule_matched_for_date THEN
