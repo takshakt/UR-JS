@@ -1,5 +1,35 @@
+create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
 
-CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
+    FUNCTION GENERIC_MATH_EVAL(p_function_name IN VARCHAR2, p_values IN VARCHAR2) RETURN NUMBER IS
+      l_sum   NUMBER := 0;
+      l_count NUMBER := 0;
+      l_min   NUMBER;
+      l_max   NUMBER;
+      l_val   NUMBER;
+    BEGIN
+      -- Loop through the comma-separated string to process each number
+      FOR r IN (
+        SELECT TO_NUMBER(REGEXP_SUBSTR(p_values, '[^,]+', 1, LEVEL)) AS num
+        FROM DUAL
+        CONNECT BY LEVEL <= REGEXP_COUNT(p_values, ',') + 1
+      ) LOOP
+        l_val := r.num;
+        l_sum := l_sum + l_val;
+        l_count := l_count + 1;
+        IF l_min IS NULL OR l_val < l_min THEN l_min := l_val; END IF;
+        IF l_max IS NULL OR l_val > l_max THEN l_max := l_val; END IF;
+      END LOOP;
+
+      -- Return the result based on the function name
+      CASE UPPER(p_function_name)
+        WHEN 'SUM'     THEN RETURN l_sum;
+        WHEN 'AVERAGE' THEN RETURN CASE WHEN l_count > 0 THEN l_sum / l_count ELSE 0 END;
+        WHEN 'COUNT'   THEN RETURN l_count;
+        WHEN 'MIN'     THEN RETURN l_min;
+        WHEN 'MAX'     THEN RETURN l_max;
+        ELSE RETURN NULL; -- Or raise an error for unknown functions
+      END CASE;
+    END GENERIC_MATH_EVAL;
 
   -- Map template_id to attribute_id for 'OWN PROPERTY RANK'
   FUNCTION get_attribute_id_from_template(p_template_id VARCHAR2) RETURN VARCHAR2 IS
@@ -214,92 +244,89 @@ CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
   END build_dynamic_query;
 
 
-  FUNCTION EVALUATE(p_algo_id IN ur_algos.id%TYPE, p_stay_date IN DATE DEFAULT NULL)
+FUNCTION EVALUATE(p_algo_id IN ur_algos.id%TYPE, p_stay_date IN DATE DEFAULT NULL)
     RETURN t_result_tab_obj PIPELINED IS
 
-    l_rules_json   CLOB;
+    l_rules_json        CLOB;
     TYPE t_alias_map IS TABLE OF VARCHAR2(255) INDEX BY VARCHAR2(255);
-    l_aliases      t_alias_map;
-    l_current_id   VARCHAR2(255);
+    l_aliases           t_alias_map;
+    l_current_id        VARCHAR2(255);
     TYPE t_staged_data_map IS TABLE OF t_result_tab_obj INDEX BY VARCHAR2(255);
-    l_staged_data  t_staged_data_map;
+    l_staged_data       t_staged_data_map;
 
-    -- Declare associative array as set
+    -- Associative array to act as a "set" for finding unique dates
     TYPE t_date_set IS TABLE OF BOOLEAN INDEX BY VARCHAR2(10);
-    l_date_set t_date_set;
-
+    l_date_set          t_date_set;
+    
     -- A temporary collection to hold ALL dates, including duplicates
-    l_all_dates SYS.ODCIDATELIST := SYS.ODCIDATELIST(); -- Or your custom my_date_list
+    l_all_dates         SYS.ODCIDATELIST := SYS.ODCIDATELIST();
 
     -- The final collection that will hold the clean, unique list
-    l_distinct_dates SYS.ODCIDATELIST := SYS.ODCIDATELIST(); -- Or your custom my_date_list
+    l_distinct_dates    SYS.ODCIDATELIST := SYS.ODCIDATELIST();
 
-  BEGIN
+BEGIN
     DBMS_OUTPUT.PUT_LINE('EVALUATE: Starting for algo_id ' || p_algo_id);
 
-    l_distinct_dates := sys.odcidatelist(); 
-
+    -- Fetch the latest algorithm rules
     BEGIN
-      SELECT expression INTO l_rules_json FROM (
-        SELECT expression FROM ur_algo_versions WHERE algo_id = p_algo_id ORDER BY version DESC
-      ) WHERE ROWNUM = 1;
-      DBMS_OUTPUT.PUT_LINE('EVALUATE: Rules JSON fetched');
+        SELECT expression INTO l_rules_json FROM (
+            SELECT expression FROM ur_algo_versions WHERE algo_id = p_algo_id ORDER BY version DESC
+        ) WHERE ROWNUM = 1;
+        DBMS_OUTPUT.PUT_LINE('EVALUATE: Rules JSON fetched');
     EXCEPTION
-      WHEN NO_DATA_FOUND THEN
-        PIPE ROW(t_result_rec_obj(NULL,NULL,'ERROR: Algorithm or latest version not found.'));
-        RETURN;
+        WHEN NO_DATA_FOUND THEN
+            PIPE ROW(t_result_rec_obj(NULL, NULL, 'ERROR: Algorithm or latest version not found.'));
+            RETURN;
     END;
 
-    -- Extract attributes similar to build_dynamic_query
+    -- Stage 1: Discover all unique attribute IDs from the rules
     FOR cond_rec IN (
-      SELECT cond_json FROM JSON_TABLE(l_rules_json, '$.regions[*].conditions[*]' COLUMNS (
-        cond_json CLOB FORMAT JSON PATH '$'
-      ))
+        SELECT cond_json FROM JSON_TABLE(l_rules_json, '$.regions[*].conditions[*]' COLUMNS (
+            cond_json CLOB FORMAT JSON PATH '$'
+        ))
     ) LOOP
-      -- occupancyThreshold attribute
-      DECLARE
-        l_occ_attr_raw VARCHAR2(255) := JSON_VALUE(cond_rec.cond_json,'$.occupancyThreshold.attribute');
-        l_occ_attr VARCHAR2(255) := REGEXP_REPLACE(NVL(l_occ_attr_raw, ''), '^#|#$', '');
-        l_pr_template VARCHAR2(255) := REGEXP_REPLACE(NVL(JSON_VALUE(cond_rec.cond_json,'$.propertyRanking.type'), ''), '^#|#$', '');
-        l_pr_attr VARCHAR2(255);
-        l_expr_raw CLOB := JSON_VALUE(cond_rec.cond_json,'$.expression');
-        l_pos PLS_INTEGER := 1;
-        l_attr_in_expr VARCHAR2(255);
-        l_clean_attr VARCHAR2(255);
-      BEGIN
-        IF l_occ_attr IS NOT NULL AND NOT l_aliases.EXISTS(l_occ_attr) THEN
-          l_aliases(l_occ_attr) := l_occ_attr;
-          DBMS_OUTPUT.PUT_LINE('EVALUATE: Added occupancy attribute ' || l_occ_attr);
-        END IF;
+        DECLARE
+            l_occ_attr_raw  VARCHAR2(255) := JSON_VALUE(cond_rec.cond_json, '$.occupancyThreshold.attribute');
+            l_occ_attr      VARCHAR2(255) := REGEXP_REPLACE(NVL(l_occ_attr_raw, ''), '^#|#$', '');
+            l_pr_template   VARCHAR2(255) := JSON_VALUE(cond_rec.cond_json, '$.propertyRanking.type');
+            l_pr_attr       VARCHAR2(255);
+            l_expr_raw      CLOB          := JSON_VALUE(cond_rec.cond_json, '$.expression');
+            l_pos           PLS_INTEGER   := 1;
+            l_attr_in_expr  VARCHAR2(255);
+            l_clean_attr    VARCHAR2(255);
+        BEGIN
+            IF l_occ_attr IS NOT NULL AND NOT l_aliases.EXISTS(l_occ_attr) THEN
+                l_aliases(l_occ_attr) := l_occ_attr;
+                DBMS_OUTPUT.PUT_LINE('EVALUATE: Added occupancy attribute ' || l_occ_attr);
+            END IF;
 
-        IF l_pr_template IS NOT NULL THEN
-          l_pr_attr := get_attribute_id_from_template(l_pr_template);
-          IF l_pr_attr IS NOT NULL AND NOT l_aliases.EXISTS(l_pr_attr) THEN
-            l_aliases(l_pr_attr) := l_pr_attr;
-            DBMS_OUTPUT.PUT_LINE('EVALUATE: Added propertyRanking attribute ' || l_pr_attr);
-          END IF;
-        END IF;
+            IF l_pr_template IS NOT NULL THEN
+                l_pr_attr := get_attribute_id_from_template(l_pr_template);
+                IF l_pr_attr IS NOT NULL AND NOT l_aliases.EXISTS(l_pr_attr) THEN
+                    l_aliases(l_pr_attr) := l_pr_attr;
+                    DBMS_OUTPUT.PUT_LINE('EVALUATE: Added propertyRanking attribute ' || l_pr_attr);
+                END IF;
+            END IF;
 
-        -- Extract expression embedded attributes
-        LOOP
-          l_attr_in_expr := REGEXP_SUBSTR(l_expr_raw, '#[A-F0-9]+#', l_pos);
-          EXIT WHEN l_attr_in_expr IS NULL;
-          l_clean_attr := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '');
-          IF NOT l_aliases.EXISTS(l_clean_attr) THEN
-            l_aliases(l_clean_attr) := l_clean_attr;
-            DBMS_OUTPUT.PUT_LINE('EVALUATE: Added expr attribute ' || l_clean_attr);
-          END IF;
-          l_pos := INSTR(l_expr_raw, l_attr_in_expr, l_pos) + LENGTH(l_attr_in_expr);
-        END LOOP;
-      END;
+            LOOP
+                l_attr_in_expr := REGEXP_SUBSTR(l_expr_raw, '#[A-F0-9]+#', l_pos);
+                EXIT WHEN l_attr_in_expr IS NULL;
+                l_clean_attr := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '');
+                IF NOT l_aliases.EXISTS(l_clean_attr) THEN
+                    l_aliases(l_clean_attr) := l_clean_attr;
+                    DBMS_OUTPUT.PUT_LINE('EVALUATE: Added expr attribute ' || l_clean_attr);
+                END IF;
+                l_pos := INSTR(l_expr_raw, l_attr_in_expr, l_pos) + LENGTH(l_attr_in_expr);
+            END LOOP;
+        END;
     END LOOP;
 
     IF l_aliases.COUNT = 0 THEN
-      PIPE ROW(t_result_rec_obj(NULL,NULL,'ERROR: No attributes found in JSON'));
-      RETURN;
+        PIPE ROW(t_result_rec_obj(NULL, NULL, 'ERROR: No attributes found in JSON'));
+        RETURN;
     END IF;
 
-    -- Pre-fetch staged attribute data and collect unique stay dates into the set
+    -- Stage 2: Pre-fetch data for all attributes and collect all stay dates
     l_current_id := l_aliases.FIRST;
     WHILE l_current_id IS NOT NULL LOOP
         DBMS_OUTPUT.PUT_LINE('EVALUATE: Fetching data for attribute ' || l_current_id);
@@ -310,7 +337,6 @@ CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
 
         DBMS_OUTPUT.PUT_LINE('EVALUATE: Retrieved ' || NVL(l_staged_data(l_current_id).COUNT,0) || ' rows');
 
-        -- Step 1: Gather ALL dates from the attribute into a temporary collection
         FOR i IN 1 .. NVL(l_staged_data(l_current_id).COUNT,0) LOOP
             l_all_dates.EXTEND;
             l_all_dates(l_all_dates.LAST) := l_staged_data(l_current_id)(i).stay_date;
@@ -318,13 +344,12 @@ CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
 
         l_current_id := l_aliases.NEXT(l_current_id);
     END LOOP;
-
-    -- Step 2: Use the associative array "set" to find the unique dates
+    
+    -- Stage 3: De-duplicate stay dates using the reliable pure PL/SQL method
     FOR i IN 1 .. l_all_dates.COUNT LOOP
         l_date_set(TO_CHAR(l_all_dates(i), 'YYYY-MM-DD')) := TRUE;
     END LOOP;
 
-    -- Step 3: Build the final, clean list of distinct dates from the set
     DECLARE
         v_date_key VARCHAR2(10) := l_date_set.FIRST;
     BEGIN
@@ -334,94 +359,88 @@ CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
             v_date_key := l_date_set.NEXT(v_date_key);
         END LOOP;
     END;
-    
+
     DBMS_OUTPUT.PUT_LINE('EVALUATE: Distinct stay_dates found: ' || NVL(l_distinct_dates.COUNT,0));
 
-    -- Loop over stay_dates and evaluate rules
-    FOR d IN (SELECT COLUMN_VALUE AS stay_date FROM TABLE(l_distinct_dates)) LOOP
-      DECLARE
-        v_stay_date DATE := d.stay_date;
-        v_rule_matched BOOLEAN := FALSE;
-      BEGIN
-        DBMS_OUTPUT.PUT_LINE('EVALUATE: Processing stay_date ' || TO_CHAR(v_stay_date,'YYYY-MM-DD'));
-        PIPE ROW(t_result_rec_obj(NULL,NULL,'DEBUG: Processing stay_date ' || TO_CHAR(v_stay_date,'YYYY-MM-DD')));
+    -- Stage 4: Loop over each unique date and evaluate the rules
+    FOR d IN (SELECT COLUMN_VALUE AS stay_date FROM TABLE(l_distinct_dates) ORDER BY COLUMN_VALUE) LOOP
+        DECLARE
+            v_stay_date DATE := d.stay_date;
+            v_rule_matched BOOLEAN := FALSE;
+        BEGIN
+            IF p_stay_date IS NOT NULL AND v_stay_date != p_stay_date THEN
+                CONTINUE;
+            END IF;
 
-        IF p_stay_date IS NOT NULL AND v_stay_date != p_stay_date THEN
-          DBMS_OUTPUT.PUT_LINE('EVALUATE: Skipping due to stay_date filter');
-          CONTINUE;
-        END IF;
+            FOR region_rec IN (
+                SELECT region_name, stay_from, stay_to, lead_from, lead_to, conditions
+                FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (
+                    region_name VARCHAR2(255) PATH '$.name',
+                    stay_from   DATE PATH '$.filters.stayWindow.from',
+                    stay_to     DATE PATH '$.filters.stayWindow.to',
+                    lead_from   DATE PATH '$.filters.leadTime.from',
+                    lead_to     DATE PATH '$.filters.leadTime.to',
+                    conditions  CLOB FORMAT JSON PATH '$.conditions'
+                ))
+            ) LOOP
+                -- Check filters for the region
+                IF NOT (v_stay_date BETWEEN region_rec.stay_from AND region_rec.stay_to) THEN CONTINUE; END IF;
+                IF NOT (TRUNC(SYSDATE) BETWEEN region_rec.lead_from AND region_rec.lead_to) THEN CONTINUE; END IF;
 
-        FOR region_rec IN (
-          SELECT region_name, stay_from, stay_to, lead_from, lead_to, conditions
-          FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (
-            region_name VARCHAR2(255) PATH '$.name',
-            stay_from DATE PATH '$.filters.stayWindow.from',
-            stay_to DATE PATH '$.filters.stayWindow.to',
-            lead_from DATE PATH '$.filters.leadTime.from',
-            lead_to DATE PATH '$.filters.leadTime.to',
-            conditions CLOB FORMAT JSON PATH '$.conditions'
-          ))
-        ) LOOP
-          DBMS_OUTPUT.PUT_LINE('EVALUATE: Checking region ' || region_rec.region_name);
-          PIPE ROW(t_result_rec_obj(NULL,NULL,'DEBUG: Region ' || region_rec.region_name));
+                FOR cond_rec IN (
+                    SELECT cond_name, expr FROM JSON_TABLE(region_rec.conditions, '$[*]' COLUMNS (
+                        cond_name VARCHAR2(255) PATH '$.name',
+                        expr      VARCHAR2(4000) PATH '$.expression'
+                    ))
+                ) LOOP
+                    -- This is the correct place to evaluate the expression
+                    DECLARE
+                        l_expr        VARCHAR2(4000) := cond_rec.expr;
+                        l_eval_result NUMBER;
+                    BEGIN
+                        -- Step A: Replace all attribute IDs with their numeric values.
+                        l_current_id := l_aliases.FIRST;
+                        WHILE l_current_id IS NOT NULL LOOP
+                            l_expr := REPLACE(l_expr, '#' || l_current_id || '#', TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)));
+                            l_current_id := l_aliases.NEXT(l_current_id);
+                        END LOOP;
 
-          IF NOT (v_stay_date BETWEEN region_rec.stay_from AND region_rec.stay_to) THEN
-            DBMS_OUTPUT.PUT_LINE('EVALUATE: Skipping due to stayWindow');
-            CONTINUE;
-          END IF;
+                        -- Step B: Transform custom math functions into calls to our helper function.
+                        l_expr := REGEXP_REPLACE(
+                            l_expr,
+                            '(AVERAGE|SUM|COUNT|MAX|MIN)\s*\((.*?)\)', -- Pattern: FUNCTION(values)
+                            'ALGO_EVALUATOR_PKG.GENERIC_MATH_EVAL(''\1'', ''\2'')', -- Replacement: HELPER('FUNCTION', 'values')
+                            1, 0, 'i' -- Case-insensitive search
+                        );
 
-          IF NOT (TRUNC(SYSDATE) BETWEEN region_rec.lead_from AND region_rec.lead_to) THEN
-            DBMS_OUTPUT.PUT_LINE('EVALUATE: Skipping due to leadTime');
-            CONTINUE;
-          END IF;
+                        DBMS_OUTPUT.PUT_LINE('EVALUATE: Executing transformed expr: ' || l_expr);
 
-          FOR cond_rec IN (
-            SELECT cond_name, expr FROM JSON_TABLE(region_rec.conditions, '$[*]' COLUMNS (
-              cond_name VARCHAR2(255) PATH '$.name',
-              expr VARCHAR2(4000) PATH '$.expression'
-            ))
-          ) LOOP
-            DBMS_OUTPUT.PUT_LINE('EVALUATE: Evaluating condition ' || cond_rec.cond_name);
-            DECLARE
-              l_expr VARCHAR2(4000) := cond_rec.expr;
-              l_eval_result NUMBER;
-            BEGIN
-              l_current_id := l_aliases.FIRST;
-              WHILE l_current_id IS NOT NULL LOOP
-                DBMS_OUTPUT.PUT_LINE('EVALUATE: Replacing attr ' || l_current_id);
-                l_expr := REPLACE(l_expr, '#' || l_current_id || '#', TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)));
-                l_current_id := l_aliases.NEXT(l_current_id);
-              END LOOP;
+                        EXECUTE IMMEDIATE 'SELECT ' || l_expr || ' FROM DUAL' INTO l_eval_result;
 
-              DBMS_OUTPUT.PUT_LINE('EVALUATE: Executing expr: ' || l_expr);
+                        PIPE ROW(t_result_rec_obj(v_stay_date, l_eval_result, region_rec.region_name || ' / ' || cond_rec.cond_name));
+                        v_rule_matched := TRUE;
+                        GOTO next_date_loop; -- Exit loops for this date since a rule has been applied
+                    END;
+                END LOOP; -- End conditions loop
+            END LOOP; -- End regions loop
 
-              EXECUTE IMMEDIATE 'SELECT ' || l_expr || ' FROM DUAL' INTO l_eval_result;
+            IF NOT v_rule_matched THEN
+                PIPE ROW(t_result_rec_obj(v_stay_date, NULL, 'No Rule Applied'));
+            END IF;
 
-              PIPE ROW(t_result_rec_obj(v_stay_date, l_eval_result, region_rec.region_name || ' / ' || cond_rec.cond_name));
-
-              v_rule_matched := TRUE;
-              GOTO next_date_loop;
-            END;
-          END LOOP;
-        END LOOP;
-
-        IF NOT v_rule_matched THEN
-          DBMS_OUTPUT.PUT_LINE('EVALUATE: No rule matched for date ' || TO_CHAR(v_stay_date, 'YYYY-MM-DD'));
-          PIPE ROW(t_result_rec_obj(v_stay_date, NULL, 'No Rule Applied'));
-        END IF;
-
-        <<next_date_loop>>
-        NULL;
-      END;
-    END LOOP;
+            <<next_date_loop>>
+            NULL;
+        END;
+    END LOOP; -- End unique dates loop
 
     DBMS_OUTPUT.PUT_LINE('EVALUATE: Completed all dates');
     RETURN;
-  EXCEPTION
+EXCEPTION
     WHEN OTHERS THEN
-      DBMS_OUTPUT.PUT_LINE('EVALUATE: Fatal error: ' || SQLERRM || ' at ' || DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
-      PIPE ROW(t_result_rec_obj(NULL,NULL,'FATAL ERROR: ' || SQLERRM));
-      RETURN;
-  END EVALUATE;
+        DBMS_OUTPUT.PUT_LINE('EVALUATE: Fatal error: ' || SQLERRM || ' at ' || DBMS_UTILITY.FORMAT_ERROR_BACKTRACE);
+        PIPE ROW(t_result_rec_obj(NULL, NULL, 'FATAL ERROR: ' || SQLERRM));
+        RETURN;
+END EVALUATE;
 
 END ALGO_EVALUATOR_PKG;
+/
