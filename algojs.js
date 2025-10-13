@@ -86,7 +86,7 @@ function fetchAndApplyLovData(hotelId) {
 
     return new Promise((resolve, reject) => {
         if (!hotelId) {
-            dynamicData = { attributes: [], propertyTypes: [], occupancyAttributes: [] };
+            dynamicData = { attributes: [], propertyTypes: [], occupancyAttributes: [], leadTimeAttributes: [] };
             updateAllDropdowns();
             return resolve();
         }
@@ -133,6 +133,7 @@ function updateAllDropdowns() {
             console.error('populateSelect was called with a non-existent element.');
             return;
         }
+        console.log('Inside populateSelect1 - %s',selectElement)
 
         const currentValue = selectElement.value;
         selectElement.innerHTML = '';
@@ -144,7 +145,7 @@ function updateAllDropdowns() {
         if (!dataArray || !Array.isArray(dataArray)) {
             return;
         }
-
+        console.log('Inside populateSelect - %s',selectElement)
         dataArray.forEach(item => {
             const option = document.createElement('option');
             // option.value = item;
@@ -173,6 +174,10 @@ function updateAllDropdowns() {
 
     document.querySelectorAll('.occupancy-attribute-select').forEach(el => {
         populateSelect(el, dynamicData.occupancyAttributes, 'Select Attribute');
+    });
+
+    document.querySelectorAll('.lead-time-attribute-select').forEach(el => {
+        populateSelect(el, dynamicData.leadTimeAttributes, 'Select Attribute');
     });
 }
 
@@ -298,7 +303,12 @@ function addFilterRegion() {
             <div class="section">
                 <div class="section-title"><span>Filters</span></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-stay-window" data-validates="stayWindow"><label for="${regionId}-stay-window">Stay Window</label><div class="field-content hidden"><label>From</label> <input type="date" class="stay-window-from" value="${formatDate(today)}"><label>To</label> <input type="date" class="stay-window-to" value="${formatDate(nextWeek)}"></div></div>
-                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-load-time" data-validates="leadTime"><label for="${regionId}-load-time">Lead Time</label><div class="field-content hidden"><select class="load-time-select"><option value="">Select Type</option><option value="date_range">Date Range</option><option value="days">Day(s)</option><option value="weeks">Week(s)</option><option value="months">Month(s)</option></select><div class="lead-time-inputs"></div></div></div>
+                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-load-time" data-validates="leadTime"><label for="${regionId}-load-time">Lead Time</label><div class="field-content hidden">                        
+                        <select class="lead-time-attribute-select">
+                            <option value="">Select Attribute</option>
+                            ${(dynamicData.leadTimeAttributes || []).map(op => `<option value="${op.id}">${op.name}</option>`).join('')}
+                        </select>
+                        <select class="load-time-select"><option value="">Select Type</option><option value="date_range">Date Range</option><option value="days">Day(s)</option><option value="weeks">Week(s)</option><option value="months">Month(s)</option></select><div class="lead-time-inputs"></div></div></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-days-of-week" data-validates="daysOfWeek"><label for="${regionId}-days-of-week">Day of Week</label><div class="field-content hidden"><div class="checkbox-group">${['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].map(day => `<div class="checkbox-item"><input type="checkbox" id="${regionId}-${day}" class="day-checkbox"><label for="${regionId}-${day}">${day.toUpperCase()}</label></div>`).join('')}</div></div></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-minimum-rate" data-validates="minimumRate"><label for="${regionId}-minimum-rate">Minimum Rate</label><div class="field-content hidden"><input type="number" value="4" min="0" class="minimum-rate-input"></div></div>
             </div>
@@ -779,9 +789,29 @@ function getRegionData(regionElement) {
         if (filtersSection.querySelector(`#${regionId}-stay-window`)?.checked) data.filters.stayWindow = { from: filtersSection.querySelector('.stay-window-from')?.value, to: filtersSection.querySelector('.stay-window-to')?.value };
         if (filtersSection.querySelector(`#${regionId}-load-time`)?.checked) {
             const leadTimeSelect = filtersSection.querySelector('.load-time-select');
+            const leadTimeAttributeSelect = filtersSection.querySelector('.lead-time-attribute-select');
             const type = leadTimeSelect.value;
-            if (type === 'date_range') data.filters.leadTime = { type, from: filtersSection.querySelector('.lead-time-from')?.value, to: filtersSection.querySelector('.lead-time-to')?.value };
-            else if (type) data.filters.leadTime = { type, value: parseInt(filtersSection.querySelector('.lead-time-value')?.value, 10) };
+            // const attribute = leadTimeAttributeSelect.value;
+
+            const leadTimeData = {
+                attribute: `#${filtersSection.querySelector('.lead-time-attribute-select').value}#`, 
+                type: type
+            };
+
+            if (type === 'date_range') {
+                data.filters.leadTime = { 
+                    ...leadTimeData,
+                    from: filtersSection.querySelector('.lead-time-from')?.value, 
+                    to: filtersSection.querySelector('.lead-time-to')?.value 
+                };
+            } else if (type) {
+                data.filters.leadTime = {
+                    ...leadTimeData,
+                    value: parseInt(filtersSection.querySelector('.lead-time-value')?.value, 10)
+                };
+            }
+
+
         }
         if (filtersSection.querySelector(`#${regionId}-days-of-week`)?.checked) {
             const dayMap = { sun: 1, mon: 2, tue: 3, wed: 4, thu: 5, fri: 6, sat: 7 };
@@ -1032,6 +1062,13 @@ function populateRegion(regionElement, regionData) {
                 regionElement.querySelector('.stay-window-from').value = filterValue.from;
                 regionElement.querySelector('.stay-window-to').value = filterValue.to;
             } else if (filterKey === 'leadTime') {
+                
+                const attributeSelect = regionElement.querySelector('.lead-time-attribute-select');
+                
+                if (attributeSelect) {
+                    attributeSelect.value = filterValue.attribute.replace(/#/g, ''); // Set the new dropdown value
+                }
+
                 const select = regionElement.querySelector('.load-time-select');
                 select.value = filterValue.type;
                 select.dispatchEvent(new Event('change'));
