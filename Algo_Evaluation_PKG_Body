@@ -1,6 +1,6 @@
 create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
 
-  -- [Functions GENERIC_MATH_EVAL, get_attribute_id_from_template, get_value_for_date, and build_dynamic_query remain unchanged]
+  -- [Functions GENERIC_MATH_EVAL, get_attribute_id_from_template, get_value_for_date remain unchanged]
 
   FUNCTION GENERIC_MATH_EVAL(p_function_name IN VARCHAR2, p_values IN VARCHAR2) RETURN NUMBER IS
     l_sum   NUMBER := 0;
@@ -54,6 +54,39 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
     END LOOP;
     RETURN NULL;
   END get_value_for_date;
+
+  FUNCTION FLEXIBLE_TO_DATE(p_date_string IN VARCHAR2) RETURN DATE IS
+  BEGIN
+    IF p_date_string IS NULL THEN
+      RETURN NULL;
+    END IF;
+    BEGIN
+      RETURN TO_DATE(SUBSTR(p_date_string, 1, 10), 'MM/DD/YYYY');
+    EXCEPTION
+      WHEN OTHERS THEN
+        BEGIN
+          RETURN TO_DATE(SUBSTR(p_date_string, 1, 10), 'YYYY-MM-DD');
+        EXCEPTION
+          WHEN OTHERS THEN
+            BEGIN
+              RETURN TO_DATE(SUBSTR(p_date_string, 1, 10), 'DD/MM/YYYY');
+            EXCEPTION
+              WHEN OTHERS THEN
+                BEGIN
+                  RETURN TO_DATE(SUBSTR(p_date_string, 1, 10), 'DD-MM-YYYY');
+                EXCEPTION
+                  WHEN OTHERS THEN
+                    BEGIN
+                      RETURN TO_DATE(SUBSTR(p_date_string, 1, 11), 'DD-MON-YYYY');
+                    EXCEPTION
+                      WHEN OTHERS THEN
+                         RETURN NULL;
+                    END;
+                END;
+            END;
+        END;
+    END;
+  END FLEXIBLE_TO_DATE;
 
   FUNCTION build_dynamic_query(p_rules_json IN CLOB) RETURN CLOB IS
      l_sql_select      CLOB := 'SELECT base.STAY_DATE, ';
@@ -191,11 +224,6 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
      RETURN l_sql_select || l_sql_from || l_sql_where;
    END build_dynamic_query;
 
-  /******************************************************************************
-  **
-  ** ↓↓↓ MODIFIED FUNCTION START ↓↓↓
-  **
-  ******************************************************************************/
   FUNCTION EVALUATE(p_algo_id IN ur_algos.id%TYPE, p_stay_date IN DATE DEFAULT NULL)
     RETURN t_result_tab_obj PIPELINED IS
     l_rules_json        CLOB;
@@ -295,18 +323,28 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
 
     l_current_id := l_aliases.FIRST;
     WHILE l_current_id IS NOT NULL LOOP
+      -- **↓↓↓ THIS IS THE CORRECTED LOGIC BLOCK ↓↓↓**
       IF l_lead_attr_ids.EXISTS(l_current_id) THEN
+        -- Step 1: Fetch the raw string from the database
         FOR rec IN (
           SELECT
             stay_date,
-            -- **FIX**: Use a format mask that matches 'MM/DD/YYYY' and handles potential time components by taking a SUBSTR.
-            TO_DATE(SUBSTR(attribute_value, 1, 10), 'MM/DD/YYYY') AS lead_date
+            attribute_value
           FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id))
           WHERE attribute_value IS NOT NULL
         ) LOOP
-          l_lead_dates(TO_CHAR(rec.stay_date, 'YYYY-MM-DD') || l_current_id) := rec.lead_date;
+          -- Step 2: Convert the string using the PL/SQL helper function within the loop
+          DECLARE
+            l_converted_date DATE;
+          BEGIN
+             l_converted_date := FLEXIBLE_TO_DATE(rec.attribute_value);
+             IF l_converted_date IS NOT NULL THEN
+                l_lead_dates(TO_CHAR(rec.stay_date, 'YYYY-MM-DD') || l_current_id) := l_converted_date;
+             END IF;
+          END;
         END LOOP;
       ELSE
+        -- Numeric attributes are handled as before
         SELECT t_result_rec_obj(stay_date, TO_NUMBER(attribute_value), NULL)
         BULK COLLECT INTO l_staged_data(l_current_id)
         FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id))
@@ -533,11 +571,6 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
       PIPE ROW(t_result_rec_obj(NULL, NULL, 'FATAL ERROR: ' || SQLERRM || ': ' || DBMS_UTILITY.FORMAT_ERROR_BACKTRACE));
       RETURN;
   END EVALUATE;
-  /******************************************************************************
-  **
-  ** ↑↑↑ MODIFIED FUNCTION END ↑↑↑
-  **
-  ******************************************************************************/
 
 END ALGO_EVALUATOR_PKG;
 /
