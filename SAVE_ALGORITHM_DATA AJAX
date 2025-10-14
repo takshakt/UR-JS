@@ -1,35 +1,30 @@
 DECLARE
     -- Read the standard parameters
-    l_mode          VARCHAR2(1)     := apex_application.g_x01;
-    l_algo_id_str   VARCHAR2(255)   := apex_application.g_x02;
-    l_algo_name     VARCHAR2(255)   := apex_application.g_x03;
-    l_algo_desc     VARCHAR2(4000)  := apex_application.g_x04;
-    -- ADDED: Read the new hotel_id parameter
-    l_hotel_id_str  VARCHAR2(255)   := apex_application.g_x05;
+    l_mode         VARCHAR2(1)      := apex_application.g_x01;
+    l_algo_id_str  VARCHAR2(255)    := apex_application.g_x02;
+    l_algo_name    VARCHAR2(255)    := apex_application.g_x03;
+    l_algo_desc    VARCHAR2(4000)   := apex_application.g_x04;
+    l_hotel_id_str VARCHAR2(255)    := apex_application.g_x05;
 
     -- Declare variables for processing
-    l_json_payload  CLOB;
-    l_new_algo_id   ur_algos.id%TYPE; -- This is RAW(16)
+    l_json_payload CLOB;
+    l_new_algo_id  ur_algos.id%TYPE; -- This is RAW(16)
 BEGIN
-    -- Rebuild the CLOB from the f01 array
+    -- Rebuild the CLOB from the f01 array (This logic is correct and remains)
     dbms_lob.createtemporary(lob_loc => l_json_payload, cache => TRUE);
     FOR i IN 1..apex_application.g_f01.count LOOP
         dbms_lob.append(dest_lob => l_json_payload, src_lob => apex_application.g_f01(i));
     END LOOP;
 
-    -- Set response header and initialize JSON
-    owa_util.mime_header('application/json', TRUE);
-    apex_json.initialize_clob_output;
+    -- Initialize JSON output
     apex_json.open_object;
 
     -- CASE 1: Create a new Algorithm (Mode 'I')
     IF l_mode = 'I' THEN
-        -- CORRECTED INSERT: Add hotel_id to the column list and VALUES clause
         INSERT INTO ur_algos (name, description, hotel_id)
         VALUES (l_algo_name, l_algo_desc, HEXTORAW(l_hotel_id_str))
         RETURNING id INTO l_new_algo_id;
 
-        -- This part remains the same
         INSERT INTO ur_algo_versions (algo_id, expression)
         VALUES (l_new_algo_id, l_json_payload);
 
@@ -39,7 +34,6 @@ BEGIN
 
     -- CASE 2: Create a new Version for an existing Algorithm (Mode 'U')
     ELSIF l_mode = 'U' THEN
-        -- This part remains the same
         INSERT INTO ur_algo_versions (algo_id, expression)
         VALUES (HEXTORAW(l_algo_id_str), l_json_payload);
 
@@ -53,24 +47,21 @@ BEGIN
     END IF;
 
     apex_json.close_object;
-    htp.p(apex_json.get_clob_output);
-    apex_json.free_output;
-
+    
     -- Free the temporary LOB
     dbms_lob.freetemporary(lob_loc => l_json_payload);
 
 EXCEPTION
     WHEN OTHERS THEN
+        -- Ensure LOB is freed even on error
         IF dbms_lob.istemporary(l_json_payload) = 1 THEN
             dbms_lob.freetemporary(lob_loc => l_json_payload);
         END IF;
-        apex_json.free_output; 
-        apex_json.initialize_clob_output;
+
+        -- APEX automatically handles freeing JSON output on error.
+        -- We just need to construct the error response.
         apex_json.open_object;
         apex_json.write('success', false);
         apex_json.write('message', 'Database error: ' || apex_escape.html(SQLERRM));
         apex_json.close_object;
-        htp.p(apex_json.get_clob_output);
-        apex_json.free_output;
 END;
-
