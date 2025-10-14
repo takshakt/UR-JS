@@ -1057,9 +1057,30 @@ function saveAllRegions() {
                 success: function(pData) {
                     if (pData.success) {
                         apex.message.showPageSuccess(pData.message);
-                        // apex.submit('SAVE');
 
-                        apex.item("P1050_VERSION").refresh();   
+                        if (ajaxPayload.x01 === 'I') {
+                            // --- THIS IS THE CORRECTED LOGIC ---
+                            
+                            // Get the jQuery selector for the item
+                            const algoList$ = apex.jQuery("#P1050_ALGO_LIST");
+                            
+                            // 1. Set up a ONE-TIME listener to run code AFTER the refresh is complete.
+                            algoList$.one('apexafterrefresh', function() {
+                                if (pData.newAlgoId) {
+                                    // 3. Now that the list is refreshed, set its value.
+                                    // The final 'true' suppresses another change event to prevent loops.
+                                    apex.item("P1050_ALGO_LIST").setValue(pData.newAlgoId);
+
+                                }
+                            });
+                            
+                            // // 2. Trigger the refresh. The listener above will catch the completion.
+                            apex.item("P1050_ALGO_LIST").refresh();
+
+                        } else { // This means the mode was 'U'
+                            apex.item("P1050_VERSION").refresh();
+                        }
+                        
                     } else {
                         console.error("Server-side save error:", pData.message);
                         apex.message.alert("Save failed: " + pData.message);
