@@ -144,3 +144,59 @@ textarea.invalid-expression { border-color: #d9534f !important; }
 #expression-autocomplete { position: absolute; border: 1px solid #444; background-color: #2d2d2d; border-radius: 4px; z-index: 1000; max-height: 200px; overflow-y: auto; width: auto; min-width: 150px; }
 .autocomplete-item { padding: 8px 12px; color: #e0e0e0; cursor: pointer; white-space: nowrap; }
 .autocomplete-active { background-color: #3965ea; }
+
+/* --- ISOLATED STYLES FOR ALGORITHM ICON BUTTONS --- */
+
+/* The new container for our icon buttons */
+.algo-icon-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px; /* Sets the space between buttons */
+}
+
+/* The new, dedicated class for each icon button */
+.algo-icon-controls .algo-icon-btn {
+    /* Sizing & Layout */
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* Aesthetics & Feel */
+    line-height: 1;
+    border-radius: 4px;
+    border: 1px solid #666; /* A subtle border */
+    background-color: #383838;
+    color: #dadada;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Hover effect for better feedback */
+.algo-icon-controls .algo-icon-btn:hover {
+    background-color: #4f4f4f;
+    border-color: #888;
+}
+
+/* Red hover effect specifically for the delete button */
+.algo-icon-controls .algo-icon-btn.btn-danger:hover {
+    background-color: #c83c3c;
+    color: #fff;
+    border-color: #c83c3c;
+}
+
+/* Control the size of the SVG icon */
+.algo-icon-controls .algo-icon-btn svg {
+    width: 16px;
+    height: 16px;
+}
+
+/* Balance the size of the text-based icons */
+.algo-icon-controls .region-move,
+.algo-icon-controls .condition-move,
+.algo-icon-controls .delete-region,
+.algo-icon-controls .condition-remove {
+    font-size: 18px;
+}
