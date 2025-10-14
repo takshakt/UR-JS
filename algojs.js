@@ -290,8 +290,13 @@ function addFilterRegion() {
                  <span class="title-display">${defaultName}</span>
                  <input type="text" class="title-input hidden" value="${defaultName}" />
             </div>
-            <div class="region-controls">
-                <div class="control-group">
+            <div class="region-controls ">
+                <div class="control-group condition-controls">
+                    <button type="button" class="btn btn-small copy-region" title="Duplicate Region">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path d="M0 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2H2a2 2 0 0 1-2-2V2zm5 10v2a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2v5a2 2 0 0 1-2 2H5zm-4-3v2a1 1 0 0 0 1 1h2V9a2 2 0 0 1 2-2h5V2a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v7z"/>
+                        </svg>
+                    </button> 
                     <button class="btn btn-small region-move up" data-direction="up" title="Move Region Up">▲</button>
                     <button class="btn btn-small region-move down" data-direction="down" title="Move Region Down">▼</button>
                     <button class="btn btn-small btn-danger delete-region" title="Delete Region">×</button>
@@ -347,6 +352,11 @@ function addCondition(regionId) {
                 <input type="text" class="title-input hidden" value="${defaultName}" />
             </div>
             <div class="control-group condition-controls">
+                <button type="button" class="btn btn-small copy-condition" title="Duplicate Condition">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                        <path d="M0 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2H2a2 2 0 0 1-2-2V2zm5 10v2a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2v5a2 2 0 0 1-2 2H5zm-4-3v2a1 1 0 0 0 1 1h2V9a2 2 0 0 1 2-2h5V2a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v7z"/>
+                    </svg>
+                </button>  
                 <button class="btn btn-small condition-move up" data-direction="up" title="Move Up">▲</button>
                 <button class="btn btn-small condition-move down" data-direction="down" title="Move Down">▼</button>
                 <button class="btn btn-small btn-danger condition-remove" title="Remove Condition">×</button>
@@ -391,6 +401,10 @@ function setupConditionEventListeners(conditionElement) {
     conditionElement.querySelector('.condition-header').addEventListener('click', (e) => {
         if(e.target.closest('.control-group') || e.target.closest('.editable-title')) return;
         conditionElement.classList.toggle('condition-collapsed');
+    });
+    
+    conditionElement.querySelector('.copy-condition').addEventListener('click', () => {
+        copyCondition(conditionElement);
     });
     
     conditionElement.querySelector('.condition-remove').addEventListener('click', () => {
@@ -499,6 +513,11 @@ function setupRegionEventListeners(regionElement) {
             updateRegionSequence();
         }
     });
+
+    regionElement.querySelector('.copy-region').addEventListener('click', () => {
+        copyFilterRegion(regionElement);
+    });
+
     regionElement.querySelectorAll('.region-move').forEach(button => {
         button.addEventListener('click', () => moveRegion(regionElement, button.dataset.direction));
     });
@@ -631,6 +650,64 @@ function moveCondition(conditionElement, direction) {
         parent.insertBefore(conditionElement.nextElementSibling, conditionElement);
     }
     updateConditionSequence(parent.id.replace('-conditions-container', ''));
+}
+
+/**
+ * Creates a duplicate of a filter region below the original.
+ * @param {HTMLElement} originalRegionElement - The filter region to copy.
+ */
+function copyFilterRegion(originalRegionElement) {
+    // 1. Get the data from the original region
+    const regionData = getRegionData(originalRegionElement);
+
+    // 2. Modify the data for the new copy
+    regionData.name += ` - copy ${generateTimestamp()}`;
+    
+    // 3. Important: Clear old IDs to prevent duplicates in the DOM
+    regionData.id = null; 
+    regionData.conditions.forEach(c => c.id = null);
+
+    // 4. Create a new empty region and insert it after the original
+    addFilterRegion();
+    const newRegionElement = document.getElementById('filterContainer').lastElementChild;
+    originalRegionElement.after(newRegionElement);
+
+    // 5. Populate the new region with the copied data
+    populateRegion(newRegionElement, regionData);
+    
+    // 6. Update sequence numbers for all regions
+    updateRegionSequence();
+    updateConditionSequence(newRegionElement.id); // Also update conditions within the new region
+}
+
+/**
+ * Creates a duplicate of a condition below the original.
+ * @param {HTMLElement} originalConditionElement - The condition element to copy.
+ */
+function copyCondition(originalConditionElement) {
+    const regionId = originalConditionElement.closest('.filter-region').id;
+
+    // 1. Get data from the single original condition
+    const conditionData = getConditionData(originalConditionElement);
+    if (!conditionData) {
+        alert("Cannot copy an empty condition.");
+        return;
+    }
+
+    // 2. Modify the data
+    conditionData.name += ` - copy ${generateTimestamp()}`;
+    conditionData.id = null; // Clear old ID
+
+    // 3. Create a new empty condition and insert it after the original
+    addCondition(regionId);
+    const newConditionElement = document.getElementById(`${regionId}-conditions-container`).lastElementChild;
+    originalConditionElement.after(newConditionElement);
+
+    // 4. Populate the new condition with the copied data
+    populateCondition(newConditionElement, conditionData);
+
+    // 5. Update sequence numbers for conditions within this region
+    updateConditionSequence(regionId);
 }
 
 // --- VALIDATION & DATA FUNCTIONS ---
@@ -1182,4 +1259,62 @@ function convertExpressionIdsToNames(expression) {
         const foundName = idToNameMap.get(attributeId);
         return foundName ? `#${foundName}#` : match; // If not found, leave it as is
     });
+}
+
+
+/**
+ * Generates a formatted timestamp string for copied items.
+ * @returns {string} Formatted timestamp e.g., "2025-10-14 17:59"
+ */
+function generateTimestamp() {
+    const d = new Date();
+    const pad = (n) => n.toString().padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+
+/**
+ * Gets the data object for a single condition element.
+ * This is an adaptation of the logic within getRegionData.
+ * @param {HTMLElement} cond - The condition-group element.
+ * @returns {object} The data object for the condition.
+ */
+function getConditionData(cond) {
+    const isActive = !!cond.querySelector('.field-checkbox:checked') || cond.querySelector('.expression-textarea').value.trim() !== '';
+    if (!isActive) return null;
+
+    const conditionData = {
+        id: cond.id,
+        name: cond.querySelector('.title-display').textContent.trim(),
+        sequence: parseInt(cond.dataset.sequence, 10)
+    };
+        
+    if (cond.querySelector(`#${cond.id}-occupancy-threshold`)?.checked) {
+        conditionData.occupancyThreshold = {
+            attribute: `#${cond.querySelector('.occupancy-attribute-select').value}#`,
+            operator: cond.querySelector('.occupancy-operator').value,
+            value: parseFloat(cond.querySelector('.occupancy-value').value)
+        };
+    }
+    if (cond.querySelector(`#${cond.id}-property-ranking`)?.checked) {
+        const val = cond.querySelector('.property-value').value;
+        conditionData.propertyRanking = { 
+            type: `#${cond.querySelector('.property-type').value}#`,
+            operator: cond.querySelector('.property-operator').value, 
+            value: isNaN(parseInt(val, 10)) ? val : parseInt(val, 10) 
+        };
+    }
+    if (cond.querySelector(`#${cond.id}-event-score`)?.checked) {
+        conditionData.eventScore = { 
+            operator: cond.querySelector('.event-operator').value, 
+            value: parseFloat(cond.querySelector('.event-value').value) 
+        };
+    }
+        
+    const expression = cond.querySelector('.expression-textarea').value.trim();
+    if (expression) {
+        conditionData.expression = convertExpressionNamesToIds(expression);
+    }
+
+    return conditionData;
 }
