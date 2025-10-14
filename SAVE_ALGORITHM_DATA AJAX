@@ -9,6 +9,7 @@ DECLARE
     -- Declare variables for processing
     l_json_payload CLOB;
     l_new_algo_id  ur_algos.id%TYPE; -- This is RAW(16)
+    l_new_algo_version_id ur_algos.id%TYPE;
 BEGIN
     -- Rebuild the CLOB from the f01 array (This logic is correct and remains)
     dbms_lob.createtemporary(lob_loc => l_json_payload, cache => TRUE);
@@ -26,11 +27,15 @@ BEGIN
         RETURNING id INTO l_new_algo_id;
 
         INSERT INTO ur_algo_versions (algo_id, expression)
-        VALUES (l_new_algo_id, l_json_payload);
+        VALUES (l_new_algo_id, l_json_payload)
+        RETURNING ID INTO l_new_algo_version_id;
 
         apex_json.write('success', true);
         apex_json.write('message', 'New algorithm and version created successfully!');
         apex_json.write('newAlgoId', RAWTOHEX(l_new_algo_id));
+        -- apex_json.write('newAlgoName', l_algo_name);
+        -- apex_json.write('newAlgoDescription', l_algo_desc);
+        -- apex_json.write('newAlgoVersion', RAWTOHEX(l_new_algo_version_id));
 
     -- CASE 2: Create a new Version for an existing Algorithm (Mode 'U')
     ELSIF l_mode = 'U' THEN
