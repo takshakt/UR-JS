@@ -291,15 +291,15 @@ function addFilterRegion() {
                  <input type="text" class="title-input hidden" value="${defaultName}" />
             </div>
             <div class="region-controls ">
-                <div class="control-group condition-controls">
-                    <button type="button" class="btn btn-small copy-region" title="Duplicate Region">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                <div class="algo-icon-controls"> 
+                    <button type="button" class="algo-icon-btn copy-region" title="Duplicate Region">
+                        <svg xmlns="http://www.w.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
                             <path d="M0 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2H2a2 2 0 0 1-2-2V2zm5 10v2a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2v5a2 2 0 0 1-2 2H5zm-4-3v2a1 1 0 0 0 1 1h2V9a2 2 0 0 1 2-2h5V2a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v7z"/>
                         </svg>
-                    </button> 
-                    <button class="btn btn-small region-move up" data-direction="up" title="Move Region Up">▲</button>
-                    <button class="btn btn-small region-move down" data-direction="down" title="Move Region Down">▼</button>
-                    <button class="btn btn-small btn-danger delete-region" title="Delete Region">×</button>
+                    </button>
+                    <button type="button" class="algo-icon-btn region-move up" data-direction="up" title="Move Region Up">▲</button>
+                    <button type="button" class="algo-icon-btn region-move down" data-direction="down" title="Move Region Down">▼</button>
+                    <button type="button" class="algo-icon-btn btn-danger delete-region" title="Remove Region">×</button>
                 </div>
             </div>
         </div>
@@ -351,15 +351,15 @@ function addCondition(regionId) {
                 <span class="title-display">${defaultName}</span>
                 <input type="text" class="title-input hidden" value="${defaultName}" />
             </div>
-            <div class="control-group condition-controls">
-                <button type="button" class="btn btn-small copy-condition" title="Duplicate Condition">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                        <path d="M0 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2H2a2 2 0 0 1-2-2V2zm5 10v2a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2v5a2 2 0 0 1-2 2H5zm-4-3v2a1 1 0 0 0 1 1h2V9a2 2 0 0 1 2-2h5V2a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v7z"/>
+            <div class="algo-icon-controls condition-controls">
+                <button type="button" class="algo-icon-btn copy-condition" title="Duplicate Condition">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+                         <path d="M0 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v2h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2H2a2 2 0 0 1-2-2V2zm5 10v2a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2v5a2 2 0 0 1-2 2H5zm-4-3v2a1 1 0 0 0 1 1h2V9a2 2 0 0 1 2-2h5V2a1 1 0 0 0-1-1H2a1 1 0 0 0-1 1v7z"/>
                     </svg>
-                </button>  
-                <button class="btn btn-small condition-move up" data-direction="up" title="Move Up">▲</button>
-                <button class="btn btn-small condition-move down" data-direction="down" title="Move Down">▼</button>
-                <button class="btn btn-small btn-danger condition-remove" title="Remove Condition">×</button>
+                </button>
+                <button type="button" class="algo-icon-btn condition-move up" data-direction="up" title="Move Condition Up">▲</button>
+                <button type="button" class="algo-icon-btn condition-move down" data-direction="down" title="Move Condition Down">▼</button>
+                <button type="button" class="algo-icon-btn btn-danger condition-remove" title="Remove Condition">×</button>
             </div>
         </div>
         <div class="condition-body" style="display: flex; align-items: flex-start; gap: 20px;">
