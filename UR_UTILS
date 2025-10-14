@@ -307,37 +307,70 @@ CREATE OR REPLACE PACKAGE BODY ur_utils IS
                     END IF;
                 END;
 
-                -- 4. Build final SQL
-                IF p_stay_date IS NOT NULL THEN
-                    l_where_clause := l_where_clause || ' AND TRUNC(' || l_base_table_alias || '.' || DBMS_ASSERT.ENQUOTE_NAME(l_stay_date_column) || ') = TRUNC(:stay_date)';
-                END IF;
-                IF p_hotel_id IS NOT NULL THEN
-                    l_where_clause := l_where_clause || ' AND ' || l_base_table_alias || '.' || DBMS_ASSERT.ENQUOTE_NAME('HOTEL_ID') || ' = :hotel_id';
+                -- 4. Build final SQL (Conditionally apply ROUND based on data type)
+                IF p_stay_date IS NOT NULL THEN l_where_clause := l_where_clause || ' AND TRUNC(' || l_base_table_alias || '.' || DBMS_ASSERT.ENQUOTE_NAME(l_stay_date_column) || ') = TRUNC(:stay_date)'; END IF;
+                IF p_hotel_id IS NOT NULL THEN l_where_clause := l_where_clause || ' AND ' || l_base_table_alias || '.' || DBMS_ASSERT.ENQUOTE_NAME('HOTEL_ID') || ' = :hotel_id'; END IF;
+
+                IF l_attribute_rec.DATA_TYPE = 'NUMBER' THEN
+                    append_debug('Data type is NUMBER, applying ROUND().');
+                    l_sql_stmt := 'SELECT ' || l_base_table_alias || '.' || DBMS_ASSERT.ENQUOTE_NAME(l_stay_date_column) ||
+                                  ', ROUND((' || l_expression || '), :round_digits)' ||
+                                  ' FROM ' || l_from_clause || l_where_clause;
+                ELSE
+                    append_debug('Data type is ' || l_attribute_rec.DATA_TYPE || ', not applying ROUND().');
+                    l_sql_stmt := 'SELECT ' || l_base_table_alias || '.' || DBMS_ASSERT.ENQUOTE_NAME(l_stay_date_column) ||
+                                  ', ' || l_expression ||
+                                  ' FROM ' || l_from_clause || l_where_clause;
                 END IF;
 
-                l_sql_stmt := 'SELECT ' || l_base_table_alias || '.' || DBMS_ASSERT.ENQUOTE_NAME(l_stay_date_column) ||
-                              ', ROUND((' || l_expression || '), :round_digits)' ||
-                              ' FROM ' || l_from_clause || l_where_clause;
                 append_debug('Dynamic SQL: ' || l_sql_stmt);
 
-                CASE
-                    WHEN p_stay_date IS NOT NULL AND p_hotel_id IS NOT NULL THEN
-                        OPEN l_cursor FOR l_sql_stmt USING p_round_digits, p_stay_date, p_hotel_id;
-                    WHEN p_stay_date IS NOT NULL AND p_hotel_id IS NULL THEN
-                        OPEN l_cursor FOR l_sql_stmt USING p_round_digits, p_stay_date;
-                    WHEN p_stay_date IS NULL AND p_hotel_id IS NOT NULL THEN
-                        OPEN l_cursor FOR l_sql_stmt USING p_round_digits, p_hotel_id;
-                    ELSE
-                        OPEN l_cursor FOR l_sql_stmt USING p_round_digits;
-                END CASE;
+                -- Open the cursor with the correct bind variables based on the data type
+                IF l_attribute_rec.DATA_TYPE = 'NUMBER' THEN
+                    -- This block handles NUMBER types, which always need :round_digits
+                    CASE
+                        WHEN p_stay_date IS NOT NULL AND p_hotel_id IS NOT NULL THEN
+                            OPEN l_cursor FOR l_sql_stmt USING p_round_digits, p_stay_date, p_hotel_id;
+                        WHEN p_stay_date IS NOT NULL AND p_hotel_id IS NULL THEN
+                            OPEN l_cursor FOR l_sql_stmt USING p_round_digits, p_stay_date;
+                        WHEN p_stay_date IS NULL AND p_hotel_id IS NOT NULL THEN
+                            OPEN l_cursor FOR l_sql_stmt USING p_round_digits, p_hotel_id;
+                        ELSE
+                            OPEN l_cursor FOR l_sql_stmt USING p_round_digits;
+                    END CASE;
+                ELSE
+                    -- This block handles non-NUMBER types (DATE, VARCHAR2, etc.), which do NOT have :round_digits
+                    CASE
+                        WHEN p_stay_date IS NOT NULL AND p_hotel_id IS NOT NULL THEN
+                            OPEN l_cursor FOR l_sql_stmt USING p_stay_date, p_hotel_id;
+                        WHEN p_stay_date IS NOT NULL AND p_hotel_id IS NULL THEN
+                            OPEN l_cursor FOR l_sql_stmt USING p_stay_date;
+                        WHEN p_stay_date IS NULL AND p_hotel_id IS NOT NULL THEN
+                            OPEN l_cursor FOR l_sql_stmt USING p_hotel_id;
+                        ELSE
+                            -- No bind variables are needed if all parameters are null for non-numeric types
+                            OPEN l_cursor FOR l_sql_stmt;
+                    END CASE;
+                END IF;
+
+
 
                 LOOP
                     FETCH l_cursor INTO l_stay_date_val, l_attribute_val_out;
                     EXIT WHEN l_cursor%NOTFOUND;
+                    
                     l_records_fetched := l_records_fetched + 1;
-                    l_json_row_obj    := JSON_OBJECT_T();
+                    l_json_row_obj := JSON_OBJECT_T();
                     l_json_row_obj.put('stay_date', TO_CHAR(l_stay_date_val, 'DD-MON-YYYY'));
-                    l_json_row_obj.put('attribute_value', TO_NUMBER(l_attribute_val_out));
+
+                    -- Conditionally handle the attribute value based on its data type
+                    CASE UPPER(l_attribute_rec.DATA_TYPE)
+                        WHEN 'NUMBER' THEN
+                            l_json_row_obj.put('attribute_value', TO_NUMBER(l_attribute_val_out));
+                        ELSE -- For DATE, VARCHAR2, etc., treat as a string
+                            l_json_row_obj.put('attribute_value', l_attribute_val_out);
+                    END CASE;
+                    
                     l_json_payload_arr.append(l_json_row_obj);
                 END LOOP;
                 CLOSE l_cursor;
