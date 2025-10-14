@@ -1048,7 +1048,7 @@ function saveAllRegions() {
         const chunks = jsonPayloadString.match(/[\s\S]{1,4000}/g) || [];
         ajaxPayload.f01 = chunks; 
 
-        apex.util.showSpinner();
+        var spinner = apex.util.showSpinner();
         
         apex.server.process(
             'SAVE_ALGORITHM_DATA',
@@ -1057,7 +1057,9 @@ function saveAllRegions() {
                 success: function(pData) {
                     if (pData.success) {
                         apex.message.showPageSuccess(pData.message);
-                        apex.submit('SAVE');
+                        // apex.submit('SAVE');
+
+                        apex.item("P1050_VERSION").refresh();   
                     } else {
                         console.error("Server-side save error:", pData.message);
                         apex.message.alert("Save failed: " + pData.message);
@@ -1070,7 +1072,7 @@ function saveAllRegions() {
                 dataType: "json"
             }
         ).always(() => {
-            apex.util.hideSpinner();
+            spinner.remove();
         });
 
     } else {
