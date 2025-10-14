@@ -1,4 +1,4 @@
-CREATE OR REPLACE PACKAGE BODY ur_utils IS
+create or replace PACKAGE BODY ur_utils IS
 
     PROCEDURE VALIDATE_TEMPLATE_DEFINITION(
         p_json_clob  IN            CLOB,
@@ -70,15 +70,17 @@ CREATE OR REPLACE PACKAGE BODY ur_utils IS
     --------------------------------------------------------------------------------
 
     FUNCTION GET_ATTRIBUTE_VALUE(
-        p_attribute_id IN RAW      DEFAULT NULL,
-        p_attribute_key IN VARCHAR2 DEFAULT NULL,
-        p_hotel_id     IN RAW      DEFAULT NULL,
-        p_stay_date    IN DATE     DEFAULT NULL,
-        p_round_digits IN NUMBER   DEFAULT 2
+        p_attribute_id   IN RAW      DEFAULT NULL,
+        p_attribute_key  IN VARCHAR2 DEFAULT NULL,
+        p_hotel_id       IN RAW      DEFAULT NULL,
+        p_stay_date      IN DATE     DEFAULT NULL,
+        p_round_digits   IN NUMBER   DEFAULT 2
     ) RETURN UR_attribute_value_table PIPELINED AS
         l_response_clob CLOB;
         l_status        VARCHAR2(1);
     BEGIN
+        -- This internal call remains the same. The JSON it produces should have
+        -- the attribute_value as a number, date string, or text string.
         GET_ATTRIBUTE_VALUE(
             p_attribute_id  => p_attribute_id,
             p_attribute_key => p_attribute_key,
@@ -101,11 +103,13 @@ CREATE OR REPLACE PACKAGE BODY ur_utils IS
                         l_response_clob,
                         '$.RESPONSE_PAYLOAD[*]'
                         COLUMNS (
-                            stay_date       VARCHAR2(20) PATH '$.stay_date',
-                            attribute_value NUMBER       PATH '$.attribute_value'
+                            stay_date       VARCHAR2(20)   PATH '$.stay_date',
+                            -- MODIFIED: Read the value as VARCHAR2 to handle all types.
+                            attribute_value VARCHAR2(4000) PATH '$.attribute_value'
                         )
                     ) jt
             ) LOOP
+                -- This now works for any data type since attribute_value is a string.
                 PIPE ROW(UR_attribute_value_row(rec.stay_date, rec.attribute_value));
             END LOOP;
         END IF;
@@ -113,6 +117,7 @@ CREATE OR REPLACE PACKAGE BODY ur_utils IS
         RETURN;
     EXCEPTION
         WHEN OTHERS THEN
+            -- Gracefully exit on error
             RETURN;
     END GET_ATTRIBUTE_VALUE;
 
