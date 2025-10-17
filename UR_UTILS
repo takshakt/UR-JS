@@ -861,6 +861,7 @@ END ' || v_trigger_name || ';
         v_sql := 'CREATE OR REPLACE VIEW "' || v_view_name || '" AS ' || CHR(10) ||
                  'WITH all_properties_ranked AS (' || CHR(10) ||
                  '    SELECT ' || CHR(10) ||
+                 '      "HOTEL_ID",' || CHR(10) || 
                  '        "' || v_sdate_col || '",' || CHR(10) ||
                  '        hotel_name,' || CHR(10) ||
                  '        CASE WHEN REGEXP_LIKE(price, ''^[0-9,.]+$'') THEN TO_NUMBER(REPLACE(price, '','', '''')) ELSE NULL END AS price,' || CHR(10) ||
