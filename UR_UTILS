@@ -269,7 +269,17 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
             END IF;
         ELSE
             -- **[2] New Logic: Introspect the formula if no Template ID**
+            append_debug('Template ID is NULL. Starting non-templated attribute logic.');
+
+            IF p_hotel_id IS NULL THEN
+                append_debug('Validation failed: p_hotel_id is NULL for a non-templated Sourced attribute.');
+                l_message := 'Validation Error: A Hotel ID must be provided to retrieve values for this attribute configuration.';
+                build_json_response('E', l_message, l_attribute_rec.ID, l_attribute_rec.NAME, l_attribute_rec.KEY, l_attribute_rec.DATA_TYPE, l_attribute_rec.ATTRIBUTE_QUALIFIER, l_attribute_rec.VALUE, p_hotel_id, p_stay_date, p_debug_flag, 0, JSON_ARRAY_T('[]'), p_response_clob);
+                RETURN;
+            END IF;
+
             append_debug('Template ID is NULL. Introspecting formula to find base table and verify STAY_DATE column.');
+            
             DECLARE
                 l_base_table_name VARCHAR2(128);
                 l_column_exists   NUMBER;
