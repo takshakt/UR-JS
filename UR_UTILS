@@ -234,81 +234,76 @@ create or replace PACKAGE BODY ur_utils IS
             l_records_fetched := 1;
             l_message         := 'Manual value returned.';
 
-        ELSIF l_attribute_rec.TYPE = 'S' THEN
+ELSIF l_attribute_rec.TYPE = 'S' THEN
+    append_debug('Attribute type is Sourced. Parsing value formula.');
+    DECLARE
+        TYPE t_table_map IS TABLE OF VARCHAR2(10) INDEX BY VARCHAR2(150);
+        l_tables             t_table_map;
+        l_formula            VARCHAR2(4000) := l_attribute_rec.VALUE;
+        l_expression         VARCHAR2(4000) := l_formula;
+        l_from_clause        VARCHAR2(4000);
+        l_where_clause       VARCHAR2(1000) := ' WHERE 1=1';
+        l_stay_date_column   VARCHAR2(150); -- This variable is the target of our change
+        l_base_table_alias   VARCHAR2(10)   := 't1';
+        l_table_counter      NUMBER         := 1;
+        l_pos                NUMBER         := 1;
+        l_source_ref         VARCHAR2(200);
+    BEGIN
+        -- ### MODIFIED LOGIC: Determine the STAY_DATE column name ###
+        IF l_attribute_rec.TEMPLATE_ID IS NOT NULL THEN
+            -- **[1] Original Logic: Use Template ID if it exists**
+            append_debug('Template ID found. Looking up STAY_DATE column from template definition.');
+            IF l_attribute_rec.ATTRIBUTE_QUALIFIER IN ('OWN_PROPERTY', 'COMP_PROPERTY') THEN
+                l_stay_date_column := 'STAY_DATE';
+            ELSE
+                BEGIN
+                    SELECT * INTO l_template_rec FROM UR_TEMPLATES WHERE ID = l_attribute_rec.TEMPLATE_ID;
+                    SELECT jt.name
+                    INTO   l_stay_date_column
+                    FROM   JSON_TABLE(l_template_rec.DEFINITION, '$[*]' COLUMNS (name VARCHAR2(100) PATH '$.name', qualifier VARCHAR2(100) PATH '$.qualifier')) jt
+                    WHERE  jt.qualifier = 'STAY_DATE';
+                EXCEPTION
+                    WHEN NO_DATA_FOUND THEN
+                        RAISE_APPLICATION_ERROR(-20004, 'Critical error: The associated template definition requires a column with the ''STAY_DATE'' qualifier.');
+                END;
+            END IF;
+        ELSE
+            -- **[2] New Logic: Introspect the formula if no Template ID**
+            append_debug('Template ID is NULL. Introspecting formula to find base table and verify STAY_DATE column.');
+            DECLARE
+                l_base_table_name VARCHAR2(128);
+                l_column_exists   NUMBER;
+            BEGIN
+                -- Extract the first table name from the formula (e.g., from #TABLE.COLUMN#)
+                l_base_table_name := REGEXP_SUBSTR(l_formula, '#([^#.]+)\.', 1, 1, NULL, 1);
 
-            append_debug('Attribute type is Sourced. Parsing value formula.');
+                IF l_base_table_name IS NULL THEN
+                    RAISE_APPLICATION_ERROR(-20006, 'Invalid formula format. Cannot determine base table from value: ' || l_formula);
+                END IF;
+                
+                append_debug('Inferred base table is: ' || l_base_table_name);
 
-            DECLARE
+                -- Check if a 'STAY_DATE' column exists in that table
+                SELECT COUNT(*)
+                INTO   l_column_exists
+                FROM   ALL_TAB_COLUMNS
+                WHERE  TABLE_NAME = UPPER(l_base_table_name)
+                  AND  COLUMN_NAME = 'STAY_DATE';
 
-                TYPE t_table_map IS TABLE OF VARCHAR2(10) INDEX BY VARCHAR2(150);
+                IF l_column_exists > 0 THEN
+                    l_stay_date_column := 'STAY_DATE';
+                ELSE
+                    RAISE_APPLICATION_ERROR(-20007, 'Configuration error: The base table ''' || l_base_table_name || ''' for this attribute does not have a required ''STAY_DATE'' column.');
+                END IF;
+            END;
+        END IF;
 
-                l_tables           t_table_map;
+        append_debug('Determined Stay Date column is: ' || l_stay_date_column);
 
-                l_formula          VARCHAR2(4000) := l_attribute_rec.VALUE;
-
-                l_expression       VARCHAR2(4000) := l_formula;
-
-                l_from_clause      VARCHAR2(4000);
-
-                l_where_clause     VARCHAR2(1000) := ' WHERE 1=1';
-
-                l_stay_date_column VARCHAR2(150);
-
-                l_base_table_alias VARCHAR2(10) := 't1';
-
-                l_table_counter    NUMBER := 1;
-
-                l_pos              NUMBER := 1;
-
-                l_source_ref       VARCHAR2(200);
-
-            BEGIN
-
-                -- ### MODIFICATION: Get STAY_DATE column name with new exception logic ###
-
-                IF l_attribute_rec.ATTRIBUTE_QUALIFIER IN ('OWN_PROPERTY', 'COMP_PROPERTY') THEN
-
-                    append_debug('Attribute qualifier is OWN/COMP_PROPERTY. Using hardcoded STAY_DATE column name.');
-
-                    l_stay_date_column := 'STAY_DATE';
-
-                ELSE
-
-                    append_debug('Looking up STAY_DATE column from template definition.');
-
-                    BEGIN
-
-                        SELECT * INTO l_template_rec FROM UR_TEMPLATES WHERE ID = l_attribute_rec.TEMPLATE_ID;
-
-                        SELECT jt.name
-
-                        INTO   l_stay_date_column
-
-                        FROM   JSON_TABLE(l_template_rec.DEFINITION, '$[*]' COLUMNS (name VARCHAR2(100) PATH '$.name', qualifier VARCHAR2(100) PATH '$.qualifier')) jt
-
-                        WHERE  jt.qualifier = 'STAY_DATE';
-
-                    EXCEPTION
-
-                        WHEN NO_DATA_FOUND THEN
-
-                            RAISE_APPLICATION_ERROR(-20004, 'Critical error: Associated template definition requires a ''STAY_DATE'' qualifier for this attribute type.');
-
-                    END;
-
-                END IF;
-
-                append_debug('Determined Stay Date column is: ' || l_stay_date_column);
-
-
-
-                -- 1. Parse all source references and build FROM clause
-
-                LOOP
-
-                    l_source_ref := REGEXP_SUBSTR(l_formula, '#([^#]+)#', l_pos, 1, NULL, 1);
-
-                    EXIT WHEN l_source_ref IS NULL;
+        -- 1. Parse all source references and build FROM clause (This logic remains the same)
+        LOOP
+            l_source_ref := REGEXP_SUBSTR(l_formula, '#([^#]+)#', l_pos, 1, NULL, 1);
+            EXIT WHEN l_source_ref IS NULL;
 
                     DECLARE
                         l_table_name VARCHAR2(150) := REGEXP_SUBSTR(l_source_ref, '^[^.]+');
