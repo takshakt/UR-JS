@@ -5,11 +5,26 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
   FUNCTION GENERIC_MATH_EVAL(p_function_name IN VARCHAR2, p_values IN VARCHAR2) RETURN NUMBER IS
     l_sum   NUMBER := 0; l_count NUMBER := 0; l_min   NUMBER; l_max   NUMBER; l_val   NUMBER;
   BEGIN
-    FOR r IN (SELECT TO_NUMBER(REGEXP_SUBSTR(p_values, '[^,]+', 1, LEVEL)) AS num FROM DUAL CONNECT BY LEVEL <= REGEXP_COUNT(p_values, ',') + 1) LOOP
-      l_val := r.num; l_sum := l_sum + l_val; l_count := l_count + 1;
+
+  FOR r IN (
+      SELECT num
+      FROM (
+          SELECT
+              TO_NUMBER(TRIM(REGEXP_SUBSTR(p_values, '[^,]+', 1, LEVEL)) DEFAULT NULL ON CONVERSION ERROR) AS num
+          FROM
+              DUAL
+          CONNECT BY
+              LEVEL <= REGEXP_COUNT(p_values, ',') + 1
+      )
+      WHERE num IS NOT NULL -- Filter is now applied to the generated result set
+  ) LOOP
+      l_val := r.num;
+      l_sum := l_sum + l_val;
+      l_count := l_count + 1;
       IF l_min IS NULL OR l_val < l_min THEN l_min := l_val; END IF;
       IF l_max IS NULL OR l_val > l_max THEN l_max := l_val; END IF;
-    END LOOP;
+  END LOOP;
+
     CASE UPPER(p_function_name)
       WHEN 'SUM'     THEN RETURN l_sum;
       WHEN 'AVERAGE' THEN RETURN CASE WHEN l_count > 0 THEN l_sum / l_count ELSE 0 END;
@@ -152,13 +167,13 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
     l_current_id := l_aliases.FIRST;
     WHILE l_current_id IS NOT NULL LOOP
       IF l_lead_attr_ids.EXISTS(l_current_id) THEN
-        FOR rec IN (SELECT stay_date, attribute_value FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id)) WHERE attribute_value IS NOT NULL) LOOP
+        FOR rec IN (SELECT stay_date, attribute_value FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id)) WHERE attribute_value IS NOT NULL) LOOP
           DECLARE l_converted_date DATE; BEGIN l_converted_date := FLEXIBLE_TO_DATE(rec.attribute_value); IF l_converted_date IS NOT NULL THEN l_lead_dates(TO_CHAR(rec.stay_date, 'YYYY-MM-DD') || l_current_id) := l_converted_date; END IF; END;
         END LOOP;
       ELSE
-        SELECT t_result_rec_obj(stay_date, TO_NUMBER(attribute_value), NULL) BULK COLLECT INTO l_staged_data(l_current_id) FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id)) WHERE attribute_value IS NOT NULL;
+        SELECT t_result_rec_obj(stay_date, TO_NUMBER(attribute_value), NULL) BULK COLLECT INTO l_staged_data(l_current_id) FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id)) WHERE attribute_value IS NOT NULL;
       END IF;
-      FOR rec IN (SELECT stay_date FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id))) LOOP l_date_set(TO_CHAR(rec.stay_date, 'YYYY-MM-DD')) := TRUE; END LOOP;
+      FOR rec IN (SELECT stay_date FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id))) LOOP l_date_set(TO_CHAR(rec.stay_date, 'YYYY-MM-DD')) := TRUE; END LOOP;
       l_current_id := l_aliases.NEXT(l_current_id);
     END LOOP;
 
