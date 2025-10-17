@@ -234,44 +234,81 @@ create or replace PACKAGE BODY ur_utils IS
             l_records_fetched := 1;
             l_message         := 'Manual value returned.';
 
-        ELSIF l_attribute_rec.TYPE = 'S' THEN
-            append_debug('Attribute type is Sourced. Parsing value formula.');
-            DECLARE
-                TYPE t_table_map IS TABLE OF VARCHAR2(10) INDEX BY VARCHAR2(150);
-                l_tables           t_table_map;
-                l_formula          VARCHAR2(4000) := l_attribute_rec.VALUE;
-                l_expression       VARCHAR2(4000) := l_formula;
-                l_from_clause      VARCHAR2(4000);
-                l_where_clause     VARCHAR2(1000) := ' WHERE 1=1';
-                l_stay_date_column VARCHAR2(150);
-                l_base_table_alias VARCHAR2(10) := 't1';
-                l_table_counter    NUMBER := 1;
-                l_pos              NUMBER := 1;
-                l_source_ref       VARCHAR2(200);
-            BEGIN
-                -- ### MODIFICATION: Get STAY_DATE column name with new exception logic ###
-                IF l_attribute_rec.ATTRIBUTE_QUALIFIER IN ('OWN_PROPERTY', 'COMP_PROPERTY') THEN
-                    append_debug('Attribute qualifier is OWN/COMP_PROPERTY. Using hardcoded STAY_DATE column name.');
-                    l_stay_date_column := 'STAY_DATE';
-                ELSE
-                    append_debug('Looking up STAY_DATE column from template definition.');
-                    BEGIN
-                        SELECT * INTO l_template_rec FROM UR_TEMPLATES WHERE ID = l_attribute_rec.TEMPLATE_ID;
-                        SELECT jt.name
-                        INTO   l_stay_date_column
-                        FROM   JSON_TABLE(l_template_rec.DEFINITION, '$[*]' COLUMNS (name VARCHAR2(100) PATH '$.name', qualifier VARCHAR2(100) PATH '$.qualifier')) jt
-                        WHERE  jt.qualifier = 'STAY_DATE';
-                    EXCEPTION
-                        WHEN NO_DATA_FOUND THEN
-                            RAISE_APPLICATION_ERROR(-20004, 'Critical error: Associated template definition requires a ''STAY_DATE'' qualifier for this attribute type.');
-                    END;
-                END IF;
-                append_debug('Determined Stay Date column is: ' || l_stay_date_column);
+        ELSIF l_attribute_rec.TYPE = 'S' THEN
 
-                -- 1. Parse all source references and build FROM clause
-                LOOP
-                    l_source_ref := REGEXP_SUBSTR(l_formula, '#([^#]+)#', l_pos, 1, NULL, 1);
-                    EXIT WHEN l_source_ref IS NULL;
+            append_debug('Attribute type is Sourced. Parsing value formula.');
+
+            DECLARE
+
+                TYPE t_table_map IS TABLE OF VARCHAR2(10) INDEX BY VARCHAR2(150);
+
+                l_tables           t_table_map;
+
+                l_formula          VARCHAR2(4000) := l_attribute_rec.VALUE;
+
+                l_expression       VARCHAR2(4000) := l_formula;
+
+                l_from_clause      VARCHAR2(4000);
+
+                l_where_clause     VARCHAR2(1000) := ' WHERE 1=1';
+
+                l_stay_date_column VARCHAR2(150);
+
+                l_base_table_alias VARCHAR2(10) := 't1';
+
+                l_table_counter    NUMBER := 1;
+
+                l_pos              NUMBER := 1;
+
+                l_source_ref       VARCHAR2(200);
+
+            BEGIN
+
+                -- ### MODIFICATION: Get STAY_DATE column name with new exception logic ###
+
+                IF l_attribute_rec.ATTRIBUTE_QUALIFIER IN ('OWN_PROPERTY', 'COMP_PROPERTY') THEN
+
+                    append_debug('Attribute qualifier is OWN/COMP_PROPERTY. Using hardcoded STAY_DATE column name.');
+
+                    l_stay_date_column := 'STAY_DATE';
+
+                ELSE
+
+                    append_debug('Looking up STAY_DATE column from template definition.');
+
+                    BEGIN
+
+                        SELECT * INTO l_template_rec FROM UR_TEMPLATES WHERE ID = l_attribute_rec.TEMPLATE_ID;
+
+                        SELECT jt.name
+
+                        INTO   l_stay_date_column
+
+                        FROM   JSON_TABLE(l_template_rec.DEFINITION, '$[*]' COLUMNS (name VARCHAR2(100) PATH '$.name', qualifier VARCHAR2(100) PATH '$.qualifier')) jt
+
+                        WHERE  jt.qualifier = 'STAY_DATE';
+
+                    EXCEPTION
+
+                        WHEN NO_DATA_FOUND THEN
+
+                            RAISE_APPLICATION_ERROR(-20004, 'Critical error: Associated template definition requires a ''STAY_DATE'' qualifier for this attribute type.');
+
+                    END;
+
+                END IF;
+
+                append_debug('Determined Stay Date column is: ' || l_stay_date_column);
+
+
+
+                -- 1. Parse all source references and build FROM clause
+
+                LOOP
+
+                    l_source_ref := REGEXP_SUBSTR(l_formula, '#([^#]+)#', l_pos, 1, NULL, 1);
+
+                    EXIT WHEN l_source_ref IS NULL;
 
                     DECLARE
                         l_table_name VARCHAR2(150) := REGEXP_SUBSTR(l_source_ref, '^[^.]+');
@@ -563,7 +600,7 @@ create or replace PACKAGE BODY ur_utils IS
 
         -- Generate table name if not already defined
         IF v_db_object_name IS NULL THEN
-            v_db_object_name := 'UR_' || UPPER(p_template_key) || '_T';
+            v_db_object_name := 'UR_TMPLT_' || UPPER(p_template_key) || '_T';
         END IF;
 
         -- 🔍 Check if table exists
@@ -814,7 +851,7 @@ END ' || v_trigger_name || ';
 
 
         -- Step 5: Build the final CREATE VIEW statement
-        v_view_name := 'UR_' || p_template_key || '_RANKING_V';
+        v_view_name := 'UR_TMPLT_' || p_template_key || '_RANK_V';
 
         v_sql := 'CREATE OR REPLACE VIEW "' || v_view_name || '" AS ' || CHR(10) ||
                  'WITH all_properties_ranked AS (' || CHR(10) ||
