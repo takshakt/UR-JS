@@ -1796,293 +1796,294 @@ END ' || v_trigger_name || ';
 
     --------------------------------------------------------------------------------
 
-    PROCEDURE manage_algo_attributes(
+   PROCEDURE manage_algo_attributes(
         p_template_key   IN  VARCHAR2,
         p_mode           IN  CHAR,
         p_attribute_key  IN  VARCHAR2 DEFAULT NULL,
         p_status         OUT BOOLEAN,
         p_message        OUT VARCHAR2
     ) IS
-        v_db_object_name      UR_TEMPLATES.DB_OBJECT_NAME%TYPE;
-        v_definition          UR_TEMPLATES.DEFINITION%TYPE;
-        v_hotel_id            UR_TEMPLATES.HOTEL_ID%TYPE;
-        v_template_id         RAW(16);
-        v_template_type       UR_TEMPLATES.TYPE%TYPE;
-        v_db_view_object_name UR_TEMPLATES.DB_VIEW_OBJECT_NAME%TYPE;
-        v_user_id             RAW(16);
+      -- Original Variables
+      v_db_object_name UR_TEMPLATES.DB_OBJECT_NAME%TYPE;
+      v_definition     UR_TEMPLATES.DEFINITION%TYPE;
+      v_hotel_id       UR_TEMPLATES.HOTEL_ID%TYPE;
+      v_user_id        RAW(16);
+      v_insert_count   NUMBER := 0;
+      v_delete_count   NUMBER := 0;
+      v_template_id    RAW(16);
+      v_attr_qualifier VARCHAR2(4000) := NULL;
 
-        v_insert_count        NUMBER := 0;
-        v_update_count        NUMBER := 0;
-        v_delete_count        NUMBER := 0;
+      -- New Variables for RST logic
+      v_template_type        UR_TEMPLATES.TYPE%TYPE;
+      v_db_view_object_name  UR_TEMPLATES.DB_VIEW_OBJECT_NAME%TYPE;
+      v_own_property_count   NUMBER := 0;
+      v_comp_property_count  NUMBER := 0;
+      v_object_exists        NUMBER := 0;
+      v_column_exists        NUMBER := 0;
 
-        -- record and associative array types
-        TYPE t_attr IS RECORD(
-            name      VARCHAR2(200),
-            data_type VARCHAR2(50),
-            qualifier VARCHAR2(50)
-        );
-        TYPE t_attr_tab IS TABLE OF t_attr INDEX BY VARCHAR2(200);
-
-        v_existing            t_attr_tab;
-        v_new                 t_attr_tab;
-        v_key                 VARCHAR2(200);
+      -- Local helper procedure updated to accept qualifier name
+        PROCEDURE create_rst_attribute (
+          p_attr_name       IN VARCHAR2,
+          p_attr_key        IN VARCHAR2,
+          p_attr_val        IN VARCHAR2,
+          p_qualifier_name  IN VARCHAR2,
+          p_data_type       IN VARCHAR2 DEFAULT 'NUMBER'
+      ) IS
+          v_exists NUMBER;
+      BEGIN
+          SELECT COUNT(*) INTO v_exists FROM ur_algo_attributes WHERE key = p_attr_key;
+          IF v_exists = 0 THEN
+              INSERT INTO ur_algo_attributes (
+                  id, algo_id, hotel_id, name, key, data_type, description, type, value, template_id, attribute_qualifier,
+                  created_by, updated_by, created_on, updated_on
+              ) VALUES (
+                  SYS_GUID(), NULL, v_hotel_id, p_attr_name, p_attr_key, p_data_type,
+                  NULL,
+                  'S', 
+                  '#' || p_attr_val || '#', -- Value wrapped in #
+                  v_template_id,
+                  p_qualifier_name,
+                  v_user_id, v_user_id, SYSDATE, SYSDATE
+              );
+              v_insert_count := v_insert_count + 1;
+          END IF;
+      END create_rst_attribute;
 
     BEGIN
-        p_status  := FALSE;
-        p_message := NULL;
+      -- Initialization
+      p_status := FALSE;
+      p_message := NULL;
 
-        ---------------------------------------------------------------------
-        -- Fetch Template Info
-        ---------------------------------------------------------------------
-        BEGIN
-            SELECT
-                db_object_name,
-                definition,
-                id,
-                hotel_id,
-                type,
-                db_view_object_name
-            INTO
-                v_db_object_name,
-                v_definition,
-                v_template_id,
-                v_hotel_id,
-                v_template_type,
-                v_db_view_object_name
-            FROM
-                ur_templates
-            WHERE
-                key = p_template_key;
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                p_message := 'Failure: Template not found for key ' || p_template_key;
-                RETURN;
-        END;
+      -- Obtain needed data from UR_TEMPLATES
+      BEGIN
+        SELECT db_object_name, definition, hotel_id, id, type, db_view_object_name
+        INTO v_db_object_name, v_definition, v_hotel_id, v_template_id, v_template_type, v_db_view_object_name
+        FROM ur_templates
+        WHERE key = p_template_key;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          p_message := 'Failure: Template key not found: ' || p_template_key;
+          RETURN;
+      END;
 
-        ---------------------------------------------------------------------
-        -- Get Logged-in User ID
-        ---------------------------------------------------------------------
-        BEGIN
-            SELECT
-                user_id
-            INTO v_user_id
-            FROM
-                ur_users
-            WHERE
-                user_name = SYS_CONTEXT('APEX$SESSION', 'APP_USER');
-        EXCEPTION
-            WHEN NO_DATA_FOUND THEN
-                v_user_id := NULL;
-        END;
+      IF v_db_object_name IS NULL THEN
+        p_message := 'Failure: DB_OBJECT_NAME not defined for template_key ' || p_template_key;
+        RETURN;
+      END IF;
 
-        ---------------------------------------------------------------------
-        -- CREATE MODE (C)
-        ---------------------------------------------------------------------
-        IF p_mode = 'C' THEN
-            DBMS_OUTPUT.PUT_LINE('=== CREATE MODE START ===');
-            DBMS_OUTPUT.PUT_LINE('Template: ' || p_template_key);
-            DBMS_OUTPUT.PUT_LINE('Object: ' || v_db_object_name);
+      -- Get USER_ID once for audit columns
+      BEGIN
+        SELECT USER_ID INTO v_user_id
+        FROM UR_USERS
+        WHERE USER_NAME = SYS_CONTEXT('APEX$SESSION', 'APP_USER');
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          v_user_id := NULL;
+      END;
 
-            IF v_definition IS NULL THEN
-                p_message := 'Failure: Definition JSON is NULL for template_key ' || p_template_key;
-                RETURN;
-            END IF;
-
-            FOR r IN (
-                SELECT
-                    UPPER(TRIM(jt.name)) AS name,
-                    NVL(UPPER(TRIM(jt.data_type)), 'NUMBER') AS data_type,
-                    TRIM(UPPER(jt.qualifier)) AS qualifier
-                FROM
-                    JSON_TABLE(v_definition, '$[*]'
-                        COLUMNS (
-                            name      VARCHAR2(200) PATH '$.name',
-                            data_type VARCHAR2(50)  PATH '$.data_type',
-                            qualifier VARCHAR2(50)  PATH '$.qualifier'
-                        )) jt
-            ) LOOP
-                -- Skip rows with no valid qualifier
-                IF r.qualifier IS NULL OR r.qualifier IN ('', '-', ' ') THEN
-                    DBMS_OUTPUT.PUT_LINE('Skipping attribute (no valid qualifier): ' || r.name);
-                    CONTINUE;
-                END IF;
-
-                v_key := UPPER(TRIM(v_db_object_name)) || '.' || UPPER(TRIM(r.name));
-
-                DBMS_OUTPUT.PUT_LINE(
-                    'Inserting new attribute: ' || v_key ||
-                    ' | Qualifier: ' || r.qualifier ||
-                    ' | Data Type: ' || r.data_type
-                );
-
-                INSERT INTO ur_algo_attributes (
-                    id, algo_id, hotel_id, name, key, data_type, description, type,
-                    value, template_id, attribute_qualifier,
-                    created_by, updated_by, created_on, updated_on
-                ) VALUES (
-                    SYS_GUID(), NULL, v_hotel_id, r.name, v_key,
-                    r.data_type, NULL, 'S',
-                    '#' || v_key || '#', v_template_id, r.qualifier,
-                    v_user_id, v_user_id, SYSDATE, SYSDATE
-                );
-                v_insert_count := v_insert_count + 1;
-            END LOOP;
-
-            DBMS_OUTPUT.PUT_LINE('CREATE MODE: Total valid inserts: ' || v_insert_count);
-
-            COMMIT;
-
-            DBMS_OUTPUT.PUT_LINE('=== CREATE COMPLETE ===');
-            DBMS_OUTPUT.PUT_LINE('Inserted: ' || v_insert_count);
-
-            p_status  := TRUE;
-            p_message := 'Success: ' || v_insert_count || ' attributes created for template_key ' || p_template_key;
-
-        ---------------------------------------------------------------------
-        -- UPDATE MODE (U)
-        ---------------------------------------------------------------------
-        ELSIF p_mode = 'U' THEN
-            IF v_definition IS NULL THEN
-                p_message := 'Failure: Definition JSON is NULL for template_key ' || p_template_key;
-                RETURN;
-            END IF;
-
-            DBMS_OUTPUT.PUT_LINE('=== UPDATE MODE START ===');
-            DBMS_OUTPUT.PUT_LINE('Template: ' || p_template_key);
-            DBMS_OUTPUT.PUT_LINE('Object: ' || v_db_object_name);
-
-            -- Load existing attributes
-            FOR r IN (
-                SELECT
-                    name,
-                    data_type,
-                    NVL(attribute_qualifier, '-') AS qualifier,
-                    key
-                FROM
-                    ur_algo_attributes
-                WHERE
-                    template_id = v_template_id
-            ) LOOP
-                v_key                       := UPPER(TRIM(r.key));
-                v_existing(v_key).name      := r.name;
-                v_existing(v_key).data_type := NVL(r.data_type, 'NUMBER');
-                v_existing(v_key).qualifier := NVL(r.qualifier, '-');
-                DBMS_OUTPUT.PUT_LINE('Existing attribute: ' || v_key || ' Qualifier: ' || v_existing(v_key).qualifier);
-            END LOOP;
-
-            -- Load new attributes from JSON
-            FOR r IN (
-                SELECT
-                    UPPER(jt.name) AS name,
-                    NVL(UPPER(jt.data_type), 'NUMBER') AS data_type,
-                    NVL(UPPER(jt.qualifier), '-') AS qualifier
-                FROM
-                    JSON_TABLE(v_definition, '$[*]'
-                        COLUMNS (
-                            name      VARCHAR2(200) PATH '$.name',
-                            data_type VARCHAR2(50)  PATH '$.data_type',
-                            qualifier VARCHAR2(50)  PATH '$.qualifier'
-                        )) jt
-            ) LOOP
-                v_key                 := UPPER(TRIM(v_db_object_name)) || '.' || UPPER(TRIM(r.name));
-                v_new(v_key).name      := r.name;
-                v_new(v_key).data_type := r.data_type;
-                v_new(v_key).qualifier := r.qualifier;
-                DBMS_OUTPUT.PUT_LINE('New attribute parsed: ' || v_key || ' Qualifier: ' || r.qualifier);
-            END LOOP;
-
-            ------------------------------------------------------------------
-            -- Compare and ACTUALLY update/insert/delete
-            ------------------------------------------------------------------
-            DECLARE
-                v_cur_key VARCHAR2(200);
-            BEGIN
-                -- Handle inserts + updates
-                v_cur_key := v_new.FIRST;
-                WHILE v_cur_key IS NOT NULL LOOP
-                    -- Skip if qualifier invalid
-                    IF v_new(v_cur_key).qualifier IS NULL OR v_new(v_cur_key).qualifier IN ('', '-', ' ') THEN
-                        DBMS_OUTPUT.PUT_LINE('Skipping update/insert (invalid qualifier): ' || v_cur_key);
-                        v_cur_key := v_new.NEXT(v_cur_key);
-                        CONTINUE;
-                    END IF;
-
-                    IF v_existing.EXISTS(v_cur_key) THEN
-                        -- Compare and update qualifier if changed
-                        IF v_existing(v_cur_key).qualifier != v_new(v_cur_key).qualifier THEN
-                            DBMS_OUTPUT.PUT_LINE(
-                                'Updating qualifier for key: ' || v_cur_key ||
-                                ' From: ' || v_existing(v_cur_key).qualifier ||
-                                ' To: ' || v_new(v_cur_key).qualifier
-                            );
-
-                            UPDATE ur_algo_attributes
-                            SET
-                                attribute_qualifier   = v_new(v_cur_key).qualifier,
-                                updated_by            = v_user_id,
-                                updated_on            = SYSDATE
-                            WHERE
-                                key = v_cur_key;
-
-                            v_update_count := v_update_count + SQL%ROWCOUNT;
-                        END IF;
-                    ELSE
-                        DBMS_OUTPUT.PUT_LINE(
-                            'Inserting new attribute: ' || v_cur_key ||
-                            ' Qualifier: ' || v_new(v_cur_key).qualifier
-                        );
-
-                        INSERT INTO ur_algo_attributes (
-                            id, algo_id, hotel_id, name, key, data_type, description, type,
-                            value, template_id, attribute_qualifier,
-                            created_by, updated_by, created_on, updated_on
-                        ) VALUES (
-                            SYS_GUID(), NULL, v_hotel_id, v_new(v_cur_key).name, v_cur_key,
-                            v_new(v_cur_key).data_type, NULL, 'S',
-                            '#' || v_cur_key || '#', v_template_id, v_new(v_cur_key).qualifier,
-                            v_user_id, v_user_id, SYSDATE, SYSDATE
-                        );
-                        v_insert_count := v_insert_count + 1;
-                    END IF;
-                    v_cur_key := v_new.NEXT(v_cur_key);
-                END LOOP;
-
-                -- Handle deletions
-                v_cur_key := v_existing.FIRST;
-                WHILE v_cur_key IS NOT NULL LOOP
-                    IF NOT v_new.EXISTS(v_cur_key) THEN
-                        DBMS_OUTPUT.PUT_LINE('Deleting old attribute: ' || v_cur_key);
-                        DELETE FROM ur_algo_attributes WHERE key = v_cur_key;
-                        v_delete_count := v_delete_count + SQL%ROWCOUNT;
-                    END IF;
-                    v_cur_key := v_existing.NEXT(v_cur_key);
-                END LOOP;
-            END;
-
-            COMMIT;
-
-            DBMS_OUTPUT.PUT_LINE('=== SUMMARY ===');
-            DBMS_OUTPUT.PUT_LINE('Inserted: ' || v_insert_count);
-            DBMS_OUTPUT.PUT_LINE('Updated: ' || v_update_count);
-            DBMS_OUTPUT.PUT_LINE('Deleted: ' || v_delete_count);
-
-            p_status  := TRUE;
-            p_message := 'Success: ' || v_insert_count || ' inserted, ' || v_update_count || ' updated, ' || v_delete_count || ' deleted for template_key ' || p_template_key;
-
-        ---------------------------------------------------------------------
-        -- INVALID MODE
-        ---------------------------------------------------------------------
-        ELSE
-            p_message := 'Failure: Invalid mode ' || p_mode || '. Use C or U.';
-            p_status  := FALSE;
+      IF p_mode = 'C' THEN
+        IF v_definition IS NULL THEN
+          p_message := 'Failure: Definition JSON is NULL for template_key ' || p_template_key;
+          RETURN;
         END IF;
 
+        -- ====================================================================================
+        -- START: LOGIC FOR RST TEMPLATES
+        -- ====================================================================================
+        IF v_template_type = 'RST' THEN
+          -- Count OWN_PROPERTY and COMP_PROPERTY qualifiers
+          SELECT
+            COUNT(CASE WHEN UPPER(jt.qualifier) = 'OWN_PROPERTY' THEN 1 END),
+            COUNT(CASE WHEN UPPER(jt.qualifier) = 'COMP_PROPERTY' THEN 1 END)
+          INTO v_own_property_count, v_comp_property_count
+          FROM JSON_TABLE(v_definition, '$[*]' COLUMNS (qualifier VARCHAR2(30) PATH '$.qualifier')) jt;
+
+          -- Check if the special qualifiers exist to trigger the RST logic
+          IF v_own_property_count > 0 AND v_comp_property_count > 0 THEN
+            -- 1. Validate DB_VIEW_OBJECT_NAME
+            IF v_db_view_object_name IS NULL THEN
+              p_message := 'Failure: DB_VIEW_OBJECT_NAME is not defined for RST template ' || p_template_key;
+              RETURN;
+            END IF;
+
+            -- 2. Validate the view/object exists
+            BEGIN
+              SELECT 1 INTO v_object_exists FROM user_objects
+              WHERE object_name = UPPER(v_db_view_object_name) AND object_type IN ('VIEW', 'TABLE', 'SYNONYM');
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                v_object_exists := 0;
+            END;
+
+            IF v_object_exists = 0 THEN
+              p_message := 'Failure: The specified DB_VIEW_OBJECT_NAME ''' || v_db_view_object_name || ''' does not exist.';
+              RETURN;
+            END IF;
+
+            -- 3. Validate and create attributes for OWN_PROPERTY
+            FOR r_col IN (
+                SELECT 'OWN_PROPERTY_RANK' AS col_name FROM DUAL
+                UNION ALL
+                SELECT 'OWN_PROPERTY_RATE' AS col_name FROM DUAL
+            ) LOOP
+                SELECT COUNT(*) INTO v_column_exists FROM user_tab_columns
+                WHERE table_name = UPPER(v_db_view_object_name) AND column_name = r_col.col_name;
+
+                IF v_column_exists = 0 THEN
+                    p_message := 'Failure: Required column ' || r_col.col_name || ' not found in view ' || v_db_view_object_name;
+                    RETURN;
+                END IF;
+            END LOOP;
+            
+            create_rst_attribute('OWN PROPERTY RANK', v_db_view_object_name || '.OWN_PROPERTY_RANK', v_db_view_object_name || '.OWN_PROPERTY_RANK', 'OWN_PROPERTY');
+            create_rst_attribute('OWN PROPERTY RATE', v_db_view_object_name || '.OWN_PROPERTY_RATE', v_db_view_object_name || '.OWN_PROPERTY_RATE', 'OWN_PROPERTY');
+            
+            -- 4. Create attributes for COMP_PROPERTY
+            FOR i IN 1 .. (v_comp_property_count + 1) LOOP
+              DECLARE
+                l_col_name   VARCHAR2(100) := 'RANK_' || i || '_RATE';
+                l_attr_name  VARCHAR2(100) := 'COMP SET R' || i || ' RATE';
+                l_attr_key   VARCHAR2(200) := v_db_view_object_name || '.' || l_col_name;
+              BEGIN
+                -- Validate that the required rank column exists
+                SELECT COUNT(*) INTO v_column_exists FROM user_tab_columns
+                WHERE table_name = UPPER(v_db_view_object_name) AND column_name = l_col_name;
+
+                IF v_column_exists = 0 THEN
+                  p_message := 'Failure: Required column ' || l_col_name || ' not found in view ' || v_db_view_object_name || '.';
+                  ROLLBACK;
+                  RETURN;
+                END IF;
+                
+                -- Create the attribute using the helper
+                create_rst_attribute(l_attr_name, l_attr_key, l_attr_key, 'COMP_PROPERTY');
+              END;
+            END LOOP;
+          END IF;
+
+          -- Process any OTHER qualifiers in an RST template using the original logic
+          FOR rec IN (
+            SELECT jt.name, jt.data_type, jt.qualifier
+            FROM JSON_TABLE(
+              v_definition, '$[*]' COLUMNS (
+                name      VARCHAR2(100) PATH '$.name',
+                data_type VARCHAR2(30)  PATH '$.data_type',
+                qualifier VARCHAR2(30)  PATH '$.qualifier'
+              )
+            ) jt
+            WHERE jt.qualifier IS NOT NULL
+              AND UPPER(jt.qualifier) NOT IN ('UNIQUE', 'OWN_PROPERTY', 'COMP_PROPERTY')
+          )
+          LOOP
+            DECLARE
+              l_col_name VARCHAR2(150) := UPPER(REGEXP_REPLACE(TRIM(rec.name), '_+$', ''));
+              v_key      VARCHAR2(150) := v_db_object_name || '.' || l_col_name;
+              v_exists   NUMBER;
+            BEGIN
+              SELECT COUNT(*) INTO v_exists FROM ur_algo_attributes WHERE key = v_key;
+              IF v_exists = 0 THEN
+                INSERT INTO ur_algo_attributes (
+                  id, algo_id, hotel_id, name, key, data_type, description, type, value, template_id, attribute_qualifier,
+                  created_by, updated_by, created_on, updated_on
+                ) VALUES (
+                  SYS_GUID(), NULL, v_hotel_id, l_col_name, v_key, NVL(UPPER(rec.data_type), 'NUMBER'),
+                  NULL, 'S', 
+                  '#' || v_key || '#', -- Value wrapped in #
+                  v_template_id, rec.qualifier,
+                  v_user_id, v_user_id, SYSDATE, SYSDATE
+                );
+                v_insert_count := v_insert_count + 1;
+              END IF;
+            END;
+          END LOOP;
+
+        ELSE
+          -- ====================================================================================
+          -- START: ORIGINAL LOGIC FOR NON-RST TEMPLATES
+          -- ====================================================================================
+          FOR rec IN (
+            SELECT jt.name, jt.data_type, jt.qualifier
+            FROM JSON_TABLE(
+              v_definition, '$[*]' COLUMNS (
+                name      VARCHAR2(100) PATH '$.name',
+                data_type VARCHAR2(30)  PATH '$.data_type',
+                qualifier VARCHAR2(30)  PATH '$.qualifier'
+              )
+            ) jt
+            WHERE jt.qualifier IS NOT NULL
+              AND UPPER(jt.qualifier) <> 'UNIQUE'
+          )
+          LOOP
+            DECLARE
+              l_col_name VARCHAR2(150) := UPPER(REGEXP_REPLACE(TRIM(rec.name), '_+$', ''));
+              v_key      VARCHAR2(150) := v_db_object_name || '.' || l_col_name;
+              v_exists   NUMBER;
+            BEGIN
+              SELECT COUNT(*) INTO v_exists FROM ur_algo_attributes WHERE key = v_key;
+              IF v_exists = 0 THEN
+                INSERT INTO ur_algo_attributes (
+                  id, algo_id, hotel_id, name, key, data_type, description, type, value, template_id, attribute_qualifier,
+                  created_by, updated_by, created_on, updated_on
+                ) VALUES (
+                  SYS_GUID(), NULL, v_hotel_id, l_col_name, v_key, NVL(UPPER(rec.data_type), 'NUMBER'),
+                  NULL, 'S', 
+                  '#' || v_key || '#', -- Value wrapped in #
+                  v_template_id, rec.qualifier,
+                  v_user_id, v_user_id, SYSDATE, SYSDATE
+                );
+                v_insert_count := v_insert_count + 1;
+              END IF;
+            END;
+          END LOOP;
+        END IF;
+
+        COMMIT;
+        p_status := TRUE;
+        p_message := 'Success: ' || v_insert_count || ' attribute'
+                   || CASE WHEN v_insert_count = 1 THEN '' ELSE 's' END
+                   || ' inserted for template_key ' || p_template_key;
+
+      ELSIF p_mode = 'D' THEN
+        -- Delete logic remains unchanged
+        IF p_attribute_key IS NOT NULL THEN
+          IF p_attribute_key LIKE v_db_object_name || '.%' OR p_attribute_key LIKE v_db_view_object_name || '.%' THEN
+            DELETE FROM ur_algo_attributes WHERE key = p_attribute_key;
+            v_delete_count := SQL%ROWCOUNT;
+            COMMIT;
+            p_status := TRUE;
+            IF v_delete_count > 0 THEN
+              p_message := 'Success: ' || v_delete_count || ' attribute deleted with key ' || p_attribute_key;
+            ELSE
+              p_message := 'Info: No attribute found to delete with key ' || p_attribute_key;
+            END IF;
+          ELSE
+            p_status := FALSE;
+            p_message := 'Failure: Attribute key does not belong to template ' || p_template_key;
+          END IF;
+        ELSE
+          DELETE FROM ur_algo_attributes WHERE template_id = v_template_id; -- Safer delete by template_id
+          v_delete_count := SQL%ROWCOUNT;
+          COMMIT;
+          p_status := TRUE;
+          p_message := 'Success: ' || v_delete_count || ' attribute'
+                       || CASE WHEN v_delete_count = 1 THEN '' ELSE 's' END
+                       || ' deleted for template_key ' || p_template_key;
+        END IF;
+
+      ELSIF p_mode = 'U' THEN
+        p_status := FALSE;
+        p_message := 'Update mode not yet implemented';
+
+      ELSE
+        p_status := FALSE;
+        p_message := 'Invalid mode: ' || p_mode || '. Valid modes are C, U, D.';
+      END IF;
+
     EXCEPTION
-        WHEN OTHERS THEN
-            ROLLBACK;
-            p_status  := FALSE;
-            p_message := 'Failure: ' || SQLERRM;
-            DBMS_OUTPUT.PUT_LINE('*** ERROR: ' || SQLERRM);
+      WHEN OTHERS THEN
+        ROLLBACK;
+        p_status := FALSE;
+        p_message := 'Failure: ' || SQLERRM;
     END manage_algo_attributes;
 
     --------------------------------------------------------------------------------
