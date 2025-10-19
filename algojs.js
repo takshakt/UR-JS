@@ -802,52 +802,75 @@ function validateRegion(regionElement) {
     } else {
         signatures.push({ signature: 'filters:empty', element: filterContainer, type: 'filter' });
     }
-    
+
+    // New logic: Create composite signatures per full condition set
     const conditions = regionElement.querySelectorAll('.condition-group');
+    const compositeConditionSignatures = [];
+
     conditions.forEach(cond => {
         const condTitle = cond.querySelector('.title-display').textContent.trim();
         const isActive = !!cond.querySelector('.field-checkbox:checked');
         const expression = cond.querySelector('.expression-textarea').value.trim();
+
+        // Collect all part signatures of this condition
+        const condSignatures = [];
+
         if (!isActive && expression === '') {
-            signatures.push({ signature: 'condition:empty', element: cond, type: 'condition' });
-            return; 
-        }
-        if (isActive && expression === '') {
-            errors.push(`${condTitle}: Expression cannot be empty when a condition field is checked.`);
-            cond.querySelector('.expression-container').classList.add('invalid-field');
-        } else if (expression !== '') {
-            const { isValid, errors: expErrors } = validateSingleExpression(cond.querySelector('.expression-textarea'));
-            if (!isValid) {
-                errors.push(`${condTitle} Expression Error: ${expErrors.join(', ')}.`);
+            condSignatures.push('condition:empty');
+        } else {
+            if (isActive && expression === '') {
+                errors.push(`${condTitle}: Expression cannot be empty when a condition field is checked.`);
                 cond.querySelector('.expression-container').classList.add('invalid-field');
+            } else if (expression !== '') {
+                const { isValid, errors: expErrors } = validateSingleExpression(cond.querySelector('.expression-textarea'));
+                if (!isValid) {
+                    errors.push(`${condTitle} Expression Error: ${expErrors.join(', ')}.`);
+                    cond.querySelector('.expression-container').classList.add('invalid-field');
+                }
             }
+            cond.querySelectorAll('.condition-fields .field-checkbox:checked').forEach(checkbox => {
+                const fc = checkbox.closest('.field-container');
+                const validationType = checkbox.dataset.validates;
+                let signature = null;
+                const inputs = Array.from(fc.querySelectorAll('input:not([type=checkbox]), select'));
+                if (inputs.some(i => !i.value)) {
+                    errors.push(`${condTitle}: A value for "${fc.querySelector('label').textContent.trim()}" is missing.`);
+                    fc.classList.add('invalid-field');
+                } else {
+                    signature = `${validationType}:${inputs.map(i => i.value).join(':')}`;
+                    condSignatures.push(signature);
+                }
+            });
         }
-        cond.querySelectorAll('.condition-fields .field-checkbox:checked').forEach(checkbox => {
-            const fc = checkbox.closest('.field-container');
-            const validationType = checkbox.dataset.validates;
-            let signature = null;
-            const inputs = Array.from(fc.querySelectorAll('input:not([type=checkbox]), select'));
-            if (inputs.some(i => !i.value)) {
-                 errors.push(`${condTitle}: A value for "${fc.querySelector('label').textContent.trim()}" is missing.`);
-                 fc.classList.add('invalid-field');
-            } else {
-                 signature = `${validationType}:${inputs.map(i => i.value).join(':')}`;
-                 signatures.push({ signature, element: fc, type: 'condition' });
-            }
-        });
+
+        // Combine all part signatures of condition into one composite signature
+        const compositeSig = condSignatures.length > 0 ? condSignatures.sort().join('|') : 'condition:empty';
+        compositeConditionSignatures.push({ signature: compositeSig, element: cond });
     });
-    
-    const signatureCounts = signatures.reduce((acc, { signature }) => {
+
+    // Now check for duplicate composite signatures (whole condition sets duplicates)
+    const compositeCounts = compositeConditionSignatures.reduce((acc, { signature }) => {
         acc[signature] = (acc[signature] || 0) + 1;
         return acc;
     }, {});
-    const duplicateSignatures = Object.keys(signatureCounts).filter(sig => signatureCounts[sig] > 1);
-    if (duplicateSignatures.length > 0) {
-        errors.push('Duplicate filters or conditions found within this region.');
-        signatures.forEach(({ signature, element }) => {
-            if (duplicateSignatures.includes(signature)) element.classList.add('invalid-field');
+
+    const duplicateCompositeSignatures = Object.keys(compositeCounts).filter(sig => compositeCounts[sig] > 1);
+
+    if (duplicateCompositeSignatures.length > 0) {
+        errors.push('Duplicate entire condition sets found within this region.');
+        compositeConditionSignatures.forEach(({ signature, element }) => {
+            if (duplicateCompositeSignatures.includes(signature)) element.classList.add('invalid-field');
         });
     }
+
+    // Also add all composite condition signatures to the main signatures for any other logic
+    compositeConditionSignatures.forEach(({ signature, element }) => {
+        signatures.push({ signature, element, type: 'condition' });
+    });
+
+    // Previous single condition logic (removed) to avoid partial flagging of independent condition parts
+
+    // Previous total signature duplicate check for individual signatures removed to just rely on filter and new composite condition checks
 
     return { isValid: errors.length === 0, errors: [...new Set(errors)], signatures };
 }
