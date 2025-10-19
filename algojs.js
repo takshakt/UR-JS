@@ -1003,26 +1003,44 @@ function saveAllRegions() {
     });
 
     // ... (The rest of your validation logic for duplicates remains here) ...
+
+    // New logic for detecting duplicate filter regions across all regions
     const filterSignatures = allSignatures.filter(s => s.type === 'filter');
-    const signatureCounts = filterSignatures.reduce((acc, { signature }) => {
-        acc[signature] = (acc[signature] || 0) + 1;
-        return acc;
-    }, {});
+
+    // Count occurrences of each filter signature
+    const signatureCounts = {};
+    filterSignatures.forEach(({ signature }) => {
+        signatureCounts[signature] = (signatureCounts[signature] || 0) + 1;
+    });
+
+    // Identify duplicate filter signatures
     const duplicateSignatures = Object.keys(signatureCounts).filter(sig => signatureCounts[sig] > 1);
+
     if (duplicateSignatures.length > 0) {
         allValid = false;
         const errorRegions = new Set();
-        filterSignatures.forEach(({ signature, element, region }) => {
+
+        // Mark all regions with duplicate filters as invalid
+        filterSignatures.forEach(({ signature, region }) => {
             if (duplicateSignatures.includes(signature)) {
                 region.classList.add('invalid-region');
                 errorRegions.add(region);
             }
         });
+
+        // Display a duplicate filter set error for each affected region
         errorRegions.forEach(region => {
             const messageDiv = region.querySelector('.validation-messages');
-            const newError = '<li>Error: This entire set of filters is a duplicate of another region.</li>';
+            const newError = '<li>Error: This set of filters is a duplicate of another region.</li>';
+
             if (!messageDiv.innerHTML.includes(newError)) {
-                 messageDiv.innerHTML = (messageDiv.innerHTML || '<ul></ul>').slice(0, -5) + newError + '</ul>';
+                if (messageDiv.innerHTML.trim() === '') {
+                    messageDiv.innerHTML = '<ul>' + newError + '</ul>';
+                } else if (!messageDiv.innerHTML.trim().endsWith('</ul>')) {
+                    messageDiv.innerHTML += newError;
+                } else {
+                    messageDiv.innerHTML = messageDiv.innerHTML.slice(0, -5) + newError + '</ul>';
+                }
             }
             messageDiv.style.display = 'block';
         });
