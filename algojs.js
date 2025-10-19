@@ -964,8 +964,10 @@ function getRegionData(regionElement) {
 
 function validateAllRegions() {
     let allValid = true;
+    const allSignatures = [];
+
     document.querySelectorAll('.filter-region').forEach(region => {
-        const { isValid, errors } = validateRegion(region);
+        const { isValid, errors, signatures } = validateRegion(region);
         const messageDiv = region.querySelector('.validation-messages');
         messageDiv.style.display = 'none';
         if (!isValid) {
@@ -973,7 +975,41 @@ function validateAllRegions() {
             messageDiv.innerHTML = `<ul>${errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
             messageDiv.style.display = 'block';
         }
+        allSignatures.push(...signatures.map(s => ({ ...s, region })));
     });
+
+    // New composite validation across filter regions
+    const filterSignatures = allSignatures.filter(s => s.type === 'filter');
+    const signatureCounts = filterSignatures.reduce((acc, { signature }) => {
+        acc[signature] = (acc[signature] || 0) + 1;
+        return acc;
+    }, {});
+    const duplicateSignatures = Object.keys(signatureCounts).filter(sig => signatureCounts[sig] > 1);
+
+    if (duplicateSignatures.length > 0) {
+        allValid = false;
+        const errorRegions = new Set();
+        filterSignatures.forEach(({ signature, region }) => {
+            if (duplicateSignatures.includes(signature)) {
+                region.classList.add('invalid-region');
+                errorRegions.add(region);
+            }
+        });
+        errorRegions.forEach(region => {
+            const messageDiv = region.querySelector('.validation-messages');
+            const newError = '<li>Error: This set of filters is a duplicate of another region.</li>';
+            if (!messageDiv.innerHTML.includes(newError)) {
+                if (messageDiv.innerHTML.trim() === '') {
+                    messageDiv.innerHTML = '<ul>' + newError + '</ul>';
+                } else if (!messageDiv.innerHTML.trim().endsWith('</ul>')) {
+                    messageDiv.innerHTML += newError;
+                } else {
+                    messageDiv.innerHTML = messageDiv.innerHTML.slice(0, -5) + newError + '</ul>';
+                }
+            }
+            messageDiv.style.display = 'block';
+        });
+    }
 
     if (allValid) {
         alert('All regions are valid!');
