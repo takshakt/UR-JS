@@ -1,11 +1,10 @@
-create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
+CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
 
   -- [Functions GENERIC_MATH_EVAL, get_attribute_id_from_template, get_value_for_date, FLEXIBLE_TO_DATE, and build_dynamic_query remain unchanged from the previous version]
 
   FUNCTION GENERIC_MATH_EVAL(p_function_name IN VARCHAR2, p_values IN VARCHAR2) RETURN NUMBER IS
     l_sum   NUMBER := 0; l_count NUMBER := 0; l_min   NUMBER; l_max   NUMBER; l_val   NUMBER;
   BEGIN
-
   FOR r IN (
       SELECT num
       FROM (
@@ -16,7 +15,7 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
           CONNECT BY
               LEVEL <= REGEXP_COUNT(p_values, ',') + 1
       )
-      WHERE num IS NOT NULL -- Filter is now applied to the generated result set
+      WHERE num IS NOT NULL
   ) LOOP
       l_val := r.num;
       l_sum := l_sum + l_val;
@@ -43,7 +42,7 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
   EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
   END get_attribute_id_from_template;
 
-  FUNCTION get_value_for_date(p_data_table IN t_result_tab_obj, p_target_date IN DATE) RETURN NUMBER IS
+  FUNCTION get_value_for_date(p_data_table IN t_result_tab, p_target_date IN DATE) RETURN NUMBER IS
   BEGIN
     IF p_data_table IS NULL THEN RETURN NULL; END IF;
     FOR i IN 1 .. p_data_table.COUNT LOOP
@@ -56,13 +55,13 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
   BEGIN
     IF p_date_string IS NULL THEN RETURN NULL; END IF;
     BEGIN RETURN TO_DATE(SUBSTR(p_date_string, 1, 10), 'MM/DD/YYYY'); EXCEPTION WHEN OTHERS THEN
-        BEGIN RETURN TO_DATE(SUBSTR(p_date_string, 1, 10), 'YYYY-MM-DD'); EXCEPTION WHEN OTHERS THEN
-            BEGIN RETURN TO_DATE(SUBSTR(p_date_string, 1, 10), 'DD/MM/YYYY'); EXCEPTION WHEN OTHERS THEN
-                BEGIN RETURN TO_DATE(SUBSTR(p_date_string, 1, 10), 'DD-MM-YYYY'); EXCEPTION WHEN OTHERS THEN
-                    BEGIN RETURN TO_DATE(SUBSTR(p_date_string, 1, 11), 'DD-MON-YYYY'); EXCEPTION WHEN OTHERS THEN RETURN NULL; END;
-                END;
-            END;
+      BEGIN RETURN TO_DATE(SUBSTR(p_date_string, 1, 10), 'YYYY-MM-DD'); EXCEPTION WHEN OTHERS THEN
+        BEGIN RETURN TO_DATE(SUBSTR(p_date_string, 1, 10), 'DD/MM/YYYY'); EXCEPTION WHEN OTHERS THEN
+          BEGIN RETURN TO_DATE(SUBSTR(p_date_string, 1, 10), 'DD-MM-YYYY'); EXCEPTION WHEN OTHERS THEN
+            BEGIN RETURN TO_DATE(SUBSTR(p_date_string, 1, 11), 'DD-MON-YYYY'); EXCEPTION WHEN OTHERS THEN RETURN NULL; END;
+          END;
         END;
+      END;
     END;
   END FLEXIBLE_TO_DATE;
 
@@ -72,75 +71,117 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
      l_aliases         t_alias_map; l_alias_counter   PLS_INTEGER := 1; l_base_alias      VARCHAR2(10); l_current_id      VARCHAR2(255);
      l_regions_count   PLS_INTEGER; TYPE t_attr_tab IS TABLE OF VARCHAR2(255); l_attr_collection t_attr_tab := t_attr_tab();
      TYPE t_set_map IS TABLE OF BOOLEAN INDEX BY VARCHAR2(255); l_unique_attrs t_set_map; l_occ_attr_raw VARCHAR2(255);
-     l_pr_template  VARCHAR2(255); l_expr_raw     VARCHAR2(32767); l_pos          PLS_INTEGER; l_attr_in_expr VARCHAR2(255);
-   BEGIN
-     FOR cond_rec IN (SELECT cond_json FROM JSON_TABLE(p_rules_json, '$.regions[*].conditions[*]' COLUMNS (cond_json CLOB FORMAT JSON PATH '$')) conds) LOOP
-       l_occ_attr_raw := JSON_VALUE(cond_rec.cond_json, '$.occupancyThreshold.attribute');
-       l_pr_template := JSON_VALUE(cond_rec.cond_json, '$.propertyRanking.type');
-       l_expr_raw := JSON_VALUE(cond_rec.cond_json, '$.expression');
-       IF l_occ_attr_raw IS NOT NULL THEN l_unique_attrs(REGEXP_REPLACE(l_occ_attr_raw, '^#|#$', '')) := TRUE; END IF;
-       IF l_pr_template IS NOT NULL THEN DECLARE l_pr_attr VARCHAR2(255); BEGIN l_pr_attr := get_attribute_id_from_template(l_pr_template); IF l_pr_attr IS NOT NULL THEN l_unique_attrs(l_pr_attr) := TRUE; END IF; END; END IF;
-       l_pos := 1;
-       LOOP l_attr_in_expr := REGEXP_SUBSTR(l_expr_raw, '#[A-F0-9]+#', l_pos); EXIT WHEN l_attr_in_expr IS NULL; l_unique_attrs(REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '')) := TRUE; l_pos := INSTR(l_expr_raw, l_attr_in_expr, l_pos) + LENGTH(l_attr_in_expr); END LOOP;
-     END LOOP;
-     l_attr_collection.DELETE;
-     DECLARE l_key VARCHAR2(255); BEGIN l_key := l_unique_attrs.FIRST; WHILE l_key IS NOT NULL LOOP l_attr_collection.EXTEND; l_attr_collection(l_attr_collection.COUNT) := l_key; l_key := l_unique_attrs.NEXT(l_key); END LOOP; END;
-     IF l_attr_collection.COUNT = 0 THEN RETURN q'[SELECT NULL, NULL, 'ERROR: No attributes found in JSON' FROM DUAL]'; END IF;
-     FOR i IN 1 .. l_attr_collection.COUNT LOOP l_aliases(l_attr_collection(i)) := 'a' || l_alias_counter; l_alias_counter := l_alias_counter + 1; END LOOP;
-     l_base_alias := l_aliases(l_attr_collection(1)); l_sql_from := ' FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => ''' || l_attr_collection(1) || ''')) ' || l_base_alias;
-     FOR i IN 2 .. l_attr_collection.COUNT LOOP l_sql_from := l_sql_from || ' LEFT JOIN TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => ''' || l_attr_collection(i) || ''')) ' || l_aliases(l_attr_collection(i)) || ' ON ' || l_base_alias || '.STAY_DATE = ' || l_aliases(l_attr_collection(i)) || '.STAY_DATE '; END LOOP;
-     FOR f IN (SELECT stay_from, stay_to, lead_from, lead_to, days_of_week, min_rate FROM JSON_TABLE(p_rules_json, '$.regions[0].filters' COLUMNS (stay_from DATE PATH '$.stayWindow.from', stay_to DATE PATH '$.stayWindow.to', lead_from DATE PATH '$.leadTime.from', lead_to DATE PATH '$.leadTime.to', days_of_week VARCHAR2(100) FORMAT JSON PATH '$.daysOfWeek', min_rate NUMBER PATH '$.minimumRate'))) LOOP
-       l_sql_where := l_sql_where || ' AND ' || l_base_alias || '.STAY_DATE BETWEEN TO_DATE(''' || TO_CHAR(f.stay_from, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'') AND TO_DATE(''' || TO_CHAR(f.stay_to, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'')';
-       l_sql_where := l_sql_where || ' AND TRUNC(SYSDATE) BETWEEN TO_DATE(''' || TO_CHAR(f.lead_from, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'') AND TO_DATE(''' || TO_CHAR(f.lead_to, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'')';
-       IF f.days_of_week IS NOT NULL AND f.days_of_week <> '[]' THEN l_sql_where := l_sql_where || ' AND TO_CHAR('||l_base_alias||'.STAY_DATE, ''D'') IN (' || REPLACE(REPLACE(f.days_of_week, '[', ''), ']', '') || ') '; END IF;
-       l_sql_where := l_sql_where || ' AND ' || l_base_alias || '.ATTRIBUTE_VALUE >= ' || f.min_rate;
-     END LOOP;
-     l_sql_where := l_sql_where || ' AND (' || l_base_alias || '.STAY_DATE = :b_stay_date_filter OR :b_stay_date_null_check IS NULL) ';
-     l_regions_count := TO_NUMBER(JSON_VALUE(p_rules_json, '$.regions.size()'));
-     FOR i IN 0 .. l_regions_count - 1 LOOP
-       DECLARE
-         l_when_clause VARCHAR2(32000) := 'WHEN ('; l_expr VARCHAR2(4000) := JSON_VALUE(p_rules_json, '$.regions[' || i || '].conditions[0].expression');
-         l_region_name VARCHAR2(255) := JSON_VALUE(p_rules_json, '$.regions[' || i || '].name'); l_cond_name VARCHAR2(255) := JSON_VALUE(p_rules_json, '$.regions[' || i || '].conditions[0].name');
-         l_full_rule_name VARCHAR2(512) := REPLACE(l_region_name || ' / ' || l_cond_name, '''', '''''');
-       BEGIN
-         FOR j IN 0 .. TO_NUMBER(JSON_VALUE(p_rules_json, '$.regions[' || i || '].conditions.size()')) - 1 LOOP
-           DECLARE
-             l_cond_path VARCHAR2(200) := '$.regions[' || i || '].conditions[' || j || ']'; l_occ_attr_raw VARCHAR2(255) := JSON_VALUE(p_rules_json, l_cond_path || '.occupancyThreshold.attribute');
-             l_occ_attr VARCHAR2(255) := REGEXP_REPLACE(NVL(l_occ_attr_raw, ''), '^#|#$', ''); l_pr_template_id VARCHAR2(255) := JSON_VALUE(p_rules_json, l_cond_path || '.propertyRanking.type');
-             l_pr_attr VARCHAR2(255) := get_attribute_id_from_template(l_pr_template_id); l_occ_op VARCHAR2(10) := JSON_VALUE(p_rules_json, l_cond_path || '.occupancyThreshold.operator');
-             l_occ_val NUMBER := TO_NUMBER(JSON_VALUE(p_rules_json, l_cond_path || '.occupancyThreshold.value')); l_pr_op VARCHAR2(10) := JSON_VALUE(p_rules_json, l_cond_path || '.propertyRanking.operator');
-             l_pr_val NUMBER := TO_NUMBER(JSON_VALUE(p_rules_json, l_cond_path || '.propertyRanking.value'));
-           BEGIN
-             IF l_occ_attr IS NOT NULL AND l_aliases.EXISTS(l_occ_attr) THEN l_when_clause := l_when_clause || l_aliases(l_occ_attr) || '.ATTRIBUTE_VALUE ' || l_occ_op || ' ' || l_occ_val || ' AND '; END IF;
-             IF l_pr_attr IS NOT NULL AND l_aliases.EXISTS(l_pr_attr) THEN l_when_clause := l_when_clause || l_aliases(l_pr_attr) || '.ATTRIBUTE_VALUE ' || l_pr_op || ' ' || l_pr_val || ' AND '; END IF;
-           END;
-         END LOOP;
-         l_when_clause := RTRIM(l_when_clause, ' AND ') || ')';
-         l_current_id := l_aliases.FIRST;
-         WHILE l_current_id IS NOT NULL LOOP l_expr := REPLACE(l_expr, '#' || l_current_id || '#', l_aliases(l_current_id) || '.ATTRIBUTE_VALUE'); l_current_id := l_aliases.NEXT(l_current_id); END LOOP;
-         l_price_case_stmt := l_price_case_stmt || l_when_clause || ' THEN ' || l_expr || ' ';
-         l_rule_case_stmt  := l_rule_case_stmt || l_when_clause || ' THEN ''' || l_full_rule_name || ''' ';
-       END;
-     END LOOP;
-     l_price_case_stmt := l_price_case_stmt || ' ELSE NULL END'; l_rule_case_stmt  := l_rule_case_stmt || ' ELSE ''No Rule Applied'' END';
-     l_sql_select := l_sql_select || l_price_case_stmt || ' AS EVALUATED_PRICE, ' || l_rule_case_stmt || ' AS APPLIED_RULE';
-     RETURN l_sql_select || l_sql_from || l_sql_where;
-   END build_dynamic_query;
-
-  FUNCTION EVALUATE(p_algo_id IN ur_algos.id%TYPE, p_stay_date IN DATE DEFAULT NULL)
-    RETURN t_result_tab_obj PIPELINED IS
-    l_rules_json        CLOB; TYPE t_alias_map IS TABLE OF VARCHAR2(255) INDEX BY VARCHAR2(255); l_aliases t_alias_map;
-    l_current_id        VARCHAR2(255); TYPE t_staged_data_map IS TABLE OF t_result_tab_obj INDEX BY VARCHAR2(255); l_staged_data t_staged_data_map;
-    TYPE t_date_set IS TABLE OF BOOLEAN INDEX BY VARCHAR2(255); l_date_set t_date_set; l_all_dates SYS.ODCIDATELIST := SYS.ODCIDATELIST();
-    l_distinct_dates    SYS.ODCIDATELIST := SYS.ODCIDATELIST(); l_hotel_id ur_algos.hotel_id%TYPE;
-    TYPE t_event_score_map IS TABLE OF NUMBER INDEX BY VARCHAR2(10); l_event_scores t_event_score_map;
-    TYPE t_lead_date_map IS TABLE OF DATE INDEX BY VARCHAR2(255); l_lead_dates t_lead_date_map; l_lead_attr_ids t_date_set;
-  BEGIN
+     l_pr_template  VARCHAR2(255); l_expr_raw      VARCHAR2(32767); l_pos           PLS_INTEGER; l_attr_in_expr VARCHAR2(255);
     BEGIN
-      SELECT expression INTO l_rules_json FROM ur_algo_versions WHERE id = (SELECT current_version_id FROM ur_algos WHERE id = p_algo_id);
-      SELECT hotel_id INTO l_hotel_id FROM ur_algos WHERE id = p_algo_id;
-    EXCEPTION WHEN NO_DATA_FOUND THEN PIPE ROW(t_result_rec_obj(NULL, NULL, 'ERROR: Algorithm or latest version not found.')); RETURN;
+      FOR cond_rec IN (SELECT cond_json FROM JSON_TABLE(p_rules_json, '$.regions[*].conditions[*]' COLUMNS (cond_json CLOB FORMAT JSON PATH '$')) conds) LOOP
+        l_occ_attr_raw := JSON_VALUE(cond_rec.cond_json, '$.occupancyThreshold.attribute');
+        l_pr_template := JSON_VALUE(cond_rec.cond_json, '$.propertyRanking.type');
+        l_expr_raw := JSON_VALUE(cond_rec.cond_json, '$.expression');
+        IF l_occ_attr_raw IS NOT NULL THEN l_unique_attrs(REGEXP_REPLACE(l_occ_attr_raw, '^#|#$', '')) := TRUE; END IF;
+        IF l_pr_template IS NOT NULL THEN DECLARE l_pr_attr VARCHAR2(255); BEGIN l_pr_attr := get_attribute_id_from_template(l_pr_template); IF l_pr_attr IS NOT NULL THEN l_unique_attrs(l_pr_attr) := TRUE; END IF; END; END IF;
+        l_pos := 1;
+        LOOP l_attr_in_expr := REGEXP_SUBSTR(l_expr_raw, '#[A-F0-9]+#', l_pos); EXIT WHEN l_attr_in_expr IS NULL; l_unique_attrs(REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '')) := TRUE; l_pos := INSTR(l_expr_raw, l_attr_in_expr, l_pos) + LENGTH(l_attr_in_expr); END LOOP;
+      END LOOP;
+      l_attr_collection.DELETE;
+      DECLARE l_key VARCHAR2(255); BEGIN l_key := l_unique_attrs.FIRST; WHILE l_key IS NOT NULL LOOP l_attr_collection.EXTEND; l_attr_collection(l_attr_collection.COUNT) := l_key; l_key := l_unique_attrs.NEXT(l_key); END LOOP; END;
+      IF l_attr_collection.COUNT = 0 THEN RETURN q'[SELECT NULL, NULL, 'ERROR: No attributes found in JSON' FROM DUAL]'; END IF;
+      FOR i IN 1 .. l_attr_collection.COUNT LOOP l_aliases(l_attr_collection(i)) := 'a' || l_alias_counter; l_alias_counter := l_alias_counter + 1; END LOOP;
+      l_base_alias := l_aliases(l_attr_collection(1)); l_sql_from := ' FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => ''' || l_attr_collection(1) || ''')) ' || l_base_alias;
+      FOR i IN 2 .. l_attr_collection.COUNT LOOP l_sql_from := l_sql_from || ' LEFT JOIN TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => ''' || l_attr_collection(i) || ''')) ' || l_aliases(l_attr_collection(i)) || ' ON ' || l_base_alias || '.STAY_DATE = ' || l_aliases(l_attr_collection(i)) || '.STAY_DATE '; END LOOP;
+      FOR f IN (SELECT stay_from, stay_to, lead_from, lead_to, days_of_week, min_rate FROM JSON_TABLE(p_rules_json, '$.regions[0].filters' COLUMNS (stay_from DATE PATH '$.stayWindow.from', stay_to DATE PATH '$.stayWindow.to', lead_from DATE PATH '$.leadTime.from', lead_to DATE PATH '$.leadTime.to', days_of_week VARCHAR2(100) FORMAT JSON PATH '$.daysOfWeek', min_rate NUMBER PATH '$.minimumRate'))) LOOP
+        l_sql_where := l_sql_where || ' AND ' || l_base_alias || '.STAY_DATE BETWEEN TO_DATE(''' || TO_CHAR(f.stay_from, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'') AND TO_DATE(''' || TO_CHAR(f.stay_to, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'')';
+        l_sql_where := l_sql_where || ' AND TRUNC(SYSDATE) BETWEEN TO_DATE(''' || TO_CHAR(f.lead_from, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'') AND TO_DATE(''' || TO_CHAR(f.lead_to, 'YYYY-MM-DD') || ''', ''YYYY-MM-DD'')';
+        IF f.days_of_week IS NOT NULL AND f.days_of_week <> '[]' THEN l_sql_where := l_sql_where || ' AND TO_CHAR('||l_base_alias||'.STAY_DATE, ''D'') IN (' || REPLACE(REPLACE(f.days_of_week, '[', ''), ']', '') || ') '; END IF;
+        l_sql_where := l_sql_where || ' AND ' || l_base_alias || '.ATTRIBUTE_VALUE >= ' || f.min_rate;
+      END LOOP;
+      l_sql_where := l_sql_where || ' AND (' || l_base_alias || '.STAY_DATE = :b_stay_date_filter OR :b_stay_date_null_check IS NULL) ';
+      l_regions_count := TO_NUMBER(JSON_VALUE(p_rules_json, '$.regions.size()'));
+      FOR i IN 0 .. l_regions_count - 1 LOOP
+        DECLARE
+          l_when_clause VARCHAR2(32000) := 'WHEN ('; l_expr VARCHAR2(4000) := JSON_VALUE(p_rules_json, '$.regions[' || i || '].conditions[0].expression');
+          l_region_name VARCHAR2(255) := JSON_VALUE(p_rules_json, '$.regions[' || i || '].name'); l_cond_name VARCHAR2(255) := JSON_VALUE(p_rules_json, '$.regions[' || i || '].conditions[0].name');
+          l_full_rule_name VARCHAR2(512) := REPLACE(l_region_name || ' / ' || l_cond_name, '''', '''''');
+        BEGIN
+          FOR j IN 0 .. TO_NUMBER(JSON_VALUE(p_rules_json, '$.regions[' || i || '].conditions.size()')) - 1 LOOP
+            DECLARE
+              l_cond_path VARCHAR2(200) := '$.regions[' || i || '].conditions[' || j || ']'; l_occ_attr_raw VARCHAR2(255) := JSON_VALUE(p_rules_json, l_cond_path || '.occupancyThreshold.attribute');
+              l_occ_attr VARCHAR2(255) := REGEXP_REPLACE(NVL(l_occ_attr_raw, ''), '^#|#$', ''); l_pr_template_id VARCHAR2(255) := JSON_VALUE(p_rules_json, l_cond_path || '.propertyRanking.type');
+              l_pr_attr VARCHAR2(255) := get_attribute_id_from_template(l_pr_template_id); l_occ_op VARCHAR2(10) := JSON_VALUE(p_rules_json, l_cond_path || '.occupancyThreshold.operator');
+              l_occ_val NUMBER := TO_NUMBER(JSON_VALUE(p_rules_json, l_cond_path || '.occupancyThreshold.value')); l_pr_op VARCHAR2(10) := JSON_VALUE(p_rules_json, l_cond_path || '.propertyRanking.operator');
+              l_pr_val NUMBER := TO_NUMBER(JSON_VALUE(p_rules_json, l_cond_path || '.propertyRanking.value'));
+            BEGIN
+              IF l_occ_attr IS NOT NULL AND l_aliases.EXISTS(l_occ_attr) THEN l_when_clause := l_when_clause || l_aliases(l_occ_attr) || '.ATTRIBUTE_VALUE ' || l_occ_op || ' ' || l_occ_val || ' AND '; END IF;
+              IF l_pr_attr IS NOT NULL AND l_aliases.EXISTS(l_pr_attr) THEN l_when_clause := l_when_clause || l_aliases(l_pr_attr) || '.ATTRIBUTE_VALUE ' || l_pr_op || ' ' || l_pr_val || ' AND '; END IF;
+            END;
+          END LOOP;
+          l_when_clause := RTRIM(l_when_clause, ' AND ') || ')';
+          l_current_id := l_aliases.FIRST;
+          WHILE l_current_id IS NOT NULL LOOP l_expr := REPLACE(l_expr, '#' || l_current_id || '#', l_aliases(l_current_id) || '.ATTRIBUTE_VALUE'); l_current_id := l_aliases.NEXT(l_current_id); END LOOP;
+          l_price_case_stmt := l_price_case_stmt || l_when_clause || ' THEN ' || l_expr || ' ';
+          l_rule_case_stmt  := l_rule_case_stmt || l_when_clause || ' THEN ''' || l_full_rule_name || ''' ';
+        END;
+      END LOOP;
+      l_price_case_stmt := l_price_case_stmt || ' ELSE NULL END'; l_rule_case_stmt  := l_rule_case_stmt || ' ELSE ''No Rule Applied'' END';
+      l_sql_select := l_sql_select || l_price_case_stmt || ' AS EVALUATED_PRICE, ' || l_rule_case_stmt || ' AS APPLIED_RULE';
+      RETURN l_sql_select || l_sql_from || l_sql_where;
+    END build_dynamic_query;
+
+  FUNCTION EVALUATE(
+    p_algo_id    IN ur_algos.id%TYPE,
+    p_version_id IN ur_algo_versions.id%TYPE DEFAULT NULL,
+    p_stay_date  IN DATE DEFAULT NULL
+  ) RETURN t_result_tab_obj PIPELINED IS
+    l_rules_json        CLOB;
+    TYPE t_alias_map IS TABLE OF VARCHAR2(255) INDEX BY VARCHAR2(255);
+    l_aliases t_alias_map;
+    l_current_id        VARCHAR2(255);
+    TYPE t_staged_data_map IS TABLE OF t_result_tab INDEX BY VARCHAR2(255);
+    l_staged_data t_staged_data_map;
+    TYPE t_date_set IS TABLE OF BOOLEAN INDEX BY VARCHAR2(255);
+    l_date_set t_date_set;
+    l_all_dates SYS.ODCIDATELIST := SYS.ODCIDATELIST();
+    l_distinct_dates    SYS.ODCIDATELIST := SYS.ODCIDATELIST();
+    l_hotel_id ur_algos.hotel_id%TYPE;
+    TYPE t_event_score_map IS TABLE OF NUMBER INDEX BY VARCHAR2(10);
+    l_event_scores t_event_score_map;
+    TYPE t_lead_date_map IS TABLE OF DATE INDEX BY VARCHAR2(255);
+    l_lead_dates t_lead_date_map; -- << CORRECTED THIS LINE
+    l_lead_attr_ids t_date_set;
+
+    -- ++ NEW VARIABLES
+    l_algo_name         ur_algos.name%TYPE;
+    l_effective_algo_id ur_algos.id%TYPE;
+    l_version_id_to_use ur_algo_versions.id%TYPE;
+    -- / NEW VARIABLES
+  BEGIN
+    -- ++ MODIFIED LOGIC: Determine which version and algo to use
+    BEGIN
+        IF p_version_id IS NOT NULL THEN
+            -- A specific version is provided, use it directly.
+            l_version_id_to_use := p_version_id;
+            SELECT av.expression, av.algo_id, a.name, a.hotel_id
+            INTO l_rules_json, l_effective_algo_id, l_algo_name, l_hotel_id
+            FROM ur_algo_versions av
+            JOIN ur_algos a ON av.algo_id = a.id
+            WHERE av.id = l_version_id_to_use;
+        ELSE
+            -- No version ID provided, use the algo_id to find the current version.
+            l_effective_algo_id := p_algo_id;
+            SELECT a.current_version_id, a.name, a.hotel_id
+            INTO l_version_id_to_use, l_algo_name, l_hotel_id
+            FROM ur_algos a
+            WHERE a.id = l_effective_algo_id;
+
+            SELECT expression INTO l_rules_json
+            FROM ur_algo_versions
+            WHERE id = l_version_id_to_use;
+        END IF;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            PIPE ROW(t_result_rec_obj(l_algo_name, NULL, NULL, NULL, 'ERROR: Algorithm or Version not found.'));
+            RETURN;
     END;
+    -- / MODIFIED LOGIC
 
     FOR rec IN (SELECT JSON_VALUE(cond_json, '$.occupancyThreshold.attribute') as occ_attr, JSON_VALUE(cond_json, '$.propertyRanking.type') as pr_template, JSON_VALUE(cond_json, '$.expression') as expr, JSON_VALUE(lead_time_json, '$.attribute') as lead_attr FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (lead_time_json CLOB FORMAT JSON PATH '$.filters.leadTime', NESTED PATH '$.conditions[*]' COLUMNS (cond_json CLOB FORMAT JSON PATH '$')))) LOOP
         DECLARE
@@ -155,7 +196,7 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
         END;
     END LOOP;
 
-    IF l_aliases.COUNT = 0 THEN PIPE ROW(t_result_rec_obj(NULL, NULL, 'ERROR: No attributes found in JSON')); RETURN; END IF;
+    IF l_aliases.COUNT = 0 THEN PIPE ROW(t_result_rec_obj(l_algo_name, NULL, NULL, NULL, 'ERROR: No attributes found in JSON')); RETURN; END IF;
 
     DECLARE
       TYPE t_event_rec IS RECORD ( event_date_str VARCHAR2(10), max_score NUMBER ); TYPE t_event_tab IS TABLE OF t_event_rec; l_event_list t_event_tab;
@@ -171,7 +212,7 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
           DECLARE l_converted_date DATE; BEGIN l_converted_date := FLEXIBLE_TO_DATE(rec.attribute_value); IF l_converted_date IS NOT NULL THEN l_lead_dates(TO_CHAR(rec.stay_date, 'YYYY-MM-DD') || l_current_id) := l_converted_date; END IF; END;
         END LOOP;
       ELSE
-        SELECT t_result_rec_obj(stay_date, TO_NUMBER(attribute_value), NULL) BULK COLLECT INTO l_staged_data(l_current_id) FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id)) WHERE attribute_value IS NOT NULL;
+        SELECT stay_date, TO_NUMBER(attribute_value), NULL BULK COLLECT INTO l_staged_data(l_current_id) FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id)) WHERE attribute_value IS NOT NULL;
       END IF;
       FOR rec IN (SELECT stay_date FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id))) LOOP l_date_set(TO_CHAR(rec.stay_date, 'YYYY-MM-DD')) := TRUE; END LOOP;
       l_current_id := l_aliases.NEXT(l_current_id);
@@ -202,21 +243,17 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
             lead_value     NUMBER PATH '$.filters.leadTime.value'
           )) ORDER BY sequence
         ) LOOP
-          -- **↓↓↓ REFACTORED FILTER LOGIC START ↓↓↓**
           DECLARE
             l_filters_passed BOOLEAN := TRUE;
             l_filter_failure_json CLOB := NULL;
             l_lead_time_json CLOB := NULL;
           BEGIN
-            -- Check 1: Stay Window Filter
             IF NOT (v_stay_date BETWEEN region_rec.stay_from AND region_rec.stay_to) THEN
               l_filters_passed := FALSE;
               l_filter_failure_json := '{"filter_name":"stay_window", "actual":"'||TO_CHAR(v_stay_date, 'YYYY-MM-DD')||'", "required":"'||TO_CHAR(region_rec.stay_from, 'YYYY-MM-DD')||' to '||TO_CHAR(region_rec.stay_to, 'YYYY-MM-DD')||'", "passed":false}';
-            -- Check 2: Day of Week Filter
             ELSIF region_rec.days_of_week IS NOT NULL AND region_rec.days_of_week <> '[]' AND INSTR(region_rec.days_of_week, TO_CHAR(v_stay_date, 'D')) = 0 THEN
               l_filters_passed := FALSE;
               l_filter_failure_json := '{"filter_name":"day_of_week", "actual":"'||TO_CHAR(v_stay_date, 'D')||'", "required":'||REPLACE(region_rec.days_of_week,'"','\"')||', "passed":false}';
-            -- Check 3: Lead Time Filter (the most complex one)
             ELSIF region_rec.lead_type IS NOT NULL THEN
               DECLARE
                 lt_passes BOOLEAN := TRUE; lt_attr_id VARCHAR2(255); actual_lt_date DATE; lt_key VARCHAR2(265);
@@ -224,7 +261,6 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
                 lt_attr_id := REGEXP_REPLACE(NVL(region_rec.lead_attr_raw, ''), '^#|#$', ''); lt_key := TO_CHAR(v_stay_date, 'YYYY-MM-DD') || lt_attr_id;
                 IF l_lead_dates.EXISTS(lt_key) THEN actual_lt_date := l_lead_dates(lt_key); ELSE actual_lt_date := NULL; END IF;
                 IF actual_lt_date IS NULL THEN lt_passes := FALSE; END IF;
-
                 CASE region_rec.lead_type
                     WHEN 'date_range' THEN
                         IF lt_passes AND NOT (actual_lt_date BETWEEN region_rec.lead_from_val AND region_rec.lead_to_val) THEN lt_passes := FALSE; END IF;
@@ -234,15 +270,12 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
                         l_lead_time_json := '{"filter_name":"lead_time", "type":"days", "attribute":"'||lt_attr_id||'", "actual_lead_days":'||(TRUNC(v_stay_date) - TRUNC(actual_lt_date))||', "required_lead_days":'||region_rec.lead_value||'}';
                     ELSE l_lead_time_json := '{"filter_name":"lead_time", "type":"unknown"}';
                 END CASE;
-
                 IF NOT lt_passes THEN
-                   l_filters_passed := FALSE;
-                   l_filter_failure_json := RTRIM(l_lead_time_json, '}') || ', "passed": false}';
+                    l_filters_passed := FALSE;
+                    l_filter_failure_json := RTRIM(l_lead_time_json, '}') || ', "passed": false}';
                 END IF;
               END;
             END IF;
-
-            -- If all filters passed, proceed to evaluate conditions for this region
             IF l_filters_passed THEN
               FOR cond_rec IN (
                 SELECT cond_name, expr, occ_attr, occ_op, occ_val, pr_type, pr_op, pr_val, es_op, es_val, sequence
@@ -253,7 +286,6 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
                   es_op VARCHAR2(10) PATH '$.eventScore.operator', es_val NUMBER PATH '$.eventScore.value'
                 )) ORDER BY sequence
               ) LOOP
-                -- This large inner block for evaluating a successful or failed *condition* remains unchanged
                 DECLARE
                   l_expr CLOB := cond_rec.expr; l_eval_result NUMBER; l_applied_rule_json CLOB; v_condition_met BOOLEAN := TRUE;
                   l_actual_occ_val NUMBER := NULL; l_occ_attr_id VARCHAR2(255); l_pr_template_id VARCHAR2(255); l_pr_attr_id VARCHAR2(255);
@@ -275,9 +307,9 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
                     l_applied_rule_json := '{' || '"region":"' || REPLACE(region_rec.region_name,'"','\"') || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"') || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD') || '", "filters":{' || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"' || ', "lead_time":' || l_lead_time_json || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END || CASE WHEN region_rec.minimum_rate IS NOT NULL THEN ', "minimum_rate":' || TO_CHAR(region_rec.minimum_rate) ELSE '' END || '}' || ', "occupancy":' || CASE WHEN cond_rec.occ_attr IS NOT NULL THEN '{"attr":"' || REPLACE(cond_rec.occ_attr,'#','') || '", "actual":' || NVL(TO_CHAR(l_actual_occ_val),'null') || ', "operator":"' || cond_rec.occ_op || '", "threshold":' || TO_CHAR(cond_rec.occ_val) || ', "failed":' || CASE WHEN l_occ_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "property_ranking":' || CASE WHEN cond_rec.pr_type IS NOT NULL THEN '{"attr":"' || NVL(l_pr_attr_id,'') || '", "actual":' || NVL(TO_CHAR(l_actual_pr_val),'null') || ', "operator":"' || cond_rec.pr_op || '", "threshold":' || TO_CHAR(cond_rec.pr_val) || ', "failed":' || CASE WHEN l_pr_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "event_score":' || CASE WHEN cond_rec.es_val IS NOT NULL THEN '{"actual":' || NVL(TO_CHAR(l_actual_event_score),'null') || ', "operator":"' || cond_rec.es_op || '", "threshold":' || TO_CHAR(cond_rec.es_val) || ', "failed":' || CASE WHEN l_ev_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"') || '", "expression_values":' || l_attr_json || ', "evaluated_outcome":' || NVL(TO_CHAR(l_expr_outcome),'null');
                     IF region_rec.minimum_rate IS NOT NULL AND l_eval_result < region_rec.minimum_rate THEN l_applied_rule_json := l_applied_rule_json || ', "note":"min_rate_applied"'; l_eval_result := region_rec.minimum_rate; END IF;
                     l_applied_rule_json := l_applied_rule_json || ', "result":' || TO_CHAR(l_eval_result) || '}';
-                    PIPE ROW(t_result_rec_obj(v_stay_date, l_eval_result, l_applied_rule_json));
+                    PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), l_eval_result, l_applied_rule_json));
                     v_any_rule_matched_for_date := TRUE;
-                    GOTO end_date_processing; -- A match was found, so we are done with this date.
+                    GOTO end_date_processing;
                   ELSE
                     l_raw_expr := cond_rec.expr; l_eval_copy := cond_rec.expr; l_attr_json := '{'; l_attr_counter := 0; l_pos := 1;
                     LOOP l_attr_in_expr := REGEXP_SUBSTR(cond_rec.expr, '#[A-F0-9]+#', 1, l_pos); EXIT WHEN l_attr_in_expr IS NULL; l_current_id := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', ''); l_attr_val := TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)); l_eval_copy := REPLACE(l_eval_copy, '#' || l_current_id || '#', l_attr_val); IF l_attr_counter > 0 THEN l_attr_json := l_attr_json || ','; END IF; l_attr_json := l_attr_json || '"' || l_current_id || '":' || NVL(l_attr_val, 'null'); l_pos := l_pos + 1; l_attr_counter := l_attr_counter + 1; END LOOP;
@@ -287,47 +319,46 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
                     IF l_failure_details_json IS NULL THEN l_failure_details_json := '[' || l_failed_cond_json; ELSE l_failure_details_json := l_failure_details_json || ',' || l_failed_cond_json; END IF;
                   END IF;
                 END;
-              END LOOP; -- end conditions_loop
+              END LOOP;
             ELSE
-              -- If a filter failed, build the failure JSON and append it to the log for this date.
               DECLARE
                 l_full_filter_fail_json CLOB;
               BEGIN
                 l_full_filter_fail_json := '{'
-                    || '"region":"' || REPLACE(region_rec.region_name,'"','\"')
-                    || '", "condition":null' -- No condition was even attempted
-                    || ', "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD')
-                    || '", "note":"filter_not_met"'
-                    || ', "failed_filter":' || l_filter_failure_json
-                    || '}';
+                  || '"region":"' || REPLACE(region_rec.region_name,'"','\"')
+                  || '", "condition":null'
+                  || ', "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD')
+                  || '", "note":"filter_not_met"'
+                  || ', "failed_filter":' || l_filter_failure_json
+                  || '}';
                 IF l_failure_details_json IS NULL THEN l_failure_details_json := '[' || l_full_filter_fail_json; ELSE l_failure_details_json := l_failure_details_json || ',' || l_full_filter_fail_json; END IF;
               END;
             END IF;
           END;
-        END LOOP; -- end regions_loop
+        END LOOP;
 
         <<end_date_processing>>
         IF NOT v_any_rule_matched_for_date THEN
           IF l_failure_details_json IS NOT NULL THEN
             l_failure_details_json := l_failure_details_json || ']';
-            PIPE ROW(t_result_rec_obj(v_stay_date, NULL, l_failure_details_json));
+            PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), NULL, l_failure_details_json));
           ELSE
-            -- This case should now be rare, but it's a safe fallback.
-            PIPE ROW(t_result_rec_obj(v_stay_date, NULL, '[{"note":"No Applicable Rules or Filters Found","stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD') || '"}]'));
+            PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), NULL, '[{"note":"No Applicable Rules or Filters Found","stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD') || '"}]'));
           END IF;
         END IF;
 
       <<next_date>>
       NULL;
       END;
-    END LOOP; -- end date_loop
+    END LOOP;
 
     RETURN;
   EXCEPTION
     WHEN OTHERS THEN
-      PIPE ROW(t_result_rec_obj(NULL, NULL, 'FATAL ERROR: ' || SQLERRM || ': ' || DBMS_UTILITY.FORMAT_ERROR_BACKTRACE));
+      PIPE ROW(t_result_rec_obj(l_algo_name, NULL, NULL, NULL, 'FATAL ERROR: ' || SQLERRM || ': ' || DBMS_UTILITY.FORMAT_ERROR_BACKTRACE));
       RETURN;
   END EVALUATE;
 
 END ALGO_EVALUATOR_PKG;
 /
+
