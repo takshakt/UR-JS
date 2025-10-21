@@ -1,4 +1,16 @@
-CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
+create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
+
+  
+  PROCEDURE log_debug(p_message IN VARCHAR2) IS
+    PRAGMA AUTONOMOUS_TRANSACTION;
+  BEGIN
+    INSERT INTO debug_log (message)
+    VALUES (SUBSTR(p_message, 1, 4000));
+    COMMIT;
+  EXCEPTION
+    WHEN OTHERS THEN
+      NULL; -- Don't let logging break the main code
+  END log_debug;
 
   -- [Functions GENERIC_MATH_EVAL, get_attribute_id_from_template, get_value_for_date, FLEXIBLE_TO_DATE, and build_dynamic_query remain unchanged from the previous version]
 
@@ -361,4 +373,3 @@ CREATE OR REPLACE PACKAGE BODY ALGO_EVALUATOR_PKG AS
 
 END ALGO_EVALUATOR_PKG;
 /
-
