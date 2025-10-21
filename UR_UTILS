@@ -926,8 +926,8 @@ END ' || v_trigger_name || ';
 
         SELECT
             LISTAGG('"' || jt.name || '"', ', ') WITHIN GROUP(
-            ORDER BY
-                jt.name
+                ORDER BY
+                    jt.name
             ),
             COUNT(jt.name)
         INTO
@@ -939,6 +939,7 @@ END ' || v_trigger_name || ';
             jt.qualifier IN ('OWN_PROPERTY', 'COMP_PROPERTY');
 
         -- Step 4: Build the dynamic PIVOT and final column list clauses
+        -- (REMOVED HOTEL_ID from this pivot logic)
         FOR i IN 1..v_property_count LOOP
             v_pivot_clause := v_pivot_clause ||
                               'MAX(CASE WHEN overall_rank = ' || i || ' THEN hotel_name END) AS "RANK_' || i || '_NAME",' || CHR(10) ||
@@ -957,25 +958,31 @@ END ' || v_trigger_name || ';
 
         v_sql := 'CREATE OR REPLACE VIEW "' || v_view_name || '" AS ' || CHR(10) ||
                  'WITH all_properties_ranked AS (' || CHR(10) ||
-                 '    SELECT ' || CHR(10) ||
-                 '      "HOTEL_ID",' || CHR(10) || 
-                 '        "' || v_sdate_col || '",' || CHR(10) ||
-                 '        hotel_name,' || CHR(10) ||
-                 '        CASE WHEN REGEXP_LIKE(price, ''^[0-9,.]+$'') THEN TO_NUMBER(REPLACE(price, '','', '''')) ELSE NULL END AS price,' || CHR(10) ||
-                 '        ROW_NUMBER() OVER(PARTITION BY "' || v_sdate_col || '" ORDER BY CASE WHEN REGEXP_LIKE(price, ''^[0-9,.]+$'') THEN TO_NUMBER(REPLACE(price, '','', '''')) ELSE NULL END ASC NULLS LAST) as overall_rank' || CHR(10) ||
-                 '    FROM "' || v_data_table_name || '"' || CHR(10) ||
-                 '    UNPIVOT (price FOR hotel_name IN (' || v_property_list || '))' || CHR(10) ||
+                 '  SELECT ' || CHR(10) ||
+                 '      "HOTEL_ID",' || CHR(10) ||                          -- 1. Select base HOTEL_ID here
+                 '      "' || v_sdate_col || '",' || CHR(10) ||
+                 '      hotel_name,' || CHR(10) ||
+                 '      CASE WHEN REGEXP_LIKE(price, ''^[0-9,.]+$'') THEN TO_NUMBER(REPLACE(price, '','', '''')) ELSE NULL END AS price,' || CHR(10) ||
+                 '      ROW_NUMBER() OVER(PARTITION BY "' || v_sdate_col || '" ORDER BY CASE WHEN REGEXP_LIKE(price, ''^[0-9,.]+$'') THEN TO_NUMBER(REPLACE(price, '','', '''')) ELSE NULL END ASC NULLS LAST) as overall_rank' || CHR(10) ||
+                 '  FROM "' || v_data_table_name || '"' || CHR(10) ||
+                 '  UNPIVOT (price FOR hotel_name IN (' || v_property_list || '))' || CHR(10) ||
                  ')' || CHR(10) ||
                  'SELECT ' || CHR(10) ||
-                 '    p."' || v_sdate_col || '" AS "STAY_DATE",' || CHR(10) ||
-                 '    own.price AS "OWN_PROPERTY_RATE",' || CHR(10) ||
-                 '    own.overall_rank AS "OWN_PROPERTY_RANK",' || CHR(10) ||
-                 '    ' || v_final_columns || CHR(10) ||
+                 '  p."' || v_sdate_col || '" AS "STAY_DATE",' || CHR(10) ||
+                 '  p."HOTEL_ID",' || CHR(10) ||                           -- 2. Select HOTEL_ID from the pivot subquery 'p'
+                 '  own.price AS "OWN_PROPERTY_RATE",' || CHR(10) ||
+                 '  own.overall_rank AS "OWN_PROPERTY_RANK",' || CHR(10) ||
+                 '  ' || v_final_columns || CHR(10) ||
                  'FROM (' || CHR(10) ||
-                 '    SELECT "' || v_sdate_col || '", ' || v_pivot_clause || ' FROM all_properties_ranked GROUP BY "' || v_sdate_col || '"' || CHR(10) ||
+                 '  SELECT ' || CHR(10) ||
+                 '      "' || v_sdate_col || '",' || CHR(10) ||
+                 '      "HOTEL_ID",' || CHR(10) ||                         -- 3. Select HOTEL_ID in the 'p' subquery
+                 '      ' || v_pivot_clause || CHR(10) ||
+                 '  FROM all_properties_ranked ' || CHR(10) ||
+                 '  GROUP BY "' || v_sdate_col || '", "HOTEL_ID"' || CHR(10) || -- 4. Add HOTEL_ID to the GROUP BY
                  ') p' || CHR(10) ||
                  'JOIN (' || CHR(10) ||
-                 '    SELECT "' || v_sdate_col || '", price, overall_rank FROM all_properties_ranked WHERE hotel_name = ''' || v_own_property_col || '''' || CHR(10) ||
+                 '  SELECT "' || v_sdate_col || '", price, overall_rank FROM all_properties_ranked WHERE hotel_name = ''' || v_own_property_col || '''' || CHR(10) ||
                  ') own ON p."' || v_sdate_col || '" = own."' || v_sdate_col || '"';
 
         -- Step 6: Execute the dynamic SQL
@@ -984,8 +991,8 @@ END ' || v_trigger_name || ';
         -- Update UR_TEMPLATES with the new db_view_object_name and timestamp
         UPDATE ur_templates
         SET
-            db_view_object_name         = v_view_name,
-            db_view_object_created_on   = SYSDATE
+            db_view_object_name        = v_view_name,
+            db_view_object_created_on  = SYSDATE
         WHERE
             key = p_template_key;
 
