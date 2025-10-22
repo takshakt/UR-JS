@@ -1011,6 +1011,13 @@ ORDER BY COALESCE(${allAliases.map(a => a + ".rn").join(", ")}, 0)`;
 
 
   function create_report(sqldata) { 
+                const newReportInput = document.getElementById('New-Report');
+                if (!newReportInput.value.trim()) {
+                    alert('Please enter a name for the new report before saving.');
+                    newReportInput.focus();
+                    return;
+                }
+
                 const selectedcols = Array.from(
             document.querySelectorAll("#selected-columns .column-checkbox")
             );
