@@ -2127,69 +2127,71 @@ function displayReportTable() {
     tableHeader.appendChild(columnHeaderRow);
     
     // Create table rows with data
-    reporttblData.rows.forEach((row, index) => {
-        const tr = document.createElement('tr');
-        
-        // Row number cell
-        const rowNumberCell = document.createElement('td');
-        rowNumberCell.textContent = index + 1;
-        rowNumberCell.className = 'data-cell';
-        tr.appendChild(rowNumberCell);
-        
-        // Data cells for all columns
-        allColumnKeys.forEach(fullColumnName => {
-            const td = document.createElement('td');
-            let displayValue = row[fullColumnName];
+        reporttblData.rows.forEach((row, index) => {
+            const tr = document.createElement('tr');
+            
+            // Row number cell
+            const rowNumberCell = document.createElement('td');
+            rowNumberCell.textContent = index + 1;
+            rowNumberCell.className = 'data-cell';
+            tr.appendChild(rowNumberCell);
+            
+            // Data cells for all columns
+            allColumnKeys.forEach(fullColumnName => {
+                const td = document.createElement('td');
+                let displayValue = row[fullColumnName];
 
-            // Extract base column name and template for finding column config
-            let baseCol = fullColumnName;
-            let template = '';
-            
-            const firstDashIndex = fullColumnName.indexOf(' - ');
-            if (firstDashIndex !== -1) {
-                baseCol = fullColumnName.substring(0, firstDashIndex);
-                template = fullColumnName.substring(firstDashIndex + 3);
-            }
-            
-            if (!template) {
-                baseCol = fullColumnName;
-                template = CALCULATED_GROUP_NAME;
-            } 
-            // Find the existing column configuration
-           // let existingColumn = findColumnInJsonData(baseCol, template);
-            let existingColumn = findColwithTemp(baseCol, template);
-            
-            // Format dates
-            if (existingColumn && existingColumn.data_type === 'date' && displayValue) {
-                displayValue = formatDate(displayValue);
-            }
+                // Extract base column name and template for finding column config
+                let baseCol = fullColumnName;
+                let template = '';
+                
+                const firstDashIndex = fullColumnName.indexOf(' - ');
+                if (firstDashIndex !== -1) {
+                    baseCol = fullColumnName.substring(0, firstDashIndex);
+                    template = fullColumnName.substring(firstDashIndex + 3);
+                }
+                
+                if (!template) {
+                    baseCol = fullColumnName;
+                    template = CALCULATED_GROUP_NAME;
+                } 
+                // Find the existing column configuration
+               // let existingColumn = findColumnInJsonData(baseCol, template);
+                let existingColumn = findColwithTemp(baseCol, template);
+                
+                // Format dates
+                if (existingColumn && existingColumn.data_type === 'date' && displayValue) {
+                    displayValue = formatDate(displayValue);
+                }
 
-            // Apply conditional formatting
-            const rules = conditionalFormattingRules[fullColumnName];
-            if (rules && rules.length > 0) {
-                for (const rule of rules) {
-                    if (evaluateFormatterRule(rule.expression, row)) {
-                        td.style.backgroundColor = rule.color;
-                        td.classList.add('conditional-format');
-                        break;
+                // Apply conditional formatting
+                const rules = conditionalFormattingRules[fullColumnName];
+                if (rules && rules.length > 0) {
+                    for (const rule of rules) {
+                        if (evaluateFormatterRule(rule.expression, row)) {
+                            td.style.backgroundColor = rule.color;
+                            td.classList.add('conditional-format');
+                            break;
+                        }
                     }
                 }
-            }
 
-            // Format numbers for display (calculated columns)
-            if (template === CALCULATED_GROUP_NAME && typeof displayValue === 'number') {
-                displayValue = displayValue.toFixed(2);
-            } else if (displayValue === null || displayValue === undefined || displayValue === '') {
-                displayValue = '-';
-            }
+                // Round number fields to 2 decimal places
+                if (existingColumn && existingColumn.data_type === 'number' && typeof displayValue === 'number') {
+                    displayValue = displayValue.toFixed(2);
+                } else if (template === CALCULATED_GROUP_NAME && typeof displayValue === 'number') {
+                    displayValue = displayValue.toFixed(2);
+                } else if (displayValue === null || displayValue === undefined || displayValue === '') {
+                    displayValue = '-';
+                }
+                
+                td.textContent = displayValue;
+                td.className = 'data-cell';
+                tr.appendChild(td);
+            });
             
-            td.textContent = displayValue;
-            td.className = 'data-cell';
-            tr.appendChild(td);
+            tableBody.appendChild(tr);
         });
-        
-        tableBody.appendChild(tr);
-    });
     
     // Add click event listeners to column headers
     addHeaderClickListeners(); 
