@@ -1010,10 +1010,19 @@ ORDER BY COALESCE(${allAliases.map(a => a + ".rn").join(", ")}, 0)`;
 
 
 
-  function create_report(sqldata) { 
+function create_report(sqldata) { 
                 const newReportInput = document.getElementById('New-Report');
-                if (!newReportInput.value.trim()) {
+                const reportName = newReportInput.value.trim();
+                if (!reportName) {
                     alert('Please enter a name for the new report before saving.');
+                    newReportInput.focus();
+                    return;
+                }
+
+                // Validate report name: only letters, numbers, underscores (no spaces, no special characters)
+                const validNameRegex = /^\w+$/;
+                if (!validNameRegex.test(reportName)) {
+                    alert('Invalid report name. Only alphabets, numbers, and underscores are allowed, with no spaces.');
                     newReportInput.focus();
                     return;
                 }
