@@ -1027,16 +1027,22 @@ ORDER BY COALESCE(${allAliases.map(a => a + ".rn").join(", ")}, 0)`;
             console.log('JSON.stringify(jsondata_main):>',JSON.stringify(jsondata_main));
             console.log('sqldata:>'+sqldata);
             console.log('hotelLov.options[hotelLov.selectedIndex].value:>'+hotelLov.options[hotelLov.selectedIndex].value);
-            console.log('$(#New-Report).val():>'+$('#New-Report').val());
+            // Removed problematic console.log
             jsondata_details =  JSON.parse((JSON.stringify(jsondata_main)));
-            apex.server.process(
+
+            // Sanitize report name for backend usage
+            const rawReportName = newReportInput.value.trim();
+            const sanitizedReportName = rawReportName.toLowerCase()
+                .replace(/[^a-z0-9]+/gi, '_')
+                .replace(/^_+|_+$/g, '');
+
                 'AJX_MANAGE_REPORT_VIEW',
                 { x01: sqldata
                   ,x02: mainValues.join(",") 
                   ,x03: hotelLov.options[hotelLov.selectedIndex].value
-                  ,x04: $('#New-Report').val()
+                  ,x04: sanitizedReportName
                   ,x05: JSON.stringify(jsondata_main)
-                  },
+                },
                 {
                     success: function(data) { 
                             showSuccessMessage(`View ${ data[0].l_message } saved successfully`);
@@ -1051,7 +1057,7 @@ ORDER BY COALESCE(${allAliases.map(a => a + ".rn").join(", ")}, 0)`;
                         console.error('AJAX Error::>>>'+ errorThrown );
                     }
                 }
-            );
+            
         } 
         var jsondata_main;
         var jsondata_details;
