@@ -1400,7 +1400,11 @@ function call_dashboard_data(selectedReport_Id){
             dataType: "json",
             success: function(data) {
                 console.log('Report data received for tab:', data);
-               enrichTargetColumnAliasWithDataType(jsondata_main,data);
+   if (!jsondata_main || !jsondata_main.selectedColumns) {
+       console.warn('jsondata_main is not ready or lacks selectedColumns, skipping enrichment');
+   } else {
+       enrichTargetColumnAliasWithDataType(jsondata_main,data);
+   }
                 let reportCol;
                 let db_ob_name;  
                 data.forEach(function(report) {
