@@ -1019,10 +1019,10 @@ function create_report(sqldata) {
                     return;
                 }
 
-                // Validate report name: only letters, numbers, underscores (no spaces, no special characters)
-                const validNameRegex = /^\w+$/;
+                // Validate report name: only letters and numbers (no spaces, no special characters, no underscores)
+                const validNameRegex = /^[A-Za-z0-9]+$/;
                 if (!validNameRegex.test(reportName)) {
-                    alert('Invalid report name. Only alphabets, numbers, and underscores are allowed, with no spaces.');
+                    alert('Invalid report name. Only alphabets and numbers are allowed, no spaces, no underscores, and no special characters.');
                     newReportInput.focus();
                     return;
                 }
