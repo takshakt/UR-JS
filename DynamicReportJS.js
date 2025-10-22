@@ -2176,10 +2176,17 @@ function displayReportTable() {
                     }
                 }
 
-                // Round all numeric values on display
-                const num = parseFloat(displayValue);
-                if (!isNaN(num) && isFinite(num)) {
-                    displayValue = num.toFixed(2);
+                // Round number fields only based on existingColumn data_type or calculated columns
+                if (existingColumn && existingColumn.data_type === 'number') {
+                    const num = typeof displayValue === 'number' ? displayValue : parseFloat(displayValue);
+                    if (!isNaN(num) && isFinite(num)) {
+                        displayValue = num.toFixed(2);
+                    }
+                } else if (template === CALCULATED_GROUP_NAME) {
+                    const num = typeof displayValue === 'number' ? displayValue : parseFloat(displayValue);
+                    if (!isNaN(num) && isFinite(num)) {
+                        displayValue = num.toFixed(2);
+                    }
                 } else if (displayValue === null || displayValue === undefined || displayValue === '') {
                     displayValue = '-';
                 }
