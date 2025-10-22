@@ -1055,7 +1055,9 @@ ORDER BY COALESCE(${allAliases.map(a => a + ".rn").join(", ")}, 0)`;
         } 
         var jsondata_main;
         var jsondata_details;
-        function generateJson() {  
+function generateJson() {  
+
+            console.log('generateJson triggered');
 
             const columns = Array.from(
                         selectedColumns.querySelectorAll('.column-checkbox')
