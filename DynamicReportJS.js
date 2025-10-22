@@ -2176,17 +2176,10 @@ function displayReportTable() {
                     }
                 }
 
-                // Round number fields to 2 decimal places
-                if (existingColumn && existingColumn.data_type === 'number') {
-                    const num = typeof displayValue === 'number' ? displayValue : parseFloat(displayValue);
-                    if (!isNaN(num)) {
-                        displayValue = num.toFixed(2);
-                    }
-                } else if (template === CALCULATED_GROUP_NAME) {
-                    const num = typeof displayValue === 'number' ? displayValue : parseFloat(displayValue);
-                    if (!isNaN(num)) {
-                        displayValue = num.toFixed(2);
-                    }
+                // Round all numeric values on display
+                const num = parseFloat(displayValue);
+                if (!isNaN(num) && isFinite(num)) {
+                    displayValue = num.toFixed(2);
                 } else if (displayValue === null || displayValue === undefined || displayValue === '') {
                     displayValue = '-';
                 }
