@@ -368,6 +368,11 @@ function getAndPopulateReports() {
         // Call the specific loader function
         loadConditionalFormattingBlocks(); 
         // -------------------------------------------------
+
+        // AUTOMATICALLY LOAD EXISTING REPORT DATA AND FILTERS
+        if (selectedReport && selectedReport.ID) {
+            call_dashboard_data(selectedReport.ID); // load report data
+        }
  
     }
     
