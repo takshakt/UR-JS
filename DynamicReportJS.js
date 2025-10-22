@@ -968,7 +968,14 @@ var qualifr_coval ;
   tables.forEach((table, i) => {
     colsByTable[table].forEach(col => {
       const tempName = colMeta[table][col];
-      selectCols.push(`${aliases[i]}.${col} AS "${col} - ${tempName}"`);
+      const isNumberType = data.selectedColumns.some(
+        selCol => selCol.col_name === col && selCol.temp_name === tempName && selCol.data_type && selCol.data_type.toLowerCase() === 'number'
+      );
+      if (isNumberType) {
+        selectCols.push(`ROUND(${aliases[i]}.${col}, 2) AS "${col} - ${tempName}"`);
+      } else {
+        selectCols.push(`${aliases[i]}.${col} AS "${col} - ${tempName}"`);
+      }
     });
   });
 
