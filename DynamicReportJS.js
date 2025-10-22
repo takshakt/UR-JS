@@ -434,10 +434,12 @@ function populateSelectedColumns(definitionString) {
         // Handle hotel selection
         function handleHotelSelection() {
             console.log('Before load template');
-             hotelData = loadHotelTemplates(hotelLov.options[hotelLov.selectedIndex].text);
-             console.log('After load templ');
+            // Show the spinner immediately on hotel selection
+            showReportLoading();
+            hotelData = loadHotelTemplates(hotelLov.options[hotelLov.selectedIndex].text);
+            console.log('After load templ');
             $('#New-Report').val('');
-        availableColumns.innerHTML = '';
+            availableColumns.innerHTML = '';
             selectedColumns.innerHTML = '';
             leftSearch.value = '';
             rightSearch.value = '';
