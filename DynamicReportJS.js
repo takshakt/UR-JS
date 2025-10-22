@@ -230,10 +230,48 @@ function callHotel() {
 
 var reportData = [];
 
-   function getAndPopulateReports() {
+function showReportLoading() {
+    const reportLov = document.getElementById('report-lov');
+    // Clear previous options
+    reportLov.innerHTML = '';
+    // Add loading option (disabled and selected)
+    const loadingOption = document.createElement('option');
+    loadingOption.textContent = 'Loading Reports...';
+    loadingOption.disabled = true;
+    loadingOption.selected = true;
+    reportLov.appendChild(loadingOption);
+
+    // Show spinner next to report LOV
+    let spinner = document.getElementById('report-loading-spinner');
+    if (!spinner) {
+        spinner = document.createElement('div');
+        spinner.id = 'report-loading-spinner';
+        spinner.className = 'spinner';
+        reportLov.parentNode.insertBefore(spinner, reportLov.nextSibling);
+    }
+    spinner.style.display = 'inline-block';
+}
+
+function hideReportLoading() {
+    const reportLov = document.getElementById('report-lov');
+    // Remove loading option if exists
+    if (reportLov.options.length > 0 && reportLov.options[0].text === 'Loading Reports...') {
+        reportLov.remove(0);
+    }
+
+    // Hide spinner
+    const spinner = document.getElementById('report-loading-spinner');
+    if (spinner) {
+        spinner.style.display = 'none';
+    }
+}
+
+function getAndPopulateReports() {
     var selectedHotelId = hotelLov.options[hotelLov.selectedIndex].value;
     var reportLov = $('#report-lov');
     reportLov.empty();
+
+    showReportLoading();
 
     apex.server.process(
         'AJX_GET_REPORT_HOTEL',
@@ -243,14 +281,14 @@ var reportData = [];
         },
         {
             success: function(pData) {
+                hideReportLoading();
+
                 // Add the "Create New Report" option first
                 console.log('Report:>',pData);
                 reportData = pData;
                 reportLov.append('<option value="">-- Select Report --</option>');
-                
-                
+
                 if (Array.isArray(pData) && pData.length > 0) {
-                    
                     pData.forEach(function(item) {
                         reportLov.append(
                             $('<option>', {
@@ -263,17 +301,21 @@ var reportData = [];
                 } else {
                     reportLov.append('<option value="">No Reports Found</option>');
                 }
+
                 reportLov.append('<option value="-1">-- Create New Report --</option>');
 
                 // Initial check to hide the text field
                 $('#New-Report').hide();
             },
             error: function(pData) {
+                hideReportLoading();
                 console.error("AJAX call failed: ", pData);
             }
         }
     );
 }
+
+
 
    function handleReportSelection() {
     var selectedValue = $('#report-lov').val();
