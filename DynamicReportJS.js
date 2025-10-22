@@ -2831,6 +2831,26 @@ let INITIAL_CONFIG_JSON = {
 
 let pristineReportData = [];  
 
+function roundNumber(value) {
+    if (typeof value === 'number') {
+        return Math.round(value * 100) / 100;
+    }
+    if (typeof value === 'string' && !isNaN(parseFloat(value))) {
+        return Math.round(parseFloat(value) * 100) / 100;
+    }
+    return value;
+}
+
+function roundAllNumbersInRows(rows) {
+    rows.forEach(row => {
+        for (const key in row) {
+            if (row.hasOwnProperty(key)) {
+                row[key] = roundNumber(row[key]);
+            }
+        }
+    });
+}
+
 function loadDashboard(pData, configData = INITIAL_CONFIG_JSON) { // Added configData parameter
     console.log('Table data received for tab:', pData);
      console.log('INITIAL_CONFIG_JSON:', INITIAL_CONFIG_JSON);
@@ -2840,7 +2860,9 @@ function loadDashboard(pData, configData = INITIAL_CONFIG_JSON) { // Added confi
         return;
     }
 
-  
+
+    // Round numeric values in dataset
+    roundAllNumbersInRows(pData.rows);
 
     // 2. Update Global Data (this will be transformed by aggregations)
     reporttblData.rows = JSON.parse(JSON.stringify(pData.rows)); 
@@ -2860,7 +2882,7 @@ function loadDashboard(pData, configData = INITIAL_CONFIG_JSON) { // Added confi
  
     displayReportTable();
 
-    
+
 
  }
 
