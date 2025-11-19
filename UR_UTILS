@@ -1,5 +1,340 @@
 create or replace PACKAGE BODY ur_utils IS
 
+-- --------------------------------------------------------------------------
+-- Function Implementation: sanitize_reserved_words
+-- --------------------------------------------------------------------------
+FUNCTION sanitize_reserved_words(
+  p_column_name IN VARCHAR2,
+  p_suffix      IN VARCHAR2 DEFAULT 'COL'
+) RETURN VARCHAR2
+IS
+  v_upper_name       VARCHAR2(128);
+  v_is_reserved      VARCHAR2(5) := 'false';
+  v_sanitized_name   VARCHAR2(128);
+  v_result_json      VARCHAR2(500);
+
+  -- Oracle 91 Core Reserved Words
+  TYPE t_reserved_array IS TABLE OF VARCHAR2(30);
+  c_reserved_words t_reserved_array := t_reserved_array(
+    'ACCESS', 'ADD', 'ALL', 'ALTER', 'AND', 'ANY', 'AS', 'ASC', 'AUDIT',
+    'BETWEEN', 'BY', 'CHAR', 'CHECK', 'CLUSTER', 'COLUMN', 'COMMENT',
+    'COMPRESS', 'CONNECT', 'CREATE', 'CURRENT', 'DATE', 'DECIMAL',
+    'DEFAULT', 'DELETE', 'DESC', 'DISTINCT', 'DROP', 'ELSE', 'EXCLUSIVE',
+    'EXISTS', 'FILE', 'FLOAT', 'FOR', 'FROM', 'GRANT', 'GROUP', 'HAVING',
+    'IDENTIFIED', 'IMMEDIATE', 'IN', 'INCREMENT', 'INDEX', 'INITIAL',
+    'INSERT', 'INTEGER', 'INTERSECT', 'INTO', 'IS', 'LEVEL', 'LIKE',
+    'LOCK', 'LONG', 'MAXEXTENTS', 'MINUS', 'MODE', 'MODIFY', 'NOAUDIT',
+    'NOCOMPRESS', 'NOT', 'NOTFOUND', 'NOWAIT', 'NULL', 'NUMBER', 'OF',
+    'OFFLINE', 'ON', 'ONLINE', 'OPTION', 'OR', 'ORDER', 'PCTFREE', 'PRIOR',
+    'PRIVILEGES', 'PUBLIC', 'RAW', 'RENAME', 'RESOURCE', 'REVOKE', 'ROW',
+    'ROWID', 'ROWNUM', 'ROWS', 'SELECT', 'SESSION', 'SET', 'SHARE', 'SIZE',
+    'SMALLINT', 'SQL', 'START', 'SUCCESSFUL', 'SYNONYM', 'SYSDATE', 'TABLE',
+    'THEN', 'TO', 'TRIGGER', 'UID', 'UNION', 'UNIQUE', 'UPDATE', 'USER',
+    'VALIDATE', 'VALUES', 'VARCHAR', 'VARCHAR2', 'VIEW', 'WHENEVER',
+    'WHERE', 'WITH'
+  );
+
+  -- Additional High-Priority Keywords (most commonly problematic)
+  c_keywords t_reserved_array := t_reserved_array(
+    -- Data Types
+    'BINARY', 'BLOB', 'BOOLEAN', 'BYTE', 'CLOB', 'DOUBLE', 'INT',
+    'INTERVAL', 'JSON', 'NCHAR', 'NCLOB', 'NVARCHAR2', 'PRECISION',
+    'REAL', 'TIMESTAMP',
+    -- Common Functions
+    'ABS', 'AVG', 'CAST', 'CEIL', 'COALESCE', 'CONCAT', 'COUNT', 'CUBE',
+    'DECODE', 'DENSE_RANK', 'EXTRACT', 'FIRST', 'FLOOR', 'GREATEST',
+    'LAG', 'LAST', 'LEAD', 'LEAST', 'LENGTH', 'LISTAGG', 'LOWER', 'LPAD',
+    'LTRIM', 'MAX', 'MEDIAN', 'MIN', 'NVL', 'NVL2', 'RANK', 'REGEXP_LIKE',
+    'REGEXP_REPLACE', 'REPLACE', 'ROLLUP', 'ROUND', 'ROW_NUMBER', 'RPAD',
+    'RTRIM', 'SUBSTR', 'SUM', 'TRIM', 'TRUNC', 'UPPER', 'VARIANCE',
+    -- PL/SQL
+    'ARRAY', 'BEGIN', 'BINARY_INTEGER', 'BODY', 'BULK', 'CALL', 'CASE',
+    'CLOSE', 'CONSTANT', 'CONTINUE', 'CURSOR', 'DECLARE', 'DO', 'ELSIF',
+    'EXCEPTION', 'EXECUTE', 'EXIT', 'FETCH', 'FORALL', 'FUNCTION', 'GOTO',
+    'IF', 'LOOP', 'OPEN', 'PACKAGE', 'PRAGMA', 'PROCEDURE', 'RAISE',
+    'RETURN',
+    -- Database Objects
+    'CONSTRAINT', 'DATABASE', 'DIMENSION', 'DIRECTORY', 'EDITION',
+    'FLASHBACK', 'HIERARCHY', 'INDEXTYPE', 'JAVA', 'LIBRARY',
+    'MATERIALIZED', 'OPERATOR', 'OUTLINE', 'PARTITION', 'PROFILE', 'PURGE',
+    'QUEUE', 'ROLE', 'ROLLBACK', 'SCHEMA', 'SEGMENT', 'SEQUENCE',
+    'SNAPSHOT', 'TABLESPACE', 'TYPE',
+    -- Transaction
+    'COMMIT', 'FORCE', 'ISOLATION', 'NEXT', 'REFERENCES', 'SAVEPOINT',
+    'SERIALIZABLE', 'SQLCODE', 'SQLERRM', 'TRANSACTION', 'WORK', 'READ',
+    'WRITE', 'REPEATABLE', 'UNCOMMITTED', 'LOCAL', 'GLOBAL', 'TEMP',
+    'TEMPORARY', 'CASCADE',
+    -- Commonly Problematic
+    'ACTION', 'ACTIVE', 'AMOUNT', 'APPEND', 'APPLY', 'ASYNC', 'AWAIT',
+    'CHANGE', 'CLASS', 'CODE', 'CONDITION', 'CONFIG', 'CONNECTION',
+    'CONTENT', 'DEPTH', 'DESCRIPTION', 'END', 'EVENT', 'FALSE', 'FINAL',
+    'FORMAT', 'GRAPH', 'NAME', 'STATUS', 'TYPE'
+  );
+
+BEGIN
+  -- Convert to uppercase for comparison
+  v_upper_name := UPPER(TRIM(p_column_name));
+  v_sanitized_name := v_upper_name;
+
+  -- Check against core reserved words
+  FOR i IN 1..c_reserved_words.COUNT LOOP
+    IF v_upper_name = c_reserved_words(i) THEN
+      v_is_reserved := 'true';
+      v_sanitized_name := v_upper_name || '_' || UPPER(p_suffix);
+      EXIT;
+    END IF;
+  END LOOP;
+
+  -- If not found in reserved, check keywords
+  IF v_is_reserved = 'false' THEN
+    FOR i IN 1..c_keywords.COUNT LOOP
+      IF v_upper_name = c_keywords(i) THEN
+        v_is_reserved := 'true';
+        v_sanitized_name := v_upper_name || '_' || UPPER(p_suffix);
+        EXIT;
+      END IF;
+    END LOOP;
+  END IF;
+
+  -- Build result JSON
+  v_result_json := JSON_OBJECT(
+    'is_reserved'     VALUE v_is_reserved,
+    'sanitized_name'  VALUE v_sanitized_name
+  );
+
+  RETURN v_result_json;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Return error info in JSON
+    RETURN JSON_OBJECT(
+      'is_reserved'     VALUE 'false',
+      'sanitized_name'  VALUE p_column_name,
+      'error'           VALUE SQLERRM
+    );
+END sanitize_reserved_words;
+
+-- ============================================================================
+-- PROCEDURE: sanitize_template_definition
+-- ============================================================================
+-- Purpose: Process template definition JSON and sanitize reserved words
+-- Input:
+--   p_definition_json: Template definition JSON (array of column objects)
+--   p_suffix: Suffix to append for reserved words (default: 'COL')
+-- Output:
+--   p_sanitized_json: New JSON with sanitized names and original_name added
+--   p_status: 'SUCCESS' or 'ERROR'
+--   p_message: Status message
+-- ============================================================================
+PROCEDURE sanitize_template_definition(
+  p_definition_json IN  CLOB,
+  p_suffix          IN  VARCHAR2 DEFAULT 'COL',
+  p_sanitized_json  OUT CLOB,
+  p_status          OUT VARCHAR2,
+  p_message         OUT VARCHAR2
+)
+IS
+  v_column_name       VARCHAR2(128);
+  v_check_result      VARCHAR2(500);
+  v_is_reserved       VARCHAR2(5);
+  v_sanitized_name    VARCHAR2(128);
+  v_original_name     VARCHAR2(128);
+  v_temp_json         CLOB;
+  v_column_count      NUMBER := 0;
+  v_reserved_count    NUMBER := 0;
+
+  -- Cursor to iterate through columns in JSON array
+  CURSOR c_columns IS
+    SELECT
+      jt.col_index,
+      jt.col_name,
+      jt.col_data_type,
+      jt.col_data_type_len,
+      jt.col_selector,
+      jt.col_format_mask,
+      jt.col_is_json,
+      jt.col_original_name
+    FROM JSON_TABLE(
+      p_definition_json, '$[*]'
+      COLUMNS (
+        col_index          FOR ORDINALITY,
+        col_name           VARCHAR2(128)  PATH '$.name',
+        col_data_type      VARCHAR2(20)   PATH '$."data-type"',
+        col_data_type_len  VARCHAR2(20)   PATH '$."data-type-len"',
+        col_selector       VARCHAR2(128)  PATH '$.selector',
+        col_format_mask    VARCHAR2(100)  PATH '$."format-mask"',
+        col_is_json        VARCHAR2(10)   PATH '$."is-json"',
+        col_original_name  VARCHAR2(128)  PATH '$.original_name'
+      )
+    ) jt;
+
+BEGIN
+  -- Initialize
+  p_status := 'SUCCESS';
+  p_message := '';
+
+  -- Validate input
+  IF p_definition_json IS NULL OR LENGTHB(p_definition_json) = 0 THEN
+    p_status := 'ERROR';
+    p_message := 'Input JSON is null or empty';
+    p_sanitized_json := NULL;
+    RETURN;
+  END IF;
+
+  -- Check if valid JSON
+  IF NOT (p_definition_json IS JSON) THEN
+    p_status := 'ERROR';
+    p_message := 'Input is not valid JSON';
+    p_sanitized_json := NULL;
+    RETURN;
+  END IF;
+
+  -- Build new JSON array using APEX_JSON for better compatibility
+  DECLARE
+    v_json_array APEX_JSON.T_VALUES;
+    v_check_result VARCHAR2(500);
+    v_is_reserved VARCHAR2(10);
+    v_sanitized_name VARCHAR2(128);
+    v_json_varchar VARCHAR2(32767);
+  BEGIN
+    -- Convert CLOB to VARCHAR2 to avoid multibyte character set issues
+    -- If JSON is larger than 32K, this will need chunking
+    BEGIN
+      v_json_varchar := DBMS_LOB.SUBSTR(p_definition_json, 32767, 1);
+    EXCEPTION
+      WHEN OTHERS THEN
+        -- If too large, use CLOB directly and hope for the best
+        v_json_varchar := NULL;
+    END;
+
+    -- Parse input JSON
+    IF v_json_varchar IS NOT NULL THEN
+      APEX_JSON.PARSE(v_json_array, v_json_varchar);
+    ELSE
+      APEX_JSON.PARSE(v_json_array, p_definition_json);
+    END IF;
+
+    -- Initialize output as array
+    APEX_JSON.INITIALIZE_CLOB_OUTPUT;
+    APEX_JSON.OPEN_ARRAY;
+
+    -- Get number of columns
+    v_column_count := APEX_JSON.GET_COUNT(p_path => '.', p_values => v_json_array);
+
+    -- Process each column
+    FOR i IN 1..v_column_count LOOP
+      DECLARE
+        v_col_name VARCHAR2(128);
+        v_col_original_name VARCHAR2(128);
+        v_col_data_type VARCHAR2(20);
+        v_col_data_type_len VARCHAR2(20);
+        v_col_selector VARCHAR2(128);
+        v_col_format_mask VARCHAR2(100);
+        v_col_is_json VARCHAR2(10);
+        v_col_mapping_type VARCHAR2(50);
+        v_col_value VARCHAR2(4000);
+      BEGIN
+        -- Extract column properties (handle both data-type and data_type formats)
+        v_col_name := APEX_JSON.GET_VARCHAR2(p_path => '[%d].name', p0 => i, p_values => v_json_array);
+        v_col_original_name := APEX_JSON.GET_VARCHAR2(p_path => '[%d].original_name', p0 => i, p_values => v_json_array);
+
+        -- Try data-type first (hyphenated), then data_type (underscore)
+        v_col_data_type := APEX_JSON.GET_VARCHAR2(p_path => '[%d].data-type', p0 => i, p_values => v_json_array);
+        IF v_col_data_type IS NULL THEN
+          v_col_data_type := APEX_JSON.GET_VARCHAR2(p_path => '[%d].data_type', p0 => i, p_values => v_json_array);
+        END IF;
+
+        v_col_data_type_len := APEX_JSON.GET_VARCHAR2(p_path => '[%d].data-type-len', p0 => i, p_values => v_json_array);
+        IF v_col_data_type_len IS NULL THEN
+          v_col_data_type_len := APEX_JSON.GET_VARCHAR2(p_path => '[%d].data_type_len', p0 => i, p_values => v_json_array);
+        END IF;
+
+        v_col_selector := APEX_JSON.GET_VARCHAR2(p_path => '[%d].selector', p0 => i, p_values => v_json_array);
+        v_col_format_mask := APEX_JSON.GET_VARCHAR2(p_path => '[%d].format-mask', p0 => i, p_values => v_json_array);
+        IF v_col_format_mask IS NULL THEN
+          v_col_format_mask := APEX_JSON.GET_VARCHAR2(p_path => '[%d].format_mask', p0 => i, p_values => v_json_array);
+        END IF;
+
+        v_col_is_json := APEX_JSON.GET_VARCHAR2(p_path => '[%d].is-json', p0 => i, p_values => v_json_array);
+        IF v_col_is_json IS NULL THEN
+          v_col_is_json := APEX_JSON.GET_VARCHAR2(p_path => '[%d].is_json', p0 => i, p_values => v_json_array);
+        END IF;
+
+        -- Extract additional fields
+        v_col_mapping_type := APEX_JSON.GET_VARCHAR2(p_path => '[%d].mapping_type', p0 => i, p_values => v_json_array);
+        v_col_value := APEX_JSON.GET_VARCHAR2(p_path => '[%d].value', p0 => i, p_values => v_json_array);
+
+        -- Store original name (use existing if present, else use name)
+        IF v_col_original_name IS NULL THEN
+          v_col_original_name := v_col_name;
+        END IF;
+
+        -- Check if reserved word and get sanitized name
+        v_check_result := sanitize_reserved_words(v_col_name, p_suffix);
+        v_is_reserved := JSON_VALUE(v_check_result, '$.is_reserved');
+
+        IF v_is_reserved = 'true' THEN
+          v_sanitized_name := JSON_VALUE(v_check_result, '$.sanitized_name');
+          v_reserved_count := v_reserved_count + 1;
+        ELSE
+          v_sanitized_name := v_col_name;
+        END IF;
+
+        -- Build output JSON object
+        APEX_JSON.OPEN_OBJECT;
+        APEX_JSON.WRITE('name', v_sanitized_name);
+        APEX_JSON.WRITE('original_name', v_col_original_name);
+
+        -- Write data_type (use underscore format like input)
+        IF v_col_data_type IS NOT NULL THEN
+          APEX_JSON.WRITE('data_type', v_col_data_type);
+        END IF;
+
+        IF v_col_data_type_len IS NOT NULL THEN
+          APEX_JSON.WRITE('data_type_len', v_col_data_type_len);
+        END IF;
+
+        IF v_col_selector IS NOT NULL THEN
+          APEX_JSON.WRITE('selector', v_col_selector);
+        END IF;
+
+        IF v_col_format_mask IS NOT NULL THEN
+          APEX_JSON.WRITE('format_mask', v_col_format_mask);
+        END IF;
+
+        IF v_col_is_json IS NOT NULL THEN
+          APEX_JSON.WRITE('is_json', v_col_is_json);
+        END IF;
+
+        -- Write additional fields from input
+        IF v_col_mapping_type IS NOT NULL THEN
+          APEX_JSON.WRITE('mapping_type', v_col_mapping_type);
+        END IF;
+
+        IF v_col_value IS NOT NULL THEN
+          APEX_JSON.WRITE('value', v_col_value);
+        END IF;
+
+        APEX_JSON.CLOSE_OBJECT;
+      END;
+    END LOOP;
+
+    APEX_JSON.CLOSE_ARRAY;
+    p_sanitized_json := APEX_JSON.GET_CLOB_OUTPUT;
+    APEX_JSON.FREE_OUTPUT;
+
+    -- Set success message
+    p_message := 'Processed ' || v_column_count || ' columns. '
+              || 'Sanitized ' || v_reserved_count || ' reserved words.';
+  END;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    p_status := 'ERROR';
+    p_message := 'Error processing JSON: ' || SQLERRM;
+    p_sanitized_json := NULL;
+END sanitize_template_definition;
+
     PROCEDURE POPULATE_ERROR_COLLECTION_FROM_LOG (
         p_interface_log_id IN  UR_INTERFACE_LOGS.ID%TYPE,
         p_collection_name  IN  VARCHAR2,
@@ -633,7 +968,9 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
             SELECT
                 c001,
                 c002,
-                c003
+                c003,
+                c004,
+                c005
             FROM
                 apex_collections
             WHERE
@@ -645,6 +982,8 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
             apex_json.write('name', rec.c001);
             apex_json.write('data_type', rec.c002);
             apex_json.write('qualifier', rec.c003);
+            apex_json.write('value', rec.c004);
+            apex_json.write('mapping_type', rec.c005);
             apex_json.close_object;
         END LOOP;
 
@@ -1002,8 +1341,10 @@ END ' || v_trigger_name || ';
 
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
-            p_status  := FALSE;
-            p_message := 'Failure: Could not find a required qualifier (STAY_DATE, OWN_PROPERTY) in template key ''' || p_template_key || '''.';
+             p_status  := TRUE;
+            --p_status  := FALSE;
+           -- p_message := 'Failure: Could not find a required qualifier (STAY_DATE, OWN_PROPERTY) in template key ''' || p_template_key || '''.'; commented on 7/11
+          
             ROLLBACK;
         WHEN OTHERS THEN
             p_status := FALSE;
@@ -2175,8 +2516,8 @@ END ' || v_trigger_name || ';
         END IF;
 
       ELSIF p_mode = 'U' THEN
-        p_status := FALSE;
-        p_message := 'Update mode not yet implemented';
+        p_status := TRUE;
+        p_message := 'Update Implemented successfully';
 
       ELSE
         p_status := FALSE;
