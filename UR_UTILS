@@ -1368,15 +1368,14 @@ END ' || v_trigger_name || ';
                     BEGIN
                         -- Determine template name based on p_use_original_name
                         IF v_use_original_name_use = 'Y' THEN
+                            -- Use original_name only
                             v_template_match_name := LOWER(TRIM(rec.original_name));
                         ELSIF v_use_original_name_use = 'N' THEN
+                            -- Use name only
                             v_template_match_name := LOWER(TRIM(rec.name));
                         ELSE  -- 'AUTO'
-                            IF rec.original_name IS NOT NULL AND TRIM(rec.original_name) != '' THEN
-                                v_template_match_name := LOWER(TRIM(rec.original_name));
-                            ELSE
-                                v_template_match_name := LOWER(TRIM(rec.name));
-                            END IF;
+                            -- AUTO mode: use original_name if available and not empty, else use name
+                            v_template_match_name := LOWER(TRIM(NVL(NULLIF(rec.original_name, ''), rec.name)));
                         END IF;
 
                         -- Try to find matching collection member with flexible matching
@@ -1384,10 +1383,16 @@ END ' || v_trigger_name || ';
                             SELECT seq_id, c001
                             FROM apex_collections
                             WHERE collection_name = p_collection_name
+                              AND c001 IS NOT NULL
                         ) LOOP
                             -- Extract source name and data type from c001 format "NAME (TYPE)"
                             v_source_name      := LOWER(TRIM(REGEXP_SUBSTR(coll_rec.c001, '^[^(]+')));
                             v_source_data_type := LOWER(TRIM(REGEXP_SUBSTR(coll_rec.c001, '\(([^)]+)\)', 1, 1, NULL, 1)));
+
+                            -- Skip if we couldn't extract a valid source name or template name
+                            IF v_source_name IS NULL OR v_template_match_name IS NULL THEN
+                                CONTINUE;
+                            END IF;
 
                             -- Check if names match (case-insensitive)
                             IF v_source_name = v_template_match_name THEN
