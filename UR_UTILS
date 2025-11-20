@@ -134,205 +134,114 @@ PROCEDURE sanitize_template_definition(
   p_message         OUT VARCHAR2
 )
 IS
-  v_column_name       VARCHAR2(128);
-  v_check_result      VARCHAR2(500);
-  v_is_reserved       VARCHAR2(5);
-  v_sanitized_name    VARCHAR2(128);
-  v_original_name     VARCHAR2(128);
-  v_temp_json         CLOB;
-  v_column_count      NUMBER := 0;
-  v_reserved_count    NUMBER := 0;
+  v_column_count    NUMBER := 0;
+  v_reserved_count  NUMBER := 0;
+  v_check_result    VARCHAR2(500);
+  v_is_reserved     VARCHAR2(10);
+  v_sanitized_name  VARCHAR2(128);
 
-  -- Cursor to iterate through columns in JSON array
-  CURSOR c_columns IS
-    SELECT
-      jt.col_index,
-      jt.col_name,
-      jt.col_data_type,
-      jt.col_data_type_len,
-      jt.col_selector,
-      jt.col_format_mask,
-      jt.col_is_json,
-      jt.col_original_name
-    FROM JSON_TABLE(
-      p_definition_json, '$[*]'
-      COLUMNS (
-        col_index          FOR ORDINALITY,
-        col_name           VARCHAR2(128)  PATH '$.name',
-        col_data_type      VARCHAR2(20)   PATH '$."data-type"',
-        col_data_type_len  VARCHAR2(20)   PATH '$."data-type-len"',
-        col_selector       VARCHAR2(128)  PATH '$.selector',
-        col_format_mask    VARCHAR2(100)  PATH '$."format-mask"',
-        col_is_json        VARCHAR2(10)   PATH '$."is-json"',
-        col_original_name  VARCHAR2(128)  PATH '$.original_name'
-      )
-    ) jt;
+  -- Variables for each column property
+  v_name            VARCHAR2(128);
+  v_original_name   VARCHAR2(128);
+  v_data_type       VARCHAR2(50);
+  v_mapping_type    VARCHAR2(50);
+  v_value           VARCHAR2(4000);
 
 BEGIN
-  -- Initialize
+  -- Initialize output parameters
   p_status := 'SUCCESS';
   p_message := '';
+  p_sanitized_json := NULL;
 
   -- Validate input
-  IF p_definition_json IS NULL OR LENGTHB(p_definition_json) = 0 THEN
+  IF p_definition_json IS NULL THEN
     p_status := 'ERROR';
-    p_message := 'Input JSON is null or empty';
-    p_sanitized_json := NULL;
+    p_message := 'Input JSON is null';
     RETURN;
   END IF;
 
-  -- Check if valid JSON
-  IF NOT (p_definition_json IS JSON) THEN
-    p_status := 'ERROR';
-    p_message := 'Input is not valid JSON';
-    p_sanitized_json := NULL;
-    RETURN;
-  END IF;
-
-  -- Build new JSON array using APEX_JSON for better compatibility
-  DECLARE
-    v_json_array APEX_JSON.T_VALUES;
-    v_check_result VARCHAR2(500);
-    v_is_reserved VARCHAR2(10);
-    v_sanitized_name VARCHAR2(128);
-    v_json_varchar VARCHAR2(32767);
+  -- Parse the JSON and build output
   BEGIN
-    -- Convert CLOB to VARCHAR2 to avoid multibyte character set issues
-    -- If JSON is larger than 32K, this will need chunking
-    BEGIN
-      v_json_varchar := DBMS_LOB.SUBSTR(p_definition_json, 32767, 1);
-    EXCEPTION
-      WHEN OTHERS THEN
-        -- If too large, use CLOB directly and hope for the best
-        v_json_varchar := NULL;
-    END;
+    -- Parse input JSON CLOB directly
+    APEX_JSON.PARSE(p_definition_json);
 
-    -- Parse input JSON
-    IF v_json_varchar IS NOT NULL THEN
-      APEX_JSON.PARSE(v_json_array, v_json_varchar);
-    ELSE
-      APEX_JSON.PARSE(v_json_array, p_definition_json);
+    -- Get array count
+    v_column_count := APEX_JSON.GET_COUNT(p_path => '.');
+
+    IF v_column_count = 0 THEN
+      p_status := 'ERROR';
+      p_message := 'No columns found in JSON array';
+      RETURN;
     END IF;
 
-    -- Initialize output as array
+    -- Initialize output JSON array as CLOB
     APEX_JSON.INITIALIZE_CLOB_OUTPUT;
     APEX_JSON.OPEN_ARRAY;
 
-    -- Get number of columns
-    v_column_count := APEX_JSON.GET_COUNT(p_path => '.', p_values => v_json_array);
-
-    -- Process each column
+    -- Loop through each column in the array
     FOR i IN 1..v_column_count LOOP
-      DECLARE
-        v_col_name VARCHAR2(128);
-        v_col_original_name VARCHAR2(128);
-        v_col_data_type VARCHAR2(20);
-        v_col_data_type_len VARCHAR2(20);
-        v_col_selector VARCHAR2(128);
-        v_col_format_mask VARCHAR2(100);
-        v_col_is_json VARCHAR2(10);
-        v_col_mapping_type VARCHAR2(50);
-        v_col_value VARCHAR2(4000);
-      BEGIN
-        -- Extract column properties (handle both data-type and data_type formats)
-        v_col_name := APEX_JSON.GET_VARCHAR2(p_path => '[%d].name', p0 => i, p_values => v_json_array);
-        v_col_original_name := APEX_JSON.GET_VARCHAR2(p_path => '[%d].original_name', p0 => i, p_values => v_json_array);
+      -- Extract column properties
+      v_name := APEX_JSON.GET_VARCHAR2(p_path => '[%d].name', p0 => i);
+      v_original_name := APEX_JSON.GET_VARCHAR2(p_path => '[%d].original_name', p0 => i);
+      v_data_type := APEX_JSON.GET_VARCHAR2(p_path => '[%d].data_type', p0 => i);
+      v_mapping_type := APEX_JSON.GET_VARCHAR2(p_path => '[%d].mapping_type', p0 => i);
+      v_value := APEX_JSON.GET_VARCHAR2(p_path => '[%d].value', p0 => i);
 
-        -- Try data-type first (hyphenated), then data_type (underscore)
-        v_col_data_type := APEX_JSON.GET_VARCHAR2(p_path => '[%d].data-type', p0 => i, p_values => v_json_array);
-        IF v_col_data_type IS NULL THEN
-          v_col_data_type := APEX_JSON.GET_VARCHAR2(p_path => '[%d].data_type', p0 => i, p_values => v_json_array);
-        END IF;
+      -- If original_name doesn't exist, set it to the current name
+      IF v_original_name IS NULL THEN
+        v_original_name := v_name;
+      END IF;
 
-        v_col_data_type_len := APEX_JSON.GET_VARCHAR2(p_path => '[%d].data-type-len', p0 => i, p_values => v_json_array);
-        IF v_col_data_type_len IS NULL THEN
-          v_col_data_type_len := APEX_JSON.GET_VARCHAR2(p_path => '[%d].data_type_len', p0 => i, p_values => v_json_array);
-        END IF;
+      -- Check if the name is a reserved word
+      v_check_result := sanitize_reserved_words(v_name, p_suffix);
+      v_is_reserved := JSON_VALUE(v_check_result, '$.is_reserved');
 
-        v_col_selector := APEX_JSON.GET_VARCHAR2(p_path => '[%d].selector', p0 => i, p_values => v_json_array);
-        v_col_format_mask := APEX_JSON.GET_VARCHAR2(p_path => '[%d].format-mask', p0 => i, p_values => v_json_array);
-        IF v_col_format_mask IS NULL THEN
-          v_col_format_mask := APEX_JSON.GET_VARCHAR2(p_path => '[%d].format_mask', p0 => i, p_values => v_json_array);
-        END IF;
+      IF v_is_reserved = 'true' THEN
+        v_sanitized_name := JSON_VALUE(v_check_result, '$.sanitized_name');
+        v_reserved_count := v_reserved_count + 1;
+      ELSE
+        v_sanitized_name := v_name;
+      END IF;
 
-        v_col_is_json := APEX_JSON.GET_VARCHAR2(p_path => '[%d].is-json', p0 => i, p_values => v_json_array);
-        IF v_col_is_json IS NULL THEN
-          v_col_is_json := APEX_JSON.GET_VARCHAR2(p_path => '[%d].is_json', p0 => i, p_values => v_json_array);
-        END IF;
+      -- Build output object for this column
+      APEX_JSON.OPEN_OBJECT;
+      APEX_JSON.WRITE('name', v_sanitized_name);
+      APEX_JSON.WRITE('original_name', v_original_name);
 
-        -- Extract additional fields
-        v_col_mapping_type := APEX_JSON.GET_VARCHAR2(p_path => '[%d].mapping_type', p0 => i, p_values => v_json_array);
-        v_col_value := APEX_JSON.GET_VARCHAR2(p_path => '[%d].value', p0 => i, p_values => v_json_array);
+      IF v_data_type IS NOT NULL THEN
+        APEX_JSON.WRITE('data_type', v_data_type);
+      END IF;
 
-        -- Store original name (use existing if present, else use name)
-        IF v_col_original_name IS NULL THEN
-          v_col_original_name := v_col_name;
-        END IF;
+      IF v_mapping_type IS NOT NULL THEN
+        APEX_JSON.WRITE('mapping_type', v_mapping_type);
+      END IF;
 
-        -- Check if reserved word and get sanitized name
-        v_check_result := sanitize_reserved_words(v_col_name, p_suffix);
-        v_is_reserved := JSON_VALUE(v_check_result, '$.is_reserved');
+      IF v_value IS NOT NULL THEN
+        APEX_JSON.WRITE('value', v_value);
+      END IF;
 
-        IF v_is_reserved = 'true' THEN
-          v_sanitized_name := JSON_VALUE(v_check_result, '$.sanitized_name');
-          v_reserved_count := v_reserved_count + 1;
-        ELSE
-          v_sanitized_name := v_col_name;
-        END IF;
-
-        -- Build output JSON object
-        APEX_JSON.OPEN_OBJECT;
-        APEX_JSON.WRITE('name', v_sanitized_name);
-        APEX_JSON.WRITE('original_name', v_col_original_name);
-
-        -- Write data_type (use underscore format like input)
-        IF v_col_data_type IS NOT NULL THEN
-          APEX_JSON.WRITE('data_type', v_col_data_type);
-        END IF;
-
-        IF v_col_data_type_len IS NOT NULL THEN
-          APEX_JSON.WRITE('data_type_len', v_col_data_type_len);
-        END IF;
-
-        IF v_col_selector IS NOT NULL THEN
-          APEX_JSON.WRITE('selector', v_col_selector);
-        END IF;
-
-        IF v_col_format_mask IS NOT NULL THEN
-          APEX_JSON.WRITE('format_mask', v_col_format_mask);
-        END IF;
-
-        IF v_col_is_json IS NOT NULL THEN
-          APEX_JSON.WRITE('is_json', v_col_is_json);
-        END IF;
-
-        -- Write additional fields from input
-        IF v_col_mapping_type IS NOT NULL THEN
-          APEX_JSON.WRITE('mapping_type', v_col_mapping_type);
-        END IF;
-
-        IF v_col_value IS NOT NULL THEN
-          APEX_JSON.WRITE('value', v_col_value);
-        END IF;
-
-        APEX_JSON.CLOSE_OBJECT;
-      END;
+      APEX_JSON.CLOSE_OBJECT;
     END LOOP;
 
+    -- Close the array
     APEX_JSON.CLOSE_ARRAY;
+
+    -- Get the output as CLOB directly
     p_sanitized_json := APEX_JSON.GET_CLOB_OUTPUT;
     APEX_JSON.FREE_OUTPUT;
 
     -- Set success message
-    p_message := 'Processed ' || v_column_count || ' columns. '
-              || 'Sanitized ' || v_reserved_count || ' reserved words.';
+    p_message := 'Processed ' || v_column_count || ' columns. ' ||
+                 'Sanitized ' || v_reserved_count || ' reserved words.';
+
+  EXCEPTION
+    WHEN OTHERS THEN
+      p_status := 'ERROR';
+      p_message := 'Error processing JSON: ' || SQLERRM;
+      p_sanitized_json := NULL;
+      APEX_JSON.FREE_OUTPUT;
   END;
 
-EXCEPTION
-  WHEN OTHERS THEN
-    p_status := 'ERROR';
-    p_message := 'Error processing JSON: ' || SQLERRM;
-    p_sanitized_json := NULL;
 END sanitize_template_definition;
 
     PROCEDURE POPULATE_ERROR_COLLECTION_FROM_LOG (
