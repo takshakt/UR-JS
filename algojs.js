@@ -384,7 +384,7 @@ function addCondition(regionId) {
                 <div class="section calculation-section" style="padding: 0; border: none; background: none;">
                     <div class="section-title"><span>Expression</span></div>
                     <div class="filter-row"><div class="filter-group"><select class="attribute-select"><option value="">Select Attribute</option>${(dynamicData.attributes || []).map(attr => `<option value="${attr.id}">${attr.name}</option>`).join('')}</select><select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select></div></div>
-                    <div class="expression-container"><textarea class="expression-textarea" placeholder="Type # for attributes or = for functions..."></textarea><div class="textarea-controls"><div class="btn btn-small" data-action="clear">Clear</div><div class="btn btn-small btn-secondary" data-action="validate-expression">Validate</div></div></div>
+                    <div class="expression-container"><textarea class="expression-textarea" placeholder="Type # for attributes, = for functions, or ~ for plain text..."></textarea><div class="textarea-controls"><div class="btn btn-small" data-action="clear">Clear</div><div class="btn btn-small btn-secondary" data-action="validate-expression">Validate</div></div></div>
                 </div>
             </div>
         </div>`;
@@ -450,6 +450,26 @@ function setupConditionEventListeners(conditionElement) {
         const text = e.target.value;
         const cursorPos = e.target.selectionStart;
         const lastChar = text.substring(cursorPos - 1, cursorPos);
+
+        // Handle ~ trigger for plain text mode
+        // Only trigger if user is typing (inputType is insertText) and the last char is ~
+        // AND we're not already inside a plain text block (check for opening ~ before cursor)
+        if (lastChar === '~' && e.inputType === 'insertText' && e.data === '~') {
+            // Check if there's already an opening ~ before the cursor (excluding the one just typed)
+            const textBeforeCursor = text.substring(0, cursorPos - 1);
+            const hasOpeningTilde = textBeforeCursor.includes('~');
+
+            // Only auto-expand if there's no opening ~ before (meaning this is the first ~)
+            if (!hasOpeningTilde) {
+                const beforeTilde = text.substring(0, cursorPos - 1);
+                const afterTilde = text.substring(cursorPos);
+                e.target.value = beforeTilde + '~Add your text here~' + afterTilde;
+                const newPos = cursorPos; // Position at the start of "Add your text here"
+                e.target.setSelectionRange(newPos, newPos + 18); // Select "Add your text here"
+                return;
+            }
+        }
+
         if (lastChar === '#') showAutocomplete(e.target, dynamicData.attributes, { type: 'attribute' });
         else if (lastChar === '=') showAutocomplete(e.target, staticData.functions, { type: 'function' });
         else hideAutocomplete();
@@ -714,45 +734,73 @@ function copyCondition(originalConditionElement) {
 function validateSingleExpression(expressionTextarea) {
     const errors = [];
     const expression = expressionTextarea.value.trim();
-    if(expression === '') {
+
+    if (expression === '') {
         errors.push('Expression cannot be empty.');
-    } else {
-        // let tempExpression = expression;
-        // const attributeTokens = tempExpression.match(/#[^#]+#/g) || [];
-        // for (const token of attributeTokens) {
-        //     if (!dynamicData.attributes.includes(token.slice(1, -1))) errors.push(`Invalid attribute: "${token}"`);
-        // }
+        return { isValid: errors.length === 0, errors };
+    }
 
-        const validAttributeNames = dynamicData.attributes.map(attr => attr.name);
-        
-        let tempExpression = expression;
-        const attributeTokens = tempExpression.match(/#[^#]+#/g) || [];
-        
-        for (const token of attributeTokens) {
-            const attributeName = token.slice(1, -1); // Get the name from between the '#'
-            // 2. Check if the extracted name exists in our new array of names.
-            if (!validAttributeNames.includes(attributeName)) {
-                errors.push(`Invalid attribute: "${token}"`);
+    // Check if this is plain text mode
+    if (expression.startsWith('~') && !expression.startsWith('~~')) {
+        // Plain text validation
+        if (!expression.endsWith('~') || expression.endsWith('~~')) {
+            errors.push('Plain text must be wrapped as ~text~');
+        } else {
+            const plainText = expression.slice(1, -1); // Extract text between ~
+
+            // Check length limit
+            if (plainText.length > 50) {
+                errors.push('Plain text cannot exceed 50 characters');
+            }
+
+            // Check for mixed content (no attributes or functions allowed)
+            if (plainText.includes('#')) {
+                errors.push('Cannot mix plain text with expressions. Use either ~text~ or expression format');
+            }
+            if (staticData.functions.some(func => plainText.includes(func + '('))) {
+                errors.push('Cannot mix plain text with expressions. Use either ~text~ or expression format');
             }
         }
+        return { isValid: errors.length === 0, errors };
+    }
 
-        tempExpression = tempExpression.replace(/#[^#]+#/g, '1');
-        staticData.functions.forEach(func => {
-            const funcRegex = new RegExp(`${func}\\([^)]*\\)`, 'gi');
-            tempExpression = tempExpression.replace(funcRegex, '1');
-        });
-        if (staticData.operators.some(op => tempExpression.includes(` ${op} `))) {
-             errors.push('Expression must result in a numerical value, not a boolean.');
-        }
-        const validKeywords = [...staticData.expressionOperators, ...staticData.functions].map(t => t.toLowerCase());
-        const remainingTokens = tempExpression.split(/[\s()]+/).filter(Boolean);
-        for (const token of remainingTokens) {
-            if (!isNaN(parseFloat(token))) continue;
-            if (!validKeywords.includes(token.toLowerCase())) {
-                errors.push(`Invalid keyword: "${token}"`);
-            }
+    // Expression mode validation - check for any ~ presence (but allow ~~ which won't match the pattern above)
+    if (expression.includes('~') && !(expression.startsWith('~~') || expression.includes('~~'))) {
+        errors.push('Cannot mix expressions with plain text. Use either ~text~ or expression format');
+        return { isValid: errors.length === 0, errors };
+    }
+
+    // Existing expression validation logic
+    const validAttributeNames = dynamicData.attributes.map(attr => attr.name);
+    let tempExpression = expression;
+    const attributeTokens = tempExpression.match(/#[^#]+#/g) || [];
+
+    for (const token of attributeTokens) {
+        const attributeName = token.slice(1, -1);
+        if (!validAttributeNames.includes(attributeName)) {
+            errors.push(`Invalid attribute: "${token}"`);
         }
     }
+
+    tempExpression = tempExpression.replace(/#[^#]+#/g, '1');
+    staticData.functions.forEach(func => {
+        const funcRegex = new RegExp(`${func}\\([^)]*\\)`, 'gi');
+        tempExpression = tempExpression.replace(funcRegex, '1');
+    });
+
+    if (staticData.operators.some(op => tempExpression.includes(` ${op} `))) {
+        errors.push('Expression must result in a numerical value, not a boolean.');
+    }
+
+    const validKeywords = [...staticData.expressionOperators, ...staticData.functions].map(t => t.toLowerCase());
+    const remainingTokens = tempExpression.split(/[\s()]+/).filter(Boolean);
+    for (const token of remainingTokens) {
+        if (!isNaN(parseFloat(token))) continue;
+        if (!validKeywords.includes(token.toLowerCase())) {
+            errors.push(`Invalid keyword: "${token}"`);
+        }
+    }
+
     return { isValid: errors.length === 0, errors };
 }
 
@@ -1239,9 +1287,9 @@ function populateRegion(regionElement, regionData) {
                 regionElement.querySelector('.stay-window-from').value = filterValue.from;
                 regionElement.querySelector('.stay-window-to').value = filterValue.to;
             } else if (filterKey === 'leadTime') {
-                
+
                 const attributeSelect = regionElement.querySelector('.lead-time-attribute-select');
-                
+
                 if (attributeSelect) {
                     attributeSelect.value = filterValue.attribute.replace(/#/g, ''); // Set the new dropdown value
                 }
@@ -1334,6 +1382,11 @@ function populateCondition(conditionElement, conditionData) {
 function convertExpressionNamesToIds(expression) {
     if (!expression || !dynamicData.attributes) return expression;
 
+    // Skip conversion for plain text
+    if (expression.startsWith('~') && expression.endsWith('~') && !expression.startsWith('~~')) {
+        return expression;
+    }
+
     // Create a quick lookup map of Name -> ID
     const nameToIdMap = new Map(dynamicData.attributes.map(attr => [attr.name, attr.id]));
 
@@ -1352,9 +1405,14 @@ function convertExpressionNamesToIds(expression) {
 function convertExpressionIdsToNames(expression) {
     if (!expression || !dynamicData.attributes) return expression;
 
+    // Skip conversion for plain text
+    if (expression.startsWith('~') && expression.endsWith('~') && !expression.startsWith('~~')) {
+        return expression;
+    }
+
     // Create a quick lookup map of ID -> Name
     const idToNameMap = new Map(dynamicData.attributes.map(attr => [attr.id, attr.name]));
-    
+
     return expression.replace(/#([^#]+)#/g, (match, attributeId) => {
         const foundName = idToNameMap.get(attributeId);
         return foundName ? `#${foundName}#` : match; // If not found, leave it as is
