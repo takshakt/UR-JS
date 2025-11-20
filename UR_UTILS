@@ -1242,18 +1242,37 @@ END ' || v_trigger_name || ';
     --------------------------------------------------------------------------------
 
     PROCEDURE LOAD_DATA_MAPPING_COLLECTION(
-        p_file_id         IN  VARCHAR2,
-        p_template_id     IN  VARCHAR2,
-        p_collection_name IN  VARCHAR2,
-        p_status          OUT VARCHAR2,
-        p_message         OUT VARCHAR2
+        p_file_id           IN  VARCHAR2,
+        p_template_id       IN  VARCHAR2,
+        p_collection_name   IN  VARCHAR2,
+        p_use_original_name IN  VARCHAR2 DEFAULT 'AUTO',
+        p_match_datatype    IN  VARCHAR2 DEFAULT 'Y',
+        p_status            OUT VARCHAR2,
+        p_message           OUT VARCHAR2
     ) IS
         -- Local variables
-        v_seq_id NUMBER;
+        v_seq_id                 NUMBER;
+        v_use_original_name_use  VARCHAR2(10);
+        v_match_datatype_use     VARCHAR2(10);
     BEGIN
         -- Initialize outputs
         p_status  := 'S';
         p_message := 'Processing completed successfully.';
+
+        ------------------------------------------------------------------------
+        -- Step 0: Validate and normalize input parameters
+        ------------------------------------------------------------------------
+        -- Validate p_use_original_name
+        v_use_original_name_use := UPPER(NVL(p_use_original_name, 'AUTO'));
+        IF v_use_original_name_use NOT IN ('Y', 'N', 'AUTO') THEN
+            v_use_original_name_use := 'AUTO';
+        END IF;
+
+        -- Validate p_match_datatype
+        v_match_datatype_use := UPPER(NVL(p_match_datatype, 'Y'));
+        IF v_match_datatype_use NOT IN ('Y', 'N') THEN
+            v_match_datatype_use := 'Y';
+        END IF;
 
         ------------------------------------------------------------------------
         -- Step 1: Create or truncate the APEX collection
@@ -1308,38 +1327,92 @@ END ' || v_trigger_name || ';
         END;
 
         ------------------------------------------------------------------------
-        -- Step 3: Update existing collection members with matching data from UR_TEMPLATES (c002, c003)
+        -- Step 3: Update existing collection members with matching data from UR_TEMPLATES
+        -- Now extracts: name, original_name, data_type, mapping_type, value, qualifier
         ------------------------------------------------------------------------
         BEGIN
             FOR rec IN (
                 SELECT
+                    jt.name,
+                    jt.original_name,
+                    jt.data_type,
+                    NVL(jt.mapping_type, 'Maps To') AS mapping_type,
+                    jt.value,
+                    jt.qualifier,
                     jt.name || ' (' || jt.data_type || ')' AS column_desc
                 FROM
                     UR_TEMPLATES t,
                     JSON_TABLE(
                         normalize_json(t.definition),
                         '$[*]' COLUMNS (
-                            name      VARCHAR2(100) PATH '$.name',
-                            data_type VARCHAR2(100) PATH '$.data_type'
+                            name          VARCHAR2(100) PATH '$.name',
+                            original_name VARCHAR2(100) PATH '$.original_name',
+                            data_type     VARCHAR2(100) PATH '$.data_type',
+                            mapping_type  VARCHAR2(100) PATH '$.mapping_type',
+                            value         VARCHAR2(4000) PATH '$.value',
+                            qualifier     VARCHAR2(100) PATH '$.qualifier'
                         )
-                    )
-                     jt
+                    ) jt
                 WHERE
                     t.id = p_template_id
                 ORDER BY
                     t.id DESC
             ) LOOP
                 BEGIN
-                    -- Find the seq_id for matching collection member
-                    SELECT
-                        seq_id
-                    INTO v_seq_id
-                    FROM
-                        apex_collections
-                    WHERE
-                        collection_name = p_collection_name AND c001 = rec.column_desc;
+                    -- Determine which template name to use for matching
+                    DECLARE
+                        v_template_match_name VARCHAR2(100);
+                        v_source_name         VARCHAR2(100);
+                        v_source_data_type    VARCHAR2(100);
+                        v_match_found         BOOLEAN := FALSE;
+                    BEGIN
+                        -- Determine template name based on p_use_original_name
+                        IF v_use_original_name_use = 'Y' THEN
+                            v_template_match_name := LOWER(TRIM(rec.original_name));
+                        ELSIF v_use_original_name_use = 'N' THEN
+                            v_template_match_name := LOWER(TRIM(rec.name));
+                        ELSE  -- 'AUTO'
+                            IF rec.original_name IS NOT NULL AND TRIM(rec.original_name) != '' THEN
+                                v_template_match_name := LOWER(TRIM(rec.original_name));
+                            ELSE
+                                v_template_match_name := LOWER(TRIM(rec.name));
+                            END IF;
+                        END IF;
 
-                    -- Update c002 and c003 attributes
+                        -- Try to find matching collection member with flexible matching
+                        FOR coll_rec IN (
+                            SELECT seq_id, c001
+                            FROM apex_collections
+                            WHERE collection_name = p_collection_name
+                        ) LOOP
+                            -- Extract source name and data type from c001 format "NAME (TYPE)"
+                            v_source_name      := LOWER(TRIM(REGEXP_SUBSTR(coll_rec.c001, '^[^(]+')));
+                            v_source_data_type := LOWER(TRIM(REGEXP_SUBSTR(coll_rec.c001, '\(([^)]+)\)', 1, 1, NULL, 1)));
+
+                            -- Check if names match (case-insensitive)
+                            IF v_source_name = v_template_match_name THEN
+                                -- If matching data type is required, check it
+                                IF v_match_datatype_use = 'Y' THEN
+                                    IF v_source_data_type = LOWER(TRIM(rec.data_type)) THEN
+                                        v_seq_id := coll_rec.seq_id;
+                                        v_match_found := TRUE;
+                                        EXIT;
+                                    END IF;
+                                ELSE
+                                    -- Data type matching not required
+                                    v_seq_id := coll_rec.seq_id;
+                                    v_match_found := TRUE;
+                                    EXIT;
+                                END IF;
+                            END IF;
+                        END LOOP;
+
+                        IF NOT v_match_found THEN
+                            RAISE NO_DATA_FOUND;
+                        END IF;
+                    END;
+
+                    -- Update c002: Target column descriptor
                     APEX_COLLECTION.UPDATE_MEMBER_ATTRIBUTE(
                         p_collection_name => p_collection_name,
                         p_seq             => v_seq_id,
@@ -1347,18 +1420,36 @@ END ' || v_trigger_name || ';
                         p_attr_value      => rec.column_desc
                     );
 
+                    -- Update c003: mapping_type from template (was hardcoded 'Maps To')
                     APEX_COLLECTION.UPDATE_MEMBER_ATTRIBUTE(
                         p_collection_name => p_collection_name,
                         p_seq             => v_seq_id,
                         p_attr_number     => 3,
-                        p_attr_value      => 'Maps To'
+                        p_attr_value      => rec.mapping_type
                     );
 
+                    -- Update c004: value from template (for Calculation/Default)
                     APEX_COLLECTION.UPDATE_MEMBER_ATTRIBUTE(
                         p_collection_name => p_collection_name,
                         p_seq             => v_seq_id,
                         p_attr_number     => 4,
-                        p_attr_value      => NULL
+                        p_attr_value      => rec.value
+                    );
+
+                    -- Update c005: original_name from template
+                    APEX_COLLECTION.UPDATE_MEMBER_ATTRIBUTE(
+                        p_collection_name => p_collection_name,
+                        p_seq             => v_seq_id,
+                        p_attr_number     => 5,
+                        p_attr_value      => rec.original_name
+                    );
+
+                    -- Update c006: qualifier from template
+                    APEX_COLLECTION.UPDATE_MEMBER_ATTRIBUTE(
+                        p_collection_name => p_collection_name,
+                        p_seq             => v_seq_id,
+                        p_attr_number     => 6,
+                        p_attr_value      => rec.qualifier
                     );
 
                 EXCEPTION

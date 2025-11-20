@@ -128,12 +128,29 @@ CREATE OR REPLACE PACKAGE ur_utils AS
     -- ============================================================================
     -- PROCEDURE: LOAD_DATA_MAPPING_COLLECTION
     -- ============================================================================
+    -- ✨ UPDATED: Added configurable matching parameters
+    --
+    -- Purpose: Populate an APEX collection with mapped data between uploaded
+    --          file columns and template-defined columns
+    --
+    -- New Parameters:
+    --   p_use_original_name - Controls which field name to use for matching
+    --                         'Y'    = Use original_name only
+    --                         'N'    = Use name only
+    --                         'AUTO' = Smart mode (use original_name if present,
+    --                                  otherwise fall back to name)
+    --   p_match_datatype    - Controls data type matching
+    --                         'Y' = Match requires name + data_type
+    --                         'N' = Match on name only (ignore data_type)
+    -- ============================================================================
     PROCEDURE LOAD_DATA_MAPPING_COLLECTION(
-        p_file_id         IN  VARCHAR2,
-        p_template_id     IN  VARCHAR2,
-        p_collection_name IN  VARCHAR2,
-        p_status          OUT VARCHAR2,
-        p_message         OUT VARCHAR2
+        p_file_id           IN  VARCHAR2,
+        p_template_id       IN  VARCHAR2,
+        p_collection_name   IN  VARCHAR2,
+        p_use_original_name IN  VARCHAR2 DEFAULT 'AUTO',
+        p_match_datatype    IN  VARCHAR2 DEFAULT 'Y',
+        p_status            OUT VARCHAR2,
+        p_message           OUT VARCHAR2
     );
 
     -- ============================================================================
