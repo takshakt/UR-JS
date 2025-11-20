@@ -1139,7 +1139,7 @@ function saveAllRegions() {
         const algoListValue = apex.item("P1050_ALGO_LIST").getValue();
         const algoName = apex.item("P1050_NAME").getValue();
         const algoDesc = apex.item("P1050_DESCRIPTION").getValue();
-        const hotelId = apex.item("P1050_HOTEL_LIST").getValue(); // NEW: Get the hotel ID
+        const hotelId = apex.item("P0_HOTEL_ID").getValue(); // NEW: Get the hotel ID
 
         let mode = '';
         let ajaxPayload = {};
