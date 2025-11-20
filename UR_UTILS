@@ -1935,6 +1935,8 @@ END ' || v_trigger_name || ';
         END;
 
         -- Count matches with configurable matching logic
+        -- NOTE: Source (uploaded file) always uses 'name' field only
+        --       Target (template) applies the parameter-based logic to choose between 'original_name' and 'name'
         FUNCTION count_matches(
             p_source            t_name_type_tab,
             p_target            t_name_type_tab,
@@ -1948,20 +1950,11 @@ END ' || v_trigger_name || ';
             v_type_match   BOOLEAN;
         BEGIN
             FOR i IN 1..p_source.COUNT LOOP
-                -- Determine which name to use for source based on mode
-                IF UPPER(p_use_original_name) = 'Y' THEN
-                    -- Use original_name only
-                    v_source_name := p_source(i).original_name;
-                ELSIF UPPER(p_use_original_name) = 'N' THEN
-                    -- Use name only
-                    v_source_name := p_source(i).name;
-                ELSE
-                    -- AUTO mode: use original_name if available and not empty, else use name
-                    v_source_name := NVL(NULLIF(p_source(i).original_name, ''), p_source(i).name);
-                END IF;
+                -- Source (uploaded file) always uses 'name' field only (no original_name expected)
+                v_source_name := p_source(i).name;
 
                 FOR j IN 1..p_target.COUNT LOOP
-                    -- Determine which name to use for target based on mode
+                    -- Determine which name to use for target (template) based on mode
                     IF UPPER(p_use_original_name) = 'Y' THEN
                         -- Use original_name only
                         v_target_name := p_target(j).original_name;
