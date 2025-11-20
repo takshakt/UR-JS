@@ -136,6 +136,7 @@ function updateAllDropdowns() {
         console.log('Inside populateSelect1 - %s',selectElement)
 
         const currentValue = selectElement.value;
+        let valueExists = false;
         selectElement.innerHTML = '';
         const promptOption = document.createElement('option');
         promptOption.value = '';
@@ -1139,7 +1140,7 @@ function saveAllRegions() {
         const algoListValue = apex.item("P1050_ALGO_LIST").getValue();
         const algoName = apex.item("P1050_NAME").getValue();
         const algoDesc = apex.item("P1050_DESCRIPTION").getValue();
-        const hotelId = apex.item("P0_HOTEL_ID").getValue(); // NEW: Get the hotel ID
+        const hotelId = apex.item("P1050_HOTEL_LIST").getValue(); // NEW: Get the hotel ID
 
         let mode = '';
         let ajaxPayload = {};
@@ -1290,7 +1291,7 @@ function populateRegion(regionElement, regionData) {
 
                 const attributeSelect = regionElement.querySelector('.lead-time-attribute-select');
 
-                if (attributeSelect) {
+                if (attributeSelect && filterValue.attribute) {
                     attributeSelect.value = filterValue.attribute.replace(/#/g, ''); // Set the new dropdown value
                 }
 
@@ -1347,7 +1348,10 @@ function populateCondition(conditionElement, conditionData) {
             const fieldContent = checkbox.closest('.field-container').querySelector('.field-content');
             if (key === 'occupancyThreshold') {
                 // fieldContent.querySelector('.occupancy-attribute-select').value = data.attribute;
-                fieldContent.querySelector('.occupancy-attribute-select').value = data.attribute.replace(/#/g, '');
+                const occupancyAttrSelect = fieldContent.querySelector('.occupancy-attribute-select');
+                if (occupancyAttrSelect && data.attribute) {
+                    occupancyAttrSelect.value = data.attribute.replace(/#/g, '');
+                }
                 fieldContent.querySelector('.operator-select').value = data.operator;
                 fieldContent.querySelector('.value-input').value = data.value;
             } else if (key === 'eventScore') {
@@ -1355,7 +1359,10 @@ function populateCondition(conditionElement, conditionData) {
                 fieldContent.querySelector('.value-input').value = data.value;
             } else if (key === 'propertyRanking') {
                 // fieldContent.querySelector('.property-type-select').value = data.type;
-                fieldContent.querySelector('.property-type-select').value = data.type.replace(/#/g, '');
+                const propertyTypeSelect = fieldContent.querySelector('.property-type-select');
+                if (propertyTypeSelect && data.type) {
+                    propertyTypeSelect.value = data.type.replace(/#/g, '');
+                }
                 fieldContent.querySelector('.operator-select').value = data.operator;
                 fieldContent.querySelector('.value-input').value = data.value;
             }
