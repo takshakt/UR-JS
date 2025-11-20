@@ -123,7 +123,7 @@ END sanitize_reserved_words;
 --   p_suffix: Suffix to append for reserved words (default: 'COL')
 -- Output:
 --   p_sanitized_json: New JSON with sanitized names and original_name added
---   p_status: 'SUCCESS' or 'ERROR'
+--   p_status: 'S' (Success), 'E' (Error), or 'W' (Warning)
 --   p_message: Status message
 -- ============================================================================
 PROCEDURE sanitize_template_definition(
@@ -134,101 +134,77 @@ PROCEDURE sanitize_template_definition(
   p_message         OUT VARCHAR2
 )
 IS
+  l_array           JSON_ARRAY_T;
+  l_obj             JSON_OBJECT_T;
   v_column_count    NUMBER := 0;
   v_reserved_count  NUMBER := 0;
   v_check_result    VARCHAR2(500);
   v_is_reserved     VARCHAR2(10);
   v_sanitized_name  VARCHAR2(128);
-
-  -- Variables for each column property
   v_name            VARCHAR2(128);
   v_original_name   VARCHAR2(128);
-  v_data_type       VARCHAR2(50);
-  v_mapping_type    VARCHAR2(50);
-  v_value           VARCHAR2(4000);
 
 BEGIN
   -- Initialize output parameters
-  p_status := 'SUCCESS';
+  p_status := 'S';
   p_message := '';
   p_sanitized_json := NULL;
 
   -- Validate input
   IF p_definition_json IS NULL THEN
-    p_status := 'ERROR';
+    p_status := 'E';
     p_message := 'Input JSON is null';
     RETURN;
   END IF;
 
-  -- Parse the JSON and build output
+  -- Parse and modify JSON in-place
   BEGIN
-    -- Parse input JSON CLOB directly
-    APEX_JSON.PARSE(p_definition_json);
-
-    -- Get array count
-    v_column_count := APEX_JSON.GET_COUNT(p_path => '.');
+    -- Parse JSON array (creates a mutable object)
+    l_array := JSON_ARRAY_T(p_definition_json);
+    v_column_count := l_array.get_size;
 
     IF v_column_count = 0 THEN
-      p_status := 'ERROR';
+      p_status := 'E';
       p_message := 'No columns found in JSON array';
       RETURN;
     END IF;
 
-    -- Initialize output JSON array as CLOB
-    APEX_JSON.INITIALIZE_CLOB_OUTPUT;
-    APEX_JSON.OPEN_ARRAY;
+    -- Loop through each element (0-based indexing)
+    FOR i IN 0..v_column_count - 1 LOOP
+      -- Get the object from the array
+      l_obj := TREAT(l_array.get(i) AS JSON_OBJECT_T);
 
-    -- Loop through each column in the array
-    FOR i IN 1..v_column_count LOOP
-      -- Extract column properties
-      v_name := APEX_JSON.GET_VARCHAR2(p_path => '[%d].name', p0 => i);
-      v_original_name := APEX_JSON.GET_VARCHAR2(p_path => '[%d].original_name', p0 => i);
-      v_data_type := APEX_JSON.GET_VARCHAR2(p_path => '[%d].data_type', p0 => i);
-      v_mapping_type := APEX_JSON.GET_VARCHAR2(p_path => '[%d].mapping_type', p0 => i);
-      v_value := APEX_JSON.GET_VARCHAR2(p_path => '[%d].value', p0 => i);
+      -- Read the name field
+      v_name := l_obj.get_string('name');
 
-      -- If original_name doesn't exist, set it to the current name
-      IF v_original_name IS NULL THEN
+      -- Get or set original_name
+      IF l_obj.has('original_name') THEN
+        v_original_name := l_obj.get_string('original_name');
+      ELSE
         v_original_name := v_name;
+        -- Add original_name field to preserve the original name
+        l_obj.put('original_name', v_original_name);
       END IF;
 
-      -- Check if the name is a reserved word
+      -- Check if reserved word
       v_check_result := sanitize_reserved_words(v_name, p_suffix);
       v_is_reserved := JSON_VALUE(v_check_result, '$.is_reserved');
 
       IF v_is_reserved = 'true' THEN
         v_sanitized_name := JSON_VALUE(v_check_result, '$.sanitized_name');
         v_reserved_count := v_reserved_count + 1;
-      ELSE
-        v_sanitized_name := v_name;
+
+        -- Modify the name field IN-PLACE
+        l_obj.put('name', v_sanitized_name);
       END IF;
 
-      -- Build output object for this column
-      APEX_JSON.OPEN_OBJECT;
-      APEX_JSON.WRITE('name', v_sanitized_name);
-      APEX_JSON.WRITE('original_name', v_original_name);
+      -- ALL OTHER FIELDS ARE AUTOMATICALLY PRESERVED
+      -- (data_type, mapping_type, value, qualifier, selector, format_mask, is_json, etc.)
 
-      IF v_data_type IS NOT NULL THEN
-        APEX_JSON.WRITE('data_type', v_data_type);
-      END IF;
-
-      IF v_mapping_type IS NOT NULL THEN
-        APEX_JSON.WRITE('mapping_type', v_mapping_type);
-      END IF;
-
-      IF v_value IS NOT NULL THEN
-        APEX_JSON.WRITE('value', v_value);
-      END IF;
-
-      APEX_JSON.CLOSE_OBJECT;
     END LOOP;
 
-    -- Close the array
-    APEX_JSON.CLOSE_ARRAY;
-
-    -- Get the output as CLOB directly
-    p_sanitized_json := APEX_JSON.GET_CLOB_OUTPUT;
-    APEX_JSON.FREE_OUTPUT;
+    -- Convert modified array back to CLOB
+    p_sanitized_json := l_array.to_clob;
 
     -- Set success message
     p_message := 'Processed ' || v_column_count || ' columns. ' ||
@@ -236,10 +212,9 @@ BEGIN
 
   EXCEPTION
     WHEN OTHERS THEN
-      p_status := 'ERROR';
+      p_status := 'E';
       p_message := 'Error processing JSON: ' || SQLERRM;
       p_sanitized_json := NULL;
-      APEX_JSON.FREE_OUTPUT;
   END;
 
 END sanitize_template_definition;
