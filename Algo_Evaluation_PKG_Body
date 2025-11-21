@@ -294,7 +294,7 @@ FUNCTION EVALUATE(
           DECLARE
             l_filters_passed BOOLEAN := TRUE;
             l_filter_failure_json CLOB := NULL;
-            l_lead_time_json CLOB := NULL;
+            l_lead_time_json CLOB := 'null';
           BEGIN
             log_debug('Checking Region: ' || region_rec.region_name); -- (new log line)
           
@@ -448,7 +448,7 @@ FUNCTION EVALUATE(
                     ELSE
                       -- Handle Mathematical Expression (existing logic)
                       l_raw_expr := cond_rec.expr; l_eval_copy := cond_rec.expr; l_attr_json := '{'; l_attr_counter := 0; l_pos := 1;
-                      LOOP l_attr_in_expr := REGEXP_SUBSTR(cond_rec.expr, '#[A-F0-9]+#', 1, l_pos); EXIT WHEN l_attr_in_expr IS NULL; l_current_id := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', ''); l_attr_val := TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)); l_eval_copy := REPLACE(l_eval_copy, '#' || l_current_id || '#', l_attr_val); IF l_attr_counter > 0 THEN l_attr_json := l_attr_json || ','; END IF; l_attr_json := l_attr_json || '"' || l_current_id || '":' || NVL(l_attr_val, 'null'); l_pos := l_pos + 1; l_attr_counter := l_attr_counter + 1; END LOOP;
+                      LOOP l_attr_in_expr := REGEXP_SUBSTR(cond_rec.expr, '#[A-F0-9]+#', 1, l_pos); EXIT WHEN l_attr_in_expr IS NULL; l_current_id := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', ''); l_attr_val := TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)); l_eval_copy := REPLACE(l_eval_copy, '#' || l_current_id || '#', NVL(l_attr_val, '0')); IF l_attr_counter > 0 THEN l_attr_json := l_attr_json || ','; END IF; l_attr_json := l_attr_json || '"' || l_current_id || '":' || NVL(l_attr_val, 'null'); l_pos := l_pos + 1; l_attr_counter := l_attr_counter + 1; END LOOP;
                       l_attr_json := l_attr_json || '}';
 
                       log_debug('............ Expression with values: ' || l_eval_copy); -- (new log line)
@@ -483,9 +483,21 @@ FUNCTION EVALUATE(
                     log_debug('......... Condition NOT MET.'); -- (new log line)
                     -- ... (your existing code for l_failed_cond_json)
                     l_raw_expr := cond_rec.expr; l_eval_copy := cond_rec.expr; l_attr_json := '{'; l_attr_counter := 0; l_pos := 1;
-                    LOOP l_attr_in_expr := REGEXP_SUBSTR(cond_rec.expr, '#[A-F0-9]+#', 1, l_pos); EXIT WHEN l_attr_in_expr IS NULL; l_current_id := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', ''); l_attr_val := TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)); l_eval_copy := REPLACE(l_eval_copy, '#' || l_current_id || '#', l_attr_val); IF l_attr_counter > 0 THEN l_attr_json := l_attr_json || ','; END IF; l_attr_json := l_attr_json || '"' || l_current_id || '":' || NVL(l_attr_val, 'null'); l_pos := l_pos + 1; l_attr_counter := l_attr_counter + 1; END LOOP;
+                    LOOP l_attr_in_expr := REGEXP_SUBSTR(cond_rec.expr, '#[A-F0-9]+#', 1, l_pos); EXIT WHEN l_attr_in_expr IS NULL; l_current_id := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', ''); l_attr_val := TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)); l_eval_copy := REPLACE(l_eval_copy, '#' || l_current_id || '#', NVL(l_attr_val, '0')); IF l_attr_counter > 0 THEN l_attr_json := l_attr_json || ','; END IF; l_attr_json := l_attr_json || '"' || l_current_id || '":' || NVL(l_attr_val, 'null'); l_pos := l_pos + 1; l_attr_counter := l_attr_counter + 1; END LOOP;
                     l_attr_json := l_attr_json || '}';
-                    BEGIN l_eval_copy := REGEXP_REPLACE(l_eval_copy, '(AVERAGE|SUM|COUNT|MAX|MIN)\s*\((.*?)\)', 'ALGO_EVALUATOR_PKG.GENERIC_MATH_EVAL(''\1'', ''\2'')', 1, 0, 'i'); EXECUTE IMMEDIATE 'SELECT ' || l_eval_copy || ' FROM DUAL' INTO l_expr_outcome; EXCEPTION WHEN OTHERS THEN l_expr_outcome := NULL; END;
+                    BEGIN
+                      -- Only evaluate if NOT free text expression
+                      IF NOT REGEXP_LIKE(cond_rec.expr, '^~.*~$') THEN
+                        l_eval_copy := REGEXP_REPLACE(l_eval_copy, '(AVERAGE|SUM|COUNT|MAX|MIN)\s*\((.*?)\)', 'ALGO_EVALUATOR_PKG.GENERIC_MATH_EVAL(''\1'', ''\2'')', 1, 0, 'i');
+                        EXECUTE IMMEDIATE 'SELECT ' || l_eval_copy || ' FROM DUAL' INTO l_expr_outcome;
+                      ELSE
+                        -- Free text expressions don't have numeric outcomes
+                        l_expr_outcome := NULL;
+                      END IF;
+                    EXCEPTION
+                      WHEN OTHERS THEN
+                        l_expr_outcome := NULL;
+                    END;
                     l_failed_cond_json := '{' || '"region":"' || REPLACE(region_rec.region_name,'"','\"') || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"') || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD') || '", "filters":{' || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"' || ', "lead_time":' || l_lead_time_json || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END || CASE WHEN region_rec.minimum_rate IS NOT NULL THEN ', "minimum_rate":' || TO_CHAR(region_rec.minimum_rate) ELSE '' END || '}' || ', "occupancy":' || CASE WHEN cond_rec.occ_attr IS NOT NULL THEN '{"attr":"' || REPLACE(cond_rec.occ_attr,'#','') || '", "actual":' || NVL(TO_CHAR(l_actual_occ_val),'null') || ', "operator":"' || cond_rec.occ_op || '", "threshold":' || TO_CHAR(cond_rec.occ_val) || ', "failed":' || CASE WHEN l_occ_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "property_ranking":' || CASE WHEN cond_rec.pr_type IS NOT NULL THEN '{"attr":"' || NVL(l_pr_attr_id,'') || '", "actual":' || NVL(TO_CHAR(l_actual_pr_val),'null') || ', "operator":"' || cond_rec.pr_op || '", "threshold":' || TO_CHAR(cond_rec.pr_val) || ', "failed":' || CASE WHEN l_pr_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "event_score":' || CASE WHEN cond_rec.es_val IS NOT NULL THEN '{"actual":' || NVL(TO_CHAR(l_actual_event_score),'null') || ', "operator":"' || cond_rec.es_op || '", "threshold":' || TO_CHAR(cond_rec.es_val) || ', "failed":' || CASE WHEN l_ev_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"') || '", "expression_values":' || l_attr_json || ', "evaluated_outcome":' || NVL(TO_CHAR(l_expr_outcome),'null') || ', "result":null' || ', "note":"condition_not_met"' || '}';
                     IF l_failure_details_json IS NULL THEN l_failure_details_json := '[' || l_failed_cond_json; ELSE l_failure_details_json := l_failure_details_json || ',' || l_failed_cond_json; END IF;
                   END IF;
