@@ -442,7 +442,7 @@ FUNCTION EVALUATE(
                         || ', "result":"' || REPLACE(l_text_result,'"','\"') || '"'
                         || '}';
 
-                      PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), NULL, l_applied_rule_json));
+                      PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), l_text_result, l_applied_rule_json));
                       log_debug('... PIPED ROW (free text) for date ' || TO_CHAR(v_stay_date, 'YYYY-MM-DD')); -- (new log line)
 
                     ELSE
@@ -472,7 +472,7 @@ FUNCTION EVALUATE(
 
                       l_applied_rule_json := l_applied_rule_json || ', "result_type":"numeric", "result":' || TO_CHAR(l_eval_result) || '}';
 
-                      PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), l_eval_result, l_applied_rule_json));
+                      PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), TO_CHAR(l_eval_result), l_applied_rule_json));
                       log_debug('... PIPED ROW (numeric) for date ' || TO_CHAR(v_stay_date, 'YYYY-MM-DD')); -- (new log line)
                     END IF;
 
