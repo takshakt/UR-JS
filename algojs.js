@@ -56,6 +56,15 @@ function load_data_expression() {
         {
             success: function(data) {
                 console.log(data);
+
+                // Check if server returned an error response
+                if (data.success === false) {
+                    console.error('Server error:', data.message);
+                    apex.message.alert(data.message || "Failed to load configuration.");
+                    loadFromJSON(null);
+                    return;
+                }
+
                 // const savedJsonString = data && data[0] ? data[0].l_payload : null;
                 const savedJsonString = data && data.data && data.data[0] ? data.data[0].l_payload : null;
                 let savedData = null;
