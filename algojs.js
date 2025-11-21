@@ -61,6 +61,15 @@ function load_data_expression() {
                 if (data.success === false) {
                     console.error('Server error:', data.message);
                     apex.message.alert(data.message || "Failed to load configuration.");
+
+                    // Reset dynamicData to prevent state pollution from failed loads
+                    dynamicData = {
+                        attributes: [],
+                        propertyTypes: [],
+                        occupancyAttributes: [],
+                        leadTimeAttributes: []
+                    };
+
                     loadFromJSON(null);
                     return;
                 }
