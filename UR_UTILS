@@ -201,6 +201,29 @@ BEGIN
       -- ALL OTHER FIELDS ARE AUTOMATICALLY PRESERVED
       -- (data_type, mapping_type, value, qualifier, selector, format_mask, is_json, etc.)
 
+      -- Ensure mapping_type is always set (safe inline version)
+DECLARE
+  l_elem JSON_ELEMENT_T;
+  l_map  VARCHAR2(4000);
+BEGIN
+  IF NOT l_obj.has('mapping_type') THEN
+    l_map := NULL;
+  ELSE
+    l_elem := l_obj.get('mapping_type'); -- may be NULL if key present but value missing
+    IF l_elem IS NULL OR l_elem.is_null THEN
+      l_map := NULL;
+    ELSE
+      l_map := l_obj.get_string('mapping_type');
+    END IF;
+  END IF;
+
+  IF l_map IS NULL OR TRIM(l_map) = '' THEN
+    l_obj.put('mapping_type', 'Maps To');
+  END IF;
+END;
+
+
+
     END LOOP;
 
     -- Convert modified array back to CLOB
@@ -854,7 +877,8 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
                 c002,
                 c003,
                 c004,
-                c005
+                c005,
+                c006
             FROM
                 apex_collections
             WHERE
@@ -868,6 +892,7 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
             apex_json.write('qualifier', rec.c003);
             apex_json.write('value', rec.c004);
             apex_json.write('mapping_type', rec.c005);
+            apex_json.write('original_name', rec.c006);
             apex_json.close_object;
         END LOOP;
 
@@ -1226,7 +1251,7 @@ END ' || v_trigger_name || ';
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
              p_status  := TRUE;
-            --p_status  := FALSE;
+          --  p_status  := FALSE;
            -- p_message := 'Failure: Could not find a required qualifier (STAY_DATE, OWN_PROPERTY) in template key ''' || p_template_key || '''.'; commented on 7/11
           
             ROLLBACK;
