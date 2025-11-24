@@ -10,16 +10,32 @@ let dynamicData = {
     occupancyAttributes: []
 };
 
+let attributeMetadata = {
+    templates: [],
+    qualifiers: [],
+    parsed: []
+};
+
 let regionCounter = 0;
 let conditionCounter = 0;
 let lovRequestCounter = 0;
 let autocompleteContainer = null;
 let activeAutocompleteIndex = -1;
 
+let attributeModal = null;
+let modalFilterState = {
+    selectedTemplates: [],
+    selectedQualifiers: [],
+    searchText: ''
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     autocompleteContainer = document.createElement('div');
     autocompleteContainer.id = 'expression-autocomplete';
     document.body.appendChild(autocompleteContainer);
+
+    // Create attribute selection modal
+    createAttributeModal();
 
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.expression-textarea')) {
@@ -121,6 +137,12 @@ function fetchAndApplyLovData(hotelId) {
                         return reject(parsedData.error);
                     }
                     dynamicData = parsedData;
+
+                    // Parse attribute metadata for templates and qualifiers
+                    if (dynamicData.attributes && dynamicData.attributes.length > 0) {
+                        attributeMetadata = parseAttributeMetadata(dynamicData.attributes);
+                    }
+
                     updateAllDropdowns();
                     resolve();
                 } catch (e) {
@@ -183,9 +205,8 @@ function updateAllDropdowns() {
         }
     };
 
-    document.querySelectorAll('.attribute-select').forEach(el => {
-        populateSelect(el, dynamicData.attributes, 'Select Attribute');
-    });
+    // Note: .attribute-select dropdowns are intentionally left empty
+    // They trigger the modal dialog instead of showing options directly
 
     document.querySelectorAll('.property-type-select').forEach(el => {
         populateSelect(el, dynamicData.propertyTypes, 'Select Type');
@@ -198,6 +219,395 @@ function updateAllDropdowns() {
     document.querySelectorAll('.lead-time-attribute-select').forEach(el => {
         populateSelect(el, dynamicData.leadTimeAttributes, 'Select Attribute');
     });
+}
+
+/**
+ * Parses attribute names to extract Templates and Qualifiers.
+ * Expected format: "Attribute Name (Template||Qualifier)"
+ * @param {Array} attributes - Array of attribute objects with {id, name}
+ * @returns {Object} Object with templates, qualifiers, and parsed attributes
+ */
+function parseAttributeMetadata(attributes) {
+    const templates = new Set();
+    const qualifiers = new Set();
+    const parsed = [];
+
+    // Regex to match: "Attribute Name (Template||Qualifier)"
+    const regex = /^(.+?)\s*\((.+?)\|\|(.+?)\)$/;
+
+    attributes.forEach(attr => {
+        const match = attr.name.match(regex);
+        if (match) {
+            const [, attributeName, template, qualifier] = match;
+            templates.add(template.trim());
+            qualifiers.add(qualifier.trim());
+            parsed.push({
+                ...attr,
+                attributeName: attributeName.trim(),
+                template: template.trim(),
+                qualifier: qualifier.trim()
+            });
+        } else {
+            // If format doesn't match, add to "Uncategorized"
+            parsed.push({
+                ...attr,
+                attributeName: attr.name,
+                template: 'Uncategorized',
+                qualifier: 'Uncategorized'
+            });
+            templates.add('Uncategorized');
+            qualifiers.add('Uncategorized');
+        }
+    });
+
+    return {
+        templates: Array.from(templates).sort(),
+        qualifiers: Array.from(qualifiers).sort(),
+        parsed: parsed
+    };
+}
+
+/**
+ * Filters attributes based on search text, selected templates, and selected qualifiers.
+ * @param {string} searchText - Case-insensitive search text
+ * @param {Array} selectedTemplates - Array of selected template names (empty = all)
+ * @param {Array} selectedQualifiers - Array of selected qualifier names (empty = all)
+ * @returns {Object} Object with filtered attributes and total count
+ */
+function filterAttributes(searchText, selectedTemplates, selectedQualifiers) {
+    const search = searchText.toLowerCase().trim();
+    let filtered = attributeMetadata.parsed;
+
+    // Apply template filter
+    if (selectedTemplates.length > 0) {
+        filtered = filtered.filter(attr => selectedTemplates.includes(attr.template));
+    }
+
+    // Apply qualifier filter
+    if (selectedQualifiers.length > 0) {
+        filtered = filtered.filter(attr => selectedQualifiers.includes(attr.qualifier));
+    }
+
+    // Apply search text filter
+    if (search) {
+        filtered = filtered.filter(attr => attr.name.toLowerCase().includes(search));
+    }
+
+    // Sort alphabetically by name
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
+
+    return {
+        attributes: filtered.slice(0, 20), // Return first 20
+        totalCount: filtered.length
+    };
+}
+
+/**
+ * Creates the attribute selection modal dialog.
+ * This modal appears when clicking the attribute dropdown.
+ */
+function createAttributeModal() {
+    // Create modal overlay
+    const modalOverlay = document.createElement('div');
+    modalOverlay.id = 'attribute-modal-overlay';
+    modalOverlay.className = 'modal-overlay';
+
+    // Create modal content
+    const modalContent = document.createElement('div');
+    modalContent.className = 'modal-content';
+
+    // Create modal header
+    const modalHeader = document.createElement('div');
+    modalHeader.className = 'modal-header';
+    modalHeader.innerHTML = `
+        <h3>Select Attribute</h3>
+        <button type="button" class="modal-close-btn">&times;</button>
+    `;
+
+    // Create modal body (will contain the searchable component)
+    const modalBody = document.createElement('div');
+    modalBody.className = 'modal-body';
+    modalBody.id = 'attribute-modal-body';
+
+    // Assemble modal
+    modalContent.appendChild(modalHeader);
+    modalContent.appendChild(modalBody);
+    modalOverlay.appendChild(modalContent);
+    document.body.appendChild(modalOverlay);
+
+    // Store reference
+    attributeModal = {
+        overlay: modalOverlay,
+        body: modalBody,
+        onSelectCallback: null
+    };
+
+    // Close button handler
+    modalHeader.querySelector('.modal-close-btn').addEventListener('click', closeAttributeModal);
+
+    // Close on overlay click
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            closeAttributeModal();
+        }
+    });
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modalOverlay.style.display === 'flex') {
+            closeAttributeModal();
+        }
+    });
+}
+
+/**
+ * Opens the attribute selection modal with searchable interface.
+ * @param {Function} onSelect - Callback function when an attribute is selected
+ */
+function openAttributeModal(onSelect) {
+    if (!attributeModal || attributeMetadata.parsed.length === 0) return;
+
+    // Store the callback
+    attributeModal.onSelectCallback = onSelect;
+
+    // Clear and rebuild the modal body with searchable component
+    attributeModal.body.innerHTML = '';
+    buildModalSearchableComponent(attributeModal.body, (id, name) => {
+        // Call the callback
+        if (attributeModal.onSelectCallback) {
+            attributeModal.onSelectCallback(id, name);
+        }
+        // Close modal
+        closeAttributeModal();
+    });
+
+    // Show modal
+    attributeModal.overlay.style.display = 'flex';
+
+    // Focus search input
+    setTimeout(() => {
+        const searchInput = attributeModal.body.querySelector('.attribute-search-input');
+        if (searchInput) searchInput.focus();
+    }, 100);
+}
+
+/**
+ * Closes the attribute selection modal and saves filter state.
+ */
+function closeAttributeModal() {
+    if (attributeModal) {
+        // Save current filter state before closing (will be captured by the component)
+        attributeModal.overlay.style.display = 'none';
+        attributeModal.onSelectCallback = null;
+    }
+}
+
+/**
+ * Builds the searchable attribute component inside the modal.
+ * @param {HTMLElement} container - The container element to insert the component into
+ * @param {Function} onSelect - Callback function when an attribute is selected
+ */
+function buildModalSearchableComponent(container, onSelect) {
+    // Restore filter state from session
+    let selectedTemplates = [...modalFilterState.selectedTemplates];
+    let selectedQualifiers = [...modalFilterState.selectedQualifiers];
+    let searchText = modalFilterState.searchText;
+    let searchTimeout = null;
+
+    // Function to save state to session
+    const saveFilterState = () => {
+        modalFilterState.selectedTemplates = [...selectedTemplates];
+        modalFilterState.selectedQualifiers = [...selectedQualifiers];
+        modalFilterState.searchText = searchText;
+    };
+
+    // Create the main wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className = 'searchable-attribute-container';
+
+    // Create search input
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.className = 'attribute-search-input';
+    searchInput.placeholder = 'Search attributes...';
+    searchInput.value = searchText; // Restore saved search text
+
+    // Create filter chips container
+    const filtersContainer = document.createElement('div');
+    filtersContainer.className = 'attribute-filters';
+
+    // Create results container
+    const resultsContainer = document.createElement('div');
+    resultsContainer.className = 'attribute-results';
+
+    // Create results count label
+    const resultsCount = document.createElement('div');
+    resultsCount.className = 'results-count';
+
+    // Assemble the component
+    wrapper.appendChild(searchInput);
+    wrapper.appendChild(filtersContainer);
+    wrapper.appendChild(resultsCount);
+    wrapper.appendChild(resultsContainer);
+    container.appendChild(wrapper);
+
+    // Function to create filter chips
+    function createFilterChips() {
+        filtersContainer.innerHTML = '';
+
+        // Only show filters if there's more than one option
+        const showTemplateFilters = attributeMetadata.templates.length > 1;
+        const showQualifierFilters = attributeMetadata.qualifiers.length > 1;
+
+        if (showTemplateFilters) {
+            const templateRow = document.createElement('div');
+            templateRow.className = 'filter-row';
+            templateRow.innerHTML = '<span class="filter-label">Templates:</span>';
+
+            attributeMetadata.templates.forEach(template => {
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'filter-chip';
+                chip.textContent = template;
+                chip.dataset.template = template;
+
+                if (selectedTemplates.includes(template)) {
+                    chip.classList.add('active');
+                }
+
+                chip.addEventListener('click', () => {
+                    if (selectedTemplates.includes(template)) {
+                        selectedTemplates = selectedTemplates.filter(t => t !== template);
+                        chip.classList.remove('active');
+                    } else {
+                        selectedTemplates.push(template);
+                        chip.classList.add('active');
+                    }
+                    saveFilterState(); // Save to session
+                    updateResults();
+                });
+
+                templateRow.appendChild(chip);
+            });
+
+            filtersContainer.appendChild(templateRow);
+        }
+
+        if (showQualifierFilters) {
+            const qualifierRow = document.createElement('div');
+            qualifierRow.className = 'filter-row';
+            qualifierRow.innerHTML = '<span class="filter-label">Qualifiers:</span>';
+
+            attributeMetadata.qualifiers.forEach(qualifier => {
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'filter-chip';
+                chip.textContent = qualifier;
+                chip.dataset.qualifier = qualifier;
+
+                if (selectedQualifiers.includes(qualifier)) {
+                    chip.classList.add('active');
+                }
+
+                chip.addEventListener('click', () => {
+                    if (selectedQualifiers.includes(qualifier)) {
+                        selectedQualifiers = selectedQualifiers.filter(q => q !== qualifier);
+                        chip.classList.remove('active');
+                    } else {
+                        selectedQualifiers.push(qualifier);
+                        chip.classList.add('active');
+                    }
+                    saveFilterState(); // Save to session
+                    updateResults();
+                });
+
+                qualifierRow.appendChild(chip);
+            });
+
+            filtersContainer.appendChild(qualifierRow);
+        }
+    }
+
+    // Function to highlight search text in a string
+    function highlightText(text, search) {
+        if (!search || search.trim() === '') {
+            return text;
+        }
+
+        // Escape special regex characters in search text
+        const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escapedSearch})`, 'gi');
+
+        // Replace matched text with highlighted version
+        return text.replace(regex, '<mark class="search-highlight">$1</mark>');
+    }
+
+    // Function to update results
+    function updateResults() {
+        const { attributes, totalCount } = filterAttributes(searchText, selectedTemplates, selectedQualifiers);
+
+        resultsContainer.innerHTML = '';
+
+        if (attributes.length === 0) {
+            resultsContainer.innerHTML = '<div class="no-results">No attributes found</div>';
+            resultsCount.textContent = '';
+            return;
+        }
+
+        attributes.forEach(attr => {
+            const item = document.createElement('div');
+            item.className = 'attribute-result-item';
+
+            // Apply highlighting to the attribute name
+            const highlightedName = highlightText(attr.name, searchText);
+            item.innerHTML = highlightedName;
+
+            item.title = attr.name; // Tooltip for long names
+            item.dataset.id = attr.id;
+            item.dataset.name = attr.name;
+
+            item.addEventListener('click', () => {
+                if (onSelect) {
+                    onSelect(attr.id, attr.name);
+                }
+            });
+
+            resultsContainer.appendChild(item);
+        });
+
+        // Update count
+        resultsCount.textContent = `Showing ${attributes.length} of ${totalCount} attributes`;
+    }
+
+    // Search input handler with debounce
+    searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            searchText = e.target.value;
+            saveFilterState(); // Save to session
+            updateResults();
+        }, 300);
+    });
+
+    // Initialize
+    createFilterChips();
+    updateResults();
+
+    // Return API for external control
+    return {
+        refresh: () => {
+            createFilterChips();
+            updateResults();
+        },
+        reset: () => {
+            searchText = '';
+            selectedTemplates = [];
+            selectedQualifiers = [];
+            searchInput.value = '';
+            createFilterChips();
+            updateResults();
+        }
+    };
 }
 
 // --- AUTOCOMPLETE HELPER FUNCTIONS ---
@@ -402,7 +812,7 @@ function addCondition(regionId) {
             <div class="condition-expression" style="flex: 2; border-left: 1px solid #444; padding-left: 20px;">
                 <div class="section calculation-section" style="padding: 0; border: none; background: none;">
                     <div class="section-title"><span>Expression</span></div>
-                    <div class="filter-row"><div class="filter-group"><select class="attribute-select"><option value="">Select Attribute</option>${(dynamicData.attributes || []).map(attr => `<option value="${attr.id}">${attr.name}</option>`).join('')}</select><select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select></div></div>
+                    <div class="filter-row"><div class="filter-group"><select class="attribute-select"><option value="">Select Attribute</option></select><select class="operator-select expression-operator"><option value="">Select Operator</option>${staticData.expressionOperators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><select class="function-select"><option value="">Select Function</option>${staticData.functions.map(func => `<option value="${func}">${func}</option>`).join('')}</select></div></div>
                     <div class="expression-container"><textarea class="expression-textarea" placeholder="Type # for attributes, = for functions, or ~ for plain text..."></textarea><div class="textarea-controls"><div class="btn btn-small" data-action="clear">Clear</div><div class="btn btn-small btn-secondary" data-action="validate-expression">Validate</div></div></div>
                 </div>
             </div>
@@ -444,7 +854,6 @@ function setupConditionEventListeners(conditionElement) {
     const calculationSection = conditionElement.querySelector('.calculation-section');
     if (!calculationSection) return;
     const expressionTextarea = calculationSection.querySelector('.expression-textarea');
-    const attributeSelect = calculationSection.querySelector('.attribute-select');
     const operatorSelect = calculationSection.querySelector('.expression-operator');
     const functionSelect = calculationSection.querySelector('.function-select');
     
@@ -505,22 +914,31 @@ function setupConditionEventListeners(conditionElement) {
         }
     });
 
+    // Attribute selection handler - opens modal dialog
+    const attributeSelect = calculationSection.querySelector('.attribute-select');
+    if (attributeSelect) {
+        // Use mousedown to intercept BEFORE browser shows native dropdown
+        attributeSelect.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // Prevent native dropdown from opening
+            e.stopPropagation();
 
-    attributeSelect.addEventListener('change', (e) => {
-        if (e.target.value) {
-            // --- THIS IS THE FIX ---
-            // 1. Get the selected <option> element
-            const selectedOption = e.target.options[e.target.selectedIndex];
-            // 2. Get its visible text
-            const attributeName = selectedOption.text;
-            
-            // 3. Insert the name, not the value (ID)
-            insertAtCursor(expressionTextarea, `#${attributeName}# `);
-            // -------------------------
-            
-            e.target.value = ''; // Reset the dropdown
-        }
-    });
+            openAttributeModal((_id, name) => {
+                // Insert attribute into expression textarea
+                insertAtCursor(expressionTextarea, `#${name}# `);
+            });
+        });
+
+        // Also handle click for keyboard navigation (Enter/Space on focused select)
+        attributeSelect.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        // Prevent focus from showing dropdown
+        attributeSelect.addEventListener('focus', (e) => {
+            e.target.blur();
+        });
+    }
 
     operatorSelect.addEventListener('change', (e) => {
         if (e.target.value) {
