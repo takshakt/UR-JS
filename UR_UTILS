@@ -2468,48 +2468,14 @@ END ' || v_trigger_name || ';
               END;
             END LOOP;
           END IF;
+        END IF;
 
-          -- Process any OTHER qualifiers in an RST template using the original logic
-          FOR rec IN (
-            SELECT jt.name, jt.data_type, jt.qualifier
-            FROM JSON_TABLE(
-              v_definition, '$[*]' COLUMNS (
-                name      VARCHAR2(100) PATH '$.name',
-                data_type VARCHAR2(30)  PATH '$.data_type',
-                qualifier VARCHAR2(30)  PATH '$.qualifier'
-              )
-            ) jt
-            WHERE jt.qualifier IS NOT NULL
-              AND UPPER(jt.qualifier) NOT IN ('UNIQUE', 'OWN_PROPERTY', 'COMP_PROPERTY')
-          )
-          LOOP
-            DECLARE
-              l_col_name VARCHAR2(150) := UPPER(REGEXP_REPLACE(TRIM(rec.name), '_+$', ''));
-              v_key      VARCHAR2(150) := v_db_object_name || '.' || l_col_name;
-              v_exists   NUMBER;
-            BEGIN
-              SELECT COUNT(*) INTO v_exists FROM ur_algo_attributes WHERE key = v_key;
-              IF v_exists = 0 THEN
-                INSERT INTO ur_algo_attributes (
-                  id, algo_id, hotel_id, name, key, data_type, description, type, value, template_id, attribute_qualifier,
-                  created_by, updated_by, created_on, updated_on
-                ) VALUES (
-                  SYS_GUID(), NULL, v_hotel_id, l_col_name, v_key, NVL(UPPER(rec.data_type), 'NUMBER'),
-                  NULL, 'S', 
-                  '#' || v_key || '#', -- Value wrapped in #
-                  v_template_id, rec.qualifier,
-                  v_user_id, v_user_id, SYSDATE, SYSDATE
-                );
-                v_insert_count := v_insert_count + 1;
-              END IF;
-            END;
-          END LOOP;
-
-        ELSE
-          -- ====================================================================================
-          -- START: ORIGINAL LOGIC FOR NON-RST TEMPLATES
-          -- ====================================================================================
-          FOR rec IN (
+        -- ====================================================================================
+        -- STANDARD ATTRIBUTE CREATION FOR ALL TEMPLATES (RST AND NON-RST)
+        -- ====================================================================================
+        -- For RST: Creates standard attributes for all qualifiers including OWN_PROPERTY and COMP_PROPERTY
+        -- For Non-RST: Creates standard attributes for all qualifiers
+        FOR rec IN (
             SELECT jt.name, jt.data_type, jt.qualifier
             FROM JSON_TABLE(
               v_definition, '$[*]' COLUMNS (
@@ -2543,7 +2509,6 @@ END ' || v_trigger_name || ';
               END IF;
             END;
           END LOOP;
-        END IF;
 
         COMMIT;
         p_status := TRUE;
