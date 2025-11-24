@@ -105,7 +105,7 @@ function load_data_expression() {
             },
             error: function(jqXHR, textStatus, errorThrown) {
                 console.log(errorThrown);
-                console.error('AJAX Error loading algorithm:', errorThrown);
+                console.error('AJAX Error loading strategy:', errorThrown);
                 apex.message.alert("An error occurred while fetching the configuration.");
             }
         }
@@ -1585,11 +1585,11 @@ function saveAllRegions() {
         if (algoListValue === '00' || !algoListValue) {
             mode = 'I';
             if (!algoName) {
-                alert('Please provide a name for the new algorithm.');
+                alert('Please provide a name for the new strategy.');
                 return;
             }
             if (!hotelId) { // Safety check for hotel ID
-                alert('A valid hotel must be selected to create a new algorithm.');
+                alert('A valid hotel must be selected to create a new strategy.');
                 return;
             }
             ajaxPayload = { 
