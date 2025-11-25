@@ -1605,23 +1605,26 @@ function create_report(sqldata) {
                   ,x05: JSON.stringify(jsondata_main)
                   },
                 {
-                    success: function(data) { 
+                    success: function(data) {
                             showSuccessMessage(`View ${ data[0].l_message } saved successfully`);
                             console.log('data:>>>>',data);
                             //showSuccessMessage(`Column header updated to: ${newHeader}`);
-                           
+
+                            // Save expressions/configuration after report is created
+                            saveAllDataToJSON();
+
                             call_dashboard_data(data[0].l_report_id);
                            // handleHotelSelection();
                         //    const reportLov = document.getElementById('report-lov');
- 
+
                         //     const newOption = document.createElement('option');
- 
+
                         //     newOption.value = data[0].l_report_id;
                         //     newOption.text = document.getElementById('New-Report').value; // Use pure JS to get value
                         //     newOption.title = mainValues.join(",");
- 
+
                         //     reportLov.appendChild(newOption);
-                        
+
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
                         console.error('AJAX Error::>>>'+ errorThrown );
@@ -1792,7 +1795,7 @@ function generateJson() {
 }
 
          function loadTempColDetails() {
-          
+
                 apex.server.process(
                     "AJX_GET_TEMP_COL_DETAILS", // Ajax Callback name
                         { x01: hotelLov.options[hotelLov.selectedIndex].text },    // pass hotel name
@@ -1800,17 +1803,16 @@ function generateJson() {
                         dataType: "json",
                         success: function(data) {
                             console.log("AJX_GET_TEMP_COL_DETAILS JSON:", data);
-                            
+
                             const enrichedJSON = enrichTargetWithDataType(data, jsondata_main);
                             jsondata_main = enrichedJSON;
                             console.log('enrichTargetWithDataType-------------===============>>>>>>>>>',enrichedJSON);
                             jsondata_main =  addTextDataType(jsondata_main);
                             const sql = buildSQLFromJSON(enrichedJSON);
                             console.log('sql:>>>>',sql);
-          
+
+                            // create_report() is async - saveAllDataToJSON is now called inside its success callback
                             create_report(sql);
-                            saveAllDataToJSON();
-                            handleSave(); 
                         },
                         error: function(xhr, status, error) {
                             console.error("Error fetching hotel templates:", error);
