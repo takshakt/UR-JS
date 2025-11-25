@@ -2543,9 +2543,10 @@ END ' || v_trigger_name || ';
                        || ' deleted for template_key ' || p_template_key;
         END IF;
 
-      ELSIF p_mode = 'U' THEN
+       ELSIF p_mode = 'U' THEN
         p_status := TRUE;
         p_message := 'Update Implemented successfully';
+ 
 
       ELSE
         p_status := FALSE;
