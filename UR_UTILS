@@ -592,9 +592,43 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
         IF l_attribute_rec.TEMPLATE_ID IS NOT NULL THEN
             -- **[1] Original Logic: Use Template ID if it exists**
             append_debug('Template ID found. Looking up STAY_DATE column from template definition.');
+            -- Check if OWN_PROPERTY/COMP_PROPERTY with a VIEW object - only then use hardcoded STAY_DATE
             IF l_attribute_rec.ATTRIBUTE_QUALIFIER IN ('OWN_PROPERTY', 'COMP_PROPERTY') THEN
-                l_stay_date_column := 'STAY_DATE';
-            ELSE
+                DECLARE
+                    l_db_object_name  VARCHAR2(128);
+                    l_object_type     VARCHAR2(30);
+                BEGIN
+                    -- Extract DB object name from formula (e.g., #UR_TMPLT_XXX.COLUMN# -> UR_TMPLT_XXX)
+                    l_db_object_name := REGEXP_SUBSTR(l_formula, '#([^#.]+)\.', 1, 1, NULL, 1);
+                    append_debug('Extracted DB object name from formula: ' || l_db_object_name);
+
+                    -- Check the object type (VIEW or TABLE)
+                    BEGIN
+                        SELECT object_type
+                        INTO   l_object_type
+                        FROM   USER_OBJECTS
+                        WHERE  object_name = UPPER(l_db_object_name)
+                          AND  object_type IN ('TABLE', 'VIEW')
+                        FETCH FIRST 1 ROWS ONLY;
+                    EXCEPTION
+                        WHEN NO_DATA_FOUND THEN
+                            l_object_type := NULL;
+                            append_debug('DB object not found in USER_OBJECTS: ' || l_db_object_name);
+                    END;
+
+                    append_debug('DB object type: ' || NVL(l_object_type, 'UNKNOWN'));
+
+                    IF l_object_type = 'VIEW' THEN
+                        -- VIEW: Use hardcoded STAY_DATE
+                        l_stay_date_column := 'STAY_DATE';
+                        append_debug('Object is a VIEW. Using default STAY_DATE column.');
+                    END IF;
+                END;
+            END IF;
+
+            -- For non-VIEW cases (TABLE or other qualifiers), look up from template definition
+            IF l_stay_date_column IS NULL THEN
+                append_debug('Looking up STAY_DATE column from template definition.');
                 BEGIN
                     SELECT * INTO l_template_rec FROM UR_TEMPLATES WHERE ID = l_attribute_rec.TEMPLATE_ID;
                     SELECT jt.name
