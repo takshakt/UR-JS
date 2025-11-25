@@ -28,6 +28,21 @@ BEGIN
     APEX_JSON.CLOSE_OBJECT;
   END LOOP;
 
+  -- Add Hotel_Occupancy metadata entry
+  FOR rec_hotel IN (
+    SELECT UH.ID AS hotel_id, UH.HOTEL_NAME
+      FROM UR_HOTELS UH
+     WHERE UPPER(UH.HOTEL_NAME) = UPPER(apex_application.g_x01)
+  ) LOOP
+    APEX_JSON.OPEN_OBJECT;
+    APEX_JSON.WRITE('id', rec_hotel.hotel_id);
+    APEX_JSON.WRITE('hotel_id', rec_hotel.hotel_id);
+    APEX_JSON.WRITE('db_object_name', 'UR_HOTELS');
+    APEX_JSON.WRITE('temp_name', 'Hotel_Occupancy');
+    APEX_JSON.WRITE('hotel_name', rec_hotel.hotel_name);
+    APEX_JSON.CLOSE_OBJECT;
+  END LOOP;
+
   -- End JSON array
   APEX_JSON.CLOSE_ARRAY;
 

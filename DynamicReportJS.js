@@ -1400,7 +1400,7 @@ function buildSQLFromJSON(data) {
 var qualifr_coval ;
   // Group normal columns by table
   data.selectedColumns.forEach(col => {
-    if (col.temp_name !== "Strategy_Column" && col.temp_name !== "Price_Override" ) {
+    if (col.temp_name !== "Strategy_Column" && col.temp_name !== "Price_Override" && col.temp_name !== "Hotel_Occupancy") {
       if (!colsByTable[col.db_object_name]) {
         colsByTable[col.db_object_name] = [];
         hotelIds[col.db_object_name] = col.hotel_id;
@@ -1417,6 +1417,7 @@ var qualifr_coval ;
   // Collect ALL strategy columns
   const strategyCols = data.selectedColumns.filter(c => c.temp_name === "Strategy_Column");
   const price_or_cols = data.selectedColumns.filter(c => c.temp_name === "Price_Override");
+  const hotelOccupancyCols = data.selectedColumns.filter(c => c.temp_name === "Hotel_Occupancy");
   const hotelId = data.selectedColumns.find(c => c.hotel_id)?.hotel_id || '';
 
   const tables = Object.keys(colsByTable);
@@ -1471,13 +1472,24 @@ var qualifr_coval ;
     const alias = `por${i + 1}_rn`;
     ctes.push(`${alias} AS (
  select STAY_DATE as pk_col, PRICE,hotel_id,
- ROW_NUMBER() OVER (PARTITION BY id ORDER BY STAY_DATE) rn 
+ ROW_NUMBER() OVER (PARTITION BY id ORDER BY STAY_DATE) rn
  from UR_HOTEL_PRICE_OVERRIDE
-  where hotel_id = '${hotelId}' 
+  where hotel_id = '${hotelId}'
   and status = 'A'
   and upper(type) = upper('${sc.col_name}')
   )`);
-  }); 
+  });
+
+  // Build CTE for Hotel_Occupancy (single hotel-level value)
+  hotelOccupancyCols.forEach((hc, i) => {
+    const alias = `occ${i + 1}_rn`;
+    ctes.push(`${alias} AS (
+  SELECT ID as hotel_id, OCCUPANCY,
+         1 as rn
+  FROM UR_HOTELS
+  WHERE ID = '${hotelId}'
+)`);
+  });
 
   // Build SELECT list
   const selectCols = [];
@@ -1509,10 +1521,16 @@ var qualifr_coval ;
     selectCols.push(`${alias}.PRICE AS "${sc.col_name} - Price_Override"`);
   });
 
+  // Add Hotel_Occupancy columns (single value per hotel)
+  hotelOccupancyCols.forEach((hc, i) => {
+    const alias = `occ${i + 1}_rn`;
+    selectCols.push(`${alias}.OCCUPANCY AS "${hc.col_name} - Hotel_Occupancy"`);
+  });
+
   // Build final FROM + JOIN logic
 //  const allAliases = [...aliases, ...strategyCols.map((_, i) => `s${i + 1}_rn`)];
 
-   const allAliases = [...aliases, ...strategyCols.map((_, i) => `s${i + 1}_rn`), ...price_or_cols.map((_, i) => `por${i + 1}_rn`)];
+   const allAliases = [...aliases, ...strategyCols.map((_, i) => `s${i + 1}_rn`), ...price_or_cols.map((_, i) => `por${i + 1}_rn`), ...hotelOccupancyCols.map((_, i) => `occ${i + 1}_rn`)];
 
 //   const joinClauses = allAliases.slice(1).map((alias, i) =>
 //     `FULL OUTER JOIN ${alias}
@@ -1521,8 +1539,15 @@ var qualifr_coval ;
 //   );
 
 const joinClauses = allAliases.slice(1).map((alias, i) => {
-  const joinType = alias.startsWith('s') ? ' LEFT ' : 'FULL OUTER';
-  
+  // Use LEFT JOIN for strategy columns and hotel occupancy (optional data)
+  const joinType = (alias.startsWith('s') || alias.startsWith('occ')) ? ' LEFT ' : 'FULL OUTER';
+
+  // Hotel_Occupancy has no pk_col (single value per hotel), join only on hotel_id
+  if (alias.startsWith('occ')) {
+    return `${joinType} JOIN ${alias}
+      ON ${allAliases[0]}.hotel_id = ${alias}.hotel_id`;
+  }
+
   return `${joinType} JOIN ${alias}
       ON ${allAliases[0]}.hotel_id = ${alias}.hotel_id
      AND ${allAliases[0]}.pk_col = ${alias}.pk_col`;
@@ -1620,10 +1645,21 @@ function generateJson() {
 
                         const match = hotelTemplates.find(t => t.temp_name === tempName);
 
+                        // Handle Hotel_Occupancy - single value from UR_HOTELS table
+                        if (tempName === 'Hotel_Occupancy') {
+                            return {
+                                col_name: item.dataset.value.split('(')[0].trim(),
+                                temp_name: 'Hotel_Occupancy',
+                                db_object_name: 'UR_HOTELS',
+                                alias_name: item.dataset.value.split('(')[0].trim(),
+                                hotel_id: hotelLov.options[hotelLov.selectedIndex].value,
+                            };
+                        }
+
                         return {
                             col_name: item.dataset.value.split('(')[0].trim(),
                             temp_name: tempName,
-                            db_object_name: match ? match.db_object_name : null,  
+                            db_object_name: match ? match.db_object_name : null,
                             alias_name: item.dataset.value.split('(')[0].trim(),
                             hotel_id: match ? match.hotel_id : null,
                         };
@@ -1826,6 +1862,12 @@ function generateJson() {
     JSONTarget.selectedColumns.forEach(colInfo => {
         const template = colInfo.temp_name;
         const colName = colInfo.col_name;
+
+        // Hotel_Occupancy is always NUMBER type (room capacity count)
+        if (template === 'Hotel_Occupancy') {
+            colInfo.data_type = 'NUMBER';
+            return;
+        }
 
         // Find the right data_type for this template/column combo
         const dataType =

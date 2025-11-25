@@ -74,14 +74,17 @@ BEGIN
 
     APEX_JSON.OPEN_ARRAY('Price_Override');
         FOR rec_algo IN (
-             
-                     select distinct REPLACE(TYPE, ' ', '_')  as Price_Override from UR_HOTEL_PRICE_OVERRIDE where HOTEL_ID =rec_hotel.id and status = 'A' 
+
+                     select distinct REPLACE(TYPE, ' ', '_')  as Price_Override from UR_HOTEL_PRICE_OVERRIDE where HOTEL_ID =rec_hotel.id and status = 'A'
         ) LOOP
             APEX_JSON.WRITE(rec_algo.Price_Override);
         END LOOP;
-        APEX_JSON.CLOSE_ARRAY; -- Strategies 
+        APEX_JSON.CLOSE_ARRAY; -- Price_Override
 
-
+        -- Hotel Occupancy (single value from UR_HOTELS)
+        APEX_JSON.OPEN_ARRAY('Hotel_Occupancy');
+        APEX_JSON.WRITE('OCCUPANCY');
+        APEX_JSON.CLOSE_ARRAY; -- Hotel_Occupancy
 
 
         APEX_JSON.CLOSE_OBJECT; -- templates 
