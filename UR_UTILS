@@ -10,6 +10,7 @@ FUNCTION sanitize_reserved_words(
 IS
   v_upper_name       VARCHAR2(128);
   v_is_reserved      VARCHAR2(5) := 'false';
+  v_is_sanitized     VARCHAR2(5) := 'false';
   v_sanitized_name   VARCHAR2(128);
   v_result_json      VARCHAR2(500);
 
@@ -74,13 +75,28 @@ IS
 BEGIN
   -- Convert to uppercase for comparison
   v_upper_name := UPPER(TRIM(p_column_name));
-  v_sanitized_name := v_upper_name;
+
+  -- Step 1: Replace one or more spaces with single underscore
+  v_sanitized_name := REGEXP_REPLACE(v_upper_name, ' +', '_');
+
+  -- Step 2: Remove special characters except allowed ones
+  -- Keep: A-Z, 0-9, _ - % . and common currency symbols ($, GBP, Euro, Yen)
+  v_sanitized_name := REGEXP_REPLACE(
+    v_sanitized_name,
+    '[^A-Z0-9_\-\%\.' || CHR(36) || CHR(163) || CHR(8364) || CHR(165) || ']',
+    ''
+  );
+
+  -- Check if name was sanitized (spaces replaced or special chars removed)
+  IF v_sanitized_name != v_upper_name THEN
+    v_is_sanitized := 'true';
+  END IF;
 
   -- Check against core reserved words
   FOR i IN 1..c_reserved_words.COUNT LOOP
-    IF v_upper_name = c_reserved_words(i) THEN
+    IF v_sanitized_name = c_reserved_words(i) THEN
       v_is_reserved := 'true';
-      v_sanitized_name := v_upper_name || '_' || UPPER(p_suffix);
+      v_sanitized_name := v_sanitized_name || '_' || UPPER(p_suffix);
       EXIT;
     END IF;
   END LOOP;
@@ -88,9 +104,9 @@ BEGIN
   -- If not found in reserved, check keywords
   IF v_is_reserved = 'false' THEN
     FOR i IN 1..c_keywords.COUNT LOOP
-      IF v_upper_name = c_keywords(i) THEN
+      IF v_sanitized_name = c_keywords(i) THEN
         v_is_reserved := 'true';
-        v_sanitized_name := v_upper_name || '_' || UPPER(p_suffix);
+        v_sanitized_name := v_sanitized_name || '_' || UPPER(p_suffix);
         EXIT;
       END IF;
     END LOOP;
@@ -99,6 +115,7 @@ BEGIN
   -- Build result JSON
   v_result_json := JSON_OBJECT(
     'is_reserved'     VALUE v_is_reserved,
+    'is_sanitized'    VALUE v_is_sanitized,
     'sanitized_name'  VALUE v_sanitized_name
   );
 
@@ -109,6 +126,7 @@ EXCEPTION
     -- Return error info in JSON
     RETURN JSON_OBJECT(
       'is_reserved'     VALUE 'false',
+      'is_sanitized'    VALUE 'false',
       'sanitized_name'  VALUE p_column_name,
       'error'           VALUE SQLERRM
     );
@@ -138,8 +156,10 @@ IS
   l_obj             JSON_OBJECT_T;
   v_column_count    NUMBER := 0;
   v_reserved_count  NUMBER := 0;
+  v_sanitized_count NUMBER := 0;
   v_check_result    VARCHAR2(500);
   v_is_reserved     VARCHAR2(10);
+  v_is_sanitized    VARCHAR2(10);
   v_sanitized_name  VARCHAR2(128);
   v_name            VARCHAR2(128);
   v_original_name   VARCHAR2(128);
@@ -186,16 +206,24 @@ BEGIN
         l_obj.put('original_name', v_original_name);
       END IF;
 
-      -- Check if reserved word
+      -- Check if reserved word or needs sanitization
       v_check_result := sanitize_reserved_words(v_name, p_suffix);
       v_is_reserved := JSON_VALUE(v_check_result, '$.is_reserved');
+      v_is_sanitized := JSON_VALUE(v_check_result, '$.is_sanitized');
+      v_sanitized_name := JSON_VALUE(v_check_result, '$.sanitized_name');
 
-      IF v_is_reserved = 'true' THEN
-        v_sanitized_name := JSON_VALUE(v_check_result, '$.sanitized_name');
-        v_reserved_count := v_reserved_count + 1;
-
+      -- Update name if it was sanitized (special chars) or is a reserved word
+      IF v_is_sanitized = 'true' OR v_is_reserved = 'true' THEN
         -- Modify the name field IN-PLACE
         l_obj.put('name', v_sanitized_name);
+
+        -- Track counts separately for clear messaging
+        IF v_is_reserved = 'true' THEN
+          v_reserved_count := v_reserved_count + 1;
+        END IF;
+        IF v_is_sanitized = 'true' THEN
+          v_sanitized_count := v_sanitized_count + 1;
+        END IF;
       END IF;
 
       -- ALL OTHER FIELDS ARE AUTOMATICALLY PRESERVED
@@ -231,7 +259,8 @@ END;
 
     -- Set success message
     p_message := 'Processed ' || v_column_count || ' columns. ' ||
-                 'Sanitized ' || v_reserved_count || ' reserved words.';
+                 'Sanitized ' || v_sanitized_count || ' column names (spaces/special chars). ' ||
+                 'Renamed ' || v_reserved_count || ' reserved words.';
 
   EXCEPTION
     WHEN OTHERS THEN
