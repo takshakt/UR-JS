@@ -1046,6 +1046,9 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
             -- Sanitize and normalize column name
             l_col_name := UPPER(TRIM(BOTH '_' FROM rec.name));
             l_col_name := REGEXP_REPLACE(l_col_name, '_{2,}', '_');
+            -- l_col_name := REGEXP_REPLACE(l_col_name, '[^A-Za-z0-9]', '_');  -- ADDED THIS LINE ON 26/11
+
+            INSERT INTO DEBUG_LOG (MESSAGE) VALUES (l_col_name);
             v_col_defs := v_col_defs || ', ';
 
             -- Map data types
