@@ -1,0 +1,3252 @@
+---
+# ====== Page: Template Update Interface_TEST ================
+id: 33
+identification: 
+  name: Template Update Interface_TEST
+  alias: TEMPLATE-UPDATE-INTERFACE-TEST
+  title: Template Update Interface_TEST
+
+appearance: 
+  page-mode: Normal
+  page-template: Theme Default
+  template-options: 
+  - '#DEFAULT#'
+
+navigation-menu: 
+  override-user-interface-level: false
+
+navigation: 
+  cursor-focus: Do not focus cursor
+  warn-on-unsaved-changes: false
+
+security: 
+  authentication: Page Requires Authentication
+  deep-linking: Application Default
+  page-access-protection: Arguments Must Have Checksum
+  form-auto-complete: Off
+  browser-cache: Application Default
+
+session-management: 
+  rejoin-sessions: Application Default
+
+advanced: 
+  enable-duplicate-page-submissions: Yes - Enable page to be re-posted
+  reload-on-submit: Only for Success
+
+server-cache: 
+  caching: Disabled
+
+regions: 
+- # ====== Region: Template Definition =========================
+  id: 41673219759226755
+  identification: 
+    name: Template Definition
+    type: Interactive Grid
+
+  source: 
+    location: Local Database
+    type: SQL Query
+    sql-query: |
+      SELECT seq_id,
+             c001 AS name,
+             c002 AS data_type,
+             c003 AS qualifier,
+             c004 AS value,
+             c005 AS mapping_type 
+        FROM apex_collections
+       WHERE collection_name = 'TEMPLATE_DATA'
+       and :P33_TEMPLATE_LIST is not null
+      
+    page-items-to-submit: 
+    - P33_TEMPLATE_LIST
+
+  layout: 
+    sequence: 80
+    parent-region: Template Mapping # 49233180101242961
+    slot: SUB_REGIONS
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Interactive Report
+    template-options: 
+    - '#DEFAULT#'
+    - t-IRR-region--removeHeader js-removeLandmark
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    static-id: Template_Definition
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    id: 41673225991226756
+    edit: 
+      enabled: true
+      allowed-operations: 
+      - Add Row
+      - Update Row
+      - Delete Row
+      lost-update-type: Row Values
+      add-row-if-empty: true
+
+    performance: 
+      lazy-loading: false
+
+    appearance: 
+      select-first-row: true
+      fixed-row-height: true
+
+    pagination: 
+      type: Page
+      show-total-count: false
+
+    toolbar: 
+      show: false
+
+    enable-users-to: 
+      save-public-report: false
+      flashback: true
+      define-chart-view: true
+      download: true
+
+    download: 
+      formats: 
+      - CSV
+      - HTML
+      - Excel
+      - PDF
+      send-as-email: true
+
+    heading: 
+      fixed-to: Page
+
+    icon-view: 
+      show: false
+
+    detail-view: 
+      show: false
+
+    saved-reports: 
+    - # ====== Saved Report: Primary Report ========================
+      id: 41699219800467428
+      identification: 
+        name: Primary Report
+        alias: 156293
+
+  columns: 
+  - # ====== Column: MAPPING_TYPE ================================
+    id: 25771390504805645
+    identification: 
+      column-name: MAPPING_TYPE
+      type: Textarea
+
+    heading: 
+      heading: Mapping Type
+      alignment: start
+
+    settings: 
+      resizable: true
+      auto-height: false
+      character-counter: false
+      trim-spaces: Leading and Trailing
+
+    layout: 
+      sequence: 130
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+      maximum-length: 32767
+
+    source: 
+      type: Database Column
+      database-column: MAPPING_TYPE
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    session-state: 
+      data-type: VARCHAR2
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: None
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: false
+      hide: true
+
+  - # ====== Column: APEX$ROW_ACTION =============================
+    id: 41674096078226764
+    identification: 
+      column-name: APEX$ROW_ACTION
+      type: Actions Menu
+
+    layout: 
+      sequence: 20
+
+  - # ====== Column: APEX$ROW_SELECTOR ===========================
+    id: 41674161762226765
+    identification: 
+      column-name: APEX$ROW_SELECTOR
+      type: Row Selector
+
+    settings: 
+      enable-multi-select: true
+      show-select-all: true
+      hide-control: false
+
+    layout: 
+      sequence: 10
+
+  - # ====== Column: SEQ_ID ======================================
+    id: 41674586856226769
+    identification: 
+      column-name: SEQ_ID
+      type: Number Field
+
+    heading: 
+      heading: Seq Id
+      alignment: end
+
+    settings: 
+      number-alignment: Start
+      virtual-keyboard: Decimal
+
+    layout: 
+      sequence: 70
+      column-alignment: end
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: true
+
+    source: 
+      type: Database Column
+      database-column: SEQ_ID
+      data-type: NUMBER
+      query-only: false
+      primary-key: true
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    column-filter: 
+      enabled: true
+      lov-type: None
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: true
+      control-break/aggregate: true
+      hide: true
+
+  - # ====== Column: NAME ========================================
+    id: 41677237098226796
+    identification: 
+      column-name: NAME
+      type: Textarea
+
+    heading: 
+      heading: Name
+      alignment: start
+
+    settings: 
+      resizable: true
+      auto-height: false
+      character-counter: false
+      trim-spaces: Leading and Trailing
+
+    layout: 
+      sequence: 80
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+      maximum-length: 32767
+
+    source: 
+      type: Database Column
+      database-column: NAME
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    session-state: 
+      data-type: VARCHAR2
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: None
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: false
+      hide: true
+
+  - # ====== Column: DATA_TYPE ===================================
+    id: 41677343318226797
+    identification: 
+      column-name: DATA_TYPE
+      type: Select List
+
+    heading: 
+      heading: Data Type
+      alignment: start
+
+    layout: 
+      sequence: 90
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+
+    list-of-values: 
+      type: Static Values
+      static-values: 'STATIC:TEXT;TEXT,NUMBER;NUMBER,DATE;DATE'
+      display-extra-values: true
+      display-null-value: true
+
+    source: 
+      type: Database Column
+      database-column: DATA_TYPE
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: Use List of Values
+      exact-match: true
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: false
+      hide: true
+
+  - # ====== Column: QUALIFIER ===================================
+    id: 41677554732226799
+    identification: 
+      column-name: QUALIFIER
+      type: Select List
+
+    heading: 
+      heading: Qualifier
+      alignment: start
+
+    layout: 
+      sequence: 110
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+
+    list-of-values: 
+      type: Shared Component
+      list-of-values: UR ATTRIBUTE QUALIFIERS # 10464223217255649
+      display-extra-values: true
+      display-null-value: true
+
+    source: 
+      type: Database Column
+      database-column: QUALIFIER
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: Use List of Values
+      exact-match: true
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: false
+      hide: true
+
+  - # ====== Column: VALUE =======================================
+    id: 42672567753446262
+    identification: 
+      column-name: VALUE
+      type: Textarea
+
+    heading: 
+      heading: Value
+      alignment: start
+
+    settings: 
+      resizable: true
+      auto-height: false
+      character-counter: false
+      trim-spaces: Leading and Trailing
+
+    layout: 
+      sequence: 120
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+      maximum-length: 32767
+
+    source: 
+      type: Database Column
+      database-column: VALUE
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    session-state: 
+      data-type: VARCHAR2
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: None
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: false
+      hide: true
+
+  printing: 
+    page: 
+      size: Letter
+      orientation: Landscape
+      units: Inches
+      width: 11
+      height: 8.5
+      border-width: 0.5
+      border-color: '#666666'
+
+    page-header: 
+      font: Helvetica
+      font-weight: Normal
+      font-size: 12
+      font-color: '#000000'
+      alignment: center
+
+    column-headings: 
+      font: Helvetica
+      font-weight: Bold
+      font-size: 10
+      font-color: '#000000'
+      background-color: '#EEEEEE'
+
+    columns: 
+      font: Helvetica
+      font-weight: Normal
+      font-size: 10
+      font-color: '#000000'
+      background-color: '#FFFFFF'
+
+    page-footer: 
+      font: Helvetica
+      font-weight: Normal
+      font-size: 12
+      font-color: '#000000'
+      alignment: center
+
+- # ====== Region: Template Details ============================
+  id: 41674633366226770
+  identification: 
+    name: Template Details
+    title: 1. Template Details
+    type: Static Content
+
+  layout: 
+    sequence: 60
+    parent-region: No Parent
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+- # ====== Region: Template Info ===============================
+  id: 41674788150226771
+  identification: 
+    name: Template Info
+    type: Dynamic Content
+
+  source: 
+    language: PL/SQL
+    pl/sql-function-body-returning-a-clob: |
+      DECLARE
+          l_html_output  CLOB := NULL;
+          l_count        NUMBER;
+          l_sql          VARCHAR2(1000);
+          l_count1        NUMBER;
+          l_sql1          VARCHAR2(1000);
+      BEGIN
+          -- Start container
+          l_html_output := '<div class="fancy-card-list">';
+      
+          -- Loop through template records
+          FOR rec IN (
+              SELECT t.name,
+                     t.active,
+                     t.type,
+                     t.db_object_name,
+                     h.hotel_name,
+                     t.DB_VIEW_OBJECT_NAME,
+                     NVL(COUNT(a.key), 0) AS attribute_count
+                FROM ur_templates t
+                LEFT JOIN ur_hotels h
+                  ON h.id = t.hotel_id
+                LEFT JOIN ur_algo_attributes a
+          ON a.template_id = t.id
+               WHERE t.id = :P33_TEMPLATE_LIST
+               GROUP BY 
+          t.name,
+          t.active,
+          t.type,
+          t.db_object_name,
+          h.hotel_name,
+          t.db_view_object_name
+               ORDER BY t.name
+          )
+          LOOP
+              -- Get record count from the table specified in DB_OBJECT_NAME
+              BEGIN
+                  l_sql := 'SELECT COUNT(*) FROM ' || rec.db_object_name;
+                  EXECUTE IMMEDIATE l_sql INTO l_count;
+              EXCEPTION
+                  WHEN OTHERS THEN
+                      l_count := 0; -- In case table doesn't exist or invalid
+              END;
+      
+              /*BEGIN
+                  l_sql1 := 'SELECT COUNT(*) FROM ' || rec.key;
+                  EXECUTE IMMEDIATE l_sql1 INTO l_count1;
+              EXCEPTION
+                  WHEN OTHERS THEN
+                      l_count1 := 0; -- In case table doesn't exist or invalid
+              END;*/
+      
+              -- Start individual card
+              l_html_output := l_html_output || '<div class="fancy-card ';
+      
+              /*IF rec.active = 'Y' THEN
+                  l_html_output := l_html_output || 'is-active" data-type="' || rec.type || '">';
+              ELSE
+                  l_html_output := l_html_output || 'is-inactive" data-type="' || rec.type || '">';
+              END IF;*/
+      
+              -- Card header
+              l_html_output := l_html_output || '<div class="card-header">';
+             -- l_html_output := l_html_output || '<h3>' || APEX_ESCAPE.HTML(rec.name) || '</h3>';
+             -- l_html_output := l_html_output || '<span class="card-type">' || APEX_ESCAPE.HTML(rec.type) || '</span>';
+              l_html_output := l_html_output || '</div>';
+      
+              -- Card body
+              l_html_output := l_html_output || '<div class="card-body">';
+              --l_html_output := l_html_output || '<p>Status: <strong>' ||
+                --  CASE WHEN rec.active = 'Y' THEN 'Active ✅' ELSE 'Inactive ❌' END || '</strong></p>';
+              l_html_output := l_html_output || '<p>Hotel: <strong>' || NVL(rec.hotel_name, 'N/A') || '</strong></p>';
+              l_html_output := l_html_output || '<p>Table: <strong>' || rec.db_object_name || '</strong></p>';
+              IF rec.DB_VIEW_OBJECT_NAME IS NOT NULL THEN
+          l_html_output := l_html_output || '<p>View: <strong>' || rec.DB_VIEW_OBJECT_NAME || '</strong></p>';
+      END IF;
+              l_html_output := l_html_output || '<p>Record Count: <strong>' || l_count || '</strong></p>';
+              l_html_output := l_html_output || '<p>Attribute Count: <strong>' || rec.attribute_count || '</strong></p>';
+              l_html_output := l_html_output || '</div>';
+      
+              -- End card
+              l_html_output := l_html_output || '</div>';
+          END LOOP;
+      
+          -- End container
+          l_html_output := l_html_output || '</div>';
+      
+          RETURN l_html_output;
+      END;
+      
+    page-items-to-submit: 
+    - P33_TEMPLATE_LIST
+
+  layout: 
+    sequence: 40
+    parent-region: Template Details # 41674633366226770
+    slot: BODY
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Content Block
+    template-options: 
+    - '#DEFAULT#'
+    - t-ContentBlock--h1
+    - t-Region--removeHeader js-removeLandmark
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  server-cache: 
+    caching: Disabled
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    performance: 
+      lazy-loading: false
+
+- # ====== Region: Template List ===============================
+  id: 42673860713446275
+  identification: 
+    name: Template List
+    type: Static Content
+
+  layout: 
+    sequence: 50
+    parent-region: No Parent
+    slot: BODY
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noPadding
+    - t-Region--removeHeader js-removeLandmark
+    - t-Region--noUI
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+- # ====== Region: Template Mapping ============================
+  id: 49233180101242961
+  identification: 
+    name: Template Mapping
+    title: 2. Template Mapping
+    type: Static Content
+
+  layout: 
+    sequence: 70
+    parent-region: No Parent
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+- # ====== Region: Note ========================================
+  id: 49233234132242962
+  identification: 
+    name: Note
+    type: Static Content
+
+  source: 
+    html-code: 'Note : Before making any changes to the template mapping you will need to delete your loaded data. Please note that deletion cannot be undone.'
+
+  layout: 
+    sequence: 50
+    parent-region: Template Details # 41674633366226770
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noPadding
+    - t-Region--removeHeader js-removeLandmark
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+- # ====== Region: Button_Holder ===============================
+  id: 49233504037242964
+  identification: 
+    name: Button_Holder
+    type: Static Content
+
+  layout: 
+    sequence: 100
+    parent-region: Template Mapping # 49233180101242961
+    slot: SUB_REGIONS
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--removeHeader js-removeLandmark
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+page-items: 
+- # ====== Page Item: P33_TEMPLATE_LIST ========================
+  id: 38618064321421212
+  identification: 
+    name: P33_TEMPLATE_LIST
+    type: Popup LOV
+
+  label: 
+    label: Template
+    alignment: Left
+
+  settings: 
+    display-as: Inline Popup
+    initial-fetch: Automatic
+    manual-entry: false
+    fetch-on-search: false
+
+  search: 
+    match-type: Contains
+    case-sensitive: false
+    minimum-characters: 0
+
+  multiple-values: 
+    type: No
+
+  layout: 
+    sequence: 20
+    region: Template List # 42673860713446275
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: true
+    column-span: 4
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    width: 30
+
+  validation: 
+    value-required: false
+
+  list-of-values: 
+    type: SQL Query
+    sql-query: |
+      SELECT name AS display_value,
+             id           AS return_value
+      FROM ur_templates
+      WHERE hotel_id = HEXTORAW(:P0_HOTEL_ID)
+      
+      
+    display-extra-values: true
+    display-null-value: true
+
+  cascading-list-of-values: 
+    parent-item(s): 
+    - P0_HOTEL_ID
+    parent-required: true
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P33_HOTEL_LIST ===========================
+  id: 38626721906421248
+  identification: 
+    name: P33_HOTEL_LIST
+    type: Select List
+
+  label: 
+    label: Hotel
+    alignment: Left
+
+  settings: 
+    page-action-on-selection: None
+
+  multiple-values: 
+    type: No
+
+  layout: 
+    sequence: 40
+    region: No Parent
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: 6
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    height: 1
+
+  validation: 
+    value-required: false
+
+  list-of-values: 
+    type: SQL Query
+    sql-query: |
+      SELECT NVL(hotel_name, 'Name') AS display_value,
+             RAWTOHEX(id)            AS return_value
+        FROM ur_hotels
+      WHERE nvl(ASSOCIATION_END_DATE,sysdate) >= sysdate
+      
+      
+    display-extra-values: true
+    display-null-value: true
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+- # ====== Page Item: P33_TEMPLATE_TYPE ========================
+  id: 42673266550446270
+  identification: 
+    name: P33_TEMPLATE_TYPE
+    type: Select List
+
+  label: 
+    label: Template type
+    alignment: Left
+
+  settings: 
+    page-action-on-selection: None
+
+  multiple-values: 
+    type: No
+
+  layout: 
+    sequence: 20
+    region: Template Details # 41674633366226770
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: false
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    height: 1
+
+  validation: 
+    value-required: false
+
+  list-of-values: 
+    type: Shared Component
+    list-of-values: UR TEMPLATE TYPES # 9646161429519087
+    display-extra-values: true
+    display-null-value: true
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  default: 
+    type: SQL Query (return single value)
+    sql-query-(return-single-value): 'select type from ur_templates where id = :P33_TEMPLATE_LIST'
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P33_TEMPLATE_NAME ========================
+  id: 42676020068446297
+  identification: 
+    name: P33_TEMPLATE_NAME
+    type: Text Field
+
+  label: 
+    label: Template Name
+    alignment: Left
+
+  settings: 
+    subtype: Text
+    trim-spaces: Leading and Trailing
+    text-case: NO CHANGE
+    submit-when-enter-pressed: false
+    disabled: false
+
+  layout: 
+    sequence: 10
+    region: Template Details # 41674633366226770
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: false
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    width: 30
+
+  validation: 
+    value-required: false
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P33_ALERT_MESSAGE ========================
+  id: 42681191459446304
+  identification: 
+    name: P33_ALERT_MESSAGE
+    type: Hidden
+
+  settings: 
+    value-protected: false
+
+  layout: 
+    sequence: 30
+    region: No Parent
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P33_FORCE_REWRITE ========================
+  id: 42685475669446346
+  identification: 
+    name: P33_FORCE_REWRITE
+    type: Hidden
+
+  settings: 
+    value-protected: false
+
+  layout: 
+    sequence: 20
+    region: No Parent
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P33_STATUS ===============================
+  id: 42795367682445270
+  identification: 
+    name: P33_STATUS
+    type: Switch
+
+  label: 
+    label: Status (Active / Inactive)
+    alignment: Left
+
+  settings: 
+    use-defaults: true
+
+  layout: 
+    sequence: 30
+    region: Template Details # 41674633366226770
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: false
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+
+  validation: 
+    value-required: false
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P33_DATA_EXISTS ==========================
+  id: 42803891451445310
+  identification: 
+    name: P33_DATA_EXISTS
+    type: Hidden
+
+  settings: 
+    value-protected: false
+
+  layout: 
+    sequence: 100
+    region: No Parent
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+buttons: 
+- # ====== Button: Delete_Template_Data ========================
+  id: 26071166164241266
+  identification: 
+    button-name: Delete_Template_Data
+    label: Delete Loaded Data
+
+  layout: 
+    sequence: 60
+    region: Template Details # 41674633366226770
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    alignment: Left center
+
+  appearance: 
+    button-template: Text
+    hot: false
+    template-options: 
+    - '#DEFAULT#'
+    - t-Button--warning
+
+  behavior: 
+    action: Defined by Dynamic Action
+    execute-validations: true
+
+- # ====== Button: Delete_Template =============================
+  id: 26074076424241280
+  identification: 
+    button-name: Delete_Template
+    label: Delete Template
+
+  layout: 
+    sequence: 10
+    region: Button_Holder # 49233504037242964
+    slot: PREVIOUS
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    button-template: Text
+    hot: true
+    template-options: 
+    - '#DEFAULT#'
+    - t-Button--danger
+
+  behavior: 
+    action: Defined by Dynamic Action
+    execute-validations: true
+
+- # ====== Button: create_template =============================
+  id: 26074468255241281
+  identification: 
+    button-name: create_template
+    label: Save
+
+  layout: 
+    sequence: 10
+    region: Button_Holder # 49233504037242964
+    slot: NEXT
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    button-template: Text
+    hot: true
+    template-options: 
+    - '#DEFAULT#'
+
+  behavior: 
+    action: Defined by Dynamic Action
+    execute-validations: true
+
+dynamic-actions: 
+- # ====== Dynamic Action: delete template data ================
+  id: 26080986157241307
+  identification: 
+    name: delete template data
+
+  execution: 
+    sequence: 100
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Click
+    selection-type: Button
+    button: Delete_Template_Data # 26071166164241266
+
+  actions: 
+  - # ====== Action: 1 ===========================================
+    id: 26081484963241309
+    identification: 
+      name: 1
+      action: Execute JavaScript Code
+
+    settings: 
+      code: |
+        if ($v('P33_DATA_EXISTS') === 'Y') {
+            apex.message.confirm(
+                "Data exists! Are you sure you want to truncate?", // message
+                function(okPressed) { // callback
+                    if (okPressed) {
+                        // user clicked Yes
+                        apex.page.submit({request: "TRUNCATE"});
+                    } else {
+                        // user clicked No, do nothing
+                    }
+                }
+            );
+        } else {
+            apex.message.alert("No data to truncate.");
+        }
+        
+        /*
+        if ($v('P33_DATA_EXISTS') !== 'Y') {
+            apex.message.alert("No data to truncate.");
+            return false;
+        }
+        apex.message.confirm(
+            "Data exists! Are you sure?",
+            function(okPressed) {
+                if (!okPressed) return false;
+            }
+        );
+        */
+        
+
+    execution: 
+      sequence: 40
+      event: delete template data # 26080986157241307
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: confirmation1 ===============================
+    id: 26081989221241310
+    identification: 
+      name: confirmation1
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+            v_table_name VARCHAR2(255);
+            v_count      NUMBER := 0;
+        BEGIN
+            SELECT db_object_name
+              INTO v_table_name
+              FROM ur_templates
+             WHERE id = :P33_TEMPLATE_LIST;
+        
+            EXECUTE IMMEDIATE 'SELECT COUNT(*) FROM ' || v_table_name INTO v_count;
+        
+            IF v_count > 0 THEN
+                :P33_DATA_EXISTS := 'Y';
+            ELSE
+                :P33_DATA_EXISTS := 'N';
+            END IF;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                :P33_DATA_EXISTS := 'N';
+            WHEN OTHERS THEN
+                :P33_DATA_EXISTS := 'N';
+        END;
+        
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+      items-to-return: 
+      - P33_DATA_EXISTS
+      suppress-change-event: false
+
+    execution: 
+      sequence: 20
+      event: delete template data # 26080986157241307
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Confirm =====================================
+    id: 26082484049241312
+    identification: 
+      action: Confirm
+
+    settings: 
+      message: Please note that deletion cannot be undone. Do you want to continue?
+      style: Warning
+      icon: fa-warning
+
+    execution: 
+      sequence: 50
+      event: delete template data # 26080986157241307
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+  - # ====== Action: truncate table ==============================
+    id: 26082943985241313
+    identification: 
+      name: truncate table
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+            v_table_name  VARCHAR2(255);
+            v_count       NUMBER := 0;
+            v_alerts      CLOB := NULL;
+        BEGIN
+            -- Fetch table name
+            SELECT db_object_name
+              INTO v_table_name
+              FROM ur_templates
+             WHERE id = :P33_TEMPLATE_LIST;
+        
+            -- Count data before truncating
+            EXECUTE IMMEDIATE 'SELECT COUNT(*) FROM ' || v_table_name INTO v_count;
+        
+            IF v_count > 0 THEN
+                -- Table has data → truncate it
+                EXECUTE IMMEDIATE 'TRUNCATE TABLE ' || v_table_name;
+        
+                -- Add success message
+                ur_utils.add_alert(
+                    p_existing_json => v_alerts,
+                    p_message       => 'Table "' || v_table_name || '" truncated successfully (' || v_count || ' records deleted).',
+                    p_icon          => 'success',
+                    p_title         => 'Truncate Successful',
+                    p_timeout       => 4000,
+                    p_updated_json  => v_alerts
+                );
+            ELSE
+                -- No data found to truncate
+                ur_utils.add_alert(
+                    p_existing_json => v_alerts,
+                    p_message       => 'No data found in table "' || v_table_name || '".',
+                    p_icon          => 'info',
+                    p_title         => 'Nothing to Truncate',
+                    p_timeout       => 4000,
+                    p_updated_json  => v_alerts
+                );
+            END IF;
+        
+            -- Assign to global alert page item
+            :P0_ALERT_MESSAGE := v_alerts;
+        
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                ur_utils.add_alert(
+                    p_existing_json => v_alerts,
+                    p_message       => 'No template found for the selected ID.',
+                    p_icon          => 'error',
+                    p_title         => 'Error',
+                    p_timeout       => 4000,
+                    p_updated_json  => v_alerts
+                );
+                :P0_ALERT_MESSAGE := v_alerts;
+        
+            WHEN OTHERS THEN
+                ur_utils.add_alert(
+                    p_existing_json => v_alerts,
+                    p_message       => 'Error: ' || SQLERRM,
+                    p_icon          => 'error',
+                    p_title         => 'Unexpected Error',
+                    p_timeout       => 4000,
+                    p_updated_json  => v_alerts
+                );
+                :P0_ALERT_MESSAGE := v_alerts;
+        END;
+        
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+      items-to-return: 
+      - P0_ALERT_MESSAGE
+      suppress-change-event: false
+
+    execution: 
+      sequence: 60
+      event: delete template data # 26080986157241307
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Execute JavaScript Code =====================
+    id: 26083460929241315
+    identification: 
+      action: Execute JavaScript Code
+
+    settings: 
+      code: |
+        apex.message.confirm(
+          "Data already exists. Do you want to truncate it?",
+          function(okPressed) {
+            if (okPressed) {
+              // trigger next dynamic action (custom event) attached to the same button
+              apex.event.trigger('#Delete_Template_Data', 'truncateConfirmed');
+            }
+            // if not okPressed -> do nothing
+          }
+        );
+        
+
+    execution: 
+      sequence: 30
+      event: delete template data # 26080986157241307
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+    client-side-condition: 
+      type: JavaScript expression
+      javascript-expression: $v('P33_DATA_EXISTS') === 'Y'
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: no data found ===============================
+    id: 26083994583241316
+    identification: 
+      name: no data found
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |2
+         DECLARE
+            v_table_name  VARCHAR2(255);
+            v_count       NUMBER := 0;
+            v_alerts      CLOB := NULL;
+        BEGIN
+         ur_utils.add_alert(
+                    p_existing_json => v_alerts,
+                    p_message       => 'No data found in table "' || v_table_name || '".',
+                    p_icon          => 'info',
+                    p_title         => 'Nothing to Truncate',
+                    p_timeout       => 4000,
+                    p_updated_json  => v_alerts
+                );
+           
+        
+            -- Assign to global alert page item
+            :P0_ALERT_MESSAGE := v_alerts;
+        end;
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+      items-to-return: 
+      - P0_ALERT_MESSAGE
+      suppress-change-event: false
+
+    execution: 
+      sequence: 10
+      event: delete template data # 26080986157241307
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+    client-side-condition: 
+      type: JavaScript expression
+      javascript-expression: $v('P33_DATA_EXISTS') === 'N'
+
+- # ====== Dynamic Action: Alert Message =======================
+  id: 26084350037241317
+  identification: 
+    name: Alert Message
+
+  execution: 
+    sequence: 40
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P33_ALERT_MESSAGE
+
+  actions: 
+  - # ====== Action: Execute JavaScript Code =====================
+    id: 26084857721241319
+    identification: 
+      action: Execute JavaScript Code
+
+    settings: 
+      code: |
+        var messagesJson = $v("P33_ALERT_MESSAGE");  // get the string from hidden page item
+        
+        if (messagesJson) {
+          try {
+            // Try parsing the string
+            var parsed = JSON.parse(messagesJson);
+        
+            // Check if parsed result is array or object
+            if (Array.isArray(parsed)) {
+              // It's an array - pass as is
+              showAlertToastr(parsed);
+            } else if (parsed && typeof parsed === 'object') {
+              // Single object - pass it wrapped in array for consistency 
+              showAlertToastr([parsed]);
+            } else {
+              // Parsed to something else (string/number) — just pass original string
+              showAlertToastr(messagesJson);
+            }
+          } catch (e) {
+            // Parsing failed — probably plain text, pass as is
+            showAlertToastr(messagesJson);
+          }
+        }
+
+    execution: 
+      sequence: 10
+      event: Alert Message # 26084350037241317
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+- # ====== Dynamic Action: Change Template name ================
+  id: 26085273172241320
+  identification: 
+    name: Change Template name
+
+  execution: 
+    sequence: 70
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Lose Focus
+    selection-type: Item(s)
+    item(s): 
+    - P33_TEMPLATE_NAME
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 26085762810241321
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          l_status  VARCHAR2(10);
+          l_message CLOB;
+          l_icon    VARCHAR2(50);
+          l_title   VARCHAR2(100);
+        BEGIN
+          Graph_SQL.proc_crud_json(
+            p_mode    => 'U',
+            p_table   => 'UR_TEMPLATES',
+            p_payload => '{"ID":"'|| :P33_TEMPLATE_LIST || '","NAME":"' || :P33_TEMPLATE_NAME || '"}',
+            p_debug   => 'N',
+            p_status  => l_status,
+            p_message => l_message,
+            p_icon    => l_icon,
+            p_title   => l_title
+          );
+        
+        --   DBMS_OUTPUT.put_line('Status: ' || l_status);
+        --   DBMS_OUTPUT.put_line('Message (metadata JSON): ' || l_message);
+        
+        
+        
+          :P33_ALERT_MESSAGE :=  '[{ "message":"' || l_message || '", "icon":"' || l_status || '"}]';  -- l_json;
+        
+        --   :P1001_ALERT_MESSAGE := 'This is default success message';
+        
+        END;
+        
+      items-to-submit: 
+      - P33_TEMPLATE_NAME
+      - P33_TEMPLATE_LIST
+      items-to-return: 
+      - P33_ALERT_MESSAGE
+      suppress-change-event: false
+
+    execution: 
+      sequence: 10
+      event: Change Template name # 26085273172241320
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+- # ====== Dynamic Action: change template type ================
+  id: 26086174795241322
+  identification: 
+    name: change template type
+
+  execution: 
+    sequence: 80
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Lose Focus
+    selection-type: Item(s)
+    item(s): 
+    - P33_TEMPLATE_TYPE
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 26086698413241324
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          l_status  VARCHAR2(10);
+          l_message CLOB;
+          l_icon    VARCHAR2(50);
+          l_title   VARCHAR2(100);
+        BEGIN
+          Graph_SQL.proc_crud_json(
+            p_mode    => 'U',
+            p_table   => 'UR_TEMPLATES',
+            p_payload => '{"ID":"'|| :P33_TEMPLATE_LIST || '","TYPE":"' || :P33_TEMPLATE_TYPE || '"}',
+            p_debug   => 'N',
+            p_status  => l_status,
+            p_message => l_message,
+            p_icon    => l_icon,
+            p_title   => l_title
+          );
+        
+        --   DBMS_OUTPUT.put_line('Status: ' || l_status);
+        --   DBMS_OUTPUT.put_line('Message (metadata JSON): ' || l_message);
+        
+        
+        
+          :P33_ALERT_MESSAGE :=  '[{ "message":"' || l_message || '", "icon":"' || l_status || '"}]';  -- l_json;
+        
+        --   :P1001_ALERT_MESSAGE := 'This is default success message';
+        
+        END;
+        
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+      - P33_TEMPLATE_TYPE
+      items-to-return: 
+      - P33_ALERT_MESSAGE
+      suppress-change-event: false
+
+    execution: 
+      sequence: 10
+      event: change template type # 26086174795241322
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+- # ====== Dynamic Action: Page_load_DA ========================
+  id: 26087038254241325
+  identification: 
+    name: Page_load_DA
+
+  execution: 
+    sequence: 10
+    event-scope: Static
+
+  when: 
+    event: Page Load
+
+  actions: 
+  - # ====== Action: Set Value ===================================
+    id: 26087591655241326
+    identification: 
+      action: Set Value
+
+    settings: 
+      set-type: Static Assignment
+      suppress-change-event: true
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P33_HOTEL_LIST
+      - P33_TEMPLATE_LIST
+      - P33_TEMPLATE_NAME
+      - P0_HOTEL_ID
+
+    execution: 
+      sequence: 30
+      event: Page_load_DA # 26087038254241325
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Hide ========================================
+    id: 26088034012241328
+    identification: 
+      action: Hide
+
+    affected-elements: 
+      selection-type: Region
+      region: Template Details # 41674633366226770
+
+    execution: 
+      sequence: 10
+      event: Page_load_DA # 26087038254241325
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+
+  - # ====== Action: Set Value ===================================
+    id: 26088509435241329
+    identification: 
+      action: Set Value
+
+    settings: 
+      set-type: Static Assignment
+      value: NULL
+      suppress-change-event: true
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P33_HOTEL_LIST
+      - P33_TEMPLATE_LIST
+      - P33_TEMPLATE_NAME
+      - P0_HOTEL_ID
+
+    execution: 
+      sequence: 20
+      event: Page_load_DA # 26087038254241325
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+      stop-execution-on-error: true
+      wait-for-result: true
+
+- # ====== Dynamic Action: Show and hide region ================
+  id: 26088947024241330
+  identification: 
+    name: Show and hide region
+
+  execution: 
+    sequence: 60
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P33_TEMPLATE_LIST
+
+  client-side-condition: 
+    type: Item is not null
+    item: P33_TEMPLATE_LIST
+
+  actions: 
+  - # ====== Action: Show ========================================
+    id: 26089411723241332
+    identification: 
+      action: Show
+
+    affected-elements: 
+      selection-type: Region
+      region: Template Details # 41674633366226770
+
+    execution: 
+      sequence: 30
+      event: Show and hide region # 26088947024241330
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+
+  - # ====== Action: Show ========================================
+    id: 26089933378241333
+    identification: 
+      action: Show
+
+    affected-elements: 
+      selection-type: Region
+      region: Template Info # 41674788150226771
+
+    execution: 
+      sequence: 20
+      event: Show and hide region # 26088947024241330
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+
+  - # ====== Action: Show ========================================
+    id: 26090425877241335
+    identification: 
+      action: Show
+
+    affected-elements: 
+      selection-type: Region
+      region: Template Mapping # 49233180101242961
+
+    execution: 
+      sequence: 10
+      event: Show and hide region # 26088947024241330
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+
+  - # ====== Action: Hide ========================================
+    id: 26090917143241336
+    identification: 
+      action: Hide
+
+    affected-elements: 
+      selection-type: Region
+      region: Template Mapping # 49233180101242961
+
+    execution: 
+      sequence: 10
+      event: Show and hide region # 26088947024241330
+      fire-when-event-result-is: False
+      fire-on-initialization: true
+
+- # ====== Dynamic Action: Delete database objects =============
+  id: 26091368340241337
+  identification: 
+    name: Delete database objects
+
+  execution: 
+    sequence: 110
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Click
+    selection-type: Button
+    button: Delete_Template # 26074076424241280
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 26091895117241339
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+            l_status  BOOLEAN;
+            l_message VARCHAR2(4000);
+            l_template_key varchar2(240);
+        BEGIN
+        select key from ur
+            define_db_object_1(
+                p_template_key => :P33_TEMPLATE_NAME,  -- your template key
+                p_status       => l_status,
+                p_message      => l_message,
+                p_mode         => 'D'             -- D = Delete
+            );
+        
+            DBMS_OUTPUT.put_line('Status: ' || CASE WHEN l_status THEN 'Success' ELSE 'Failure' END);
+            DBMS_OUTPUT.put_line('Message: ' || l_message);
+        END;
+
+    execution: 
+      sequence: 10
+      event: Delete database objects # 26091368340241337
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+- # ====== Dynamic Action: Change status =======================
+  id: 26092252890241340
+  identification: 
+    name: Change status
+
+  execution: 
+    sequence: 90
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P33_STATUS
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 26092774301241341
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          l_status  VARCHAR2(10);
+          l_message CLOB;
+          l_icon    VARCHAR2(50);
+          l_title   VARCHAR2(100);
+        BEGIN
+          Graph_SQL.proc_crud_json(
+            p_mode    => 'U',
+            p_table   => 'UR_TEMPLATES',
+            p_payload => '{"ID":"'|| :P33_TEMPLATE_LIST || '","ACTIVE":"' || :P33_STATUS || '"}',
+            p_debug   => 'N',
+            p_status  => l_status,
+            p_message => l_message,
+            p_icon    => l_icon,
+            p_title   => l_title
+          );
+        
+        --   DBMS_OUTPUT.put_line('Status: ' || l_status);
+        --   DBMS_OUTPUT.put_line('Message (metadata JSON): ' || l_message);
+        
+        
+        
+          :P33_ALERT_MESSAGE :=  '[{ "message":"' || l_message || '", "icon":"' || l_status || '"}]';  -- l_json;
+        
+        --   :P1001_ALERT_MESSAGE := 'This is default success message';
+        
+        END;
+        
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+      - P33_STATUS
+      items-to-return: 
+      - P33_ALERT_MESSAGE
+      suppress-change-event: false
+
+    execution: 
+      sequence: 10
+      event: Change status # 26092252890241340
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+- # ====== Dynamic Action: change template =====================
+  id: 26093198751241342
+  identification: 
+    name: change template
+
+  execution: 
+    sequence: 10
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P33_TEMPLATE_LIST
+
+  actions: 
+  - # ====== Action: Set Value ===================================
+    id: 26093687784241344
+    identification: 
+      action: Set Value
+
+    settings: 
+      set-type: SQL Statement
+      sql-statement: 'select name from ur_templates where id = :P33_TEMPLATE_LIST'
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+      escape-special-characters: true
+      suppress-change-event: false
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P33_TEMPLATE_NAME
+
+    execution: 
+      sequence: 80
+      event: change template # 26093198751241342
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Refresh =====================================
+    id: 26094106463241345
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P33_TEMPLATE_NAME
+
+    execution: 
+      sequence: 60
+      event: change template # 26093198751241342
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Refresh =====================================
+    id: 26094699104241347
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Region
+      region: Template Definition # 41673219759226755
+
+    execution: 
+      sequence: 20
+      event: change template # 26093198751241342
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+  - # ====== Action: Set Value ===================================
+    id: 26095143366241349
+    identification: 
+      action: Set Value
+
+    settings: 
+      set-type: SQL Statement
+      sql-statement: 'select active from ur_templates where id = :P33_TEMPLATE_LIST'
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+      escape-special-characters: true
+      suppress-change-event: true
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P33_STATUS
+
+    execution: 
+      sequence: 100
+      event: change template # 26093198751241342
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Refresh =====================================
+    id: 26095669771241350
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Region
+      region: Template Info # 41674788150226771
+
+    execution: 
+      sequence: 30
+      event: change template # 26093198751241342
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+  - # ====== Action: populate collection =========================
+    id: 26096104138241351
+    identification: 
+      name: populate collection
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+            l_json_clob CLOB;
+        BEGIN
+        
+            -- Exit if no template selected
+            IF :P33_TEMPLATE_LIST IS NULL THEN
+                RETURN;
+            END IF;
+            -- 1. Fetch the JSON CLOB from UR_TEMPLATES
+            SELECT definition
+              INTO l_json_clob
+              FROM ur_templates
+             WHERE id = :P33_TEMPLATE_LIST;
+        
+            -- 2. Delete collection if already exists
+            IF APEX_COLLECTION.COLLECTION_EXISTS('TEMPLATE_DATA') THEN
+                APEX_COLLECTION.DELETE_COLLECTION('TEMPLATE_DATA');
+            END IF;
+        
+            -- 3. Create collection
+            APEX_COLLECTION.CREATE_COLLECTION('TEMPLATE_DATA');
+        
+            -- 4. Parse JSON and insert into collection
+            FOR r IN (
+                SELECT *
+                  FROM JSON_TABLE(
+                         l_json_clob,
+                         '$[*]' 
+                         COLUMNS (
+                             name       VARCHAR2(4000) PATH '$.name',
+                             data_type  VARCHAR2(4000) PATH '$.data_type',
+                             value      VARCHAR2(4000) PATH '$.value',
+                             qualifier  VARCHAR2(4000) PATH '$.qualifier', 
+                             mapping_type  VARCHAR2(4000) PATH '$.mapping_type' 
+                         )
+                     )
+            ) LOOP
+                APEX_COLLECTION.ADD_MEMBER(
+                    p_collection_name => 'TEMPLATE_DATA',
+                    p_c001            => r.name,
+                    p_c002            => r.data_type,
+                    p_c003            => r.qualifier,
+                    p_c004            => r.value,
+                    p_c005            => r.mapping_type
+                );
+            END LOOP;
+        END;
+        
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+
+    execution: 
+      sequence: 10
+      event: change template # 26093198751241342
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Refresh =====================================
+    id: 26096692572241353
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Region
+      region: Template Details # 41674633366226770
+
+    execution: 
+      sequence: 70
+      event: change template # 26093198751241342
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Refresh =====================================
+    id: 26097186595241354
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P33_TEMPLATE_TYPE
+
+    execution: 
+      sequence: 50
+      event: change template # 26093198751241342
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Set Value ===================================
+    id: 26097631274241356
+    identification: 
+      action: Set Value
+
+    settings: 
+      set-type: SQL Statement
+      sql-statement: 'select type from ur_templates where id = :P33_TEMPLATE_LIST'
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+      escape-special-characters: true
+      suppress-change-event: false
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P33_TEMPLATE_TYPE
+
+    execution: 
+      sequence: 90
+      event: change template # 26093198751241342
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+- # ====== Dynamic Action: Create Template button click ========
+  id: 26098059964241357
+  identification: 
+    name: Create Template button click
+
+  execution: 
+    sequence: 20
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Click
+    selection-type: Button
+    button: create_template # 26074468255241281
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 26098556597241358
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+            v_table_name VARCHAR2(4000);
+            v_count NUMBER;
+        BEGIN
+            -- Get table name for selected template
+            SELECT db_object_name
+              INTO v_table_name
+              FROM ur_templates
+             WHERE id = :P33_TEMPLATE_LIST;
+        
+            
+        
+            -- Count rows in the table
+            EXECUTE IMMEDIATE 'SELECT COUNT(*) FROM ' || v_table_name INTO v_count;
+        
+            -- Pass count back to a page item
+            :P33_FORCE_REWRITE := CASE WHEN v_count > 0 THEN 'CONFIRM' ELSE 'OK' END;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                :P33_FORCE_REWRITE := 'ERROR';
+        END;
+        
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+      items-to-return: 
+      - P33_FORCE_REWRITE
+      suppress-change-event: false
+
+    execution: 
+      sequence: 110
+      event: Create Template button click # 26098059964241357
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Execute Server-side Code ====================
+    id: 26099063195241360
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+            v_table_name VARCHAR2(4000);
+            v_count      NUMBER := 0;
+        BEGIN
+            -- Get table name for the selected template
+            SELECT db_object_name
+              INTO v_table_name
+              FROM ur_templates
+             WHERE id = :P33_TEMPLATE_LIST;
+        
+            --:P33_TABLE_NAME := v_table_name;
+        
+            -- Count rows in the table
+            EXECUTE IMMEDIATE 'SELECT COUNT(*) FROM ' || v_table_name INTO v_count;
+        
+            :P33_TABLE_COUNT := v_count;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                :P33_TABLE_COUNT := 0;
+            WHEN OTHERS THEN
+                :P33_TABLE_COUNT := 0;
+        END;
+        
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+
+    execution: 
+      sequence: 120
+      event: Create Template button click # 26098059964241357
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: 13/10_saves new_definition ==================
+    id: 26099503293241361
+    identification: 
+      name: 13/10_saves new_definition
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+            v_status  VARCHAR2(10);
+            v_message CLOB;
+        BEGIN
+            update_template_definition(
+                p_template_id     => :P33_TEMPLATE_LIST,
+                p_collection_name => 'TEMPLATE_DATA',
+                p_template_type   => :P33_TEMPLATE_TYPE,
+                p_is_update       => 'Y',  -- Set 'Y' to recreate DB object
+                p_status          => v_status,
+                p_message         => v_message
+            );
+        
+            :P0_ALERT_MESSAGE := v_message;
+        END;
+        
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+      - P33_TEMPLATE_TYPE
+      items-to-return: 
+      - P0_ALERT_MESSAGE
+      suppress-change-event: false
+
+    execution: 
+      sequence: 70
+      event: Create Template button click # 26098059964241357
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Validation1 =================================
+    id: 26100044712241363
+    identification: 
+      name: Validation1
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          l_count NUMBER;
+        BEGIN
+          SELECT COUNT(*) INTO l_count
+            /*FROM UR_VK_SEGMENT_QUALIFIER1_T
+           WHERE  1 = 1;*/
+        FROM ur_templates t
+                  LEFT JOIN ur_hotels h
+                    ON h.id = t.hotel_id
+                 WHERE t.id = :P33_TEMPLATE_LIST;
+        
+          IF l_count > 0 THEN
+            :P33_DATA_EXISTS := 'Y';
+          ELSE
+            :P33_DATA_EXISTS := 'N';
+          END IF;
+        END;
+        
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+      items-to-return: 
+      - P33_DATA_EXISTS
+      suppress-change-event: false
+
+    execution: 
+      sequence: 80
+      event: Create Template button click # 26098059964241357
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: 2 ===========================================
+    id: 26100561858241364
+    identification: 
+      name: 2
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          v_json        CLOB;
+          v_ok          varchar2(1);
+          v_msg         VARCHAR2(4000);
+          v_key         VARCHAR2(110);
+          v_exists      NUMBER;
+          v_alerts      CLOB := NULL;
+          v_val_status  VARCHAR2(1);
+          v_def_ok      BOOLEAN;
+          v_def_msg     VARCHAR2(4000);
+          v_view_ok     BOOLEAN;
+          v_view_msg    VARCHAR2(4000);
+          v_table_name varchar2(4000);
+          v_key_temp varchar2(100);
+        BEGIN
+          -- Generate JSON from APEX collection
+          ur_utils.get_collection_json('TEMPLATE_DATA', v_json, v_ok, v_msg);
+        
+        
+            --ur_utils.add_alert(v_alerts, v_msg, v_ok, NULL, NULL, v_alerts);
+        
+        
+        
+        
+         
+        insert into debug_log(message) values(v_json);
+          -- Validate template JSON
+          ur_utils.VALIDATE_TEMPLATE_DEFINITION(
+            p_json_clob  => v_json,
+            p_alert_clob => v_alerts,
+            p_status     => v_val_status
+          );
+        -- Check the status returned by the procedure
+        ur_utils.add_alert(v_alerts, v_msg, v_val_status, NULL, NULL, v_alerts);
+         
+           -- Hardcoded key and name
+        v_key := ur_utils.Clean_TEXT(:P33_TEMPLATE_LIST);
+        
+          SELECT COUNT(*) INTO v_exists FROM UR_TEMPLATES WHERE id = v_key;
+        
+          
+        
+          -- ✅ Update existing definition
+          UPDATE UR_TEMPLATES
+             SET DEFINITION = v_json,
+                 UPDATED_ON = SYSTIMESTAMP/*,       -- optional if you have this column
+                 UPDATED_BY = NVL(:APP_USER, USER)*/ -- optional if audit columns exist
+           WHERE id = v_key;
+        
+          COMMIT;
+        
+        select KEY into v_key_temp from ur_templates where id = v_key;
+        
+        
+          /* ur_utils.define_db_object(v_key_temp, v_def_ok, v_def_msg);
+            ur_utils.add_alert(v_alerts, v_def_msg, 'success', null, null, v_alerts);
+        
+            ur_utils.manage_algo_attributes(v_key, 'C', NULL, v_def_ok, v_def_msg);
+             ur_utils.add_alert(v_alerts, v_def_msg, 'error', null, null, v_alerts);
+         */
+         :P0_ALERT_MESSAGE := v_alerts;
+        EXCEPTION
+          WHEN OTHERS THEN
+            apex_debug.message('Ex: ' || SQLERRM);
+            ur_utils.add_alert(v_alerts, SQLERRM, 'error', NULL, NULL, v_alerts);
+            :P0_ALERT_MESSAGE := v_alerts;
+            RAISE;
+        END;
+        
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+      items-to-return: 
+      - P0_ALERT_MESSAGE
+      suppress-change-event: false
+
+    execution: 
+      sequence: 100
+      event: Create Template button click # 26098059964241357
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+    client-side-condition: 
+      type: JavaScript expression
+      javascript-expression: |
+        $v('P33_DATA_EXISTS') === 'N'
+        
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: 1 ===========================================
+    id: 26100960636241365
+    identification: 
+      name: 1
+      action: Execute JavaScript Code
+
+    settings: 
+      code: |
+        apex.message.confirm(
+          "Data already exists. Do you want to truncate it?",
+          function(okPressed) {
+            if (okPressed) {
+              // trigger next dynamic action (custom event) attached to the same button
+              apex.event.trigger('#create_template', 'truncateConfirmed');
+            }
+            // if not okPressed -> do nothing
+          }
+        );
+        
+
+    execution: 
+      sequence: 90
+      event: Create Template button click # 26098059964241357
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+    client-side-condition: 
+      type: JavaScript expression
+      javascript-expression: |
+        $v('P33_DATA_EXISTS') === 'Y'
+        
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Execute JavaScript Code =====================
+    id: 26101468694241367
+    identification: 
+      action: Execute JavaScript Code
+
+    settings: 
+      code: |
+        // Convert page item value to number
+        var tableCount = parseInt($v('P33_TABLE_COUNT'), 10);
+        
+        // Only show confirm if table has rows
+        if (tableCount > 0) {
+            if (!confirm('The table already has data. Do you want to continue?')) {
+                // User clicked No → stop further True Actions
+                return false;
+            }
+        }
+        // User clicked Yes → next True Actions will run
+        
+
+    execution: 
+      sequence: 130
+      event: Create Template button click # 26098059964241357
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Confirm =====================================
+    id: 26101993180241368
+    identification: 
+      action: Confirm
+
+    settings: 
+      message: Are you sure you want to update the definition?
+      style: Warning
+      icon: fa-warning
+
+    execution: 
+      sequence: 60
+      event: Create Template button click # 26098059964241357
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+  - # ====== Action: save_Status =================================
+    id: 26102459837241370
+    identification: 
+      name: save_Status
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          l_status  VARCHAR2(10);
+          l_message CLOB;
+          l_icon    VARCHAR2(50);
+          l_title   VARCHAR2(100);
+        BEGIN
+          Graph_SQL.proc_crud_json(
+            p_mode    => 'U',
+            p_table   => 'UR_TEMPLATES',
+            p_payload => '{"ID":"'|| :P33_TEMPLATE_LIST || '","ACTIVE":"' || :P33_STATUS || '"}',
+            p_debug   => 'N',
+            p_status  => l_status,
+            p_message => l_message,
+            p_icon    => l_icon,
+            p_title   => l_title
+          );
+        
+        --   DBMS_OUTPUT.put_line('Status: ' || l_status);
+        --   DBMS_OUTPUT.put_line('Message (metadata JSON): ' || l_message);
+        
+        
+        
+          :P33_ALERT_MESSAGE :=  '[{ "message":"' || l_message || '", "icon":"' || l_status || '"}]';  -- l_json;
+        
+        --   :P1001_ALERT_MESSAGE := 'This is default success message';
+        
+        END;
+        
+      items-to-submit: 
+      - P33_TEMPLATE_LIST
+      - P33_STATUS
+
+    execution: 
+      sequence: 30
+      event: Create Template button click # 26098059964241357
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: saves_IG ====================================
+    id: 26102909189241371
+    identification: 
+      name: saves_IG
+      action: Execute JavaScript Code
+
+    settings: 
+      code: |
+        apex.region("Template_Definition").widget().interactiveGrid("getActions").invoke("save");
+        
+        
+
+    affected-elements: 
+      selection-type: Region
+      region: Template Mapping # 49233180101242961
+
+    execution: 
+      sequence: 40
+      event: Create Template button click # 26098059964241357
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+  - # ====== Action: Refresh =====================================
+    id: 26103445108241373
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Region
+      region: Template Definition # 41673219759226755
+
+    execution: 
+      sequence: 50
+      event: Create Template button click # 26098059964241357
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+  - # ====== Action: saves template name =========================
+    id: 26103987478241374
+    identification: 
+      name: saves template name
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          l_status  VARCHAR2(4000);
+          l_message CLOB;
+          l_icon    VARCHAR2(50);
+          l_title   VARCHAR2(100);
+          v_key        VARCHAR2(4000);
+          v_exists     NUMBER;
+           l_temp    VARCHAR2(4000);
+        BEGIN
+        v_key := ur_utils.Clean_TEXT(:P33_TEMPLATE_NAME);
+          SELECT COUNT(*) INTO v_exists FROM UR_TEMPLATES WHERE KEY = v_key;
+        
+          IF v_exists > 0 THEN
+            ur_utils.add_alert(l_message, 'Template key "' || v_key || '" already exists.', 'warning', NULL, NULL, l_status);
+            --:P0_ALERT_MESSAGE := l_message;
+             --:P0_ALERT_MESSAGE := DBMS_LOB.SUBSTR(l_message, 4000, 1);
+            RETURN;
+          END IF;
+          
+          Graph_SQL.proc_crud_json(
+            p_mode    => 'U',
+            p_table   => 'UR_TEMPLATES',
+            p_payload => '{"ID":"'|| :P33_TEMPLATE_LIST || '","NAME":"' || :P33_TEMPLATE_NAME || '"}',
+            p_debug   => 'N',
+            p_status  => l_status,
+            p_message => l_message,
+            p_icon    => l_icon,
+            p_title   => l_title
+          );
+        
+        --   DBMS_OUTPUT.put_line('Status: ' || l_status);
+        --   DBMS_OUTPUT.put_line('Message (metadata JSON): ' || l_message);
+        
+        
+        
+        -- :P33_ALERT_MESSAGE := '[{ "message":"' || DBMS_LOB.SUBSTR(l_message, 3900, 1) ||
+          --                     '", "icon":"' || l_status || '"}]';
+        
+        /*l_temp := DBMS_LOB.SUBSTR(l_message, 3900, 1);
+          :P33_ALERT_MESSAGE := '[{ "message":"' || l_temp || '", "icon":"' || l_icon || '", "title":"' || l_title || '"}]';*/
+        --   :P1001_ALERT_MESSAGE := 'This is default success message';
+        
+        END;
+        
+      items-to-submit: 
+      - P33_TEMPLATE_NAME
+      - P33_TEMPLATE_LIST
+
+    execution: 
+      sequence: 20
+      event: Create Template button click # 26098059964241357
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: saves_template_type =========================
+    id: 26104469942241376
+    identification: 
+      name: saves_template_type
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          l_status  VARCHAR2(10);
+          l_message CLOB;
+          l_icon    VARCHAR2(50);
+          l_title   VARCHAR2(100);
+        BEGIN
+          Graph_SQL.proc_crud_json(
+            p_mode    => 'U',
+            p_table   => 'UR_TEMPLATES',
+            p_payload => '{"ID":"'|| :P33_TEMPLATE_LIST || '","TYPE":"' || :P33_TEMPLATE_TYPE || '"}',
+            p_debug   => 'N',
+            p_status  => l_status,
+            p_message => l_message,
+            p_icon    => l_icon,
+            p_title   => l_title
+          );
+        
+        --   DBMS_OUTPUT.put_line('Status: ' || l_status);
+        --   DBMS_OUTPUT.put_line('Message (metadata JSON): ' || l_message);
+        
+        
+        
+          :P33_ALERT_MESSAGE :=  '[{ "message":"' || l_message || '", "icon":"' || l_status || '"}]';  -- l_json;
+         
+        
+        --   :P1001_ALERT_MESSAGE := 'This is default success message';
+        
+        END;
+        
+      items-to-submit: 
+      - P33_TEMPLATE_TYPE
+      - P33_TEMPLATE_LIST
+      items-to-return: 
+      - P33_ALERT_MESSAGE
+      suppress-change-event: false
+
+    execution: 
+      sequence: 10
+      event: Create Template button click # 26098059964241357
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+- # ====== Dynamic Action: show and hide region ================
+  id: 26104863475241377
+  identification: 
+    name: show and hide region
+
+  execution: 
+    sequence: 50
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P0_HOTEL_ID
+
+  client-side-condition: 
+    type: Item is not null
+    item: P0_HOTEL_ID
+
+  actions: 
+  - # ====== Action: Show ========================================
+    id: 26105328342241378
+    identification: 
+      action: Show
+
+    affected-elements: 
+      selection-type: Region
+      region: Template List # 42673860713446275
+
+    execution: 
+      sequence: 20
+      event: show and hide region # 26104863475241377
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+
+  - # ====== Action: Hide ========================================
+    id: 26105822938241380
+    identification: 
+      action: Hide
+
+    affected-elements: 
+      selection-type: Region
+      region: Template List # 42673860713446275
+
+    execution: 
+      sequence: 40
+      event: show and hide region # 26104863475241377
+      fire-when-event-result-is: False
+      fire-on-initialization: true
+
+  - # ====== Action: Refresh =====================================
+    id: 26106350873241381
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P33_TEMPLATE_LIST
+
+    execution: 
+      sequence: 30
+      event: show and hide region # 26104863475241377
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+  - # ====== Action: Hide ========================================
+    id: 26106863116241383
+    identification: 
+      action: Hide
+
+    affected-elements: 
+      selection-type: Region
+      region: Template Mapping # 49233180101242961
+
+    execution: 
+      sequence: 10
+      event: show and hide region # 26104863475241377
+      fire-when-event-result-is: False
+      fire-on-initialization: true
+
+  - # ====== Action: Hide ========================================
+    id: 26107382677241384
+    identification: 
+      action: Hide
+
+    affected-elements: 
+      selection-type: Region
+      region: Template Details # 41674633366226770
+
+    execution: 
+      sequence: 20
+      event: show and hide region # 26104863475241377
+      fire-when-event-result-is: False
+      fire-on-initialization: true
+
+  - # ====== Action: Hide ========================================
+    id: 26107839815241385
+    identification: 
+      action: Hide
+
+    affected-elements: 
+      selection-type: Region
+      region: Template Info # 41674788150226771
+
+    execution: 
+      sequence: 30
+      event: show and hide region # 26104863475241377
+      fire-when-event-result-is: False
+      fire-on-initialization: true
+
+  - # ====== Action: Show ========================================
+    id: 26108381096241387
+    identification: 
+      action: Show
+
+    affected-elements: 
+      selection-type: Region
+      region: Template Details # 41674633366226770
+
+    execution: 
+      sequence: 10
+      event: show and hide region # 26104863475241377
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+processes: 
+- # ====== Process: Template Definition - Save Interactive Grid 
+  id: 26078875099241299
+  identification: 
+    name: Template Definition - Save Interactive Grid Data
+    type: Interactive Grid - Automatic Row Processing (DML)
+    execution-chain: None
+    editable-region: Template Definition # 41673219759226755
+
+  settings: 
+    target-type: PL/SQL Code
+    pl/sql-code-to-insert/update/delete: |
+      BEGIN
+          CASE :APEX$ROW_STATUS
+              WHEN 'C' THEN
+                  :SEQ_ID := apex_collection.add_member(
+                      p_collection_name => 'TEMPLATE_DATA',
+                      p_c001            => :NAME,
+                      p_c002            => :DATA_TYPE,
+                      p_c003            => :QUALIFIER,
+           p_c004            => :value,
+           p_c005 => :mapping_type
+                  );
+      
+              WHEN 'U' THEN
+                  apex_collection.update_member(
+                      p_collection_name => 'TEMPLATE_DATA',
+                      p_seq             => :SEQ_ID,
+                      p_c001            => :NAME,
+                      p_c002            => :DATA_TYPE,
+                      p_c003            => :QUALIFIER,
+                      p_c004            => :VALUE,
+           p_c005 => :mapping_type
+                  );
+      
+              WHEN 'D' THEN
+                  apex_collection.delete_member(
+                      p_collection_name => 'TEMPLATE_DATA',
+                      p_seq             => :SEQ_ID
+                  );
+          END CASE;
+      END;
+      
+    prevent-lost-updates: true
+    lock-row: No
+
+  execution: 
+    sequence: 20
+    point: Processing
+    run-process: Once Per Page Visit (default)
+
+  error: 
+    display-location: Inline in Notification
+
+  server-side-condition: 
+    execution-scope: For Created and Modified Rows
+
+- # ====== Process: TRUNCATE_DATA_PROCESS ======================
+  id: 26080591899241306
+  identification: 
+    name: TRUNCATE_DATA_PROCESS
+    type: Execute Code
+    execution-chain: None
+
+  source: 
+    location: Local Database
+    language: PL/SQL
+    pl/sql-code: |
+      DECLARE
+          v_table_name VARCHAR2(255);
+          v_count      NUMBER := 0;
+          v_alerts     CLOB := NULL;
+      BEGIN
+          SELECT db_object_name INTO v_table_name
+            FROM ur_templates
+           WHERE id = :P33_TEMPLATE_LIST;
+      
+          EXECUTE IMMEDIATE 'SELECT COUNT(*) FROM ' || v_table_name INTO v_count;
+      
+          IF v_count > 0 THEN
+              EXECUTE IMMEDIATE 'TRUNCATE TABLE ' || v_table_name;
+              ur_utils.add_alert(
+                  p_existing_json => v_alerts,
+                  p_message       => 'Table "' || v_table_name || '" truncated successfully (' || v_count || ' records deleted).',
+                  p_icon          => 'success',
+                  p_title         => 'Truncate Successful',
+                  p_timeout       => 4000,
+                  p_updated_json  => v_alerts
+              );
+          ELSE
+              ur_utils.add_alert(
+                  p_existing_json => v_alerts,
+                  p_message       => 'No data found in table "' || v_table_name || '".',
+                  p_icon          => 'info',
+                  p_title         => 'Nothing to Truncate',
+                  p_timeout       => 4000,
+                  p_updated_json  => v_alerts
+              );
+          END IF;
+      
+         
+      END;
+      
+
+  execution: 
+    sequence: 10
+    point: Processing
+    run-process: Once Per Page Visit (default)
+
+  success-message: 
+    success-message: success!
+
+  error: 
+    display-location: Inline in Notification
+
+  server-side-condition: 
+    type: Request = Value
+    value: TRUNCATE
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+

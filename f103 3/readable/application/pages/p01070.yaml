@@ -1,0 +1,1538 @@
+---
+# ====== Page: Hotel Price Override ==========================
+id: 1070
+identification: 
+  name: Hotel Price Override
+  alias: HOTEL-PRICE-OVERRIDE
+  title: Rate Adjustment
+
+appearance: 
+  page-mode: Modal Dialog
+  dialog-template: Theme Default
+  template-options: 
+  - '#DEFAULT#'
+
+dialog: 
+  chained: true
+  resizable: true
+
+navigation-menu: 
+  override-user-interface-level: false
+
+navigation: 
+  cursor-focus: Do not focus cursor
+  warn-on-unsaved-changes: true
+
+javascript: 
+  execute-when-page-loads: |
+    function formatDate(dt) {
+      return dt.toISOString().split('T')[0];
+    }
+    
+    flatpickr("#P1070_STAY_DATE_1", {
+      mode: "range",
+      dateFormat: "Y-m-d",
+      allowInput: true,
+      onClose: function(selectedDates) {
+        if (selectedDates.length === 2) {
+          const start = formatDate(selectedDates[0]);
+          const end = formatDate(selectedDates[1]);
+          apex.item("P1070_START_DATE").setValue(start);
+          apex.item("P1070_END_DATE").setValue(end);
+        }
+      }
+    });
+    
+
+security: 
+  authentication: Page Requires Authentication
+  deep-linking: Application Default
+  page-access-protection: Arguments Must Have Checksum
+  form-auto-complete: Off
+  browser-cache: Application Default
+
+session-management: 
+  rejoin-sessions: Application Default
+
+advanced: 
+  enable-duplicate-page-submissions: Yes - Enable page to be re-posted
+  reload-on-submit: Only for Success
+
+server-cache: 
+  caching: Disabled
+
+regions: 
+- # ====== Region: Date ========================================
+  id: 9642610130450630
+  identification: 
+    name: Date
+    type: Static Content
+
+  layout: 
+    sequence: 10
+    parent-region: Main # 18058093034429302
+    slot: SUB_REGIONS
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noPadding
+    - t-Region--removeHeader js-removeLandmark
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+- # ====== Region: Data ========================================
+  id: 9642712267450631
+  identification: 
+    name: Data
+    type: Static Content
+
+  layout: 
+    sequence: 20
+    parent-region: Main # 18058093034429302
+    slot: SUB_REGIONS
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noPadding
+    - t-Region--removeHeader js-removeLandmark
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+- # ====== Region: Hotel Price Override ========================
+  id: 17846602092661938
+  identification: 
+    name: Hotel Price Override
+    title: Rate Adjustment
+    type: Form
+
+  source: 
+    location: Local Database
+    type: Table / View
+    table-owner: Parsing Schema
+    table-name: UR_HOTEL_PRICE_OVERRIDE
+    include-rowid-column: false
+
+  layout: 
+    sequence: 10
+    parent-region: No Parent
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Blank with Attributes
+    template-options: 
+    - '#DEFAULT#'
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    edit: 
+      enabled: true
+      allowed-operations: 
+      - Add Row
+      - Update Row
+      - Delete Row
+      lost-update-type: Row Values
+
+- # ====== Region: Buttons =====================================
+  id: 17853929595661975
+  identification: 
+    name: Buttons
+    type: Static Content
+
+  layout: 
+    sequence: 20
+    parent-region: No Parent
+    slot: REGION_POSITION_03
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Buttons Container
+    template-options: 
+    - '#DEFAULT#'
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: Text (escape special characters)
+      show-line-breaks: true
+
+- # ====== Region: Override Card - Main ========================
+  id: 17860632207763901
+  identification: 
+    name: Override Card - Main
+    type: Static Content
+
+  layout: 
+    sequence: 30
+    parent-region: Hotel Price Override # 17846602092661938
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noPadding
+    - t-Region--removeHeader js-removeLandmark
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+- # ====== Region: Override Card - Audit =======================
+  id: 17860790555763902
+  identification: 
+    name: Override Card - Audit
+    type: Static Content
+
+  layout: 
+    sequence: 40
+    parent-region: Hotel Price Override # 17846602092661938
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noPadding
+    - t-Region--removeHeader js-removeLandmark
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+- # ====== Region: Main ========================================
+  id: 18058093034429302
+  identification: 
+    name: Main
+    type: Static Content
+
+  layout: 
+    sequence: 70
+    parent-region: Override Card - Main # 17860632207763901
+    slot: BODY
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noPadding
+    - t-Region--removeHeader js-removeLandmark
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+page-items: 
+- # ====== Page Item: P1070_ID =================================
+  id: 17846975876661939
+  identification: 
+    name: P1070_ID
+    type: Hidden
+
+  settings: 
+    value-protected: false
+
+  layout: 
+    sequence: 10
+    region: Override Card - Main # 17860632207763901
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    form-region: Hotel Price Override # 17846602092661938
+    column: ID
+    data-type: VARCHAR2
+    query-only: false
+    primary-key: true
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Request (Memory Only)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1070_STAY_DATE ==========================
+  id: 17847303037661946
+  identification: 
+    name: P1070_STAY_DATE
+    type: Date Picker
+
+  label: 
+    label: Stay Date
+    alignment: Left
+
+  settings: 
+    show-time: false
+    display-as: Inline
+    minimum-date: None
+    maximum-date: None
+    multiple-months: No
+    use-defaults: false
+    appearance-&-behavior: 'MONTH-PICKER:YEAR-PICKER'
+    days-outside-month: Visible
+    show-on: Item Focus
+
+  layout: 
+    sequence: 10
+    region: Date # 9642610130450630
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Required - Floating
+    template-options: 
+    - '#DEFAULT#'
+    format-mask: YYYY-MM-DD
+    width: 32
+
+  validation: 
+    value-required: true
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    form-region: Hotel Price Override # 17846602092661938
+    column: STAY_DATE
+    data-type: DATE
+    query-only: false
+    primary-key: false
+
+  session-state: 
+    storage: Per Request (Memory Only)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1070_HOTEL_ID ===========================
+  id: 17847739877661950
+  identification: 
+    name: P1070_HOTEL_ID
+    type: Hidden
+
+  settings: 
+    value-protected: true
+
+  layout: 
+    sequence: 60
+    region: Override Card - Main # 17860632207763901
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    form-region: Hotel Price Override # 17846602092661938
+    column: HOTEL_ID
+    data-type: VARCHAR2
+    query-only: false
+    primary-key: false
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Request (Memory Only)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1070_TYPE ===============================
+  id: 17848150564661951
+  identification: 
+    name: P1070_TYPE
+    type: Radio Group
+
+  label: 
+    label: Type
+    alignment: Left
+
+  settings: 
+    number-of-columns: 3
+    page-action-on-selection: None
+
+  layout: 
+    sequence: 10
+    region: Data # 9642712267450631
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Required - Floating
+    template-options: 
+    - '#DEFAULT#'
+
+  validation: 
+    value-required: false
+
+  list-of-values: 
+    type: Shared Component
+    list-of-values: UR HOTEL PRICE OVERRIDE TYPE # 17934818910111446
+    display-extra-values: false
+    display-null-value: false
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    form-region: Hotel Price Override # 17846602092661938
+    column: TYPE
+    data-type: VARCHAR2
+    query-only: false
+    primary-key: false
+
+  default: 
+    type: Static
+    static-value: RETAIL
+
+  session-state: 
+    storage: Per Request (Memory Only)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    escape-special-characters: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1070_PRICE ==============================
+  id: 17848519608661953
+  identification: 
+    name: P1070_PRICE
+    type: Number Field
+
+  label: 
+    label: Price
+    alignment: Left
+
+  settings: 
+    number-alignment: Start
+    virtual-keyboard: Decimal
+
+  layout: 
+    sequence: 10
+    region: Data # 9642712267450631
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Required - Floating
+    template-options: 
+    - '#DEFAULT#'
+    width: 32
+
+  validation: 
+    value-required: true
+    maximum-length: 255
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    form-region: Hotel Price Override # 17846602092661938
+    column: PRICE
+    data-type: NUMBER
+    query-only: false
+    primary-key: false
+
+  session-state: 
+    storage: Per Request (Memory Only)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1070_REASON =============================
+  id: 17848968821661954
+  identification: 
+    name: P1070_REASON
+    type: Popup LOV
+
+  label: 
+    label: Reason
+    alignment: Left
+
+  settings: 
+    display-as: Inline Popup
+    initial-fetch: Automatic
+    manual-entry: false
+    fetch-on-search: false
+
+  search: 
+    match-type: Contains
+    case-sensitive: false
+    minimum-characters: 0
+
+  multiple-values: 
+    type: No
+
+  layout: 
+    sequence: 10
+    region: Data # 9642712267450631
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    width: 32
+
+  validation: 
+    value-required: false
+    maximum-length: 120
+
+  list-of-values: 
+    type: Shared Component
+    list-of-values: UR HOTEL PRICE OVERRIDE REASON # 17929612222098296
+    display-extra-values: true
+    display-null-value: true
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    form-region: Hotel Price Override # 17846602092661938
+    column: REASON
+    data-type: VARCHAR2
+    query-only: false
+    primary-key: false
+
+  session-state: 
+    storage: Per Request (Memory Only)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1070_CREATED_BY =========================
+  id: 17849329988661956
+  identification: 
+    name: P1070_CREATED_BY
+    type: Display Only
+
+  label: 
+    label: Created By
+    alignment: Left
+
+  settings: 
+    format: Plain Text
+    based-on: Item Value
+    show-line-breaks: true
+    send-on-page-submit: true
+
+  layout: 
+    sequence: 10
+    region: Override Card - Audit # 17860790555763902
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Required - Floating
+    template-options: 
+    - '#DEFAULT#'
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    form-region: Hotel Price Override # 17846602092661938
+    column: CREATED_BY
+    data-type: VARCHAR2
+    query-only: false
+    primary-key: false
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Request (Memory Only)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1070_UPDATED_BY =========================
+  id: 17849755275661958
+  identification: 
+    name: P1070_UPDATED_BY
+    type: Display Only
+
+  label: 
+    label: Updated By
+    alignment: Left
+
+  settings: 
+    format: Plain Text
+    based-on: Item Value
+    show-line-breaks: true
+    send-on-page-submit: true
+
+  layout: 
+    sequence: 30
+    region: Override Card - Audit # 17860790555763902
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Required - Floating
+    template-options: 
+    - '#DEFAULT#'
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    form-region: Hotel Price Override # 17846602092661938
+    column: UPDATED_BY
+    data-type: VARCHAR2
+    query-only: false
+    primary-key: false
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Request (Memory Only)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1070_CREATED_ON =========================
+  id: 17850192944661959
+  identification: 
+    name: P1070_CREATED_ON
+    type: Display Only
+
+  label: 
+    label: Created On
+    alignment: Left
+
+  settings: 
+    format: Plain Text
+    based-on: Item Value
+    show-line-breaks: true
+    send-on-page-submit: true
+
+  layout: 
+    sequence: 20
+    region: Override Card - Audit # 17860790555763902
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Required - Floating
+    template-options: 
+    - '#DEFAULT#'
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    form-region: Hotel Price Override # 17846602092661938
+    column: CREATED_ON
+    data-type: DATE
+    query-only: false
+    primary-key: false
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Request (Memory Only)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1070_UPDATED_ON =========================
+  id: 17850526202661961
+  identification: 
+    name: P1070_UPDATED_ON
+    type: Display Only
+
+  label: 
+    label: Updated On
+    alignment: Left
+
+  settings: 
+    format: Plain Text
+    based-on: Item Value
+    show-line-breaks: true
+    send-on-page-submit: true
+
+  layout: 
+    sequence: 50
+    region: Override Card - Audit # 17860790555763902
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Required - Floating
+    template-options: 
+    - '#DEFAULT#'
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    form-region: Hotel Price Override # 17846602092661938
+    column: UPDATED_ON
+    data-type: DATE
+    query-only: false
+    primary-key: false
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Request (Memory Only)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1070_HOTEL_LIST =========================
+  id: 17978140659354998
+  identification: 
+    name: P1070_HOTEL_LIST
+    type: Select List
+
+  label: 
+    label: Hotel
+    alignment: Left
+
+  settings: 
+    page-action-on-selection: None
+
+  multiple-values: 
+    type: No
+
+  layout: 
+    sequence: 10
+    region: Hotel Price Override # 17846602092661938
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    height: 1
+
+  validation: 
+    value-required: true
+
+  list-of-values: 
+    type: SQL Query
+    sql-query: |
+      SELECT
+        nvl(Hotel_NAME,'Name') as Name,
+      ID as ID
+      FROM
+      UR_HOTELS
+      WHERE nvl(ASSOCIATION_END_DATE,sysdate) >= sysdate
+      
+    display-extra-values: true
+    display-null-value: true
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    form-region: Hotel Price Override # 17846602092661938
+    column: HOTEL_ID
+    data-type: VARCHAR2
+    query-only: false
+    primary-key: false
+
+  session-state: 
+    storage: Per Request (Memory Only)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1070_END_DATE ===========================
+  id: 18058349315429305
+  identification: 
+    name: P1070_END_DATE
+    type: Hidden
+
+  settings: 
+    value-protected: false
+
+  layout: 
+    sequence: 40
+    region: Override Card - Main # 17860632207763901
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    form-region: Hotel Price Override # 17846602092661938
+    column: STAY_DATE
+    data-type: DATE
+    query-only: false
+    primary-key: false
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Request (Memory Only)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1070_START_DATE =========================
+  id: 18058476608429306
+  identification: 
+    name: P1070_START_DATE
+    type: Hidden
+
+  settings: 
+    value-protected: false
+
+  layout: 
+    sequence: 30
+    region: Override Card - Main # 17860632207763901
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    form-region: Hotel Price Override # 17846602092661938
+    column: STAY_DATE
+    data-type: DATE
+    query-only: false
+    primary-key: false
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Request (Memory Only)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+buttons: 
+- # ====== Button: CANCEL ======================================
+  id: 17854318106661976
+  identification: 
+    button-name: CANCEL
+    label: Cancel
+
+  layout: 
+    sequence: 10
+    region: Buttons # 17853929595661975
+    slot: CLOSE
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    button-template: Text
+    hot: false
+    template-options: 
+    - '#DEFAULT#'
+
+  behavior: 
+    action: Defined by Dynamic Action
+    execute-validations: true
+
+- # ====== Button: DELETE ======================================
+  id: 17855747567661982
+  identification: 
+    button-name: DELETE
+    label: Delete
+
+  layout: 
+    sequence: 20
+    region: Buttons # 17853929595661975
+    slot: DELETE
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    button-template: Text
+    hot: false
+    template-options: 
+    - '#DEFAULT#'
+    - t-Button--danger
+
+  behavior: 
+    action: Defined by Dynamic Action
+    execute-validations: false
+    database-action: SQL DELETE action
+
+  confirmation: 
+    message: '&APP_TEXT$DELETE_MSG!RAW.'
+    style: Danger
+
+  server-side-condition: 
+    type: Item is NOT NULL
+    item: P1070_ID
+
+- # ====== Button: SAVE ========================================
+  id: 17856126222661983
+  identification: 
+    button-name: SAVE
+    label: Apply Changes
+
+  layout: 
+    sequence: 30
+    region: Buttons # 17853929595661975
+    slot: NEXT
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    button-template: Text
+    hot: true
+    template-options: 
+    - '#DEFAULT#'
+
+  behavior: 
+    action: Submit Page
+    execute-validations: true
+    show-processing: false
+    warn-on-unsaved-changes: Do Not Check
+    database-action: SQL UPDATE action
+
+  server-side-condition: 
+    type: Item is NOT NULL
+    item: P1070_ID
+
+- # ====== Button: CREATE ======================================
+  id: 18275617574452005
+  identification: 
+    button-name: CREATE
+    label: Create
+
+  layout: 
+    sequence: 50
+    region: Buttons # 17853929595661975
+    slot: NEXT
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    button-template: Text
+    hot: true
+    template-options: 
+    - '#DEFAULT#'
+
+  behavior: 
+    action: Defined by Dynamic Action
+    execute-validations: true
+    database-action: SQL INSERT action
+
+  server-side-condition: 
+    type: Item is NULL
+    item: P1070_ID
+
+dynamic-actions: 
+- # ====== Dynamic Action: Clicked =============================
+  id: 9642895875450632
+  identification: 
+    name: Clicked
+
+  execution: 
+    sequence: 30
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Click
+    selection-type: Button
+    button: CREATE # 18275617574452005
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 9642928518450633
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          l_status  VARCHAR2(10);
+          l_message CLOB;
+          l_icon    VARCHAR2(50);
+          l_title   VARCHAR2(100);
+          l_payload CLOB;
+        
+        BEGIN
+          l_payload := '{
+            "STAY_DATE":"'|| :P1070_STAY_DATE ||'",
+            "HOTEL_ID":"'|| :P1070_HOTEL_LIST ||'",
+            "TYPE":"'|| :P1070_TYPE ||'",
+            "PRICE":'|| :P1070_PRICE ||',
+            "REASON":"'|| :P1070_REASON||'"
+            }';
+        
+          Graph_SQL.proc_crud_json(
+            p_mode    => 'C',
+            p_table   => 'UR_HOTEL_PRICE_OVERRIDE',
+            p_payload => l_payload,
+            p_debug   => 'N',
+            p_status  => l_status,
+            p_message => l_message,
+            p_icon    => l_icon,
+            p_title   => l_title
+          );
+        
+          DBMS_OUTPUT.PUT_LINE('Insert status=' || l_status || ', message=' || l_message);
+          :P0_ALERT_MESSAGE := 'l_message'; 
+        END;
+      items-to-submit: 
+      - P1070_STAY_DATE
+      - P1070_TYPE
+      - P1070_PRICE
+      - P1070_REASON
+      - P1070_HOTEL_LIST
+
+    execution: 
+      sequence: 10
+      event: Clicked # 9642895875450632
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+- # ====== Dynamic Action: Cancel Dialog =======================
+  id: 17854477319661976
+  identification: 
+    name: Cancel Dialog
+
+  execution: 
+    sequence: 10
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Click
+    selection-type: Button
+    button: CANCEL # 17854318106661976
+
+  actions: 
+  - # ====== Action: Cancel Dialog ===============================
+    id: 17855210253661980
+    identification: 
+      action: Cancel Dialog
+
+    execution: 
+      sequence: 10
+      event: Cancel Dialog # 17854477319661976
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+- # ====== Dynamic Action: Delete Row ==========================
+  id: 18275251320452001
+  identification: 
+    name: Delete Row
+
+  execution: 
+    sequence: 20
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Click
+    selection-type: Button
+    button: DELETE # 17855747567661982
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 18275388913452002
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        BEGIN
+          DELETE FROM UR_HOTEL_PRICE_OVERRIDE WHERE ID = HEXTORAW(:P1070_ID);
+          IF SQL%ROWCOUNT = 0 THEN
+            :P0_ALERT_MESSAGE := 'No record found with given ID: ' || :P1070_ID;
+          ELSE
+            COMMIT;
+            :P0_ALERT_MESSAGE := 'Record deleted successfully';
+          END IF;
+        EXCEPTION
+          WHEN OTHERS THEN
+            :P0_ALERT_MESSAGE := 'Deletion failed: ' || SQLERRM;
+            RAISE;
+        END;
+
+    execution: 
+      sequence: 10
+      event: Delete Row # 18275251320452001
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Submit Page =================================
+    id: 18275447494452003
+    identification: 
+      action: Submit Page
+
+    settings: 
+      request-/-button-name: DELETE
+      show-processing: true
+
+    execution: 
+      sequence: 20
+      event: Delete Row # 18275251320452001
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+processes: 
+- # ====== Process: Initialize form Hotel Price Override =======
+  id: 17856992206661987
+  identification: 
+    name: Initialize form Hotel Price Override
+    type: Form - Initialization
+    execution-chain: None
+    form-region: Hotel Price Override # 17846602092661938
+
+  execution: 
+    sequence: 10
+    point: Before Header
+    run-process: Once Per Page Visit (default)
+
+- # ====== Process: Process form Hotel Price Override ==========
+  id: 17857308531661988
+  identification: 
+    name: Process form Hotel Price Override
+    type: Form - Automatic Row Processing (DML)
+    execution-chain: None
+    form-region: Hotel Price Override # 17846602092661938
+
+  settings: 
+    target-type: Region Source
+    prevent-lost-updates: true
+    lock-row: Yes
+    return-primary-key(s)-after-insert: true
+
+  execution: 
+    sequence: 10
+    point: Processing
+    run-process: Once Per Page Visit (default)
+
+  error: 
+    display-location: Inline in Notification
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+- # ====== Process: Close Dialog ===============================
+  id: 17857748844661989
+  identification: 
+    name: Close Dialog
+    type: Close Dialog
+    execution-chain: None
+
+  settings: 
+    show-success-messages: true
+
+  execution: 
+    sequence: 30
+    point: Processing
+    run-process: Once Per Page Visit (default)
+
+  error: 
+    display-location: Inline in Notification
+
+  server-side-condition: 
+    type: Request is contained in Value
+    value: CREATE,SAVE,DELETE
+
+- # ====== Process: Custom process =============================
+  id: 18058584590429307
+  identification: 
+    name: Custom process
+    type: Execute Code
+    execution-chain: None
+
+  source: 
+    location: Local Database
+    language: PL/SQL
+    pl/sql-code: |
+      DECLARE
+        l_status      VARCHAR2(10);
+        l_message     CLOB;
+        l_json_clob   CLOB := NULL;
+        l_start_date  DATE;
+        l_end_date    DATE;
+        l_price       NUMBER;
+        l_type        VARCHAR2(50);
+        l_existing    NUMBER := 0;
+        l_new_id      RAW(16);  -- moved here to main DECLARE section
+      BEGIN
+        apex_debug.message('ENTER SAVE_PRICE_OVERRIDE -- REQUEST=%s', :REQUEST);
+        apex_debug.message('P1070_ID=%s, HOTEL_ID=%s, START=%s, END=%s, PRICE=%s',
+                           :P1070_ID, :P1070_HOTEL_ID, :P1070_START_DATE, :P1070_END_DATE, :P1070_PRICE);
+      
+        -- Parse start date
+        BEGIN
+          l_start_date :=
+            CASE
+              WHEN REGEXP_LIKE(:P1070_START_DATE, '^\d{4}-\d{2}-\d{2}$') THEN TO_DATE(:P1070_START_DATE,'YYYY-MM-DD')
+              WHEN REGEXP_LIKE(:P1070_START_DATE, '^\d{2}/\d{2}/\d{4}$') THEN TO_DATE(:P1070_START_DATE,'MM/DD/YYYY')
+              WHEN REGEXP_LIKE(:P1070_START_DATE, '^\d{2}-\w{3}-\d{4}$') THEN TO_DATE(:P1070_START_DATE,'DD-MON-YYYY')
+              ELSE TO_DATE(:P1070_START_DATE)
+            END;
+          l_end_date :=
+            CASE
+              WHEN REGEXP_LIKE(:P1070_END_DATE, '^\d{4}-\d{2}-\d{2}$') THEN TO_DATE(:P1070_END_DATE,'YYYY-MM-DD')
+              WHEN REGEXP_LIKE(:P1070_END_DATE, '^\d{2}/\d{2}/\d{4}$') THEN TO_DATE(:P1070_END_DATE,'MM/DD/YYYY')
+              WHEN REGEXP_LIKE(:P1070_END_DATE, '^\d{2}-\w{3}-\d{4}$') THEN TO_DATE(:P1070_END_DATE,'DD-MON-YYYY')
+              ELSE TO_DATE(:P1070_END_DATE)
+            END;
+        EXCEPTION
+          WHEN OTHERS THEN
+            l_message := 'Invalid date format: ' || NVL(:P1070_START_DATE,'NULL') || ' / ' || NVL(:P1070_END_DATE,'NULL');
+            apex_debug.message(l_message);
+            RAISE_APPLICATION_ERROR(-20001, l_message);
+        END;
+      
+        -- Parse price
+        BEGIN
+          l_price := TO_NUMBER(:P1070_PRICE);
+        EXCEPTION
+          WHEN VALUE_ERROR THEN
+            l_message := 'Invalid numeric value for price: ' || NVL(:P1070_PRICE,'NULL');
+            apex_debug.message(l_message);
+            RAISE_APPLICATION_ERROR(-20002, l_message);
+        END;
+      
+        l_type := NVL(:P1070_TYPE,'Retail');
+      
+        --------------------------------------------------------------------
+        -- Decide Insert vs Update:
+        -- 1) If user submitted with REQUEST = 'CREATE' -> force insert
+        -- 2) Else, if P1070_ID present, verify it exists -> update
+        -- 3) Otherwise -> insert
+        --------------------------------------------------------------------
+        IF :REQUEST = 'CREATE' THEN
+          l_existing := 0;
+          apex_debug.message('Mode: FORCE INSERT (REQUEST=CREATE)');
+        ELSIF :P1070_ID IS NOT NULL THEN
+          BEGIN
+            SELECT COUNT(*) INTO l_existing
+            FROM UR_HOTEL_PRICE_OVERRIDE
+            WHERE ID = HEXTORAW(:P1070_ID);
+            apex_debug.message('Existence check for ID %s -> %d', :P1070_ID, l_existing);
+          EXCEPTION
+            WHEN OTHERS THEN
+              apex_debug.message('Error checking existence for ID %s: %s', :P1070_ID, SQLERRM);
+              l_existing := 0;
+          END;
+        ELSE
+          l_existing := 0;
+          apex_debug.message('Mode: INSERT (no ID provided)');
+        END IF;
+      
+        IF NVL(l_existing,0) > 0 THEN
+          -- UPDATE
+          UPDATE UR_HOTEL_PRICE_OVERRIDE
+             SET STAY_DATE  = l_start_date,
+                 HOTEL_ID   = HEXTORAW(:P1070_HOTEL_ID),
+                 TYPE       = l_type,
+                 PRICE      = l_price,
+                 REASON     = :P1070_REASON,
+                 UPDATED_BY = SYS_GUID(),
+                 UPDATED_ON = SYSDATE
+           WHERE ID = HEXTORAW(:P1070_ID);
+          IF SQL%ROWCOUNT = 0 THEN
+            RAISE_APPLICATION_ERROR(-20003, 'Update attempted but no row affected.');
+          END IF;
+          l_message := 'Price override updated successfully.';
+          apex_debug.message(l_message);
+        ELSE
+          -- INSERT block wrapped in BEGIN ... EXCEPTION ... END to catch errors
+          BEGIN
+            l_new_id := SYS_GUID();
+            INSERT INTO UR_HOTEL_PRICE_OVERRIDE (
+              ID, STAY_DATE, HOTEL_ID, TYPE, PRICE, REASON,
+              CREATED_BY, UPDATED_BY, CREATED_ON, UPDATED_ON, STATUS
+            ) VALUES (
+              l_new_id,
+              l_start_date,
+              HEXTORAW(:P1070_HOTEL_ID),
+              l_type,
+              l_price,
+              :P1070_REASON,
+              SYS_GUID(),    -- consider using actual user id instead of GUID if column is varchar
+              SYS_GUID(),
+              SYSDATE,
+              SYSDATE,
+              'A'
+            )
+            RETURNING ID INTO l_new_id;
+      
+            IF SQL%ROWCOUNT = 0 THEN
+              apex_debug.message('INSERT executed but SQL%ROWCOUNT = 0');
+              RAISE_APPLICATION_ERROR(-20004, 'Insert attempted but no row inserted (SQL%ROWCOUNT=0).');
+            END IF;
+      
+            COMMIT;
+            
+            l_message := 'Price override added successfully. New ID (hex): ' || RAWTOHEX(l_new_id);
+            apex_debug.message('INSERT OK: ' || l_message);
+          EXCEPTION
+            WHEN DUP_VAL_ON_INDEX THEN
+              ROLLBACK;
+              apex_debug.message('DUP_VAL_ON_INDEX on insert. Check unique constraints.');
+              RAISE;
+            WHEN OTHERS THEN
+              ROLLBACK;
+              apex_debug.message('INSERT EXCEPTION: ' || SQLERRM);
+              RAISE;
+          END;
+        END IF;
+      
+      END;
+
+  execution: 
+    sequence: 20
+    point: Processing
+    run-process: Once Per Page Visit (default)
+
+  error: 
+    display-location: Inline in Notification
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+

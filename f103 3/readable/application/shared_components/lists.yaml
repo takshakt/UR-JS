@@ -1,0 +1,1296 @@
+---
+- # ====== List: Navigation Menu ===============================
+  id: 8558978835922138
+  identification: 
+    name: Navigation Menu
+
+  subscription: 
+    version-number: 45851759983604
+
+  source: 
+    type: Static Values
+
+  entries: 
+  - # ====== Entry: Administration ===============================
+    id: 8750339910923326
+    label: 
+      label: Administration
+
+    icon: 
+      image/icon-css-classes: fa-user-wrench
+
+    layout: 
+      sequence: 10000
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10000:&APP_SESSION.::&DEBUG.:::'
+        page: 10000 # Administration
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+    security: 
+      authorization-scheme: Administration Rights # 8565313938922218
+
+  - # ====== Entry: Add New Template =============================
+    id: 8777317324025862
+    label: 
+      label: Add New Template
+
+    icon: 
+      image/icon-css-classes: fa-layers
+
+    layout: 
+      sequence: 10
+      parent-entry: Hotel Data # 15689157068470336
+
+    is-current: 
+      type: Pages
+      pages: 
+      - 1001
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:1001:&SESSION.::&DEBUG.::::'
+        page: 1001 # Templates
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Load Data ====================================
+    id: 9869761620619585
+    label: 
+      label: Load Data
+
+    icon: 
+      image/icon-css-classes: fa-cloud-check
+
+    layout: 
+      sequence: 30
+      parent-entry: Hotel Data # 15689157068470336
+
+    is-current: 
+      type: Pages
+      pages: 
+      - 1010
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:1010:&SESSION.::&DEBUG.::::'
+        page: 1010 # Load Data
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Hotel Management =============================
+    id: 10490026312115713
+    label: 
+      label: Hotel Management
+
+    icon: 
+      image/icon-css-classes: fa-building
+
+    layout: 
+      sequence: 15
+
+    is-current: 
+      type: Pages
+      pages: 
+      - 1020
+      - 1023
+      - 1024
+      - 1025
+      - 1025
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:1020:&SESSION.::&DEBUG.::::'
+        page: 1020 # Page Template
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Room Types ===================================
+    id: 10730187033163105
+    label: 
+      label: Room Types
+
+    icon: 
+      image/icon-css-classes: fa-bath
+
+    layout: 
+      sequence: 58
+      parent-entry: Hotel Management # 10490026312115713
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:1023:&SESSION.::&DEBUG.::::'
+        page: 1023 # Room Types
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Contact Directory ============================
+    id: 10765969794536823
+    label: 
+      label: Contact Directory
+
+    icon: 
+      image/icon-css-classes: fa-phone-square
+
+    layout: 
+      sequence: 60
+      parent-entry: Hotel Management # 10490026312115713
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:1026:&SESSION.::&DEBUG.::::'
+        page: 1026 # Contacts
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Address Book =================================
+    id: 10778582946540850
+    label: 
+      label: Address Book
+
+    icon: 
+      image/icon-css-classes: fa-taxi
+
+    layout: 
+      sequence: 10020
+      parent-entry: Hotel Management # 10490026312115713
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:17:&SESSION.::&DEBUG.::::'
+        page: 17 # Address
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Event Management =============================
+    id: 10877313631827616
+    label: 
+      label: Event Management
+
+    icon: 
+      image/icon-css-classes: fa-birthday-cake
+
+    layout: 
+      sequence: 20
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:9:&SESSION.::&DEBUG.::::'
+        page: 9 # Hotel Events
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Manage Cluster ===============================
+    id: 10881218503916436
+    label: 
+      label: Manage Cluster
+
+    icon: 
+      image/icon-css-classes: fa-podcast
+
+    layout: 
+      sequence: 55
+      parent-entry: Hotel Management # 10490026312115713
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:1027:&SESSION.::&DEBUG.::::'
+        page: 1027 # Groups
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Strategies ===================================
+    id: 12461139180188313
+    label: 
+      label: Strategies
+
+    icon: 
+      image/icon-css-classes: fa-calculator
+
+    layout: 
+      sequence: 160
+
+    is-current: 
+      type: Pages
+      pages: 
+      - 1050
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:1050:&SESSION.::&DEBUG.::::'
+        page: 1050 # Algorithms
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Manage Reports ===============================
+    id: 12815911773870641
+    label: 
+      label: Manage Reports
+
+    icon: 
+      image/icon-css-classes: fa-notebook
+
+    layout: 
+      sequence: 100
+      parent-entry: Reports # 15884188683819305
+
+    is-current: 
+      type: Pages
+      pages: 
+      - 1006
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:1006:&SESSION.::&DEBUG.::::'
+        page: 1006 # Report Template
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Run Reports ==================================
+    id: 13490057784952042
+    label: 
+      label: Run Reports
+
+    icon: 
+      image/icon-css-classes: fa-dashboard
+
+    layout: 
+      sequence: 300
+      parent-entry: Reports # 15884188683819305
+
+    is-current: 
+      type: Pages
+      pages: 
+      - 15
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:15:&SESSION.::&DEBUG.::::'
+        page: 15 # Report Dashboard
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Hotels =======================================
+    id: 13603850418394588
+    label: 
+      label: Hotels
+
+    icon: 
+      image/icon-css-classes: fa-meeting-room
+
+    layout: 
+      sequence: 56
+      parent-entry: Hotel Management # 10490026312115713
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:11:&SESSION.::&DEBUG.::::'
+        page: 11 # New Hotel
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Interface Dashboard ==========================
+    id: 14713689902561124
+    label: 
+      label: Interface Dashboard
+
+    icon: 
+      image/icon-css-classes: fa-gamepad
+
+    layout: 
+      sequence: 220
+      parent-entry: Administration # 8750339910923326
+
+    is-current: 
+      type: Pages
+      pages: 
+      - 1601
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:1601:&SESSION.::&DEBUG.::::'
+        page: 1601 # Interface Dashboard
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Hotel Data ===================================
+    id: 15689157068470336
+    label: 
+      label: Hotel Data
+
+    icon: 
+      image/icon-css-classes: fa-university
+
+    layout: 
+      sequence: 30
+
+    is-current: 
+      type: Pages
+      pages: 
+      - 14
+      - 1070
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:14:&SESSION.::&DEBUG.::::'
+        page: 14 # Hotels
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Reports ======================================
+    id: 15884188683819305
+    label: 
+      label: Reports
+
+    icon: 
+      image/icon-css-classes: fa-files-o
+
+    layout: 
+      sequence: 310
+
+    is-current: 
+      type: Pages
+      pages: 
+      - 21
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:21:&SESSION.::&DEBUG.::::'
+        page: 21 # Reporting
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Price Override ===============================
+    id: 17886663119874598
+    label: 
+      label: Price Override
+
+    icon: 
+      image/icon-css-classes: fa-analytics
+
+    layout: 
+      sequence: 320
+      parent-entry: Hotel Data # 15689157068470336
+
+    is-current: 
+      type: Pages
+      pages: 
+      - 1075
+      - 1071
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:1075:&SESSION.::&DEBUG.::::'
+        page: 1075 # Hotel Price Override List
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Reservation Update ===========================
+    id: 19687573748008468
+    label: 
+      label: Reservation Update
+
+    icon: 
+      image/icon-css-classes: fa-ban
+
+    layout: 
+      sequence: 10060
+      parent-entry: Hotel Data # 15689157068470336
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:19:&SESSION.::&DEBUG.::::'
+        page: 19 # Reservations
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Manage Templates =============================
+    id: 23216073527110995
+    label: 
+      label: Manage Templates
+
+    icon: 
+      image/icon-css-classes: fa-pencil
+
+    layout: 
+      sequence: 20
+      parent-entry: Hotel Data # 15689157068470336
+
+    is-current: 
+      type: Pages
+      pages: 
+      - 29
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:29:&SESSION.::&DEBUG.::::'
+        page: 29 # Template Update Interface
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Report Summary ===============================
+    id: 27223648835332272
+    label: 
+      label: Report Summary
+
+    icon: 
+      image/icon-css-classes: fa-file-o
+
+    layout: 
+      sequence: 330
+      parent-entry: Reports # 15884188683819305
+
+    is-current: 
+      type: Pages
+      pages: 
+      - 167
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:167:&SESSION.::&DEBUG.::::'
+        page: 167 # Report Summary
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Templates v2 =================================
+    id: 30207590582500629
+    label: 
+      label: Templates v2
+
+    layout: 
+      sequence: 340
+      parent-entry: Hotel Data # 15689157068470336
+
+    is-current: 
+      type: Pages
+      pages: 
+      - 1002
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:1002:&APP_SESSION.::&DEBUG.:::'
+        page: 1002 # Templates v2
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+- # ====== List: Navigation Bar ================================
+  id: 8560150247922173
+  identification: 
+    name: Navigation Bar
+
+  subscription: 
+    version-number: 45526813782322
+
+  source: 
+    type: Static Values
+
+  entries: 
+  - # ====== Entry: Install App ==================================
+    id: 8746608517923311
+    label: 
+      label: Install App
+
+    icon: 
+      image/icon-css-classes: fa-cloud-download
+
+    layout: 
+      sequence: 10
+
+    is-current: 
+      type: Never
+
+    link: 
+      target: '#action$a-pwa-install'
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      2.: a-pwaInstall
+
+  - # ====== Entry: Feedback =====================================
+    id: 8747077832923313
+    label: 
+      label: Feedback
+
+    icon: 
+      image/icon-css-classes: fa-comment-o
+
+    layout: 
+      sequence: 20
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10055:&SESSION.::&DEBUG.:RP,10050:P10050_PAGE_ID:&APP_PAGE_ID.:'
+        page: 10055 # Feedback-Workforce
+        clear-cache: RP,10050
+        values: 
+          p10050_page_id: '&APP_PAGE_ID.'
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      2.: icon-only
+
+    server-side-condition: 
+      type: Expression
+      language: PL/SQL
+      pl/sql-expression: apex_util.feedback_enabled
+
+    configuration: 
+      build-option: 'Feature: Feedback' # 8562819231922207
+
+  - # ====== Entry: About ========================================
+    id: 8747354659923314
+    label: 
+      label: About
+
+    icon: 
+      image/icon-css-classes: fa-question-circle-o
+
+    layout: 
+      sequence: 30
+
+    is-current: 
+      type: Target Page
+
+    user-defined-attributes: 
+      translatable: false
+      2.: icon-only
+
+    configuration: 
+      build-option: 'Feature: About Page' # 8563395264922207
+
+  - # ====== Entry: Page Help ====================================
+    id: 8747733145923316
+    label: 
+      label: Page Help
+
+    icon: 
+      image/icon-css-classes: fa-question-circle-o
+
+    layout: 
+      sequence: 40
+      parent-entry: About # 8747354659923314
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10061:&APP_SESSION.::&DEBUG.::P10061_PAGE_ID:&APP_PAGE_ID.'
+        page: 10061 # Help
+        values: 
+          p10061_page_id: '&APP_PAGE_ID.'
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      2.: icon-only
+
+    configuration: 
+      build-option: 'Feature: About Page' # 8563395264922207
+
+  - # ====== Entry: --- ==========================================
+    id: 8748139345923317
+    label: 
+      label: '---'
+
+    layout: 
+      sequence: 50
+      parent-entry: About # 8747354659923314
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: separator
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: About Page ===================================
+    id: 8748582339923319
+    label: 
+      label: About Page
+
+    icon: 
+      image/icon-css-classes: fa-info-circle-o
+
+    layout: 
+      sequence: 60
+      parent-entry: About # 8747354659923314
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10060:&APP_SESSION.::&DEBUG.:10060::'
+        page: 10060 # About
+        clear-cache: 10060
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+    configuration: 
+      build-option: 'Feature: About Page' # 8563395264922207
+
+  - # ====== Entry: &APP_USER. ===================================
+    id: 8748876231923319
+    label: 
+      label: '&APP_USER.'
+
+    icon: 
+      image/icon-css-classes: fa-user
+
+    layout: 
+      sequence: 70
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: '#'
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      2.: has-username
+
+  - # ====== Entry: --- ==========================================
+    id: 8749337838923322
+    label: 
+      label: '---'
+
+    layout: 
+      sequence: 80
+      parent-entry: '&APP_USER.' # 8748876231923319
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: separator
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+    server-side-condition: 
+      type: User is Authenticated (not public)
+
+  - # ====== Entry: Sign Out =====================================
+    id: 8749761332923324
+    label: 
+      label: Sign Out
+
+    icon: 
+      image/icon-css-classes: fa-sign-out
+
+    layout: 
+      sequence: 90
+      parent-entry: '&APP_USER.' # 8748876231923319
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: '&LOGOUT_URL.'
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+    server-side-condition: 
+      type: User is Authenticated (not public)
+
+  - # ====== Entry: Settings =====================================
+    id: 8776044899923615
+    label: 
+      label: Settings
+
+    icon: 
+      image/icon-css-classes: fa-gear
+
+    layout: 
+      sequence: 1
+      parent-entry: '&APP_USER.' # 8748876231923319
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:20000:&APP_SESSION.::&DEBUG.:::'
+        page: 20000 # Settings
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+    configuration: 
+      build-option: 'Feature: User Settings' # 8769614028923586
+
+- # ====== List: Application Configuration =====================
+  id: 8751406837923333
+  identification: 
+    name: Application Configuration
+
+  subscription: 
+    version-number: 45069603847571
+
+  source: 
+    type: Static Values
+
+  configuration: 
+    build-option: 'Feature: Configuration Options' # 8563036924922207
+
+  entries: 
+  - # ====== Entry: Configuration Options ========================
+    id: 8751831825923334
+    label: 
+      label: Configuration Options
+
+    icon: 
+      image/icon-css-classes: fa-sliders
+
+    layout: 
+      sequence: 10
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10010:&APP_SESSION.::&DEBUG.:10010::'
+        page: 10010 # Configuration Options
+        clear-cache: 10010
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      1.: Enable or disable application features
+
+    configuration: 
+      build-option: 'Feature: Configuration Options' # 8563036924922207
+
+- # ====== List: User Interface ================================
+  id: 8752174414923335
+  identification: 
+    name: User Interface
+
+  subscription: 
+    version-number: 45069603847578
+
+  source: 
+    type: Static Values
+
+  configuration: 
+    build-option: 'Feature: Theme Style Selection' # 8563425969922207
+
+  entries: 
+  - # ====== Entry: Theme Style Selection ========================
+    id: 8752542924923336
+    label: 
+      label: Theme Style Selection
+
+    icon: 
+      image/icon-css-classes: fa-paint-brush
+
+    layout: 
+      sequence: 10
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10020:&APP_SESSION.::&DEBUG.:10020::'
+        page: 10020 # Application Appearance
+        clear-cache: 10020
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      1.: Set the default application look and feel
+
+    configuration: 
+      build-option: 'Feature: Theme Style Selection' # 8563425969922207
+
+- # ====== List: Activity Reports ==============================
+  id: 8752813176923338
+  identification: 
+    name: Activity Reports
+
+  subscription: 
+    version-number: 45069603847579
+
+  source: 
+    type: Static Values
+
+  configuration: 
+    build-option: 'Feature: Activity Reporting' # 8562734856922207
+
+  entries: 
+  - # ====== Entry: Dashboard ====================================
+    id: 8753282097923339
+    label: 
+      label: Dashboard
+
+    icon: 
+      image/icon-css-classes: fa-area-chart
+
+    layout: 
+      sequence: 10
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10030:&APP_SESSION.::&DEBUG.:10030::'
+        page: 10030 # Activity Dashboard
+        clear-cache: 10030
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      1.: View application activity metrics
+
+  - # ====== Entry: Top Users ====================================
+    id: 8753614910923340
+    label: 
+      label: Top Users
+
+    icon: 
+      image/icon-css-classes: fa-user-chart
+
+    layout: 
+      sequence: 20
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10031:&APP_SESSION.::&DEBUG.:10031::'
+        page: 10031 # Top Users
+        clear-cache: 10031
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      1.: Report of page views aggregated by user
+
+  - # ====== Entry: Application Error Log ========================
+    id: 8754067107923341
+    label: 
+      label: Application Error Log
+
+    icon: 
+      image/icon-css-classes: fa-exclamation
+
+    layout: 
+      sequence: 30
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10032:&APP_SESSION.::&DEBUG.:10032::'
+        page: 10032 # Application Error Log
+        clear-cache: 10032
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      1.: Report of errors logged by this application
+
+  - # ====== Entry: Page Performance =============================
+    id: 8754401517923343
+    label: 
+      label: Page Performance
+
+    icon: 
+      image/icon-css-classes: fa-file-chart
+
+    layout: 
+      sequence: 40
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10033:&APP_SESSION.::&DEBUG.:10033::'
+        page: 10033 # Page Performance
+        clear-cache: 10033
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      1.: Report of activity and performance by application page
+
+  - # ====== Entry: Page Views ===================================
+    id: 8754850412923344
+    label: 
+      label: Page Views
+
+    icon: 
+      image/icon-css-classes: fa-file-search
+
+    layout: 
+      sequence: 50
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10034:&APP_SESSION.::&DEBUG.:RR,10034::'
+        page: 10034 # Page Views
+        clear-cache: RR,10034
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      1.: Report of each page view by user including date of access and elapsed time
+
+  - # ====== Entry: Automations Log ==============================
+    id: 8755276577923345
+    label: 
+      label: Automations Log
+
+    icon: 
+      image/icon-css-classes: fa-gears
+
+    layout: 
+      sequence: 60
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10035:&APP_SESSION.::&DEBUG.:RR,10035::'
+        page: 10035 # Automations Log
+        clear-cache: RR,10035
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      1.: Report of automation executions and messages logged by this application
+
+    server-side-condition: 
+      type: Rows returned
+      sql-query: |
+        select 1
+        from apex_appl_automations a, apex_automation_log l
+        where a.automation_id = l.automation_id
+        and l.application_id = :APP_ID
+
+- # ====== List: Access Control ================================
+  id: 8755583830923346
+  identification: 
+    name: Access Control
+
+  subscription: 
+    version-number: 45069603847581
+
+  source: 
+    type: Static Values
+
+  configuration: 
+    build-option: 'Feature: Access Control' # 8562625690922207
+
+  entries: 
+  - # ====== Entry: Users ========================================
+    id: 8755927019923347
+    label: 
+      label: Users
+
+    icon: 
+      image/icon-css-classes: fa-users
+
+    layout: 
+      sequence: 10
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10041:&APP_SESSION.::&DEBUG.:RP::'
+        page: 10041 # Manage User Access
+        clear-cache: RP
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      1.: Set level of access for authenticated users of this application
+
+  - # ====== Entry: Access Control ===============================
+    id: 8756310378923349
+    label: 
+      label: Access Control
+
+    icon: 
+      image/icon-css-classes: fa-key
+
+    layout: 
+      sequence: 20
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10040:&APP_SESSION.::&DEBUG.:::'
+        page: 10040 # Configure Access Control
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      1.: Change access control settings and disable access control
+
+- # ====== List: Feedback ======================================
+  id: 8756603659923350
+  identification: 
+    name: Feedback
+
+  subscription: 
+    version-number: 45069603847581
+
+  source: 
+    type: Static Values
+
+  configuration: 
+    build-option: 'Feature: Feedback' # 8562819231922207
+
+  entries: 
+  - # ====== Entry: User Feedback ================================
+    id: 8757021748923351
+    label: 
+      label: User Feedback
+
+    icon: 
+      image/icon-css-classes: fa-comment-o
+
+    layout: 
+      sequence: 10
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10053:&APP_SESSION.::&DEBUG.:10053::'
+        page: 10053 # Manage Feedback
+        clear-cache: 10053
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      1.: Report of all feedback submitted by application users
+
+- # ====== List: User Settings =================================
+  id: 8773295722923602
+  identification: 
+    name: User Settings
+
+  subscription: 
+    version-number: 45069603848450
+
+  source: 
+    type: Static Values
+
+  configuration: 
+    build-option: 'Feature: User Settings' # 8769614028923586
+
+  entries: 
+  - # ====== Entry: Push Notifications ===========================
+    id: 8773682469923603
+    label: 
+      label: Push Notifications
+
+    icon: 
+      image/icon-css-classes: fa-bell-o
+
+    layout: 
+      sequence: 10
+
+    is-current: 
+      type: Target Page
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:20010:&APP_SESSION.::&DEBUG.:::'
+        page: 20010 # Push Notifications
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+      1.: Configure whether you want to receive push notifications on this device.
+      2.: <span class="a-pwaPush--state"></span>
+
+    configuration: 
+      build-option: 'Feature: Push Notifications' # 8769313747923584
+

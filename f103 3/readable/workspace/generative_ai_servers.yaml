@@ -1,0 +1,18 @@
+---
+- # ====== Generative AI Service: Flaira =======================
+  id: 7949156321027603
+  identification: 
+    name: Flaira
+
+  endpoint-url: 
+    url: 'https://api.openai.com/v1'
+
+  advanced: 
+    static-id: flaira
+    prompt-on-install: true
+
+  generative-ai-service: 
+    generative-ai-service-provider: Open AI
+    default-generative-ai-service: true
+    generative-ai-service-model-to-use: gpt-4.1-mini
+

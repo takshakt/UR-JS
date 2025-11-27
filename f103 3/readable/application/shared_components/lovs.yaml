@@ -1,0 +1,1881 @@
+---
+- # ====== List of Values: DESKTOP THEME STYLES ================
+  id: 8588041198922378
+  identification: 
+    name: DESKTOP THEME STYLES
+
+  subscription: 
+    version-number: 45069603844867
+
+  source: 
+    location: Local Database
+    type: SQL Query
+    sql-query: |
+      select s.name d,
+             s.theme_style_id r
+        from apex_application_theme_styles s,
+             apex_application_themes t
+       where s.application_id = :app_id
+         and t.application_id = s.application_id
+         and t.theme_number   = s.theme_number
+         and t.is_current     = 'Yes'
+       order by 1
+
+  column-mapping: 
+    return: R
+    display: D
+    default-sort: Use Order By from Query
+
+- # ====== List of Values: USER_THEME_PREFERENCE ===============
+  id: 8588738905922390
+  identification: 
+    name: USER_THEME_PREFERENCE
+
+  subscription: 
+    version-number: 45069603844873
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Allow End Users to choose Theme Style ========
+    id: 8589058396922391
+    entry: 
+      sequence: 1
+      display: Allow End Users to choose Theme Style
+      return: Yes
+
+- # ====== List of Values: TIMEFRAME (4 WEEKS) =================
+  id: 8607464404922653
+  identification: 
+    name: TIMEFRAME (4 WEEKS)
+
+  subscription: 
+    version-number: 45069603845720
+
+  source: 
+    location: Local Database
+    type: SQL Query
+    sql-query: |
+      select disp,
+             val as seconds
+        from table( apex_util.get_timeframe_lov_data )
+       order by insert_order
+
+  column-mapping: 
+    return: SECONDS
+    display: DISP
+    default-sort: Use Order By from Query
+
+- # ====== List of Values: VIEW_AS_REPORT_CHART ================
+  id: 8655030232922863
+  identification: 
+    name: VIEW_AS_REPORT_CHART
+
+  subscription: 
+    version-number: 45069603846277
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Add Report Page ==============================
+    id: 8655313353922863
+    entry: 
+      sequence: 1
+      display: Add Report Page
+      return: REPORT
+
+    globalization: 
+      template: <span class="fa fa-table" aria-hidden="true"></span><span class="u-VisuallyHidden">#DISPLAY_VALUE#</span>
+
+  - # ====== Entry: Add Chart Page ===============================
+    id: 8655712643922865
+    entry: 
+      sequence: 2
+      display: Add Chart Page
+      return: CHART
+
+    globalization: 
+      template: <span class="fa fa-pie-chart" aria-hidden="true"></span><span class="u-VisuallyHidden">#DISPLAY_VALUE#</span>
+
+- # ====== List of Values: ACCESS_ROLES ========================
+  id: 8688330277923001
+  identification: 
+    name: ACCESS_ROLES
+
+  subscription: 
+    version-number: 45069603846750
+
+  source: 
+    location: Local Database
+    type: SQL Query
+    sql-query: |
+      select role_name d, role_id r
+      from APEX_APPL_ACL_ROLES where application_id = :APP_ID 
+      order by 1
+
+  column-mapping: 
+    return: R
+    display: D
+    default-sort: Use Order By from Query
+
+- # ====== List of Values: EMAIL_USERNAME_FORMAT ===============
+  id: 8695761987923030
+  identification: 
+    name: EMAIL_USERNAME_FORMAT
+
+  subscription: 
+    version-number: 45069603846914
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Email Addresses ==============================
+    id: 8696023594923031
+    entry: 
+      sequence: 1
+      display: Email Addresses
+      return: EMAIL
+
+- # ====== List of Values: FEEDBACK_RATING =====================
+  id: 8712962833923184
+  identification: 
+    name: FEEDBACK_RATING
+
+  subscription: 
+    version-number: 45069603847186
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Positive =====================================
+    id: 8713253855923184
+    entry: 
+      sequence: 1
+      display: Positive
+      return: 3
+
+    globalization: 
+      template: <span title="#DISPLAY_VALUE#" aria-label="#DISPLAY_VALUE#"><span class="fa fa-smile-o fa-2x feedback-positive" aria-hidden="true" ></span></span>
+
+  - # ====== Entry: Neutral ======================================
+    id: 8713698507923186
+    entry: 
+      sequence: 2
+      display: Neutral
+      return: 2
+
+    globalization: 
+      template: <span title="#DISPLAY_VALUE#" aria-label="#DISPLAY_VALUE#"><span class="fa fa-emoji-neutral fa-2x feedback-neutral" aria-hidden="true" ></span></span>
+
+  - # ====== Entry: Negative =====================================
+    id: 8714060894923187
+    entry: 
+      sequence: 3
+      display: Negative
+      return: 1
+
+    globalization: 
+      template: <span title="#DISPLAY_VALUE#" aria-label="#DISPLAY_VALUE#"><span class="fa fa-frown-o fa-2x feedback-negative" aria-hidden="true" ></span></span>
+
+- # ====== List of Values: FEEDBACK_STATUS =====================
+  id: 8725202701923226
+  identification: 
+    name: FEEDBACK_STATUS
+
+  subscription: 
+    version-number: 45069603847315
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: No Action ====================================
+    id: 8725594991923227
+    entry: 
+      sequence: 1
+      display: No Action
+      return: 0
+
+  - # ====== Entry: Acknowledged =================================
+    id: 8725931380923229
+    entry: 
+      sequence: 2
+      display: Acknowledged
+      return: 1
+
+  - # ====== Entry: Open =========================================
+    id: 8726339763923230
+    entry: 
+      sequence: 3
+      display: Open
+      return: 3
+
+  - # ====== Entry: Closed =======================================
+    id: 8726705626923231
+    entry: 
+      sequence: 4
+      display: Closed
+      return: 4
+
+- # ====== List of Values: UR TEMPLATE TYPES ===================
+  id: 9646161429519087
+  identification: 
+    name: UR TEMPLATE TYPES
+
+  subscription: 
+    version-number: 45437401578093
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: BI ===========================================
+    id: 9646423725519095
+    entry: 
+      sequence: 1
+      display: BI
+      return: BI
+
+  - # ====== Entry: PMS ==========================================
+    id: 9646886307519099
+    entry: 
+      sequence: 2
+      display: PMS
+      return: PMS
+
+  - # ====== Entry: RMS ==========================================
+    id: 9647224804519100
+    entry: 
+      sequence: 3
+      display: RMS
+      return: RMS
+
+  - # ====== Entry: Others =======================================
+    id: 9647617239519101
+    entry: 
+      sequence: 99
+      display: Others
+      return: OTHERS
+
+  - # ====== Entry: Manual Hotel Algorithm Attributes ============
+    id: 9654890870569477
+    entry: 
+      sequence: 14
+      display: Manual Hotel Algorithm Attributes
+      return: MANUAL_ALGO_SETUP_ATTR
+
+  - # ====== Entry: Rate Shopping Tool ===========================
+    id: 14578695835077247
+    entry: 
+      sequence: 4
+      display: Rate Shopping Tool
+      return: RST
+
+- # ====== List of Values: UR MAPPING TYPES ====================
+  id: 10018491218303621
+  identification: 
+    name: UR MAPPING TYPES
+
+  subscription: 
+    version-number: 45526806866356
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Maps To ======================================
+    id: 10018727488303640
+    entry: 
+      sequence: 1
+      display: Maps To
+      return: Maps To
+
+  - # ====== Entry: Ignore =======================================
+    id: 10019171905303644
+    entry: 
+      sequence: 2
+      display: Ignore
+      return: Ignore
+
+  - # ====== Entry: Default ======================================
+    id: 10019553827303645
+    entry: 
+      sequence: 3
+      display: Default
+      return: Default
+
+  - # ====== Entry: Calculation ==================================
+    id: 15644370086435347
+    entry: 
+      sequence: 4
+      display: Calculation
+      return: Calculation
+
+- # ====== List of Values: UR ATTRIBUTE QUALIFIERS =============
+  id: 10464223217255649
+  identification: 
+    name: UR ATTRIBUTE QUALIFIERS
+
+  subscription: 
+    version-number: 45828717594919
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Occupancy ====================================
+    id: 10464954710255662
+    entry: 
+      sequence: 2
+      display: Occupancy
+      return: OCCUPANCY
+
+  - # ====== Entry: Booking Date =================================
+    id: 10465322322255663
+    entry: 
+      sequence: 3
+      display: Booking Date
+      return: BOOKING_DATE
+
+  - # ====== Entry: Stay Date ====================================
+    id: 10465713222255664
+    entry: 
+      sequence: 4
+      display: Stay Date
+      return: STAY_DATE
+
+  - # ====== Entry: Own Property =================================
+    id: 14141713501941682
+    entry: 
+      sequence: 14
+      display: Own Property
+      return: OWN_PROPERTY
+
+  - # ====== Entry: Competitor Property ==========================
+    id: 14579344627203815
+    entry: 
+      sequence: 24
+      display: Competitor Property
+      return: COMP_PROPERTY
+
+  - # ====== Entry: Market Demand ================================
+    id: 15398211188674859
+    entry: 
+      sequence: 34
+      display: Market Demand
+      return: MARKET_DEMAND
+
+  - # ====== Entry: Current Rate =================================
+    id: 15866568610571526
+    entry: 
+      sequence: 44
+      display: Current Rate
+      return: CURRENT_RATE
+
+  - # ====== Entry: Unique =======================================
+    id: 18863351915383087
+    entry: 
+      sequence: 54
+      display: Unique
+      return: UNIQUE
+
+  - # ====== Entry: Manual Price Override ========================
+    id: 18863803134388538
+    entry: 
+      sequence: 64
+      display: Manual Price Override
+      return: MANUAL_PRICE_OVERRIDE
+
+  - # ====== Entry: Stay Day of week =============================
+    id: 27887399380787411
+    entry: 
+      sequence: 5
+      display: Stay Day of week
+      return: STAY_DAY_OF_WEEK
+
+  - # ====== Entry: Revenue ======================================
+    id: 27887603687787413
+    entry: 
+      sequence: 6
+      display: Revenue
+      return: REVENUE
+
+  - # ====== Entry: Room nights ==================================
+    id: 27888017470787414
+    entry: 
+      sequence: 7
+      display: Room nights
+      return: ROOM_NIGHTS
+
+  - # ====== Entry: Revenue STLY =================================
+    id: 27888401241787415
+    entry: 
+      sequence: 8
+      display: Revenue STLY
+      return: REVENUE_STLY
+
+  - # ====== Entry: Groups RNTs ==================================
+    id: 27888864233787416
+    entry: 
+      sequence: 9
+      display: Groups RNTs
+      return: GROUPS_RNTS
+
+  - # ====== Entry: Groups RNTs STLY =============================
+    id: 27889255835787418
+    entry: 
+      sequence: 10
+      display: Groups RNTs STLY
+      return: GROUPS_RNTS_STLY
+
+  - # ====== Entry: LY RNTs ======================================
+    id: 27889758846809966
+    entry: 
+      sequence: 11
+      display: LY RNTs
+      return: LY_RNTS
+
+  - # ====== Entry: LY Occupancy =================================
+    id: 27890068393809968
+    entry: 
+      sequence: 12
+      display: LY Occupancy
+      return: LY_OCCUPANCY
+
+  - # ====== Entry: LY ADR =======================================
+    id: 27890475069809969
+    entry: 
+      sequence: 13
+      display: LY ADR
+      return: LY_ADR
+
+  - # ====== Entry: Comp Set LY Occupancy ========================
+    id: 27890834197829868
+    entry: 
+      sequence: 15
+      display: Comp Set LY Occupancy
+      return: COMP_SET_LY_OCCUPANCY
+
+  - # ====== Entry: Comp Set LY ADR ==============================
+    id: 27891187649829869
+    entry: 
+      sequence: 16
+      display: Comp Set LY ADR
+      return: COMP_SET_LY_ADR
+
+  - # ====== Entry: Out Of Order Rooms ===========================
+    id: 27891557732829870
+    entry: 
+      sequence: 17
+      display: Out Of Order Rooms
+      return: OUT_OF_ORDER_ROOMS
+
+  - # ====== Entry: Rewards Redemption ===========================
+    id: 27891983536829872
+    entry: 
+      sequence: 18
+      display: Rewards Redemption
+      return: REWARDS_REDEMPTION
+
+  - # ====== Entry: Rewards Redemption LY ========================
+    id: 27892385374829873
+    entry: 
+      sequence: 19
+      display: Rewards Redemption LY
+      return: REWARDS_REDEMPTION_LY
+
+  - # ====== Entry: RMS rate =====================================
+    id: 27892771370829874
+    entry: 
+      sequence: 20
+      display: RMS rate
+      return: RMS_RATE
+
+  - # ====== Entry: Pick up Room nights -1 DAY ===================
+    id: 27893390752891845
+    entry: 
+      sequence: 65
+      display: Pick up Room nights -1 DAY
+      return: PICK_UP_ROOM_NIGHTS_1_DAY
+
+  - # ====== Entry: Pick up Revenue -1 DAY =======================
+    id: 27893640042891846
+    entry: 
+      sequence: 66
+      display: Pick up Revenue -1 DAY
+      return: PICK_UP_REVENUE_1_DAY
+
+  - # ====== Entry: Pick up Room nights -3 DAY ===================
+    id: 27894092494891847
+    entry: 
+      sequence: 67
+      display: Pick up Room nights -3 DAY
+      return: PICK_UP_ROOM_NIGHTS_3_DAY
+
+  - # ====== Entry: Pick up Revenue -3 DAY =======================
+    id: 27894409562891849
+    entry: 
+      sequence: 68
+      display: Pick up Revenue -3 DAY
+      return: PICK_UP_REVENUE_3_DAY
+
+  - # ====== Entry: Pick up Room nights -7 DAY ===================
+    id: 27894837985891850
+    entry: 
+      sequence: 69
+      display: Pick up Room nights -7 DAY
+      return: PICK_UP_ROOM_NIGHTS_7_DAY
+
+  - # ====== Entry: Pick up Revenue -7 DAY =======================
+    id: 27895898498945081
+    entry: 
+      sequence: 70
+      display: Pick up Revenue -7 DAY
+      return: PICK_UP_REVENUE_7_DAY
+
+  - # ====== Entry: Pick up Room nights -14 DAY ==================
+    id: 27896198308945083
+    entry: 
+      sequence: 71
+      display: Pick up Room nights -14 DAY
+      return: PICK_UP_ROOM_NIGHTS_-4_DAY
+
+  - # ====== Entry: Pick up Revenue -14 DAY ======================
+    id: 27896552840945084
+    entry: 
+      sequence: 72
+      display: Pick up Revenue -14 DAY
+      return: PICK_UP_REVENUE_14_DAY
+
+  - # ====== Entry: Pick up Room nights -28 DAY ==================
+    id: 27896992155945085
+    entry: 
+      sequence: 73
+      display: Pick up Room nights -28 DAY
+      return: PICK_UP_ROOM_NIGHTS_28_DAY
+
+  - # ====== Entry: Pick up Revenue -28 DAY ======================
+    id: 27897370066945087
+    entry: 
+      sequence: 74
+      display: Pick up Revenue -28 DAY
+      return: PICK_UP_REVENUE_28_DAY
+
+  - # ====== Entry: Pick up Room nights STLY-1 DAY ===============
+    id: 27897702381959767
+    entry: 
+      sequence: 75
+      display: Pick up Room nights STLY-1 DAY
+      return: PICK_UP_ROOM_NIGHTS_STLY_1_DAY
+
+  - # ====== Entry: Pick up Revenue STLY -1 DAY ==================
+    id: 27898066438959769
+    entry: 
+      sequence: 76
+      display: Pick up Revenue STLY -1 DAY
+      return: PICK_UP_REVENUE_STLY_1_DAY
+
+  - # ====== Entry: Pick up Room nights STLY-3 DAY ===============
+    id: 27898460016959770
+    entry: 
+      sequence: 77
+      display: Pick up Room nights STLY-3 DAY
+      return: PICK_UP_ROOM_NIGHTS_STLY_3_DAY
+
+  - # ====== Entry: Pick up Revenue STLY -3 DAY ==================
+    id: 27898809508959771
+    entry: 
+      sequence: 78
+      display: Pick up Revenue STLY -3 DAY
+      return: PICK_UP_REVENUE_STLY_3_DAY
+
+  - # ====== Entry: Pick up Room nights STLY-7 DAY ===============
+    id: 27899253741959773
+    entry: 
+      sequence: 79
+      display: Pick up Room nights STLY-7 DAY
+      return: PICK_UP_ROOM_NIGHTS_STLY_7_DAY
+
+  - # ====== Entry: Pick up Revenue STLY-7 DAY ===================
+    id: 27899604562991172
+    entry: 
+      sequence: 80
+      display: Pick up Revenue STLY-7 DAY
+      return: PICK_UP_REVENUE_STLY_7_DAY
+
+  - # ====== Entry: Pick up Room nights STLY-14 DAY ==============
+    id: 27899918975991174
+    entry: 
+      sequence: 81
+      display: Pick up Room nights STLY-14 DAY
+      return: PICK_UP_ROOM_NIGHTS_STLY_14_DAY
+
+  - # ====== Entry: Pick up Revenue STLY-14 DAY ==================
+    id: 27900367887991175
+    entry: 
+      sequence: 82
+      display: Pick up Revenue STLY-14 DAY
+      return: PICK_UP_REVENUE_STLY_14_DAY
+
+  - # ====== Entry: Pick up Room nights STLY-28 DAY ==============
+    id: 27900761389991176
+    entry: 
+      sequence: 83
+      display: Pick up Room nights STLY-28 DAY
+      return: PICK_UP_ROOM_NIGHTS_STLY_28_DAY
+
+  - # ====== Entry: Pick up Revenue STLY-28 DAY ==================
+    id: 27901169379991177
+    entry: 
+      sequence: 84
+      display: Pick up Revenue STLY-28 DAY
+      return: PICK_UP_REVENUE_STLY_28_DAY
+
+  - # ====== Entry: Pick up Groups RNTs – 1 DAY ==================
+    id: 27901746633998936
+    entry: 
+      sequence: 85
+      display: Pick up Groups RNTs – 1 DAY
+      return: PICK_UP_GROUPS_RNTS_1_DAY
+
+  - # ====== Entry: Pick up Groups RNTs – 7 DAY ==================
+    id: 27902010199998938
+    entry: 
+      sequence: 86
+      display: Pick up Groups RNTs – 7 DAY
+      return: PICK_UP_GROUPS_RNTS_7_DAY
+
+  - # ====== Entry: Pick up Groups RNTs STLY – 1 DAY =============
+    id: 27902423032998939
+    entry: 
+      sequence: 87
+      display: Pick up Groups RNTs STLY – 1 DAY
+      return: PICK_UP_GROUPS_RNTS_STLY_1_DAY
+
+  - # ====== Entry: Pick up Groups RNTs STLY– 7 DAY ==============
+    id: 27902828751998940
+    entry: 
+      sequence: 88
+      display: Pick up Groups RNTs STLY– 7 DAY
+      return: PICK_UP_GROUPS_RNTS_STLY_7_DAY
+
+  - # ====== Entry: Room nights STLY =============================
+    id: 27943457460583408
+    entry: 
+      sequence: 25
+      display: Room nights STLY
+      return: ROOM_NIGHTS_STLY
+
+- # ====== List of Values: UR CONTACT TYPES ====================
+  id: 12370700856411856
+  identification: 
+    name: UR CONTACT TYPES
+
+  subscription: 
+    version-number: 45436930126914
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Sales ========================================
+    id: 12371057759411866
+    entry: 
+      sequence: 1
+      display: Sales
+      return: SALES
+
+  - # ====== Entry: Frontdesk ====================================
+    id: 12371462215411869
+    entry: 
+      sequence: 2
+      display: Frontdesk
+      return: FRONTDESK
+
+  - # ====== Entry: Managment ====================================
+    id: 12371849163411870
+    entry: 
+      sequence: 3
+      display: Managment
+      return: MANAGMENT
+
+- # ====== List of Values: UR EXPRESSION OPERATORS =============
+  id: 12487682573470467
+  identification: 
+    name: UR EXPRESSION OPERATORS
+
+  subscription: 
+    version-number: 45437363755303
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: = ============================================
+    id: 12487939197470470
+    entry: 
+      sequence: 1
+      display: =
+      return: =
+
+  - # ====== Entry: != ===========================================
+    id: 12488302270470472
+    entry: 
+      sequence: 2
+      display: '!='
+      return: '!='
+
+  - # ====== Entry: > ============================================
+    id: 12488721760470473
+    entry: 
+      sequence: 3
+      display: '>'
+      return: '>'
+
+  - # ====== Entry: >= ===========================================
+    id: 12489113689470474
+    entry: 
+      sequence: 4
+      display: '>='
+      return: '>='
+
+  - # ====== Entry: < ============================================
+    id: 12489599594470475
+    entry: 
+      sequence: 5
+      display: <
+      return: <
+
+  - # ====== Entry: <= ===========================================
+    id: 12489926758470477
+    entry: 
+      sequence: 6
+      display: <=
+      return: <=
+
+  - # ====== Entry: BETWEEN ======================================
+    id: 12490312240470478
+    entry: 
+      sequence: 7
+      display: BETWEEN
+      return: BETWEEN
+
+  - # ====== Entry: LIKE =========================================
+    id: 12490779143470479
+    entry: 
+      sequence: 8
+      display: LIKE
+      return: LIKE
+
+  - # ====== Entry: NOT LIKE =====================================
+    id: 12491146745470480
+    entry: 
+      sequence: 9
+      display: NOT LIKE
+      return: NOT LIKE
+
+  - # ====== Entry: IN ===========================================
+    id: 12491543707470481
+    entry: 
+      sequence: 10
+      display: IN
+      return: IN
+
+  - # ====== Entry: NOT IN =======================================
+    id: 12491988850470483
+    entry: 
+      sequence: 11
+      display: NOT IN
+      return: NOT IN
+
+  - # ====== Entry: IS NULL ======================================
+    id: 12492333629470484
+    entry: 
+      sequence: 12
+      display: IS NULL
+      return: IS NULL
+
+  - # ====== Entry: IS NOT NULL ==================================
+    id: 12492754637470485
+    entry: 
+      sequence: 13
+      display: IS NOT NULL
+      return: IS NOT NULL
+
+  - # ====== Entry: ( ============================================
+    id: 12493197426470486
+    entry: 
+      sequence: 14
+      display: (
+      return: (
+
+  - # ====== Entry: ) ============================================
+    id: 12493552639470487
+    entry: 
+      sequence: 15
+      display: )
+      return: )
+
+  - # ====== Entry: AND ==========================================
+    id: 12605508874477780
+    entry: 
+      sequence: 25
+      display: AND
+      return: AND
+
+  - # ====== Entry: OR ===========================================
+    id: 12605821654478802
+    entry: 
+      sequence: 35
+      display: OR
+      return: OR
+
+  - # ====== Entry: CASE =========================================
+    id: 12746309367892194
+    entry: 
+      sequence: 45
+      display: CASE
+      return: CASE
+
+  - # ====== Entry: WHEN =========================================
+    id: 12746600278893151
+    entry: 
+      sequence: 55
+      display: WHEN
+      return: WHEN
+
+  - # ====== Entry: ELSE =========================================
+    id: 12746912225896917
+    entry: 
+      sequence: 65
+      display: ELSE
+      return: ELSE
+
+  - # ====== Entry: END ==========================================
+    id: 12747261885897674
+    entry: 
+      sequence: 75
+      display: END
+      return: END
+
+  - # ====== Entry: + ============================================
+    id: 12832679746252369
+    entry: 
+      sequence: 85
+      display: +
+      return: +
+
+  - # ====== Entry: - ============================================
+    id: 12833171952261104
+    entry: 
+      sequence: 90
+      display: '-'
+      return: '-'
+
+  - # ====== Entry: * ============================================
+    id: 12833643494266081
+    entry: 
+      sequence: 95
+      display: '*'
+      return: '*'
+
+  - # ====== Entry: / ============================================
+    id: 12833946010266082
+    entry: 
+      sequence: 100
+      display: /
+      return: /
+
+- # ====== List of Values: UR EXPRESSION FUNCTIONS =============
+  id: 12494151488529142
+  identification: 
+    name: UR EXPRESSION FUNCTIONS
+
+  subscription: 
+    version-number: 45436957582683
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: AVG (n) ======================================
+    id: 12494406595529144
+    entry: 
+      sequence: 1
+      display: AVG (n)
+      return: AVG (n)
+
+  - # ====== Entry: COUNT (n) ====================================
+    id: 12494862246529145
+    entry: 
+      sequence: 2
+      display: COUNT (n)
+      return: COUNT (n)
+
+  - # ====== Entry: MIN (n) ======================================
+    id: 12495223971529146
+    entry: 
+      sequence: 3
+      display: MIN (n)
+      return: MIN (n)
+
+  - # ====== Entry: MAX (n) ======================================
+    id: 12495662882529147
+    entry: 
+      sequence: 4
+      display: MAX (n)
+      return: MAX (n)
+
+  - # ====== Entry: ABS (num) ====================================
+    id: 12496076358529149
+    entry: 
+      sequence: 5
+      display: ABS (num)
+      return: ABS (num)
+
+  - # ====== Entry: CEIL (num) ===================================
+    id: 12496440284529150
+    entry: 
+      sequence: 6
+      display: CEIL (num)
+      return: CEIL (num)
+
+  - # ====== Entry: FLOOR (num) ==================================
+    id: 12496818605529151
+    entry: 
+      sequence: 7
+      display: FLOOR (num)
+      return: FLOOR (num)
+
+  - # ====== Entry: ROUND (num,dec) ==============================
+    id: 12497276458529152
+    entry: 
+      sequence: 8
+      display: ROUND (num,dec)
+      return: ROUND (num,dec)
+
+  - # ====== Entry: TRUNC (num,dec) ==============================
+    id: 12497606808529153
+    entry: 
+      sequence: 9
+      display: TRUNC (num,dec)
+      return: TRUNC (num,dec)
+
+- # ====== List of Values: UR EVENT TYPES ======================
+  id: 12921639157580743
+  identification: 
+    name: UR EVENT TYPES
+
+  subscription: 
+    version-number: 45437154892977
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Weddings =====================================
+    id: 12921955471580748
+    entry: 
+      sequence: 1
+      display: Weddings
+      return: Weddings
+
+  - # ====== Entry: Product Launch ===============================
+    id: 12922359675580751
+    entry: 
+      sequence: 2
+      display: Product Launch
+      return: Product Launch
+
+  - # ====== Entry: Networking Events ============================
+    id: 12922799224580753
+    entry: 
+      sequence: 3
+      display: Networking Events
+      return: Networking Events
+
+  - # ====== Entry: Birthdays and Anniversaries ==================
+    id: 12923129634580754
+    entry: 
+      sequence: 4
+      display: Birthdays and Anniversaries
+      return: Birthdays and Anniversaries
+
+  - # ====== Entry: Community Festivals ==========================
+    id: 12923593850580755
+    entry: 
+      sequence: 5
+      display: Community Festivals
+      return: Community Festivals
+
+- # ====== List of Values: UR LEAD TIME TYPES ==================
+  id: 12968322337095291
+  identification: 
+    name: UR LEAD TIME TYPES
+
+  subscription: 
+    version-number: 45437161272367
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Date Range ===================================
+    id: 12968673259095293
+    entry: 
+      sequence: 1
+      display: Date Range
+      return: F
+
+  - # ====== Entry: Day(s) =======================================
+    id: 12969036655095294
+    entry: 
+      sequence: 2
+      display: Day(s)
+      return: D
+
+  - # ====== Entry: Week(s) ======================================
+    id: 12969419489095295
+    entry: 
+      sequence: 3
+      display: Week(s)
+      return: W
+
+  - # ====== Entry: Month(s) =====================================
+    id: 12969844705095296
+    entry: 
+      sequence: 4
+      display: Month(s)
+      return: M
+
+- # ====== List of Values: UR ALGO CONDITIONS OPERATORS ========
+  id: 14015089005891584
+  identification: 
+    name: UR ALGO CONDITIONS OPERATORS
+
+  subscription: 
+    version-number: 45437402293765
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: > ============================================
+    id: 14015387103891586
+    entry: 
+      sequence: 1
+      display: '>'
+      return: '>'
+
+  - # ====== Entry: >= ===========================================
+    id: 14015738037891587
+    entry: 
+      sequence: 2
+      display: '>='
+      return: '>='
+
+  - # ====== Entry: < ============================================
+    id: 14016122973891588
+    entry: 
+      sequence: 3
+      display: <
+      return: <
+
+  - # ====== Entry: <= ===========================================
+    id: 14016520590891589
+    entry: 
+      sequence: 4
+      display: <=
+      return: <=
+
+  - # ====== Entry: = ============================================
+    id: 14016981894891591
+    entry: 
+      sequence: 5
+      display: =
+      return: =
+
+  - # ====== Entry: != ===========================================
+    id: 14587918036271546
+    entry: 
+      sequence: 15
+      display: '!='
+      return: '!='
+
+- # ====== List of Values: UR_HOTELS.HOTEL_NAME ================
+  id: 14280326063905924
+  identification: 
+    name: UR_HOTELS.HOTEL_NAME
+
+  subscription: 
+    version-number: 45437387339141
+
+  source: 
+    location: Local Database
+    type: Table / View
+    table-owner: Parsing Schema
+    table-name: UR_HOTELS
+
+  column-mapping: 
+    return: HOTEL_ID
+    display: HOTEL_NAME
+    default-sort: HOTEL_NAME
+    sort-direction: Ascending (Nulls Last)
+
+- # ====== List of Values: UR RESERVATION TYPES ================
+  id: 14387135225367601
+  identification: 
+    name: UR RESERVATION TYPES
+
+  subscription: 
+    version-number: 45828679441477
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Transient ====================================
+    id: 14387443234367603
+    entry: 
+      sequence: 1
+      display: Transient
+      return: TS
+
+  - # ====== Entry: Crew =========================================
+    id: 14387842963367605
+    entry: 
+      sequence: 3
+      display: Crew
+      return: CR
+
+  - # ====== Entry: Groups =======================================
+    id: 14388215077367606
+    entry: 
+      sequence: 2
+      display: Groups
+      return: GR
+
+- # ====== List of Values: UR BOOKING DAYS =====================
+  id: 14420744575511311
+  identification: 
+    name: UR BOOKING DAYS
+
+  subscription: 
+    version-number: 45437389708328
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: 1 ============================================
+    id: 14421041625511312
+    entry: 
+      sequence: 1
+      display: 1
+      return: 1
+
+  - # ====== Entry: 2 ============================================
+    id: 14421432445511313
+    entry: 
+      sequence: 2
+      display: 2
+      return: 2
+
+  - # ====== Entry: 3 ============================================
+    id: 14421845288511315
+    entry: 
+      sequence: 3
+      display: 3
+      return: 3
+
+  - # ====== Entry: 4 ============================================
+    id: 14422243788511316
+    entry: 
+      sequence: 4
+      display: 4
+      return: 4
+
+  - # ====== Entry: 5 ============================================
+    id: 14422680676511317
+    entry: 
+      sequence: 5
+      display: 5
+      return: 5
+
+  - # ====== Entry: 6 ============================================
+    id: 14423069103511318
+    entry: 
+      sequence: 6
+      display: 6
+      return: 6
+
+  - # ====== Entry: 7 ============================================
+    id: 14423494831511319
+    entry: 
+      sequence: 7
+      display: 7
+      return: 7
+
+  - # ====== Entry: 8 ============================================
+    id: 14423818039511320
+    entry: 
+      sequence: 8
+      display: 8
+      return: 8
+
+  - # ====== Entry: 9 ============================================
+    id: 14424252619511322
+    entry: 
+      sequence: 9
+      display: 9
+      return: 9
+
+  - # ====== Entry: 10 ===========================================
+    id: 14424624779511323
+    entry: 
+      sequence: 10
+      display: 10
+      return: 10
+
+  - # ====== Entry: 11 ===========================================
+    id: 14425044457511324
+    entry: 
+      sequence: 11
+      display: 11
+      return: 11
+
+  - # ====== Entry: 12 ===========================================
+    id: 14425469971511325
+    entry: 
+      sequence: 12
+      display: 12
+      return: 12
+
+  - # ====== Entry: 13 ===========================================
+    id: 14425832727511326
+    entry: 
+      sequence: 13
+      display: 13
+      return: 13
+
+  - # ====== Entry: 14 ===========================================
+    id: 14426231276511327
+    entry: 
+      sequence: 14
+      display: 14
+      return: 14
+
+  - # ====== Entry: 15 ===========================================
+    id: 14426634708511328
+    entry: 
+      sequence: 15
+      display: 15
+      return: 15
+
+  - # ====== Entry: 16 ===========================================
+    id: 14427399545522742
+    entry: 
+      sequence: 16
+      display: 16
+      return: 16
+
+  - # ====== Entry: 17 ===========================================
+    id: 14427667117522743
+    entry: 
+      sequence: 17
+      display: 17
+      return: 17
+
+  - # ====== Entry: 19 ===========================================
+    id: 14428000339522744
+    entry: 
+      sequence: 19
+      display: 19
+      return: 19
+
+  - # ====== Entry: 18 ===========================================
+    id: 14428408997522746
+    entry: 
+      sequence: 18
+      display: 18
+      return: 18
+
+  - # ====== Entry: 20 ===========================================
+    id: 14429189868544705
+    entry: 
+      sequence: 20
+      display: 20
+      return: 20
+
+  - # ====== Entry: 26 ===========================================
+    id: 14429443865544706
+    entry: 
+      sequence: 26
+      display: 26
+      return: 26
+
+  - # ====== Entry: 25 ===========================================
+    id: 14429851473544707
+    entry: 
+      sequence: 25
+      display: 25
+      return: 25
+
+  - # ====== Entry: 23 ===========================================
+    id: 14430204017544708
+    entry: 
+      sequence: 23
+      display: 23
+      return: 23
+
+  - # ====== Entry: 27 ===========================================
+    id: 14430696555544710
+    entry: 
+      sequence: 27
+      display: 27
+      return: 27
+
+  - # ====== Entry: 22 ===========================================
+    id: 14431074820544711
+    entry: 
+      sequence: 22
+      display: 22
+      return: 22
+
+  - # ====== Entry: 21 ===========================================
+    id: 14431498986544712
+    entry: 
+      sequence: 21
+      display: 21
+      return: 21
+
+  - # ====== Entry: 24 ===========================================
+    id: 14431804787544713
+    entry: 
+      sequence: 24
+      display: 24
+      return: 24
+
+  - # ====== Entry: 29 ===========================================
+    id: 14432267514544714
+    entry: 
+      sequence: 29
+      display: 29
+      return: 29
+
+  - # ====== Entry: 28 ===========================================
+    id: 14432631662544716
+    entry: 
+      sequence: 28
+      display: 28
+      return: 28
+
+  - # ====== Entry: 30 ===========================================
+    id: 14433086258544717
+    entry: 
+      sequence: 30
+      display: 30
+      return: 30
+
+- # ====== List of Values: UR RESERVSTION EXCEPTION TYPE =======
+  id: 14433946398557917
+  identification: 
+    name: UR RESERVSTION EXCEPTION TYPE
+
+  subscription: 
+    version-number: 45693066506887
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Late Cancellation ============================
+    id: 14434291952557919
+    entry: 
+      sequence: 1
+      display: Late Cancellation
+      return: LC
+
+  - # ====== Entry: No Show ======================================
+    id: 14434652756557920
+    entry: 
+      sequence: 2
+      display: No Show
+      return: NS
+
+  - # ====== Entry: Rebate =======================================
+    id: 14435009620557921
+    entry: 
+      sequence: 3
+      display: Rebate
+      return: RB
+
+- # ====== List of Values: UR CANCELLATION REASON ==============
+  id: 14497219589034529
+  identification: 
+    name: UR CANCELLATION REASON
+
+  subscription: 
+    version-number: 45437391358336
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Customer Illness or Emergency ================
+    id: 14497545620034531
+    entry: 
+      sequence: 1
+      display: Customer Illness or Emergency
+      return: Customer Illness or Emergency
+
+  - # ====== Entry: Travel Delay or Transportation Issues ========
+    id: 14497973368034533
+    entry: 
+      sequence: 2
+      display: Travel Delay or Transportation Issues
+      return: Travel Delay or Transportation Issues
+
+  - # ====== Entry: Change of Plans / Itinerary ==================
+    id: 14498353231034534
+    entry: 
+      sequence: 3
+      display: Change of Plans / Itinerary
+      return: Change of Plans / Itinerary
+
+  - # ====== Entry: Hotel Overbooking / No Availability ==========
+    id: 14498722280034535
+    entry: 
+      sequence: 4
+      display: Hotel Overbooking / No Availability
+      return: Hotel Overbooking / No Availability
+
+  - # ====== Entry: Billing or Payment Issues ====================
+    id: 14499142091034537
+    entry: 
+      sequence: 5
+      display: Billing or Payment Issues
+      return: Billing or Payment Issues
+
+  - # ====== Entry: Weather Conditions or Natural Disasters ======
+    id: 14499561158034538
+    entry: 
+      sequence: 6
+      display: Weather Conditions or Natural Disasters
+      return: Weather Conditions or Natural Disasters
+
+- # ====== List of Values: UR EVENT SCORE ======================
+  id: 14574086177037113
+  identification: 
+    name: UR EVENT SCORE
+
+  subscription: 
+    version-number: 45437401414603
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: +3 ===========================================
+    id: 14574388818037118
+    entry: 
+      sequence: 1
+      display: +3
+      return: +3
+
+  - # ====== Entry: +2 ===========================================
+    id: 14574754511037121
+    entry: 
+      sequence: 2
+      display: +2
+      return: +2
+
+  - # ====== Entry: +1 ===========================================
+    id: 14575119784037122
+    entry: 
+      sequence: 3
+      display: +1
+      return: +1
+
+  - # ====== Entry: 0 ============================================
+    id: 14575591602037123
+    entry: 
+      sequence: 4
+      display: 0
+      return: 0
+
+  - # ====== Entry: -1 ===========================================
+    id: 14575959331037124
+    entry: 
+      sequence: 5
+      display: '-1'
+      return: '-1'
+
+  - # ====== Entry: -2 ===========================================
+    id: 14576388881037125
+    entry: 
+      sequence: 6
+      display: '-2'
+      return: '-2'
+
+  - # ====== Entry: -3 ===========================================
+    id: 14576746074037126
+    entry: 
+      sequence: 7
+      display: '-3'
+      return: '-3'
+
+- # ====== List of Values: UR PROPERTY RANKING =================
+  id: 14583005440260044
+  identification: 
+    name: UR PROPERTY RANKING
+
+  subscription: 
+    version-number: 45437402233109
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: 1 ============================================
+    id: 14583352638260046
+    entry: 
+      sequence: 1
+      display: 1
+      return: 1
+
+  - # ====== Entry: 2 ============================================
+    id: 14583731067260047
+    entry: 
+      sequence: 2
+      display: 2
+      return: 2
+
+  - # ====== Entry: 3 ============================================
+    id: 14584161243260049
+    entry: 
+      sequence: 3
+      display: 3
+      return: 3
+
+  - # ====== Entry: 4 ============================================
+    id: 14584538265260050
+    entry: 
+      sequence: 4
+      display: 4
+      return: 4
+
+  - # ====== Entry: 5 ============================================
+    id: 14584995411260051
+    entry: 
+      sequence: 5
+      display: 5
+      return: 5
+
+  - # ====== Entry: 6 ============================================
+    id: 14585368392260052
+    entry: 
+      sequence: 6
+      display: 6
+      return: 6
+
+  - # ====== Entry: 7 ============================================
+    id: 14585796321260053
+    entry: 
+      sequence: 7
+      display: 7
+      return: 7
+
+  - # ====== Entry: 8 ============================================
+    id: 14586174971260054
+    entry: 
+      sequence: 8
+      display: 8
+      return: 8
+
+  - # ====== Entry: 9 ============================================
+    id: 14586531418260055
+    entry: 
+      sequence: 9
+      display: 9
+      return: 9
+
+  - # ====== Entry: 10 ===========================================
+    id: 14586927424260056
+    entry: 
+      sequence: 10
+      display: 10
+      return: 10
+
+  - # ====== Entry: 11 ===========================================
+    id: 14587361323260057
+    entry: 
+      sequence: 11
+      display: 11
+      return: 11
+
+- # ====== List of Values: UR USER TYPE ========================
+  id: 15587918992732346
+  identification: 
+    name: UR USER TYPE
+
+  subscription: 
+    version-number: 45526804238167
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Employee =====================================
+    id: 15588229397732349
+    entry: 
+      sequence: 1
+      display: Employee
+      return: Employee
+
+  - # ====== Entry: Contractor ===================================
+    id: 15588693354732352
+    entry: 
+      sequence: 2
+      display: Contractor
+      return: Contractor
+
+  - # ====== Entry: Hotel Team ===================================
+    id: 15589034604732354
+    entry: 
+      sequence: 3
+      display: Hotel Team
+      return: Hotel Team
+
+- # ====== List of Values: UR USER STATUS ======================
+  id: 15589373391739364
+  identification: 
+    name: UR USER STATUS
+
+  subscription: 
+    version-number: 45526804264543
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Pending ======================================
+    id: 15589664894739366
+    entry: 
+      sequence: 1
+      display: Pending
+      return: Pending
+
+  - # ====== Entry: Approved =====================================
+    id: 15590056436739368
+    entry: 
+      sequence: 2
+      display: Approved
+      return: Approved
+
+  - # ====== Entry: Inactive =====================================
+    id: 15590456122739369
+    entry: 
+      sequence: 3
+      display: Inactive
+      return: Inactive
+
+- # ====== List of Values: UR BED TYPES ========================
+  id: 16203835239910193
+  identification: 
+    name: UR BED TYPES
+
+  subscription: 
+    version-number: 45526920310847
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Single =======================================
+    id: 16204192572910205
+    entry: 
+      sequence: 1
+      display: Single
+      return: SINGLE
+
+  - # ====== Entry: Double =======================================
+    id: 16204559276910209
+    entry: 
+      sequence: 2
+      display: Double
+      return: DOUBLE
+
+  - # ====== Entry: Family =======================================
+    id: 16204932022910210
+    entry: 
+      sequence: 3
+      display: Family
+      return: FAMILY
+
+- # ====== List of Values: UR ROOM SUPPLIMENT TYPES ============
+  id: 16213380408982704
+  identification: 
+    name: UR ROOM SUPPLIMENT TYPES
+
+  subscription: 
+    version-number: 45526921045836
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Fixed Price ==================================
+    id: 16213695066982707
+    entry: 
+      sequence: 1
+      display: Fixed Price
+      return: FP
+
+  - # ====== Entry: Price Range ==================================
+    id: 16214031808982708
+    entry: 
+      sequence: 2
+      display: Price Range
+      return: PR
+
+  - # ====== Entry: Fixed Price % ================================
+    id: 16221596946086100
+    entry: 
+      sequence: 12
+      display: Fixed Price %
+      return: FPP
+
+- # ====== List of Values: UR HOTEL PRICE OVERRIDE REASON ======
+  id: 17929612222098296
+  identification: 
+    name: UR HOTEL PRICE OVERRIDE REASON
+
+  subscription: 
+    version-number: 45828713777832
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Competitor Price Action ======================
+    id: 17929948981098298
+    entry: 
+      sequence: 1
+      display: Competitor Price Action
+      return: COMPETITOR_PRICE_ACTION
+
+  - # ====== Entry: Low Demand Forecast ==========================
+    id: 17930356195098300
+    entry: 
+      sequence: 2
+      display: Low Demand Forecast
+      return: LOW_DEMAND_FORECAST
+
+  - # ====== Entry: High Demand Forecast =========================
+    id: 17930772591098301
+    entry: 
+      sequence: 3
+      display: High Demand Forecast
+      return: HIGH_DEMAND_FORECAST
+
+  - # ====== Entry: Boost Last-Minute Occupancy ==================
+    id: 17931128140098302
+    entry: 
+      sequence: 4
+      display: Boost Last-Minute Occupancy
+      return: BOOST_LAST_MINUTE_OCCUPANCY
+
+  - # ====== Entry: New Local Event ==============================
+    id: 17931546006098303
+    entry: 
+      sequence: 5
+      display: New Local Event
+      return: NEW_LOCAL_EVENT
+
+  - # ====== Entry: Local Event Cancellation =====================
+    id: 17931951672098305
+    entry: 
+      sequence: 6
+      display: Local Event Cancellation
+      return: LOCAL_EVENT_CANCELLATION
+
+  - # ====== Entry: Incorrect Rate Loaded in System ==============
+    id: 17932376180098306
+    entry: 
+      sequence: 7
+      display: Incorrect Rate Loaded in System
+      return: INCORRECT_RATE_LOADED
+
+  - # ====== Entry: Rate Parity Adjustment =======================
+    id: 17932788936098307
+    entry: 
+      sequence: 8
+      display: Rate Parity Adjustment
+      return: RATE_PARITY_ADJUSTMENT
+
+  - # ====== Entry: Package Inclusion Adjustment =================
+    id: 17933512204098310
+    entry: 
+      sequence: 10
+      display: Package Inclusion Adjustment
+      return: PACKAGE_INCLUSION_ADJUSTMENT
+
+  - # ====== Entry: Rate Parity Adjustment =======================
+    id: 27885590992667464
+    entry: 
+      sequence: 11
+      display: Rate Parity Adjustment
+      return: PACKAGE_INCLUSION_ADJUSTMENT
+
+  - # ====== Entry: Incorrect rate loaded in the system ==========
+    id: 27885823382667466
+    entry: 
+      sequence: 12
+      display: Incorrect rate loaded in the system
+      return: INCORRECT_RATE_LOADED_IN_THE_SYSTEM
+
+  - # ====== Entry: Package inclusion adjustment =================
+    id: 27886256381667467
+    entry: 
+      sequence: 13
+      display: Package inclusion adjustment
+      return: RATE_PARITY_ADJUSTMENT
+
+- # ====== List of Values: UR HOTEL PRICE OVERRIDE TYPE ========
+  id: 17934818910111446
+  identification: 
+    name: UR HOTEL PRICE OVERRIDE TYPE
+
+  subscription: 
+    version-number: 45693967753955
+
+  source: 
+    location: Static Values
+
+  entries: 
+  - # ====== Entry: Public =======================================
+    id: 17935150264111448
+    entry: 
+      sequence: 1
+      display: Public
+      return: PUBLIC
+
+  - # ====== Entry: Corporate ====================================
+    id: 17935510775111449
+    entry: 
+      sequence: 2
+      display: Corporate
+      return: CORPORATE
+
+  - # ====== Entry: Group ========================================
+    id: 17935942172111450
+    entry: 
+      sequence: 3
+      display: Group
+      return: GROUP
+

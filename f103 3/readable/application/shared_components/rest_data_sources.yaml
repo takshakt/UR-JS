@@ -1,0 +1,317 @@
+---
+- # ====== REST Data Source: OpenAI ============================
+  id: 9333912540250188
+  identification: 
+    name: OpenAI
+
+  subscription: 
+    version-number: 45069637622803
+
+  source: 
+    type: HTTP
+    remote-server: api-openai-com-v1 # 9330950226250161
+    url-path-prefix: /chat/completions
+
+  settings: 
+    pagination-type: NO PAGINATION
+
+  authentication: 
+    credentials: Credentials for OpenAI # 9330674445250158
+
+  rest-synchronization: 
+    job-is-active: false
+    local-table-owner: Parsing Schema
+
+  advanced: 
+    static-id: openai
+    pass-ecid: Application Default
+
+  parameters: 
+  - # ====== Parameter: Content-Type =============================
+    id: 9334578383250199
+    identification: 
+      name: Content-Type
+
+    parameter: 
+      type: HTTP Header
+      data-type: String
+
+    value: 
+      direction: In
+      static: true
+      value: application/json
+
+    advanced: 
+      use-for-row-search: false
+      omit-when-value-is-empty: false
+
+  data-profiles: 
+    id: 9331197531250164
+    identification: 
+      name: OpenAI
+
+    data-profile: 
+      format: JSON
+      row-selector: choices
+      contains-single-row: false
+      use-raw-selectors: false
+
+    advanced: 
+      encoding: Database Character Set
+
+    columns: 
+    - # ====== Column: INDEX_ ======================================
+      id: 9331394442250172
+      identification: 
+        column-name: INDEX_
+
+      source: 
+        type: Data
+        data-type: NUMBER
+        primary-key: false
+
+      parsing: 
+        path-expression: index
+
+      remote-rest-data-source-server: 
+        filterable: true
+        is-common: true
+        data-type: number
+
+      advanced: 
+        sequence: 1
+        hidden: false
+
+    - # ====== Column: MESSAGE_ROLE ================================
+      id: 9331691898250175
+      identification: 
+        column-name: MESSAGE_ROLE
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 32767
+        primary-key: false
+
+      parsing: 
+        path-expression: message.role
+
+      remote-rest-data-source-server: 
+        filterable: true
+        is-common: true
+        data-type: string
+
+      advanced: 
+        sequence: 2
+        hidden: false
+
+    - # ====== Column: MESSAGE_CONTENT =============================
+      id: 9331978971250176
+      identification: 
+        column-name: MESSAGE_CONTENT
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 32767
+        primary-key: false
+
+      parsing: 
+        path-expression: message.content
+
+      remote-rest-data-source-server: 
+        filterable: true
+        is-common: true
+        data-type: string
+
+      advanced: 
+        sequence: 3
+        hidden: false
+
+    - # ====== Column: MESSAGE_REFUSAL =============================
+      id: 9332263537250177
+      identification: 
+        column-name: MESSAGE_REFUSAL
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 32767
+        primary-key: false
+
+      parsing: 
+        path-expression: message.refusal
+
+      remote-rest-data-source-server: 
+        filterable: true
+        is-common: true
+        data-type: null
+
+      advanced: 
+        sequence: 4
+        hidden: false
+
+    - # ====== Column: MESSAGE_ANNOTATIONS =========================
+      id: 9332522185250178
+      identification: 
+        column-name: MESSAGE_ANNOTATIONS
+
+      source: 
+        type: Data
+        data-type: ARRAY
+        primary-key: false
+
+      parsing: 
+        path-expression: message.annotations
+
+      remote-rest-data-source-server: 
+        filterable: true
+        is-common: true
+        data-type: array
+
+      advanced: 
+        sequence: 5
+        hidden: false
+
+    - # ====== Column: LOGPROBS ====================================
+      id: 9332846097250179
+      identification: 
+        column-name: LOGPROBS
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 32767
+        primary-key: false
+
+      parsing: 
+        path-expression: logprobs
+
+      remote-rest-data-source-server: 
+        filterable: true
+        is-common: true
+        data-type: null
+
+      advanced: 
+        sequence: 6
+        hidden: false
+
+    - # ====== Column: FINISH_REASON ===============================
+      id: 9333129802250180
+      identification: 
+        column-name: FINISH_REASON
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 32767
+        primary-key: false
+
+      parsing: 
+        path-expression: finish_reason
+
+      remote-rest-data-source-server: 
+        filterable: true
+        is-common: true
+        data-type: string
+
+      advanced: 
+        sequence: 7
+        hidden: false
+
+    - # ====== Column: MESSAGE_ANNOTATIONS2 ========================
+      id: 9333457351250181
+      identification: 
+        column-name: MESSAGE_ANNOTATIONS2
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 32767
+        primary-key: false
+
+      parsing: 
+        path-expression: .
+
+      remote-rest-data-source-server: 
+        filterable: true
+        is-common: true
+        data-type: string
+
+      advanced: 
+        sequence: 8
+        hidden: false
+
+  operations: 
+  - # ====== Operation: POST =====================================
+    id: 9334139137250194
+    label: 
+      label: POST
+
+    operation: 
+      url-pattern: .
+      http-method: POST
+      database-operation: Fetch Rows
+      request-body-template: |
+        {
+          "model": "gpt-4.1-mini",
+          "messages": [
+            {"role": "system", "content": "#system_role#"},
+            {"role": "user", "content": "#user_prompt#"}
+          ]
+        }
+
+    advanced: 
+      allow-fetching-all-rows: false
+      force-raise-http-404-error: false
+
+    parameters: 
+    - # ====== Parameter: system_role ==============================
+      id: 9335302558282055
+      identification: 
+        name: system_role
+
+      operation: 
+        database-operation: Fetch Rows
+
+      parameter: 
+        type: Request or Response Body
+        data-type: String
+
+      value: 
+        direction: In
+        static: false
+        value: You are a helpful assistant.
+        required: false
+
+    - # ====== Parameter: user_prompt ==============================
+      id: 9336788228291760
+      identification: 
+        name: user_prompt
+
+      operation: 
+        database-operation: Fetch Rows
+
+      parameter: 
+        type: Request or Response Body
+        data-type: String
+
+      value: 
+        direction: In
+        static: false
+        required: false
+
+    - # ====== Parameter: response =================================
+      id: 9337327361307745
+      identification: 
+        name: response
+
+      operation: 
+        database-operation: Fetch Rows
+
+      parameter: 
+        type: Request or Response Body
+
+      value: 
+        direction: Out
+
