@@ -87,7 +87,10 @@ BEGIN
     ''
   );
 
-  -- Check if name was sanitized (spaces replaced or special chars removed)
+  -- Step 3: Collapse multiple consecutive underscores into single underscore
+  v_sanitized_name := REGEXP_REPLACE(v_sanitized_name, '_+', '_');
+
+  -- Check if name was sanitized (spaces replaced, special chars removed, or underscores collapsed)
   IF v_sanitized_name != v_upper_name THEN
     v_is_sanitized := 'true';
   END IF;
