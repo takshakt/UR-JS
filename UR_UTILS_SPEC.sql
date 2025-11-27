@@ -145,7 +145,7 @@ PROCEDURE fetch_templates(
     p_json_output  OUT CLOB
   );
 
-  FUNCTION normalize_json (p_json CLOB) RETURN CLOB; 
+  FUNCTION normalize_json (p_json CLOB) RETURN CLOB;
 
   PROCEDURE validate_expression (
     p_expression IN VARCHAR2,
@@ -155,16 +155,27 @@ PROCEDURE fetch_templates(
     p_message    OUT VARCHAR2
   );
 
---       PROCEDURE validate_profile_row (
---       p_name          IN VARCHAR2,
---       p_data_type     IN VARCHAR2,
---       p_mapping_type  IN VARCHAR2,
---       p_default_value IN VARCHAR2,
---       p_collection    IN VARCHAR2,
---       p_status        OUT VARCHAR2,
---       p_message       OUT VARCHAR2
---   );
-
+    -- ============================================================================
+    -- PROCEDURE: refresh_file_profile_and_collection
+    -- Purpose: Refreshes file profile and repopulates data mapping collection
+    --          based on skip_rows and sheet_name parameters.
+    --          Called when user changes Skip Rows or Sheet Name on file upload.
+    -- Parameters:
+    --   p_file_name       - temp_blob.NAME (APEX temp file reference)
+    --   p_skip_rows       - Rows to skip before header (0 = first row is header)
+    --   p_sheet_name      - Excel sheet file name (e.g., 'sheet1.xml'), NULL for CSV
+    --   p_collection_name - Collection to repopulate with column metadata
+    --   p_status          - OUT: 'S' for success, 'E' for error
+    --   p_message         - OUT: Detailed status message
+    -- ============================================================================
+    PROCEDURE refresh_file_profile_and_collection (
+        p_file_name             IN  VARCHAR2,
+        p_skip_rows             IN  NUMBER   DEFAULT 0,
+        p_sheet_name            IN  VARCHAR2 DEFAULT NULL,
+        p_collection_name       IN  VARCHAR2 DEFAULT 'UR_FILE_DATA_PROFILES',
+        p_status                OUT VARCHAR2,
+        p_message               OUT VARCHAR2
+    );
 
 END ur_utils;
 /

@@ -3007,5 +3007,357 @@ END ' || v_trigger_name || ';
             p_message := 'Failure: ' || SQLERRM;
     END validate_expression;
 
+    -- ============================================================================
+    -- PROCEDURE: refresh_file_profile_and_collection
+    -- ============================================================================
+    PROCEDURE refresh_file_profile_and_collection (
+        p_file_name             IN  VARCHAR2,
+        p_skip_rows             IN  NUMBER   DEFAULT 0,
+        p_sheet_name            IN  VARCHAR2 DEFAULT NULL,
+        p_collection_name       IN  VARCHAR2 DEFAULT 'UR_FILE_DATA_PROFILES',
+        p_status                OUT VARCHAR2,
+        p_message               OUT VARCHAR2
+    ) AS
+        v_blob            BLOB;
+        v_filename        VARCHAR2(400);
+        v_file_type       NUMBER;
+        v_profile_clob    CLOB;
+        v_records         NUMBER;
+        v_columns         CLOB;
+        v_file_id         NUMBER;
+        v_effective_sheet VARCHAR2(200);
+        v_col_count       NUMBER := 0;
+        v_step            VARCHAR2(100);
+
+        -- Helper function to sanitize column names
+        FUNCTION sanitize_column_name(p_name IN VARCHAR2) RETURN VARCHAR2 IS
+            v_name VARCHAR2(4000);
+        BEGIN
+            v_name := REGEXP_REPLACE(p_name, '[^A-Za-z0-9]', '_');
+            v_name := REGEXP_REPLACE(v_name, '_+', '_');
+            v_name := REGEXP_REPLACE(v_name, '^_+|_+$', '');
+            RETURN UPPER(v_name);
+        END sanitize_column_name;
+
+    BEGIN
+        p_status  := 'S';
+        p_message := '';
+
+        ----------------------------------------------------------------------
+        -- Step 1: Validate input parameters
+        ----------------------------------------------------------------------
+        v_step := 'Parameter Validation';
+
+        IF p_file_name IS NULL OR TRIM(p_file_name) IS NULL THEN
+            p_status  := 'E';
+            p_message := 'File name parameter is required.';
+            RETURN;
+        END IF;
+
+        IF p_skip_rows < 0 THEN
+            p_status  := 'E';
+            p_message := 'Skip rows cannot be negative. Provided: ' || p_skip_rows;
+            RETURN;
+        END IF;
+
+        ----------------------------------------------------------------------
+        -- Step 2: Check file exists in temp_blob
+        ----------------------------------------------------------------------
+        v_step := 'File Lookup';
+
+        BEGIN
+            SELECT id, blob_content, filename
+              INTO v_file_id, v_blob, v_filename
+              FROM temp_blob
+             WHERE name = p_file_name;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                p_status  := 'E';
+                p_message := 'File not found in temp_blob: ' || p_file_name;
+                RETURN;
+            WHEN TOO_MANY_ROWS THEN
+                p_status  := 'E';
+                p_message := 'Multiple files found with same name: ' || p_file_name;
+                RETURN;
+        END;
+
+        IF v_blob IS NULL OR DBMS_LOB.GETLENGTH(v_blob) = 0 THEN
+            p_status  := 'E';
+            p_message := 'File content is empty. File ID: ' || v_file_id;
+            RETURN;
+        END IF;
+
+        ----------------------------------------------------------------------
+        -- Step 3: Detect file type (1=Excel, 2=CSV)
+        ----------------------------------------------------------------------
+        v_step := 'File Type Detection';
+
+        BEGIN
+            v_file_type := apex_data_parser.get_file_type(p_file_name => v_filename);
+        EXCEPTION
+            WHEN OTHERS THEN
+                p_status  := 'E';
+                p_message := 'Failed to detect file type: ' || v_filename || '. ' || SQLERRM;
+                RETURN;
+        END;
+
+        IF v_file_type NOT IN (1, 2, 3, 4) THEN
+            p_status  := 'E';
+            p_message := 'Unsupported file type. File: ' || v_filename || ', Type: ' || NVL(TO_CHAR(v_file_type), 'NULL');
+            RETURN;
+        END IF;
+
+        ----------------------------------------------------------------------
+        -- Step 4: Determine effective sheet name (Excel files only, type=1)
+        ----------------------------------------------------------------------
+        v_step := 'Sheet Name Resolution';
+
+        IF v_file_type = 1 THEN  -- Excel (XLSX/XLS)
+            IF p_sheet_name IS NOT NULL AND TRIM(p_sheet_name) IS NOT NULL THEN
+                -- Validate provided sheet exists
+                DECLARE
+                    v_sheet_exists NUMBER;
+                BEGIN
+                    SELECT COUNT(*)
+                      INTO v_sheet_exists
+                      FROM TABLE(apex_data_parser.get_xlsx_worksheets(p_content => v_blob))
+                     WHERE sheet_file_name = p_sheet_name;
+
+                    IF v_sheet_exists = 0 THEN
+                        p_status  := 'E';
+                        p_message := 'Sheet not found in workbook: ' || p_sheet_name;
+                        RETURN;
+                    END IF;
+
+                    v_effective_sheet := p_sheet_name;
+                EXCEPTION
+                    WHEN OTHERS THEN
+                        p_status  := 'E';
+                        p_message := 'Failed to validate sheet: ' || SQLERRM;
+                        RETURN;
+                END;
+            ELSE
+                -- Default to first sheet
+                BEGIN
+                    SELECT MIN(sheet_file_name) KEEP (DENSE_RANK FIRST ORDER BY sheet_sequence)
+                      INTO v_effective_sheet
+                      FROM TABLE(apex_data_parser.get_xlsx_worksheets(p_content => v_blob));
+
+                    IF v_effective_sheet IS NULL THEN
+                        p_status  := 'E';
+                        p_message := 'No worksheets found in Excel file.';
+                        RETURN;
+                    END IF;
+                EXCEPTION
+                    WHEN OTHERS THEN
+                        p_status  := 'E';
+                        p_message := 'Failed to get worksheets: ' || SQLERRM;
+                        RETURN;
+                END;
+            END IF;
+        ELSE
+            -- CSV/XML/JSON (type 2, 3, 4) - no sheet concept
+            v_effective_sheet := NULL;
+        END IF;
+
+        ----------------------------------------------------------------------
+        -- Step 5: Get file profile using discover()
+        ----------------------------------------------------------------------
+        v_step := 'Profile Discovery';
+
+        BEGIN
+            SELECT apex_data_parser.discover(
+                       p_content         => v_blob,
+                       p_file_name       => v_filename,
+                       p_skip_rows       => p_skip_rows,
+                       p_xlsx_sheet_name => v_effective_sheet
+                   )
+              INTO v_profile_clob
+              FROM dual;
+        EXCEPTION
+            WHEN OTHERS THEN
+                p_status  := 'E';
+                p_message := 'Profile discovery failed. Skip: ' || p_skip_rows ||
+                             ', Sheet: ' || NVL(v_effective_sheet, 'N/A') || '. ' || SQLERRM;
+                RETURN;
+        END;
+
+        IF v_profile_clob IS NULL THEN
+            p_status  := 'E';
+            p_message := 'Profile discovery returned NULL.';
+            RETURN;
+        END IF;
+
+        ----------------------------------------------------------------------
+        -- Step 6: Extract parsed row count
+        ----------------------------------------------------------------------
+        v_step := 'Row Count Extraction';
+
+        BEGIN
+            SELECT TO_NUMBER(JSON_VALUE(v_profile_clob, '$."parsed-rows"'))
+              INTO v_records
+              FROM dual;
+        EXCEPTION
+            WHEN OTHERS THEN
+                v_records := 0;
+        END;
+
+        IF v_records = 0 AND p_skip_rows > 0 THEN
+            p_status  := 'E';
+            p_message := 'No data rows found. Skip rows (' || p_skip_rows || ') may exceed file row count.';
+            RETURN;
+        END IF;
+
+        ----------------------------------------------------------------------
+        -- Step 7: Build columns JSON
+        ----------------------------------------------------------------------
+        v_step := 'Column Extraction';
+
+        BEGIN
+            SELECT JSON_ARRAYAGG(
+                       JSON_OBJECT(
+                           'name'      VALUE jt.name,
+                           'data-type' VALUE CASE jt.data_type
+                                                 WHEN 1 THEN 'TEXT'
+                                                 WHEN 2 THEN 'NUMBER'
+                                                 WHEN 3 THEN 'DATE'
+                                                 ELSE 'TEXT'
+                                             END,
+                           'pos'       VALUE jt.col_position
+                       )
+                       RETURNING CLOB
+                   )
+              INTO v_columns
+              FROM JSON_TABLE(
+                       v_profile_clob,
+                       '$."columns"[*]'
+                       COLUMNS (
+                           name          VARCHAR2(200) PATH '$.name',
+                           data_type     NUMBER        PATH '$."data-type"',
+                           col_position  NUMBER        PATH '$."column-position"'
+                       )
+                   ) jt;
+        EXCEPTION
+            WHEN OTHERS THEN
+                p_status  := 'E';
+                p_message := 'Failed to extract columns: ' || SQLERRM;
+                RETURN;
+        END;
+
+        IF v_columns IS NULL OR v_columns = '[]' THEN
+            p_status  := 'E';
+            p_message := 'No columns found in file profile.';
+            RETURN;
+        END IF;
+
+        ----------------------------------------------------------------------
+        -- Step 8: Update temp_blob
+        ----------------------------------------------------------------------
+        v_step := 'Update temp_blob';
+
+        BEGIN
+            UPDATE temp_blob
+               SET profile = v_profile_clob,
+                   records = v_records,
+                   columns = v_columns
+             WHERE id = v_file_id;
+
+            IF SQL%ROWCOUNT = 0 THEN
+                p_status  := 'E';
+                p_message := 'Failed to update temp_blob. File ID: ' || v_file_id;
+                ROLLBACK;
+                RETURN;
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                p_status  := 'E';
+                p_message := 'temp_blob update error: ' || SQLERRM;
+                ROLLBACK;
+                RETURN;
+        END;
+
+        ----------------------------------------------------------------------
+        -- Step 9: Manage collection
+        ----------------------------------------------------------------------
+        v_step := 'Collection Management';
+
+        BEGIN
+            IF apex_collection.collection_exists(p_collection_name) THEN
+                apex_collection.truncate_collection(p_collection_name);
+            ELSE
+                apex_collection.create_collection(p_collection_name);
+            END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                p_status  := 'E';
+                p_message := 'Collection error (' || p_collection_name || '): ' || SQLERRM;
+                ROLLBACK;
+                RETURN;
+        END;
+
+        ----------------------------------------------------------------------
+        -- Step 10: Populate collection
+        ----------------------------------------------------------------------
+        v_step := 'Collection Population';
+
+        BEGIN
+            FOR col IN (
+                SELECT jt.name,
+                       jt.data_type,
+                       jt.col_position
+                  FROM JSON_TABLE(
+                           v_columns,
+                           '$[*]'
+                           COLUMNS (
+                               name         VARCHAR2(200) PATH '$.name',
+                               data_type    VARCHAR2(20)  PATH '$."data-type"',
+                               col_position NUMBER        PATH '$.pos'
+                           )
+                       ) jt
+                 ORDER BY jt.col_position
+            ) LOOP
+                apex_collection.add_member(
+                    p_collection_name => p_collection_name,
+                    p_c001            => sanitize_column_name(col.name),
+                    p_c002            => col.data_type,
+                    p_n001            => col.col_position
+                );
+                v_col_count := v_col_count + 1;
+            END LOOP;
+        EXCEPTION
+            WHEN OTHERS THEN
+                p_status  := 'E';
+                p_message := 'Failed to populate collection: ' || SQLERRM;
+                ROLLBACK;
+                RETURN;
+        END;
+
+        IF v_col_count = 0 THEN
+            p_status  := 'E';
+            p_message := 'No columns added to collection.';
+            ROLLBACK;
+            RETURN;
+        END IF;
+
+        ----------------------------------------------------------------------
+        -- Success
+        ----------------------------------------------------------------------
+        COMMIT;
+
+        p_status  := 'S';
+        p_message := 'Profile refreshed. ' ||
+                     'Type: ' || CASE v_file_type WHEN 1 THEN 'Excel' WHEN 2 THEN 'CSV' ELSE 'Other' END ||
+                     ', Sheet: ' || NVL(v_effective_sheet, 'N/A') ||
+                     ', Skip: ' || p_skip_rows ||
+                     ', Rows: ' || v_records ||
+                     ', Cols: ' || v_col_count;
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            ROLLBACK;
+            p_status  := 'E';
+            p_message := 'Error at [' || v_step || ']: ' || SQLERRM;
+    END refresh_file_profile_and_collection;
+
 END ur_utils;
 /
