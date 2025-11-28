@@ -3170,7 +3170,8 @@ END ' || v_trigger_name || ';
                        p_content         => v_blob,
                        p_file_name       => v_filename,
                        p_skip_rows       => p_skip_rows,
-                       p_xlsx_sheet_name => v_effective_sheet
+                       p_xlsx_sheet_name => v_effective_sheet,
+                       p_max_rows        => 99999
                    )
               INTO v_profile_clob
               FROM dual;
