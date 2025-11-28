@@ -15,7 +15,7 @@ wwv_flow_imp_shared.create_list(
  p_id=>wwv_flow_imp.id(8558978835922138)
 ,p_name=>'Navigation Menu'
 ,p_list_status=>'PUBLIC'
-,p_version_scn=>45851759983604
+,p_version_scn=>45851770718626
 );
 wwv_flow_imp_shared.create_list_item(
  p_id=>wwv_flow_imp.id(10490026312115713)
@@ -99,6 +99,16 @@ wwv_flow_imp_shared.create_list_item(
 ,p_list_item_current_for_pages=>'1001'
 );
 wwv_flow_imp_shared.create_list_item(
+ p_id=>wwv_flow_imp.id(30207590582500629)
+,p_list_item_display_sequence=>11
+,p_list_item_link_text=>'Add New Templates v2'
+,p_list_item_link_target=>'f?p=&APP_ID.:1002:&SESSION.::&DEBUG.::::'
+,p_list_item_icon=>'fa-layers'
+,p_parent_list_item_id=>wwv_flow_imp.id(15689157068470336)
+,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
+,p_list_item_current_for_pages=>'1002'
+);
+wwv_flow_imp_shared.create_list_item(
  p_id=>wwv_flow_imp.id(23216073527110995)
 ,p_list_item_display_sequence=>20
 ,p_list_item_link_text=>'Manage Templates'
@@ -127,15 +137,6 @@ wwv_flow_imp_shared.create_list_item(
 ,p_parent_list_item_id=>wwv_flow_imp.id(15689157068470336)
 ,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
 ,p_list_item_current_for_pages=>'1075,1071'
-);
-wwv_flow_imp_shared.create_list_item(
- p_id=>wwv_flow_imp.id(30207590582500629)
-,p_list_item_display_sequence=>340
-,p_list_item_link_text=>'Templates v2'
-,p_list_item_link_target=>'f?p=&APP_ID.:1002:&APP_SESSION.::&DEBUG.:::'
-,p_parent_list_item_id=>wwv_flow_imp.id(15689157068470336)
-,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
-,p_list_item_current_for_pages=>'1002'
 );
 wwv_flow_imp_shared.create_list_item(
  p_id=>wwv_flow_imp.id(19687573748008468)

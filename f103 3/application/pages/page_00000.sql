@@ -39,7 +39,7 @@ wwv_flow_imp_page.create_page_item(
 ,p_use_cache_before_default=>'NO'
 ,p_display_as=>'NATIVE_HIDDEN'
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
-  'value_protected', 'Y')).to_clob
+  'value_protected', 'N')).to_clob
 );
 wwv_flow_imp_page.create_page_item(
  p_id=>wwv_flow_imp.id(25696812640364501)
