@@ -488,3 +488,176 @@ This ensures:
 1. If `P1002_SHEET_NAME` has a value, use it
 2. If it's empty string, convert to NULL via NULLIF
 3. If NULL, fetch the first sheet from the workbook automatically
+
+---
+
+## Step 6: Store Parsing Metadata with Template Definition
+
+### Requirement
+Store `skip_rows`, `sheet_name`, and `file_id` alongside the template definition so that when a template is loaded, the original file parsing configuration is preserved.
+
+### Chosen Approach: Option 3 - Single Metadata CLOB Column
+
+Add a single `METADATA` CLOB column to `UR_TEMPLATES` table to store parsing configuration separately from the column definition.
+
+#### Schema Change
+
+```sql
+-- Add metadata column to UR_TEMPLATES
+ALTER TABLE UR_TEMPLATES ADD (
+    METADATA CLOB
+);
+
+-- Add check constraint for valid JSON
+ALTER TABLE UR_TEMPLATES ADD CONSTRAINT UR_TEMPLATES_METADATA_JSON
+    CHECK (METADATA IS NULL OR METADATA IS JSON);
+
+-- Optional: Add comment
+COMMENT ON COLUMN UR_TEMPLATES.METADATA IS 'JSON metadata for parsing configuration: skip_rows, sheet_name, file_id, etc.';
+```
+
+#### Metadata JSON Structure
+
+```json
+{
+    "skip_rows": 0,
+    "sheet_name": "sheet1.xml",
+    "file_id": 12345,
+    "original_filename": "sales_data.xlsx",
+    "file_type": "XLSX",
+    "created_from_file_date": "2025-01-15T10:30:00Z"
+}
+```
+
+#### Benefits of Option 3
+1. **No impact to existing code** - The `DEFINITION` column structure remains unchanged (still `'$[*]'` array)
+2. **Clean separation** - Parsing metadata is separate from column definitions
+3. **Extensible** - Easy to add more metadata fields in the future
+4. **Backward compatible** - Existing templates work without modification (METADATA is NULL)
+
+#### Code Changes Required
+1. **Save Template Process**: Add code to populate `METADATA` when saving
+2. **Load Template Process**: Read `METADATA` and set page items (`P1002_SKIP_ROWS`, `P1002_SHEET_NAME`)
+3. **Template Edit Form**: Optionally display/edit parsing settings
+
+#### Example Save Code
+
+```sql
+-- When saving template, include metadata
+UPDATE ur_templates
+SET definition = :P1002_DEFINITION_JSON,
+    metadata = JSON_OBJECT(
+        'skip_rows'     VALUE NVL(:P1002_SKIP_ROWS, 0),
+        'sheet_name'    VALUE :P1002_SHEET_NAME,
+        'file_id'       VALUE :P1002_FILE_ID,
+        'file_type'     VALUE :P1002_FILE_TYPE
+    )
+WHERE id = :P1002_TEMPLATE_ID;
+```
+
+#### Example Load Code
+
+```sql
+-- When loading template, extract metadata
+SELECT JSON_VALUE(metadata, '$.skip_rows' RETURNING NUMBER) AS skip_rows,
+       JSON_VALUE(metadata, '$.sheet_name') AS sheet_name,
+       JSON_VALUE(metadata, '$.file_id' RETURNING NUMBER) AS file_id,
+       JSON_VALUE(metadata, '$.file_type') AS file_type
+FROM ur_templates
+WHERE id = :P1002_TEMPLATE_ID;
+```
+
+---
+
+## Appendix A: Dependency Analysis for Alternative Options
+
+The following analysis shows code locations that would require modification if Options 1 or 2 were chosen (modifying the DEFINITION column structure).
+
+### Why This Matters
+- **Option 1**: Wrap definition in `{"metadata": {...}, "columns": [...]}`
+- **Option 2**: Add metadata as first array element `[{_meta: true, ...}, {col1}, {col2}...]`
+
+Both options change the JSON structure from simple array `'$[*]'` to nested structure, breaking all existing JSON_TABLE queries.
+
+### Affected Files and Locations
+
+**Total: 24 instances across 5 installation script files**
+
+#### 1. `initial_script_13oct25.sql` (6 instances)
+
+| Line | Context |
+|------|---------|
+| ~Line 850-900 | DEFINE_DB_OBJECT procedure - JSON_TABLE parsing definition |
+| ~Line 1100-1150 | CREATE_RANKING_VIEW procedure - column extraction |
+| ~Line 1400-1450 | LOAD_DATA procedure - column mapping |
+| ~Line 1650-1700 | VALIDATE_TEMPLATE_DEFINITION - structure validation |
+| ~Line 1900-1950 | SANITIZE_TEMPLATE_DEFINITION - name sanitization |
+| ~Line 2100-2150 | FETCH_TEMPLATES - template matching logic |
+
+#### 2. `installation_script_251021.sql` (5 instances)
+
+| Line | Context |
+|------|---------|
+| ~Line 750-800 | DEFINE_DB_OBJECT procedure |
+| ~Line 1000-1050 | CREATE_RANKING_VIEW procedure |
+| ~Line 1300-1350 | LOAD_DATA procedure |
+| ~Line 1550-1600 | VALIDATE_TEMPLATE_DEFINITION |
+| ~Line 1800-1850 | FETCH_TEMPLATES |
+
+#### 3. `installation_script_251125.sql` (5 instances)
+
+| Line | Context |
+|------|---------|
+| ~Line 800-850 | DEFINE_DB_OBJECT procedure |
+| ~Line 1100-1150 | CREATE_RANKING_VIEW procedure |
+| ~Line 1400-1450 | LOAD_DATA procedure |
+| ~Line 1650-1700 | VALIDATE_TEMPLATE_DEFINITION |
+| ~Line 1900-1950 | FETCH_TEMPLATES |
+
+#### 4. `ur_database_object_script_17_oct_2025_prod.sql` (4 instances)
+
+| Line | Context |
+|------|---------|
+| ~Line 500-550 | DEFINE_DB_OBJECT procedure |
+| ~Line 750-800 | CREATE_RANKING_VIEW procedure |
+| ~Line 1000-1050 | LOAD_DATA procedure |
+| ~Line 1250-1300 | VALIDATE_TEMPLATE_DEFINITION |
+
+#### 5. `initial_script.sql` (4 instances)
+
+| Line | Context |
+|------|---------|
+| ~Line 600-650 | DEFINE_DB_OBJECT procedure |
+| ~Line 850-900 | CREATE_RANKING_VIEW procedure |
+| ~Line 1100-1150 | LOAD_DATA procedure |
+| ~Line 1350-1400 | VALIDATE_TEMPLATE_DEFINITION |
+
+### Pattern Used in All Instances
+
+```sql
+JSON_TABLE(
+    t.definition,
+    '$[*]'  -- This would need to change to '$.columns[*]' for Option 1
+    COLUMNS (
+        name          VARCHAR2(128) PATH '$.name',
+        original_name VARCHAR2(128) PATH '$."original-name"',
+        data_type     VARCHAR2(50)  PATH '$."data-type"',
+        ...
+    )
+) jt
+```
+
+### Migration Effort Comparison
+
+| Option | Files to Modify | JSON_TABLE Changes | Risk Level |
+|--------|-----------------|-------------------|------------|
+| **Option 1** | 5+ files | 24+ queries | HIGH - Breaking change |
+| **Option 2** | 5+ files | 24+ queries + filter logic | HIGH - Complex filtering |
+| **Option 3** | 0 existing files | 0 changes | LOW - Additive only |
+
+### Recommendation
+**Option 3 is strongly recommended** because:
+1. Zero modifications to existing JSON parsing code
+2. No risk of breaking existing templates
+3. Clean separation of concerns (definition vs metadata)
+4. Easy rollback if needed (just drop the column)
