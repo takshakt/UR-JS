@@ -4306,6 +4306,40 @@ PROCEDURE date_parser(
                     v_score := v_score * 0.80;
                 END IF;
 
+                -- Separator match bonus: prefer formats that match input separators
+                IF v_structure.primary_separator = '-' AND v_formats(i).format_mask LIKE '%-%'
+                   AND v_formats(i).format_mask NOT LIKE '% %' THEN
+                    v_score := v_score * 1.05;  -- Bonus for matching dash separator
+                ELSIF v_structure.primary_separator = '/' AND v_formats(i).format_mask LIKE '%/%' THEN
+                    v_score := v_score * 1.05;  -- Bonus for matching slash separator
+                ELSIF v_structure.primary_separator = '.' AND v_formats(i).format_mask LIKE '%.%' THEN
+                    v_score := v_score * 1.05;  -- Bonus for matching dot separator
+                ELSIF v_structure.primary_separator = ' ' AND v_formats(i).format_mask LIKE '% %'
+                   AND v_formats(i).format_mask NOT LIKE '%-%' THEN
+                    v_score := v_score * 1.05;  -- Bonus for matching space separator
+                END IF;
+
+                -- MON vs MONTH preference: prefer shorter format when input uses abbreviation
+                IF v_structure.has_month_name_short = 'Y' AND v_structure.has_month_name_full = 'N' THEN
+                    IF v_formats(i).format_mask LIKE '%MON%' AND v_formats(i).format_mask NOT LIKE '%MONTH%' THEN
+                        v_score := v_score * 1.03;  -- Prefer MON over MONTH for abbreviated input
+                    END IF;
+                ELSIF v_structure.has_month_name_full = 'Y' THEN
+                    IF v_formats(i).format_mask LIKE '%MONTH%' THEN
+                        v_score := v_score * 1.03;  -- Prefer MONTH for full month name input
+                    END IF;
+                END IF;
+
+                -- Exact length match bonus: penalize formats with extra components not in input
+                IF v_formats(i).format_mask LIKE '%HH%' AND v_structure.has_time = 'N' THEN
+                    v_score := v_score * 0.95;  -- Penalize time formats when no time in input
+                END IF;
+                IF v_formats(i).format_mask LIKE '%"T"%' OR v_formats(i).format_mask LIKE '%"Z"%' THEN
+                    IF NOT REGEXP_LIKE(v_sample, 'T|Z') THEN
+                        v_score := v_score * 0.95;  -- Penalize ISO timestamp format for plain dates
+                    END IF;
+                END IF;
+
                 v_results(v_result_idx).confidence := LEAST(ROUND(v_score, 1), 100);
 
                 -- Track best result

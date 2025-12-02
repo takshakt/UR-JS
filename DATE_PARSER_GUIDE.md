@@ -92,6 +92,11 @@ Base score = (matching samples / total samples) × 100
 | 2-digit year (RR) | -10% |
 | No year format | -15% |
 | Ambiguous (DD/MM vs MM/DD) | -20% |
+| Separator matches input (`-`, `/`, `.`, ` `) | +5% |
+| MON matches abbreviated input | +3% |
+| MONTH matches full month input | +3% |
+| Time component when input has no time | -5% |
+| ISO timestamp (`T`/`Z`) when not in input | -5% |
 
 **Cap**: 100%
 
