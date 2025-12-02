@@ -177,5 +177,71 @@ PROCEDURE fetch_templates(
         p_message               OUT VARCHAR2
     );
 
+    -- ============================================================================
+    -- DATE PARSER: Comprehensive date format detection and parsing
+    -- ============================================================================
+    -- Purpose: Unified procedure for date format detection (DETECT mode),
+    --          date parsing (PARSE mode), and testing (TEST mode).
+    --          Supports ~80 date formats, handles special values, resolves
+    --          DD/MM vs MM/DD ambiguity, and provides confidence scoring.
+    --
+    -- Modes:
+    --   'DETECT' - Detect date format from sample values (JSON array)
+    --   'PARSE'  - Parse a single date string using specified format
+    --   'TEST'   - Run internal test suite
+    --
+    -- For P1002 (Template Creation): Use DETECT mode to identify format mask
+    -- For P1010 (Data Loading): Use PARSE mode with stored format mask
+    -- ============================================================================
+    PROCEDURE date_parser (
+        -- MODE CONTROL
+        p_mode             IN  VARCHAR2,              -- 'DETECT', 'PARSE', 'TEST'
+
+        -- INPUT PARAMETERS (mode-dependent)
+        p_file_id          IN  NUMBER   DEFAULT NULL, -- For DETECT: file to sample from
+        p_column_position  IN  NUMBER   DEFAULT NULL, -- For DETECT: column position in file
+        p_sample_values    IN  CLOB     DEFAULT NULL, -- For DETECT: JSON array of samples (alternative to file)
+        p_date_string      IN  VARCHAR2 DEFAULT NULL, -- For PARSE: single date string
+        p_format_mask      IN  VARCHAR2 DEFAULT NULL, -- For PARSE: format to use
+        p_start_date       IN  DATE     DEFAULT NULL, -- For PARSE: year inference reference
+        p_min_confidence   IN  NUMBER   DEFAULT 90,   -- Minimum confidence threshold
+
+        -- CONTROL PARAMETERS
+        p_debug_flag       IN  VARCHAR2 DEFAULT 'N',  -- 'Y' enables debug logging
+        p_alert_clob       IN OUT NOCOPY CLOB,        -- Alert compliance (JSON alerts)
+
+        -- OUTPUT PARAMETERS
+        p_format_mask_out  OUT VARCHAR2,              -- Detected/used format
+        p_confidence       OUT NUMBER,                -- Confidence score (0-100)
+        p_converted_date   OUT DATE,                  -- Parsed date (PARSE mode)
+        p_has_year         OUT VARCHAR2,              -- 'Y'/'N' - format includes year
+        p_is_ambiguous     OUT VARCHAR2,              -- 'Y'/'N' - DD/MM vs MM/DD uncertain
+        p_special_values   OUT VARCHAR2,              -- Comma-separated special values
+        p_all_formats      OUT CLOB,                  -- JSON array of all matching formats
+        p_status           OUT VARCHAR2,              -- 'S'/'E'/'W'
+        p_message          OUT VARCHAR2               -- Status message (includes debug log if enabled)
+    );
+
+    -- Simple format detection (returns format mask only)
+    FUNCTION detect_date_format_simple (
+        p_sample_values IN CLOB
+    ) RETURN VARCHAR2 DETERMINISTIC;
+
+    -- Safe date parsing (returns NULL on failure)
+    FUNCTION parse_date_safe (
+        p_value       IN VARCHAR2,
+        p_format_mask IN VARCHAR2,
+        p_start_date  IN DATE DEFAULT NULL
+    ) RETURN DATE DETERMINISTIC;
+
+    -- Backend testing procedure
+    PROCEDURE test_date_parser (
+        p_test_type    IN  VARCHAR2 DEFAULT 'ALL',  -- 'ALL', 'PREPROCESS', 'DETECT', 'PARSE'
+        p_debug_flag   IN  VARCHAR2 DEFAULT 'Y',
+        p_result_json  OUT CLOB,
+        p_status       OUT VARCHAR2,
+        p_message      OUT VARCHAR2
+    );
+
 END ur_utils;
 /

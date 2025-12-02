@@ -3360,5 +3360,1313 @@ END ' || v_trigger_name || ';
             p_message := 'Error at [' || v_step || ']: ' || SQLERRM;
     END refresh_file_profile_and_collection;
 
+-- ============================================================================
+-- DATE PARSER: Comprehensive date format detection and parsing
+-- ============================================================================
+-- Migrated from UR_DATE_PARSER_TEST package with enhancements for:
+--   - Debug logging
+--   - Alert compliance
+--   - Mode-based operation (DETECT, PARSE, TEST)
+--   - Integration with P1002 (Template Creation) and P1010 (Data Loading)
+-- ============================================================================
+
+-- Simple format detection wrapper (returns format mask only)
+FUNCTION detect_date_format_simple(
+    p_sample_values IN CLOB
+) RETURN VARCHAR2 DETERMINISTIC IS
+    v_alert_clob     CLOB;
+    v_format_mask    VARCHAR2(100);
+    v_confidence     NUMBER;
+    v_converted_date DATE;
+    v_has_year       VARCHAR2(1);
+    v_is_ambiguous   VARCHAR2(1);
+    v_special_values VARCHAR2(500);
+    v_all_formats    CLOB;
+    v_status         VARCHAR2(1);
+    v_message        VARCHAR2(4000);
+BEGIN
+    date_parser(
+        p_mode            => 'DETECT',
+        p_sample_values   => p_sample_values,
+        p_debug_flag      => 'N',
+        p_alert_clob      => v_alert_clob,
+        p_format_mask_out => v_format_mask,
+        p_confidence      => v_confidence,
+        p_converted_date  => v_converted_date,
+        p_has_year        => v_has_year,
+        p_is_ambiguous    => v_is_ambiguous,
+        p_special_values  => v_special_values,
+        p_all_formats     => v_all_formats,
+        p_status          => v_status,
+        p_message         => v_message
+    );
+    RETURN v_format_mask;
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN NULL;
+END detect_date_format_simple;
+
+-- Safe date parsing wrapper (returns NULL on failure)
+FUNCTION parse_date_safe(
+    p_value       IN VARCHAR2,
+    p_format_mask IN VARCHAR2,
+    p_start_date  IN DATE DEFAULT NULL
+) RETURN DATE DETERMINISTIC IS
+    v_alert_clob     CLOB;
+    v_format_mask    VARCHAR2(100);
+    v_confidence     NUMBER;
+    v_converted_date DATE;
+    v_has_year       VARCHAR2(1);
+    v_is_ambiguous   VARCHAR2(1);
+    v_special_values VARCHAR2(500);
+    v_all_formats    CLOB;
+    v_status         VARCHAR2(1);
+    v_message        VARCHAR2(4000);
+BEGIN
+    date_parser(
+        p_mode            => 'PARSE',
+        p_date_string     => p_value,
+        p_format_mask     => p_format_mask,
+        p_start_date      => p_start_date,
+        p_debug_flag      => 'N',
+        p_alert_clob      => v_alert_clob,
+        p_format_mask_out => v_format_mask,
+        p_confidence      => v_confidence,
+        p_converted_date  => v_converted_date,
+        p_has_year        => v_has_year,
+        p_is_ambiguous    => v_is_ambiguous,
+        p_special_values  => v_special_values,
+        p_all_formats     => v_all_formats,
+        p_status          => v_status,
+        p_message         => v_message
+    );
+    RETURN v_converted_date;
+EXCEPTION
+    WHEN OTHERS THEN
+        RETURN NULL;
+END parse_date_safe;
+
+-- Main date parser procedure
+PROCEDURE date_parser(
+    -- MODE CONTROL
+    p_mode             IN  VARCHAR2,
+    -- INPUT PARAMETERS
+    p_file_id          IN  NUMBER   DEFAULT NULL,
+    p_column_position  IN  NUMBER   DEFAULT NULL,
+    p_sample_values    IN  CLOB     DEFAULT NULL,
+    p_date_string      IN  VARCHAR2 DEFAULT NULL,
+    p_format_mask      IN  VARCHAR2 DEFAULT NULL,
+    p_start_date       IN  DATE     DEFAULT NULL,
+    p_min_confidence   IN  NUMBER   DEFAULT 90,
+    -- CONTROL PARAMETERS
+    p_debug_flag       IN  VARCHAR2 DEFAULT 'N',
+    p_alert_clob       IN OUT NOCOPY CLOB,
+    -- OUTPUT PARAMETERS
+    p_format_mask_out  OUT VARCHAR2,
+    p_confidence       OUT NUMBER,
+    p_converted_date   OUT DATE,
+    p_has_year         OUT VARCHAR2,
+    p_is_ambiguous     OUT VARCHAR2,
+    p_special_values   OUT VARCHAR2,
+    p_all_formats      OUT CLOB,
+    p_status           OUT VARCHAR2,
+    p_message          OUT VARCHAR2
+) IS
+    -- Debug log
+    l_debug_log CLOB;
+
+    -- Constants for patterns (Oracle regex doesn't support \b, so we use boundary patterns)
+    c_day_pattern_short  CONSTANT VARCHAR2(100) := '(^|[^a-zA-Z])(Mon|Tue|Wed|Thu|Fri|Sat|Sun)([^a-zA-Z]|$)';
+    c_day_pattern_full   CONSTANT VARCHAR2(100) := '(^|[^a-zA-Z])(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)([^a-zA-Z]|$)';
+    c_month_pattern_short CONSTANT VARCHAR2(200) := '(^|[^a-zA-Z])(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)([^a-zA-Z]|$)';
+    c_month_pattern_full  CONSTANT VARCHAR2(500) := '(^|[^a-zA-Z])(January|February|March|April|May|June|July|August|September|October|November|December)([^a-zA-Z]|$)';
+
+    -- Type definitions for format library
+    TYPE t_date_structure IS RECORD (
+        has_day_name_short   VARCHAR2(1),
+        has_day_name_full    VARCHAR2(1),
+        has_day_name         VARCHAR2(1),
+        has_month_name_short VARCHAR2(1),
+        has_month_name_full  VARCHAR2(1),
+        has_month_name       VARCHAR2(1),
+        has_4digit_year      VARCHAR2(1),
+        has_2digit_year      VARCHAR2(1),
+        has_time             VARCHAR2(1),
+        has_ampm             VARCHAR2(1),
+        has_timezone         VARCHAR2(1),
+        has_text_numbers     VARCHAR2(1),
+        separators           VARCHAR2(20),
+        primary_separator    VARCHAR2(5),
+        numeric_group_count  NUMBER
+    );
+
+    TYPE t_format_def IS RECORD (
+        format_mask    VARCHAR2(50),
+        category       VARCHAR2(20),
+        has_year       VARCHAR2(1),
+        has_day_name   VARCHAR2(1),
+        has_month_name VARCHAR2(1),
+        is_ambiguous   VARCHAR2(1),
+        alternate      VARCHAR2(50)
+    );
+    TYPE t_format_lib IS TABLE OF t_format_def INDEX BY PLS_INTEGER;
+
+    TYPE t_format_result IS RECORD (
+        format_mask    VARCHAR2(100),
+        confidence     NUMBER,
+        match_count    NUMBER,
+        category       VARCHAR2(30),
+        has_year       VARCHAR2(1),
+        is_ambiguous   VARCHAR2(1)
+    );
+    TYPE t_format_results IS TABLE OF t_format_result INDEX BY PLS_INTEGER;
+
+    ---------------------------------------------------------------------------
+    -- Debug helper procedure
+    ---------------------------------------------------------------------------
+    PROCEDURE append_debug(p_entry VARCHAR2) IS
+    BEGIN
+        IF UPPER(p_debug_flag) = 'Y' THEN
+            l_debug_log := l_debug_log ||
+                TO_CHAR(SYSTIMESTAMP, 'HH24:MI:SS.FF3') || ' - ' ||
+                p_entry || CHR(10);
+        END IF;
+    END append_debug;
+
+    ---------------------------------------------------------------------------
+    -- fn_try_date: Safe date parsing - returns NULL on failure
+    ---------------------------------------------------------------------------
+    FUNCTION fn_try_date(
+        p_string IN VARCHAR2,
+        p_format IN VARCHAR2
+    ) RETURN DATE IS
+        v_date DATE;
+    BEGIN
+        IF p_string IS NULL OR p_format IS NULL THEN
+            RETURN NULL;
+        END IF;
+        v_date := TO_DATE(TRIM(p_string), p_format);
+        -- Validate year is reasonable
+        IF EXTRACT(YEAR FROM v_date) < 1900 OR EXTRACT(YEAR FROM v_date) > 2100 THEN
+            RETURN NULL;
+        END IF;
+        RETURN v_date;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RETURN NULL;
+    END fn_try_date;
+
+    ---------------------------------------------------------------------------
+    -- convert_text_numbers: Convert text numbers to digits
+    ---------------------------------------------------------------------------
+    FUNCTION convert_text_numbers(
+        p_input IN VARCHAR2
+    ) RETURN VARCHAR2 IS
+        v_result VARCHAR2(500);
+    BEGIN
+        IF p_input IS NULL THEN
+            RETURN NULL;
+        END IF;
+
+        -- Pad with spaces to enable word boundary matching
+        v_result := ' ' || p_input || ' ';
+
+        -- Process LONGEST strings first to avoid partial replacements
+        -- Compound ordinals (twenty-first, twenty-second, etc.)
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?first(\s)', '\1 21 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?second(\s)', '\1 22 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?third(\s)', '\1 23 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?fourth(\s)', '\1 24 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?fifth(\s)', '\1 25 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?sixth(\s)', '\1 26 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?seventh(\s)', '\1 27 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?eighth(\s)', '\1 28 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?ninth(\s)', '\1 29 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)thirty[- ]?first(\s)', '\1 31 \2', 1, 0, 'i');
+
+        -- Compound cardinals (twenty-one, twenty-two, etc.)
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?one(\s)', '\1 21 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?two(\s)', '\1 22 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?three(\s)', '\1 23 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?four(\s)', '\1 24 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?five(\s)', '\1 25 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?six(\s)', '\1 26 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?seven(\s)', '\1 27 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?eight(\s)', '\1 28 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty[- ]?nine(\s)', '\1 29 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)thirty[- ]?one(\s)', '\1 31 \2', 1, 0, 'i');
+
+        -- Single-word ordinals (longest first)
+        v_result := REGEXP_REPLACE(v_result, '(\s)seventeenth(\s)', '\1 17 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)eighteenth(\s)', '\1 18 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)nineteenth(\s)', '\1 19 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)thirteenth(\s)', '\1 13 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)fourteenth(\s)', '\1 14 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)fifteenth(\s)', '\1 15 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)sixteenth(\s)', '\1 16 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twentieth(\s)', '\1 20 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)thirtieth(\s)', '\1 30 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)eleventh(\s)', '\1 11 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twelfth(\s)', '\1 12 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)seventh(\s)', '\1 7 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)eighth(\s)', '\1 8 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)fourth(\s)', '\1 4 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)second(\s)', '\1 2 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)third(\s)', '\1 3 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)fifth(\s)', '\1 5 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)sixth(\s)', '\1 6 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)ninth(\s)', '\1 9 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)tenth(\s)', '\1 10 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)first(\s)', '\1 1 \2', 1, 0, 'i');
+
+        -- Single-word cardinals (longest first)
+        v_result := REGEXP_REPLACE(v_result, '(\s)seventeen(\s)', '\1 17 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)eighteen(\s)', '\1 18 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)nineteen(\s)', '\1 19 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)thirteen(\s)', '\1 13 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)fourteen(\s)', '\1 14 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)fifteen(\s)', '\1 15 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)sixteen(\s)', '\1 16 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)eleven(\s)', '\1 11 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twelve(\s)', '\1 12 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)twenty(\s)', '\1 20 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)thirty(\s)', '\1 30 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)seven(\s)', '\1 7 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)eight(\s)', '\1 8 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)three(\s)', '\1 3 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)four(\s)', '\1 4 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)five(\s)', '\1 5 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)nine(\s)', '\1 9 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)ten(\s)', '\1 10 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)one(\s)', '\1 1 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)two(\s)', '\1 2 \2', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)six(\s)', '\1 6 \2', 1, 0, 'i');
+
+        -- Clean up multiple spaces and trim
+        v_result := REGEXP_REPLACE(v_result, '\s+', ' ');
+        v_result := TRIM(v_result);
+
+        RETURN v_result;
+    END convert_text_numbers;
+
+    ---------------------------------------------------------------------------
+    -- cleanup_date_string: Remove filler words
+    ---------------------------------------------------------------------------
+    FUNCTION cleanup_date_string(
+        p_input IN VARCHAR2
+    ) RETURN VARCHAR2 IS
+        v_result VARCHAR2(500);
+    BEGIN
+        IF p_input IS NULL THEN
+            RETURN NULL;
+        END IF;
+
+        -- Pad with spaces to enable word boundary matching
+        v_result := ' ' || p_input || ' ';
+
+        -- Remove common filler words (case-insensitive)
+        v_result := REGEXP_REPLACE(v_result, '(\s)the(\s)', ' ', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)of(\s)', ' ', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)on(\s)', ' ', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)in(\s)', ' ', 1, 0, 'i');
+        v_result := REGEXP_REPLACE(v_result, '(\s)day(\s)', ' ', 1, 0, 'i');
+
+        -- Normalize multiple spaces after removal
+        v_result := REGEXP_REPLACE(v_result, '\s+', ' ');
+
+        -- Handle comma-space normalization
+        v_result := REGEXP_REPLACE(v_result, '\s*,\s*', ', ');
+
+        RETURN TRIM(v_result);
+    END cleanup_date_string;
+
+    ---------------------------------------------------------------------------
+    -- strip_day_name: Remove day name from date string
+    ---------------------------------------------------------------------------
+    FUNCTION strip_day_name(
+        p_input IN VARCHAR2
+    ) RETURN VARCHAR2 IS
+        v_result VARCHAR2(500);
+    BEGIN
+        IF p_input IS NULL THEN
+            RETURN NULL;
+        END IF;
+
+        v_result := p_input;
+
+        -- Remove short day names (Mon, Tue, etc.)
+        v_result := REGEXP_REPLACE(v_result, '(^|[^a-zA-Z])(Mon|Tue|Wed|Thu|Fri|Sat|Sun)([^a-zA-Z]|$)', '\1\3', 1, 0, 'i');
+
+        -- Remove full day names (Monday, Tuesday, etc.)
+        v_result := REGEXP_REPLACE(v_result, '(^|[^a-zA-Z])(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)([^a-zA-Z]|$)', '\1\3', 1, 0, 'i');
+
+        -- Clean up: remove leading/trailing commas and spaces
+        v_result := REGEXP_REPLACE(v_result, '^\s*,?\s*', '');
+        v_result := REGEXP_REPLACE(v_result, '\s*,?\s*$', '');
+        v_result := REGEXP_REPLACE(v_result, '\s+', ' ');
+
+        RETURN TRIM(v_result);
+    END strip_day_name;
+
+    ---------------------------------------------------------------------------
+    -- preprocess_date_sample: Full preprocessing pipeline (10 steps)
+    ---------------------------------------------------------------------------
+    FUNCTION preprocess_date_sample(
+        p_raw IN VARCHAR2
+    ) RETURN VARCHAR2 IS
+        v_clean VARCHAR2(500);
+    BEGIN
+        IF p_raw IS NULL THEN
+            RETURN NULL;
+        END IF;
+
+        -- Step 1: Trim whitespace
+        v_clean := TRIM(p_raw);
+
+        -- Step 2: Normalize multiple spaces
+        v_clean := REGEXP_REPLACE(v_clean, '\s+', ' ');
+
+        -- Step 3: Remove AD/BC prefix/suffix
+        v_clean := REGEXP_REPLACE(v_clean, '(^|\s)AD(\s|$)', ' ', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|\s)BC(\s|$)', ' ', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|\s)A\.D\.(\s|$)', ' ', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|\s)B\.C\.(\s|$)', ' ', 1, 0, 'i');
+
+        -- Step 4: Normalize day abbreviations to Oracle 3-letter format
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Mon)(days?)?([^a-zA-Z]|$)', '\1\2\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Tue)(sdays?)?([^a-zA-Z]|$)', '\1\2\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Wed)(nesdays?)?([^a-zA-Z]|$)', '\1\2\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Thu)(rsdays?)?([^a-zA-Z]|$)', '\1\2\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Fri)(days?)?([^a-zA-Z]|$)', '\1\2\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Sat)(urdays?)?([^a-zA-Z]|$)', '\1\2\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Sun)(days?)?([^a-zA-Z]|$)', '\1\2\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])Thurs([^a-zA-Z]|$)', '\1Thu\2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])Tues([^a-zA-Z]|$)', '\1Tue\2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])Weds([^a-zA-Z]|$)', '\1Wed\2', 1, 0, 'i');
+
+        -- Step 5: Remove parenthetical content
+        v_clean := REGEXP_REPLACE(v_clean, '\s*\([^)]*\)', '');
+
+        -- Step 6: Remove decorative day names
+        v_clean := REGEXP_REPLACE(v_clean, '^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)[,]?\s*[-]?\s*(\d)', '\2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '\s+[-]?\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$', '', 1, 0, 'i');
+
+        -- Step 7: Convert text numbers to digits
+        v_clean := convert_text_numbers(v_clean);
+
+        -- Step 8: Remove filler words
+        v_clean := cleanup_date_string(v_clean);
+
+        -- Step 9: Strip ordinal suffixes
+        v_clean := REGEXP_REPLACE(v_clean, '(\d+)(st|nd|rd|th)([^a-zA-Z]|$)', '\1\3', 1, 0, 'i');
+
+        -- Step 10: Final cleanup
+        v_clean := TRIM(REGEXP_REPLACE(v_clean, '\s+', ' '));
+
+        RETURN v_clean;
+    END preprocess_date_sample;
+
+    ---------------------------------------------------------------------------
+    -- analyze_date_structure: Analyze structure of a date string
+    ---------------------------------------------------------------------------
+    FUNCTION analyze_date_structure(
+        p_sample IN VARCHAR2
+    ) RETURN t_date_structure IS
+        v_result t_date_structure;
+    BEGIN
+        -- Check for day names (short)
+        v_result.has_day_name_short := CASE
+            WHEN REGEXP_LIKE(p_sample, c_day_pattern_short, 'i')
+            THEN 'Y' ELSE 'N' END;
+
+        -- Check for day names (full)
+        v_result.has_day_name_full := CASE
+            WHEN REGEXP_LIKE(p_sample, c_day_pattern_full, 'i')
+            THEN 'Y' ELSE 'N' END;
+
+        -- Combined day name flag
+        v_result.has_day_name := CASE
+            WHEN v_result.has_day_name_short = 'Y' OR v_result.has_day_name_full = 'Y'
+            THEN 'Y' ELSE 'N' END;
+
+        -- Check for month names (short)
+        v_result.has_month_name_short := CASE
+            WHEN REGEXP_LIKE(p_sample, c_month_pattern_short, 'i')
+            THEN 'Y' ELSE 'N' END;
+
+        -- Check for month names (full)
+        v_result.has_month_name_full := CASE
+            WHEN REGEXP_LIKE(p_sample, c_month_pattern_full, 'i')
+            THEN 'Y' ELSE 'N' END;
+
+        -- Combined month name flag
+        v_result.has_month_name := CASE
+            WHEN v_result.has_month_name_short = 'Y' OR v_result.has_month_name_full = 'Y'
+            THEN 'Y' ELSE 'N' END;
+
+        -- Check for 4-digit year
+        v_result.has_4digit_year := CASE
+            WHEN REGEXP_LIKE(p_sample, '(^|[^0-9])(19|20)[0-9]{2}([^0-9]|$)')
+            THEN 'Y' ELSE 'N' END;
+
+        -- Check for 2-digit year
+        v_result.has_2digit_year := CASE
+            WHEN v_result.has_4digit_year = 'N' AND REGEXP_LIKE(p_sample, '(^|[^0-9])[0-9]{2}([^0-9]|$)')
+            THEN 'Y' ELSE 'N' END;
+
+        -- Check for time component
+        v_result.has_time := CASE
+            WHEN REGEXP_LIKE(p_sample, '[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?')
+            THEN 'Y' ELSE 'N' END;
+
+        -- Check for AM/PM
+        v_result.has_ampm := CASE
+            WHEN REGEXP_LIKE(p_sample, '(^|[^a-zA-Z])(AM|PM|A\.M\.|P\.M\.)([^a-zA-Z]|$)', 'i')
+            THEN 'Y' ELSE 'N' END;
+
+        -- Check for timezone
+        v_result.has_timezone := CASE
+            WHEN REGEXP_LIKE(p_sample, '(Z|[+-][0-9]{2}:?[0-9]{2}|UTC|GMT)\s*$', 'i')
+            THEN 'Y' ELSE 'N' END;
+
+        -- Check for text numbers
+        v_result.has_text_numbers := CASE
+            WHEN REGEXP_LIKE(p_sample,
+                '(^|[^a-zA-Z])(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|' ||
+                'thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|' ||
+                'first|second|third|fourth|fifth|sixth|seventh|eighth|ninth|tenth|' ||
+                'eleventh|twelfth|thirteenth|fourteenth|fifteenth|sixteenth|seventeenth|' ||
+                'eighteenth|nineteenth|twentieth|thirtieth|twenty-first|twenty-second|' ||
+                'twenty-third|twenty-fourth|twenty-fifth|twenty-sixth|twenty-seventh|' ||
+                'twenty-eighth|twenty-ninth|thirty-first)([^a-zA-Z]|$)', 'i')
+            THEN 'Y' ELSE 'N' END;
+
+        -- Detect all separators used
+        v_result.separators := '';
+        IF INSTR(p_sample, '/') > 0 THEN v_result.separators := v_result.separators || '/'; END IF;
+        IF INSTR(p_sample, '-') > 0 THEN v_result.separators := v_result.separators || '-'; END IF;
+        IF INSTR(p_sample, '.') > 0 THEN v_result.separators := v_result.separators || '.'; END IF;
+        IF INSTR(p_sample, ',') > 0 THEN v_result.separators := v_result.separators || ','; END IF;
+        IF INSTR(p_sample, ' ') > 0 THEN v_result.separators := v_result.separators || ' '; END IF;
+
+        -- Primary separator
+        v_result.primary_separator := CASE
+            WHEN INSTR(p_sample, '/') > 0 THEN '/'
+            WHEN INSTR(p_sample, '-') > 0 THEN '-'
+            WHEN INSTR(p_sample, '.') > 0 THEN '.'
+            ELSE ' '
+        END;
+
+        -- Count numeric groups
+        v_result.numeric_group_count := REGEXP_COUNT(p_sample, '\d+');
+
+        RETURN v_result;
+    END analyze_date_structure;
+
+    ---------------------------------------------------------------------------
+    -- detect_special_values: Find special values in samples
+    ---------------------------------------------------------------------------
+    FUNCTION detect_special_values(
+        p_sample_values IN CLOB
+    ) RETURN VARCHAR2 IS
+        v_specials VARCHAR2(500) := '';
+        TYPE t_special_list IS TABLE OF VARCHAR2(20);
+        v_known_specials t_special_list := t_special_list(
+            'TODAY', 'YESTERDAY', 'TOMORROW',
+            'N/A', 'NA', 'TBD', 'TBA', 'PENDING',
+            'NULL', 'NONE', 'ASAP', 'EOD', 'EOW',
+            'CURRENT', 'NOW'
+        );
+    BEGIN
+        IF p_sample_values IS NULL THEN
+            RETURN NULL;
+        END IF;
+
+        FOR i IN 1..v_known_specials.COUNT LOOP
+            IF REGEXP_LIKE(p_sample_values, '"' || v_known_specials(i) || '"', 'i') THEN
+                v_specials := v_specials || v_known_specials(i) || ',';
+            END IF;
+        END LOOP;
+
+        RETURN RTRIM(v_specials, ',');
+    END detect_special_values;
+
+    ---------------------------------------------------------------------------
+    -- initialize_format_library: Build the format library (~80 formats)
+    ---------------------------------------------------------------------------
+    FUNCTION initialize_format_library RETURN t_format_lib IS
+        v_formats t_format_lib;
+        v_idx PLS_INTEGER := 0;
+
+        PROCEDURE add_format(
+            p_mask VARCHAR2, p_cat VARCHAR2, p_year VARCHAR2,
+            p_day VARCHAR2, p_mon VARCHAR2, p_amb VARCHAR2, p_alt VARCHAR2 DEFAULT NULL
+        ) IS
+        BEGIN
+            v_idx := v_idx + 1;
+            v_formats(v_idx).format_mask := p_mask;
+            v_formats(v_idx).category := p_cat;
+            v_formats(v_idx).has_year := p_year;
+            v_formats(v_idx).has_day_name := p_day;
+            v_formats(v_idx).has_month_name := p_mon;
+            v_formats(v_idx).is_ambiguous := p_amb;
+            v_formats(v_idx).alternate := p_alt;
+        END;
+    BEGIN
+        -- Category 1: ISO formats (highest priority, unambiguous)
+        add_format('YYYY-MM-DD"T"HH24:MI:SS"Z"', 'ISO', 'Y', 'N', 'N', 'N');
+        add_format('YYYY-MM-DD"T"HH24:MI:SS', 'ISO', 'Y', 'N', 'N', 'N');
+        add_format('YYYY-MM-DD HH24:MI:SS', 'ISO', 'Y', 'N', 'N', 'N');
+        add_format('YYYY-MM-DD HH24:MI', 'ISO', 'Y', 'N', 'N', 'N');
+        add_format('YYYY-MM-DD', 'ISO', 'Y', 'N', 'N', 'N');
+        add_format('YYYYMMDD', 'ISO', 'Y', 'N', 'N', 'N');
+        add_format('YYYY/MM/DD', 'ISO', 'Y', 'N', 'N', 'N');
+        add_format('YYYY.MM.DD', 'ISO', 'Y', 'N', 'N', 'N');
+        add_format('YYYY MM DD', 'ISO', 'Y', 'N', 'N', 'N');
+
+        -- Category 2: Day name formats (unambiguous)
+        add_format('DY DD-MON-YYYY', 'DAYNAME', 'Y', 'Y', 'Y', 'N');
+        add_format('DY DD MON YYYY', 'DAYNAME', 'Y', 'Y', 'Y', 'N');
+        add_format('DY, DD MON YYYY', 'DAYNAME', 'Y', 'Y', 'Y', 'N');
+        add_format('DY, DD-MON-YYYY', 'DAYNAME', 'Y', 'Y', 'Y', 'N');
+        add_format('DY, DD/MM/YYYY', 'DAYNAME', 'Y', 'Y', 'N', 'N');
+        add_format('DAY DD-MON-YYYY', 'DAYNAME', 'Y', 'Y', 'Y', 'N');
+        add_format('DAY, DD MON YYYY', 'DAYNAME', 'Y', 'Y', 'Y', 'N');
+        add_format('DAY DD MONTH YYYY', 'DAYNAME', 'Y', 'Y', 'Y', 'N');
+        add_format('DAY, DD MONTH YYYY', 'DAYNAME', 'Y', 'Y', 'Y', 'N');
+        add_format('DAY, MONTH DD, YYYY', 'DAYNAME', 'Y', 'Y', 'Y', 'N');
+        add_format('DY, MONTH DD, YYYY', 'DAYNAME', 'Y', 'Y', 'Y', 'N');
+        add_format('DY DD MONTH YYYY', 'DAYNAME', 'Y', 'Y', 'Y', 'N');
+        add_format('DY DD-MON', 'DAYNAME', 'N', 'Y', 'Y', 'N');
+        add_format('DY DD MON', 'DAYNAME', 'N', 'Y', 'Y', 'N');
+        add_format('DY, DD MON', 'DAYNAME', 'N', 'Y', 'Y', 'N');
+        add_format('DAY DD MON', 'DAYNAME', 'N', 'Y', 'Y', 'N');
+        add_format('DAY, DD MON', 'DAYNAME', 'N', 'Y', 'Y', 'N');
+
+        -- Category 3: Month name formats (unambiguous)
+        add_format('DD MONTH YYYY', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('MONTH DD, YYYY', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('MONTH DD YYYY', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('DD-MONTH-YYYY', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('DD-MON-YYYY HH24:MI:SS', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('DD-MON-YYYY HH:MI:SS AM', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('DD-MON-YYYY', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('DD MON YYYY', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('DD/MON/YYYY', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('DD.MON.YYYY', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('MON DD, YYYY', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('MON DD YYYY', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('MON-DD-YYYY', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('DD-MON-RR', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('DD MON RR', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('MON DD, RR', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        -- YYYY-first month name formats
+        add_format('YYYY MONTH DD', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('YYYY, MONTH DD', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('YYYY, DD MONTH', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('YYYY-MON-DD', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('YYYY/MON/DD', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+        add_format('YYYY MON DD', 'MONTHNAME', 'Y', 'N', 'Y', 'N');
+
+        -- No-year month name formats
+        add_format('DD-MON', 'MONTHNAME', 'N', 'N', 'Y', 'N');
+        add_format('DD MON', 'MONTHNAME', 'N', 'N', 'Y', 'N');
+        add_format('DD/MON', 'MONTHNAME', 'N', 'N', 'Y', 'N');
+        add_format('MON DD', 'MONTHNAME', 'N', 'N', 'Y', 'N');
+        add_format('MON-DD', 'MONTHNAME', 'N', 'N', 'Y', 'N');
+        add_format('DD MONTH', 'MONTHNAME', 'N', 'N', 'Y', 'N');
+        add_format('MONTH DD', 'MONTHNAME', 'N', 'N', 'Y', 'N');
+
+        -- Category 4: Numeric formats WITH year (ambiguous)
+        add_format('DD/MM/YYYY HH24:MI:SS', 'NUMERIC', 'Y', 'N', 'N', 'Y', 'MM/DD/YYYY HH24:MI:SS');
+        add_format('DD/MM/YYYY HH:MI:SS AM', 'NUMERIC', 'Y', 'N', 'N', 'Y', 'MM/DD/YYYY HH:MI:SS AM');
+        add_format('DD/MM/YYYY', 'NUMERIC', 'Y', 'N', 'N', 'Y', 'MM/DD/YYYY');
+        add_format('MM/DD/YYYY', 'NUMERIC', 'Y', 'N', 'N', 'Y', 'DD/MM/YYYY');
+        add_format('DD-MM-YYYY HH24:MI:SS', 'NUMERIC', 'Y', 'N', 'N', 'Y', 'MM-DD-YYYY HH24:MI:SS');
+        add_format('DD-MM-YYYY', 'NUMERIC', 'Y', 'N', 'N', 'Y', 'MM-DD-YYYY');
+        add_format('MM-DD-YYYY', 'NUMERIC', 'Y', 'N', 'N', 'Y', 'DD-MM-YYYY');
+        add_format('DD.MM.YYYY', 'NUMERIC', 'Y', 'N', 'N', 'Y', 'MM.DD.YYYY');
+        add_format('MM.DD.YYYY', 'NUMERIC', 'Y', 'N', 'N', 'Y', 'DD.MM.YYYY');
+
+        -- 2-digit year numeric
+        add_format('DD/MM/RR', 'NUMERIC', 'Y', 'N', 'N', 'Y', 'MM/DD/RR');
+        add_format('MM/DD/RR', 'NUMERIC', 'Y', 'N', 'N', 'Y', 'DD/MM/RR');
+        add_format('DD-MM-RR', 'NUMERIC', 'Y', 'N', 'N', 'Y', 'MM-DD-RR');
+        add_format('MM-DD-RR', 'NUMERIC', 'Y', 'N', 'N', 'Y', 'DD-MM-RR');
+        add_format('DD.MM.RR', 'NUMERIC', 'Y', 'N', 'N', 'Y', 'MM.DD.RR');
+        -- YY/MM/DD formats (ISO-style with 2-digit year)
+        add_format('RR/MM/DD', 'NUMERIC', 'Y', 'N', 'N', 'N');
+        add_format('RR-MM-DD', 'NUMERIC', 'Y', 'N', 'N', 'N');
+        add_format('RR.MM.DD', 'NUMERIC', 'Y', 'N', 'N', 'N');
+
+        -- No-year numeric (highly ambiguous)
+        add_format('DD/MM', 'NUMERIC', 'N', 'N', 'N', 'Y', 'MM/DD');
+        add_format('MM/DD', 'NUMERIC', 'N', 'N', 'N', 'Y', 'DD/MM');
+        add_format('DD-MM', 'NUMERIC', 'N', 'N', 'N', 'Y', 'MM-DD');
+        add_format('DD.MM', 'NUMERIC', 'N', 'N', 'N', 'Y', 'MM.DD');
+
+        RETURN v_formats;
+    END initialize_format_library;
+
+    ---------------------------------------------------------------------------
+    -- disambiguate_dd_mm: Resolve DD/MM vs MM/DD ambiguity
+    ---------------------------------------------------------------------------
+    FUNCTION disambiguate_dd_mm(
+        p_samples IN CLOB
+    ) RETURN VARCHAR2 IS
+        v_first_max  NUMBER := 0;
+        v_second_max NUMBER := 0;
+        v_first_num  NUMBER;
+        v_second_num NUMBER;
+        v_parts      VARCHAR2(100);
+    BEGIN
+        -- Extract numeric components and find max values
+        FOR rec IN (
+            SELECT val
+            FROM JSON_TABLE(p_samples, '$[*]' COLUMNS (val VARCHAR2(100) PATH '$'))
+            WHERE ROWNUM <= 50
+        ) LOOP
+            -- Extract first two numeric groups
+            v_parts := REGEXP_REPLACE(rec.val, '[^0-9]+', ',');
+            BEGIN
+                v_first_num := TO_NUMBER(REGEXP_SUBSTR(v_parts, '[^,]+', 1, 1));
+                v_second_num := TO_NUMBER(REGEXP_SUBSTR(v_parts, '[^,]+', 1, 2));
+
+                IF v_first_num > v_first_max THEN v_first_max := v_first_num; END IF;
+                IF v_second_num > v_second_max THEN v_second_max := v_second_num; END IF;
+            EXCEPTION
+                WHEN OTHERS THEN NULL;
+            END;
+        END LOOP;
+
+        -- Decision matrix
+        IF v_first_max > 12 AND v_second_max <= 12 THEN
+            RETURN 'DD_FIRST';  -- European format
+        ELSIF v_first_max <= 12 AND v_second_max > 12 THEN
+            RETURN 'MM_FIRST';  -- US format
+        ELSIF v_first_max > 12 AND v_second_max > 12 THEN
+            RETURN 'ERROR';     -- Invalid data
+        ELSE
+            RETURN 'AMBIGUOUS'; -- Cannot determine, default to European
+        END IF;
+    END disambiguate_dd_mm;
+
+    ---------------------------------------------------------------------------
+    -- fn_infer_year: Smart year inference using day name when available
+    ---------------------------------------------------------------------------
+    FUNCTION fn_infer_year(
+        p_date_str   IN VARCHAR2,
+        p_start      IN DATE,
+        p_format     IN VARCHAR2 DEFAULT NULL
+    ) RETURN DATE IS
+        v_start_year     NUMBER;
+        v_start_mon      NUMBER;
+        v_parsed_mon     NUMBER;
+        v_parsed_day     NUMBER;
+        v_day_name       VARCHAR2(20);
+        v_candidate_date DATE;
+        v_result         DATE;
+        v_clean_str      VARCHAR2(200);
+    BEGIN
+        IF p_date_str IS NULL OR p_start IS NULL THEN
+            RETURN NULL;
+        END IF;
+
+        v_start_year := EXTRACT(YEAR FROM p_start);
+        v_start_mon := EXTRACT(MONTH FROM p_start);
+
+        -- Step 1: Check if day name is present
+        v_day_name := REGEXP_SUBSTR(p_date_str, c_day_pattern_short, 1, 1, 'i', 2);
+        IF v_day_name IS NULL THEN
+            v_day_name := REGEXP_SUBSTR(p_date_str, c_day_pattern_full, 1, 1, 'i', 2);
+        END IF;
+
+        -- Step 2: Extract day and month - remove day name first
+        v_clean_str := REGEXP_REPLACE(p_date_str, c_day_pattern_short || ',?\s*', '\1\3', 1, 0, 'i');
+        v_clean_str := REGEXP_REPLACE(v_clean_str, c_day_pattern_full || ',?\s*', '\1\3', 1, 0, 'i');
+        v_clean_str := TRIM(v_clean_str);
+        v_clean_str := preprocess_date_sample(v_clean_str);
+
+        -- Try various formats to parse day and month
+        BEGIN
+            v_candidate_date := TO_DATE(v_clean_str, 'DD-MON');
+            v_parsed_mon := EXTRACT(MONTH FROM v_candidate_date);
+            v_parsed_day := EXTRACT(DAY FROM v_candidate_date);
+        EXCEPTION
+            WHEN OTHERS THEN
+                BEGIN
+                    v_candidate_date := TO_DATE(v_clean_str, 'DD MON');
+                    v_parsed_mon := EXTRACT(MONTH FROM v_candidate_date);
+                    v_parsed_day := EXTRACT(DAY FROM v_candidate_date);
+                EXCEPTION
+                    WHEN OTHERS THEN
+                        BEGIN
+                            v_candidate_date := TO_DATE(v_clean_str, 'DD/MM');
+                            v_parsed_mon := EXTRACT(MONTH FROM v_candidate_date);
+                            v_parsed_day := EXTRACT(DAY FROM v_candidate_date);
+                        EXCEPTION
+                            WHEN OTHERS THEN
+                                BEGIN
+                                    v_candidate_date := TO_DATE(v_clean_str, 'MON DD');
+                                    v_parsed_mon := EXTRACT(MONTH FROM v_candidate_date);
+                                    v_parsed_day := EXTRACT(DAY FROM v_candidate_date);
+                                EXCEPTION
+                                    WHEN OTHERS THEN
+                                        RETURN NULL;
+                                END;
+                        END;
+                END;
+        END;
+
+        -- Step 3: Determine year using day name validation OR sequential logic
+        IF v_day_name IS NOT NULL THEN
+            -- SMART PATH: Use day name to find correct year
+            v_candidate_date := TO_DATE(v_parsed_day || '-' || v_parsed_mon || '-' || v_start_year, 'DD-MM-YYYY');
+
+            IF UPPER(TO_CHAR(v_candidate_date, 'DY')) = UPPER(SUBSTR(v_day_name, 1, 3)) THEN
+                v_result := v_candidate_date;
+            ELSE
+                -- Try next year
+                v_candidate_date := TO_DATE(v_parsed_day || '-' || v_parsed_mon || '-' || (v_start_year + 1), 'DD-MM-YYYY');
+                IF UPPER(TO_CHAR(v_candidate_date, 'DY')) = UPPER(SUBSTR(v_day_name, 1, 3)) THEN
+                    v_result := v_candidate_date;
+                ELSE
+                    -- Try previous year
+                    v_candidate_date := TO_DATE(v_parsed_day || '-' || v_parsed_mon || '-' || (v_start_year - 1), 'DD-MM-YYYY');
+                    IF UPPER(TO_CHAR(v_candidate_date, 'DY')) = UPPER(SUBSTR(v_day_name, 1, 3)) THEN
+                        v_result := v_candidate_date;
+                    ELSE
+                        -- Fall back to sequential logic
+                        IF v_parsed_mon < v_start_mon THEN
+                            v_result := TO_DATE(v_parsed_day || '-' || v_parsed_mon || '-' || (v_start_year + 1), 'DD-MM-YYYY');
+                        ELSE
+                            v_result := TO_DATE(v_parsed_day || '-' || v_parsed_mon || '-' || v_start_year, 'DD-MM-YYYY');
+                        END IF;
+                    END IF;
+                END IF;
+            END IF;
+        ELSE
+            -- FALLBACK PATH: No day name, use sequential logic
+            IF v_parsed_mon < v_start_mon THEN
+                v_result := TO_DATE(v_parsed_day || '-' || v_parsed_mon || '-' || (v_start_year + 1), 'DD-MM-YYYY');
+            ELSE
+                v_result := TO_DATE(v_parsed_day || '-' || v_parsed_mon || '-' || v_start_year, 'DD-MM-YYYY');
+            END IF;
+        END IF;
+
+        RETURN v_result;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RETURN NULL;
+    END fn_infer_year;
+
+    ---------------------------------------------------------------------------
+    -- detect_format_internal: Main format detection logic
+    ---------------------------------------------------------------------------
+    PROCEDURE detect_format_internal(
+        p_samples        IN  CLOB,
+        p_min_confidence IN  NUMBER,
+        p_format_mask    OUT VARCHAR2,
+        p_confidence     OUT NUMBER,
+        p_has_year       OUT VARCHAR2,
+        p_is_ambiguous   OUT VARCHAR2,
+        p_special_values OUT VARCHAR2,
+        p_all_formats    OUT CLOB,
+        p_status         OUT VARCHAR2,
+        p_message        OUT VARCHAR2
+    ) IS
+        v_formats       t_format_lib;
+        v_structure     t_date_structure;
+        v_results       t_format_results;
+        v_sample        VARCHAR2(500);
+        v_preprocessed  VARCHAR2(500);
+        v_sample_count  NUMBER := 0;
+        v_match_count   NUMBER;
+        v_best_idx      PLS_INTEGER := 0;
+        v_best_score    NUMBER := 0;
+        v_dd_mm_result  VARCHAR2(20);
+        v_result_idx    PLS_INTEGER := 0;
+        v_score         NUMBER;
+        v_json          CLOB;
+    BEGIN
+        p_status := 'S';
+        p_confidence := 0;
+        p_is_ambiguous := 'N';
+        p_has_year := 'Y';
+
+        append_debug('detect_format_internal started');
+
+        -- Check for empty input
+        IF p_samples IS NULL OR LENGTH(p_samples) < 3 THEN
+            p_status := 'E';
+            p_message := 'No sample values provided';
+            append_debug('ERROR: No sample values');
+            RETURN;
+        END IF;
+
+        -- Detect special values first
+        p_special_values := detect_special_values(p_samples);
+        append_debug('Special values detected: ' || NVL(p_special_values, 'none'));
+
+        -- Count samples
+        SELECT COUNT(*) INTO v_sample_count
+        FROM JSON_TABLE(p_samples, '$[*]' COLUMNS (val VARCHAR2(500) PATH '$'))
+        WHERE val IS NOT NULL
+          AND TRIM(val) IS NOT NULL
+          AND UPPER(TRIM(val)) NOT IN ('TODAY','YESTERDAY','TOMORROW','N/A','NA','TBD','NULL','NONE','-');
+
+        append_debug('Valid sample count: ' || v_sample_count);
+
+        IF v_sample_count = 0 THEN
+            p_status := 'E';
+            p_message := 'No valid date samples found (only special values)';
+            append_debug('ERROR: No valid samples');
+            RETURN;
+        END IF;
+
+        -- Get first sample for structure analysis
+        SELECT val INTO v_sample
+        FROM JSON_TABLE(p_samples, '$[*]' COLUMNS (val VARCHAR2(500) PATH '$'))
+        WHERE val IS NOT NULL AND TRIM(val) IS NOT NULL
+          AND UPPER(TRIM(val)) NOT IN ('TODAY','YESTERDAY','TOMORROW','N/A','NA','TBD','NULL','NONE','-')
+          AND ROWNUM = 1;
+
+        -- Analyze structure
+        v_structure := analyze_date_structure(v_sample);
+        append_debug('Structure analysis - Day name: ' || v_structure.has_day_name ||
+                     ', Month name: ' || v_structure.has_month_name ||
+                     ', 4-digit year: ' || v_structure.has_4digit_year ||
+                     ', Separators: ' || v_structure.separators);
+
+        -- Initialize format library
+        v_formats := initialize_format_library;
+        append_debug('Format library initialized with ' || v_formats.COUNT || ' formats');
+
+        -- Test each format against all samples
+        FOR i IN 1..v_formats.COUNT LOOP
+            v_match_count := 0;
+
+            -- Filter by structure (optimization)
+            IF v_formats(i).has_day_name = 'Y' AND v_structure.has_day_name = 'N' THEN
+                CONTINUE;
+            END IF;
+            IF v_formats(i).has_month_name = 'Y' AND v_structure.has_month_name = 'N' THEN
+                CONTINUE;
+            END IF;
+            IF v_formats(i).has_month_name = 'N' AND v_structure.has_month_name = 'Y' THEN
+                CONTINUE;
+            END IF;
+
+            -- Test against all samples
+            FOR rec IN (
+                SELECT val
+                FROM JSON_TABLE(p_samples, '$[*]' COLUMNS (val VARCHAR2(500) PATH '$'))
+                WHERE val IS NOT NULL AND TRIM(val) IS NOT NULL
+                  AND UPPER(TRIM(val)) NOT IN ('TODAY','YESTERDAY','TOMORROW','N/A','NA','TBD','NULL','NONE','-')
+            ) LOOP
+                v_preprocessed := preprocess_date_sample(rec.val);
+
+                -- Try direct parse first
+                IF fn_try_date(v_preprocessed, v_formats(i).format_mask) IS NOT NULL THEN
+                    v_match_count := v_match_count + 1;
+                -- If format has no day name but input has one, try stripping day name
+                ELSIF v_formats(i).has_day_name = 'N' AND v_structure.has_day_name = 'Y' THEN
+                    IF fn_try_date(strip_day_name(v_preprocessed), v_formats(i).format_mask) IS NOT NULL THEN
+                        v_match_count := v_match_count + 1;
+                    END IF;
+                END IF;
+            END LOOP;
+
+            -- Record results for formats with matches
+            IF v_match_count > 0 THEN
+                v_result_idx := v_result_idx + 1;
+                v_results(v_result_idx).format_mask := v_formats(i).format_mask;
+                v_results(v_result_idx).match_count := v_match_count;
+                v_results(v_result_idx).category := v_formats(i).category;
+                v_results(v_result_idx).has_year := v_formats(i).has_year;
+                v_results(v_result_idx).is_ambiguous := v_formats(i).is_ambiguous;
+
+                -- Calculate confidence score
+                v_score := (v_match_count / v_sample_count) * 100;
+
+                -- Apply modifiers
+                IF v_formats(i).category IN ('ISO', 'DAYNAME', 'MONTHNAME') THEN
+                    v_score := v_score * 1.15;
+                END IF;
+                IF v_formats(i).format_mask LIKE 'YYYY-MM-DD%' THEN
+                    v_score := v_score * 1.10;
+                END IF;
+                IF v_formats(i).format_mask LIKE '%RR%' THEN
+                    v_score := v_score * 0.90;
+                END IF;
+                IF v_formats(i).has_year = 'N' THEN
+                    v_score := v_score * 0.85;
+                END IF;
+                IF v_formats(i).is_ambiguous = 'Y' THEN
+                    v_score := v_score * 0.80;
+                END IF;
+
+                v_results(v_result_idx).confidence := LEAST(ROUND(v_score, 1), 100);
+
+                -- Track best result
+                IF v_results(v_result_idx).confidence > v_best_score THEN
+                    v_best_score := v_results(v_result_idx).confidence;
+                    v_best_idx := v_result_idx;
+                END IF;
+            END IF;
+        END LOOP;
+
+        append_debug('Matching formats found: ' || v_result_idx);
+
+        -- Check if we found any matches
+        IF v_best_idx = 0 THEN
+            p_status := 'E';
+            p_message := 'No matching date format found for samples';
+            append_debug('ERROR: No matching format');
+            RETURN;
+        END IF;
+
+        -- Handle DD/MM vs MM/DD ambiguity
+        IF v_results(v_best_idx).is_ambiguous = 'Y' THEN
+            v_dd_mm_result := disambiguate_dd_mm(p_samples);
+            append_debug('Disambiguation result: ' || v_dd_mm_result);
+
+            IF v_dd_mm_result = 'DD_FIRST' THEN
+                p_is_ambiguous := 'N';
+                IF v_results(v_best_idx).format_mask LIKE 'MM%' THEN
+                    v_results(v_best_idx).format_mask := REPLACE(v_results(v_best_idx).format_mask, 'MM/', 'DD/');
+                    v_results(v_best_idx).format_mask := REPLACE(v_results(v_best_idx).format_mask, '/DD/', '/MM/');
+                END IF;
+            ELSIF v_dd_mm_result = 'MM_FIRST' THEN
+                p_is_ambiguous := 'N';
+                IF v_results(v_best_idx).format_mask LIKE 'DD%' THEN
+                    v_results(v_best_idx).format_mask := REPLACE(v_results(v_best_idx).format_mask, 'DD/', 'MM/');
+                    v_results(v_best_idx).format_mask := REPLACE(v_results(v_best_idx).format_mask, '/MM/', '/DD/');
+                END IF;
+            ELSE
+                p_is_ambiguous := 'Y';
+            END IF;
+        END IF;
+
+        -- Set output values
+        p_format_mask := v_results(v_best_idx).format_mask;
+        p_confidence := v_results(v_best_idx).confidence;
+        p_has_year := v_results(v_best_idx).has_year;
+
+        append_debug('Best format: ' || p_format_mask || ' (confidence: ' || p_confidence || '%)');
+
+        -- Build JSON array of all formats (sorted by confidence)
+        v_json := '[';
+        FOR i IN 1..v_result_idx LOOP
+            IF i > 1 THEN v_json := v_json || ','; END IF;
+            v_json := v_json || '{"format":"' || v_results(i).format_mask ||
+                      '","confidence":' || v_results(i).confidence ||
+                      ',"category":"' || v_results(i).category ||
+                      '","has_year":"' || v_results(i).has_year || '"}';
+        END LOOP;
+        v_json := v_json || ']';
+        p_all_formats := v_json;
+
+        p_message := 'Detected format: ' || p_format_mask ||
+                     ' (Confidence: ' || p_confidence || '%)' ||
+                     CASE WHEN p_is_ambiguous = 'Y' THEN ' - AMBIGUOUS (defaulting to European DD/MM)' ELSE '' END;
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            p_status := 'E';
+            p_message := 'Detection error: ' || SQLERRM;
+            append_debug('EXCEPTION: ' || SQLERRM);
+    END detect_format_internal;
+
+    ---------------------------------------------------------------------------
+    -- parse_date_internal: Parse a single date using specified format
+    ---------------------------------------------------------------------------
+    PROCEDURE parse_date_internal(
+        p_date_str    IN  VARCHAR2,
+        p_format      IN  VARCHAR2,
+        p_start       IN  DATE,
+        p_result_date OUT DATE,
+        p_status      OUT VARCHAR2,
+        p_message     OUT VARCHAR2
+    ) IS
+        v_preprocessed VARCHAR2(500);
+        v_date         DATE;
+    BEGIN
+        p_status := 'S';
+
+        IF p_date_str IS NULL THEN
+            p_result_date := NULL;
+            p_message := 'Input date string is NULL';
+            RETURN;
+        END IF;
+
+        append_debug('parse_date_internal: input="' || p_date_str || '", format="' || p_format || '"');
+
+        -- Preprocess the date string
+        v_preprocessed := preprocess_date_sample(p_date_str);
+        append_debug('Preprocessed: "' || v_preprocessed || '"');
+
+        -- Try to parse
+        v_date := fn_try_date(v_preprocessed, p_format);
+
+        IF v_date IS NOT NULL THEN
+            p_result_date := v_date;
+            p_message := 'Successfully parsed to ' || TO_CHAR(v_date, 'YYYY-MM-DD');
+            append_debug('Parsed successfully: ' || TO_CHAR(v_date, 'YYYY-MM-DD'));
+        ELSE
+            -- Try stripping day name if present
+            v_date := fn_try_date(strip_day_name(v_preprocessed), p_format);
+            IF v_date IS NOT NULL THEN
+                p_result_date := v_date;
+                p_message := 'Parsed (after stripping day name) to ' || TO_CHAR(v_date, 'YYYY-MM-DD');
+                append_debug('Parsed after strip: ' || TO_CHAR(v_date, 'YYYY-MM-DD'));
+            ELSE
+                -- Try year inference if no year in format
+                IF p_format NOT LIKE '%YYYY%' AND p_format NOT LIKE '%RR%' AND p_start IS NOT NULL THEN
+                    v_date := fn_infer_year(p_date_str, p_start, p_format);
+                    IF v_date IS NOT NULL THEN
+                        p_result_date := v_date;
+                        p_message := 'Parsed (with year inference) to ' || TO_CHAR(v_date, 'YYYY-MM-DD');
+                        append_debug('Parsed with year inference: ' || TO_CHAR(v_date, 'YYYY-MM-DD'));
+                    ELSE
+                        p_result_date := NULL;
+                        p_status := 'E';
+                        p_message := 'Failed to parse date with format ' || p_format;
+                        append_debug('Parse failed');
+                    END IF;
+                ELSE
+                    p_result_date := NULL;
+                    p_status := 'E';
+                    p_message := 'Failed to parse date with format ' || p_format;
+                    append_debug('Parse failed');
+                END IF;
+            END IF;
+        END IF;
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            p_result_date := NULL;
+            p_status := 'E';
+            p_message := 'Parse error: ' || SQLERRM;
+            append_debug('EXCEPTION: ' || SQLERRM);
+    END parse_date_internal;
+
+-- Main procedure body starts here
+BEGIN
+    -- Initialize outputs
+    p_status := 'S';
+    p_message := '';
+    p_format_mask_out := NULL;
+    p_confidence := 0;
+    p_converted_date := NULL;
+    p_has_year := 'Y';
+    p_is_ambiguous := 'N';
+    p_special_values := NULL;
+    p_all_formats := NULL;
+
+    append_debug('date_parser started - mode=' || p_mode);
+
+    -- Mode dispatcher
+    CASE UPPER(p_mode)
+        WHEN 'DETECT' THEN
+            append_debug('Entering DETECT mode');
+            detect_format_internal(
+                p_samples        => p_sample_values,
+                p_min_confidence => p_min_confidence,
+                p_format_mask    => p_format_mask_out,
+                p_confidence     => p_confidence,
+                p_has_year       => p_has_year,
+                p_is_ambiguous   => p_is_ambiguous,
+                p_special_values => p_special_values,
+                p_all_formats    => p_all_formats,
+                p_status         => p_status,
+                p_message        => p_message
+            );
+
+            -- Add alerts based on results
+            IF p_status = 'S' THEN
+                IF p_confidence < p_min_confidence THEN
+                    add_alert(
+                        p_existing_json => p_alert_clob,
+                        p_message       => 'Date format confidence (' || p_confidence ||
+                                          '%) below threshold. Review format: ' || p_format_mask_out,
+                        p_icon          => 'warning',
+                        p_title         => 'Low Confidence Detection',
+                        p_timeout       => NULL,
+                        p_updated_json  => p_alert_clob
+                    );
+                END IF;
+
+                IF p_is_ambiguous = 'Y' THEN
+                    add_alert(
+                        p_existing_json => p_alert_clob,
+                        p_message       => 'Ambiguous date format (DD/MM vs MM/DD). Defaulting to European (DD/MM).',
+                        p_icon          => 'info',
+                        p_title         => 'Date Format Ambiguity',
+                        p_timeout       => 5000,
+                        p_updated_json  => p_alert_clob
+                    );
+                END IF;
+
+                IF p_special_values IS NOT NULL THEN
+                    add_alert(
+                        p_existing_json => p_alert_clob,
+                        p_message       => 'Special values detected: ' || p_special_values,
+                        p_icon          => 'info',
+                        p_title         => 'Special Date Values',
+                        p_timeout       => 5000,
+                        p_updated_json  => p_alert_clob
+                    );
+                END IF;
+            ELSE
+                add_alert(
+                    p_existing_json => p_alert_clob,
+                    p_message       => 'Unable to detect date format. Please specify manually.',
+                    p_icon          => 'error',
+                    p_title         => 'Format Detection Failed',
+                    p_timeout       => NULL,
+                    p_updated_json  => p_alert_clob
+                );
+            END IF;
+
+        WHEN 'PARSE' THEN
+            append_debug('Entering PARSE mode');
+            parse_date_internal(
+                p_date_str    => p_date_string,
+                p_format      => p_format_mask,
+                p_start       => p_start_date,
+                p_result_date => p_converted_date,
+                p_status      => p_status,
+                p_message     => p_message
+            );
+            p_format_mask_out := p_format_mask;
+
+        WHEN 'TEST' THEN
+            append_debug('Entering TEST mode - running internal test suite');
+            -- Test mode returns test results in p_message
+            p_message := 'Test mode not yet implemented in UR_UTILS. Use test_date_parser procedure instead.';
+            p_status := 'W';
+
+        ELSE
+            p_status := 'E';
+            p_message := 'Invalid mode: ' || p_mode || '. Valid modes are: DETECT, PARSE, TEST';
+            append_debug('ERROR: Invalid mode');
+    END CASE;
+
+    -- Append debug log to message if enabled
+    IF UPPER(p_debug_flag) = 'Y' AND l_debug_log IS NOT NULL THEN
+        p_message := p_message || CHR(10) ||
+                     '--- DEBUG LOG ---' || CHR(10) || l_debug_log;
+    END IF;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        p_status := 'E';
+        p_message := 'date_parser error: ' || SQLERRM;
+        IF UPPER(p_debug_flag) = 'Y' AND l_debug_log IS NOT NULL THEN
+            p_message := p_message || CHR(10) ||
+                         '--- DEBUG LOG ---' || CHR(10) || l_debug_log;
+        END IF;
+END date_parser;
+
+-- Backend testing procedure
+PROCEDURE test_date_parser(
+    p_test_type    IN  VARCHAR2 DEFAULT 'ALL',
+    p_debug_flag   IN  VARCHAR2 DEFAULT 'Y',
+    p_result_json  OUT CLOB,
+    p_status       OUT VARCHAR2,
+    p_message      OUT VARCHAR2
+) IS
+    v_alert_clob     CLOB;
+    v_format_mask    VARCHAR2(100);
+    v_confidence     NUMBER;
+    v_converted_date DATE;
+    v_has_year       VARCHAR2(1);
+    v_is_ambiguous   VARCHAR2(1);
+    v_special_values VARCHAR2(500);
+    v_all_formats    CLOB;
+    v_test_status    VARCHAR2(1);
+    v_test_message   VARCHAR2(4000);
+    v_pass_count     NUMBER := 0;
+    v_fail_count     NUMBER := 0;
+    v_results        CLOB;
+
+    PROCEDURE run_test(
+        p_name     VARCHAR2,
+        p_samples  CLOB,
+        p_expected VARCHAR2
+    ) IS
+    BEGIN
+        date_parser(
+            p_mode            => 'DETECT',
+            p_sample_values   => p_samples,
+            p_debug_flag      => 'N',
+            p_alert_clob      => v_alert_clob,
+            p_format_mask_out => v_format_mask,
+            p_confidence      => v_confidence,
+            p_converted_date  => v_converted_date,
+            p_has_year        => v_has_year,
+            p_is_ambiguous    => v_is_ambiguous,
+            p_special_values  => v_special_values,
+            p_all_formats     => v_all_formats,
+            p_status          => v_test_status,
+            p_message         => v_test_message
+        );
+
+        IF v_test_status = 'S' AND (p_expected IS NULL OR v_format_mask = p_expected) THEN
+            v_pass_count := v_pass_count + 1;
+            v_results := v_results || '{"test":"' || p_name || '","status":"PASS","format":"' ||
+                         v_format_mask || '","confidence":' || v_confidence || '},';
+        ELSE
+            v_fail_count := v_fail_count + 1;
+            v_results := v_results || '{"test":"' || p_name || '","status":"FAIL","format":"' ||
+                         NVL(v_format_mask, 'NULL') || '","expected":"' || NVL(p_expected, 'any') ||
+                         '","message":"' || REPLACE(v_test_message, '"', '\"') || '"},';
+        END IF;
+    END run_test;
+
+BEGIN
+    p_status := 'S';
+    v_results := '[';
+
+    -- Run test suite based on test type
+    IF p_test_type IN ('ALL', 'DETECT') THEN
+        run_test('ISO Format', '["2024-11-27", "2024-12-15", "2025-01-01"]', 'YYYY-MM-DD');
+        run_test('Oracle Standard', '["27-Nov-2024", "15-Dec-2024", "01-Jan-2025"]', 'DD-MON-YYYY');
+        run_test('European Numeric', '["27/11/2024", "15/12/2024", "01/01/2025"]', NULL);
+        run_test('Day Name Format', '["Fri 27-Nov-2024", "Sun 15-Dec-2024", "Wed 01-Jan-2025"]', NULL);
+        run_test('Full Month Name', '["27 November 2024", "15 December 2024", "01 January 2025"]', 'DD MONTH YYYY');
+        run_test('No Year', '["27-Nov", "15-Dec", "01-Jan"]', 'DD-MON');
+        run_test('Text Numbers', '["sixteen November 2024", "twenty-first December 2024"]', NULL);
+        run_test('With Special Values', '["27-Nov-2024", "TODAY", "N/A", "15-Dec-2024"]', 'DD-MON-YYYY');
+        run_test('US Disambiguated', '["12/27/2024", "12/15/2024", "01/05/2025"]', NULL);
+        run_test('Ambiguous', '["01/02/2024", "05/06/2024", "08/09/2024"]', NULL);
+    END IF;
+
+    -- Remove trailing comma and close array
+    IF LENGTH(v_results) > 1 THEN
+        v_results := RTRIM(v_results, ',');
+    END IF;
+    v_results := v_results || ']';
+
+    -- Build result JSON
+    p_result_json := '{"passed":' || v_pass_count ||
+                     ',"failed":' || v_fail_count ||
+                     ',"total":' || (v_pass_count + v_fail_count) ||
+                     ',"tests":' || v_results || '}';
+
+    p_message := 'Test complete: ' || v_pass_count || ' passed, ' || v_fail_count || ' failed';
+
+    IF v_fail_count > 0 THEN
+        p_status := 'W';
+    END IF;
+
+EXCEPTION
+    WHEN OTHERS THEN
+        p_status := 'E';
+        p_message := 'Test error: ' || SQLERRM;
+        p_result_json := '{"error":"' || REPLACE(SQLERRM, '"', '\"') || '"}';
+END test_date_parser;
+
 END ur_utils;
 /

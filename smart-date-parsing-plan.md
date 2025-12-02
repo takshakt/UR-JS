@@ -1833,3 +1833,269 @@ EXEC ur_date_parser_test.test_all_formats('Thursday 27/11/2026');
 - [ ] Test year inference across year boundaries
 - [ ] Monitor `ur_load_failures` for unexpected failures
 - [ ] Check performance with large datasets (100+ rows)
+
+---
+
+## UR_UTILS Package Implementation (Completed)
+
+### Date Parser Integration
+
+All date parsing functionality has been consolidated into the `UR_UTILS` package as a single unified procedure with convenience wrappers.
+
+### New Procedures and Functions Added to UR_UTILS
+
+#### 1. Main Procedure: `date_parser`
+
+```sql
+PROCEDURE date_parser (
+    -- MODE CONTROL
+    p_mode             IN  VARCHAR2,              -- 'DETECT', 'PARSE', 'TEST'
+
+    -- INPUT PARAMETERS (mode-dependent)
+    p_file_id          IN  NUMBER   DEFAULT NULL, -- For DETECT: file to sample from
+    p_column_position  IN  NUMBER   DEFAULT NULL, -- For DETECT: column position in file
+    p_sample_values    IN  CLOB     DEFAULT NULL, -- For DETECT: JSON array of samples
+    p_date_string      IN  VARCHAR2 DEFAULT NULL, -- For PARSE: single date string
+    p_format_mask      IN  VARCHAR2 DEFAULT NULL, -- For PARSE: format to use
+    p_start_date       IN  DATE     DEFAULT NULL, -- For PARSE: year inference reference
+    p_min_confidence   IN  NUMBER   DEFAULT 90,   -- Minimum confidence threshold
+
+    -- CONTROL PARAMETERS
+    p_debug_flag       IN  VARCHAR2 DEFAULT 'N',  -- 'Y' enables debug logging
+    p_alert_clob       IN OUT NOCOPY CLOB,        -- Alert compliance (JSON alerts)
+
+    -- OUTPUT PARAMETERS
+    p_format_mask_out  OUT VARCHAR2,              -- Detected/used format
+    p_confidence       OUT NUMBER,                -- Confidence score (0-100)
+    p_converted_date   OUT DATE,                  -- Parsed date (PARSE mode)
+    p_has_year         OUT VARCHAR2,              -- 'Y'/'N' - format includes year
+    p_is_ambiguous     OUT VARCHAR2,              -- 'Y'/'N' - DD/MM vs MM/DD uncertain
+    p_special_values   OUT VARCHAR2,              -- Comma-separated special values
+    p_all_formats      OUT CLOB,                  -- JSON array of all matching formats
+    p_status           OUT VARCHAR2,              -- 'S'/'E'/'W'
+    p_message          OUT VARCHAR2               -- Status message
+);
+```
+
+**Modes:**
+- `DETECT`: Analyze sample values and detect date format
+- `PARSE`: Parse a single date string using specified format
+- `TEST`: Run internal test suite (redirects to test_date_parser)
+
+#### 2. Convenience Function: `detect_date_format_simple`
+
+```sql
+FUNCTION detect_date_format_simple (
+    p_sample_values IN CLOB
+) RETURN VARCHAR2 DETERMINISTIC;
+```
+
+Simple wrapper that returns just the format mask. Use for quick detection.
+
+**Example:**
+```sql
+SELECT ur_utils.detect_date_format_simple('["27-Nov-2024", "15-Dec-2024"]') FROM dual;
+-- Returns: DD-MON-YYYY
+```
+
+#### 3. Convenience Function: `parse_date_safe`
+
+```sql
+FUNCTION parse_date_safe (
+    p_value       IN VARCHAR2,
+    p_format_mask IN VARCHAR2,
+    p_start_date  IN DATE DEFAULT NULL
+) RETURN DATE DETERMINISTIC;
+```
+
+Safe date parsing that returns NULL on failure instead of raising exception.
+
+**Example:**
+```sql
+SELECT ur_utils.parse_date_safe('27-Nov-2024', 'DD-MON-YYYY') FROM dual;
+-- Returns: 27-NOV-24
+```
+
+#### 4. Test Procedure: `test_date_parser`
+
+```sql
+PROCEDURE test_date_parser (
+    p_test_type    IN  VARCHAR2 DEFAULT 'ALL',  -- 'ALL', 'PREPROCESS', 'DETECT', 'PARSE'
+    p_debug_flag   IN  VARCHAR2 DEFAULT 'Y',
+    p_result_json  OUT CLOB,
+    p_status       OUT VARCHAR2,
+    p_message      OUT VARCHAR2
+);
+```
+
+Run internal test suite for validation.
+
+**Example:**
+```sql
+DECLARE
+    v_result  CLOB;
+    v_status  VARCHAR2(1);
+    v_message VARCHAR2(4000);
+BEGIN
+    ur_utils.test_date_parser(
+        p_test_type   => 'ALL',
+        p_debug_flag  => 'Y',
+        p_result_json => v_result,
+        p_status      => v_status,
+        p_message     => v_message
+    );
+    DBMS_OUTPUT.PUT_LINE(v_message);
+    DBMS_OUTPUT.PUT_LINE(v_result);
+END;
+/
+```
+
+### Usage Examples
+
+#### Example 1: Detect Format from Samples
+
+```sql
+DECLARE
+    v_alert_clob     CLOB;
+    v_format_mask    VARCHAR2(100);
+    v_confidence     NUMBER;
+    v_converted_date DATE;
+    v_has_year       VARCHAR2(1);
+    v_is_ambiguous   VARCHAR2(1);
+    v_special_values VARCHAR2(500);
+    v_all_formats    CLOB;
+    v_status         VARCHAR2(1);
+    v_message        VARCHAR2(4000);
+BEGIN
+    ur_utils.date_parser(
+        p_mode            => 'DETECT',
+        p_sample_values   => '["27-Nov-2024", "15-Dec-2024", "01-Jan-2025", "TODAY"]',
+        p_min_confidence  => 90,
+        p_debug_flag      => 'Y',
+        p_alert_clob      => v_alert_clob,
+        p_format_mask_out => v_format_mask,
+        p_confidence      => v_confidence,
+        p_converted_date  => v_converted_date,
+        p_has_year        => v_has_year,
+        p_is_ambiguous    => v_is_ambiguous,
+        p_special_values  => v_special_values,
+        p_all_formats     => v_all_formats,
+        p_status          => v_status,
+        p_message         => v_message
+    );
+
+    DBMS_OUTPUT.PUT_LINE('Format: ' || v_format_mask);
+    DBMS_OUTPUT.PUT_LINE('Confidence: ' || v_confidence || '%');
+    DBMS_OUTPUT.PUT_LINE('Has Year: ' || v_has_year);
+    DBMS_OUTPUT.PUT_LINE('Special Values: ' || v_special_values);
+    DBMS_OUTPUT.PUT_LINE('All Formats: ' || v_all_formats);
+    DBMS_OUTPUT.PUT_LINE('Message: ' || v_message);
+END;
+/
+```
+
+#### Example 2: Parse Date with Known Format
+
+```sql
+DECLARE
+    v_alert_clob     CLOB;
+    v_format_mask    VARCHAR2(100);
+    v_confidence     NUMBER;
+    v_converted_date DATE;
+    v_has_year       VARCHAR2(1);
+    v_is_ambiguous   VARCHAR2(1);
+    v_special_values VARCHAR2(500);
+    v_all_formats    CLOB;
+    v_status         VARCHAR2(1);
+    v_message        VARCHAR2(4000);
+BEGIN
+    ur_utils.date_parser(
+        p_mode            => 'PARSE',
+        p_date_string     => 'Fri 27-Nov-2024',
+        p_format_mask     => 'DD-MON-YYYY',
+        p_debug_flag      => 'Y',
+        p_alert_clob      => v_alert_clob,
+        p_format_mask_out => v_format_mask,
+        p_confidence      => v_confidence,
+        p_converted_date  => v_converted_date,
+        p_has_year        => v_has_year,
+        p_is_ambiguous    => v_is_ambiguous,
+        p_special_values  => v_special_values,
+        p_all_formats     => v_all_formats,
+        p_status          => v_status,
+        p_message         => v_message
+    );
+
+    DBMS_OUTPUT.PUT_LINE('Parsed Date: ' || TO_CHAR(v_converted_date, 'YYYY-MM-DD'));
+    DBMS_OUTPUT.PUT_LINE('Status: ' || v_status);
+    DBMS_OUTPUT.PUT_LINE('Message: ' || v_message);
+END;
+/
+```
+
+### Alert Compliance
+
+The procedure integrates with the existing `ur_utils.add_alert()` pattern to generate appropriate alerts:
+
+| Condition | Alert Type | Title |
+|-----------|------------|-------|
+| Confidence < threshold | `warning` | Low Confidence Detection |
+| DD/MM vs MM/DD ambiguous | `info` | Date Format Ambiguity |
+| Special values detected | `info` | Special Date Values |
+| Detection failed | `error` | Format Detection Failed |
+
+### Debug Mode
+
+When `p_debug_flag => 'Y'`, detailed logging is appended to `p_message`:
+
+```
+--- DEBUG LOG ---
+14:30:45.123 - date_parser started - mode=DETECT
+14:30:45.124 - Entering DETECT mode
+14:30:45.125 - detect_format_internal started
+14:30:45.126 - Special values detected: TODAY
+14:30:45.127 - Valid sample count: 3
+14:30:45.128 - Structure analysis - Day name: N, Month name: Y, 4-digit year: Y, Separators: -
+14:30:45.130 - Format library initialized with 75 formats
+14:30:45.145 - Matching formats found: 8
+14:30:45.146 - Best format: DD-MON-YYYY (confidence: 100%)
+```
+
+### Internal Helper Functions
+
+All helper functions are encapsulated within the `date_parser` procedure body:
+
+| Function | Purpose |
+|----------|---------|
+| `fn_try_date` | Safe TO_DATE wrapper returning NULL on failure |
+| `convert_text_numbers` | "sixteen" → "16", "twenty-first" → "21" |
+| `cleanup_date_string` | Remove filler words (the, of, on) |
+| `strip_day_name` | Remove Mon/Monday from date string |
+| `preprocess_date_sample` | 10-step preprocessing pipeline |
+| `analyze_date_structure` | Structural fingerprinting |
+| `detect_special_values` | Find TODAY, N/A, etc. |
+| `initialize_format_library` | Build ~75 format definitions |
+| `disambiguate_dd_mm` | Resolve DD/MM vs MM/DD |
+| `fn_infer_year` | Smart year inference |
+| `detect_format_internal` | Main detection logic |
+| `parse_date_internal` | Parse single date |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `UR_UTILS_SPEC.sql` | Added 4 new procedure/function signatures (lines 180-244) |
+| `UR_UTILS.sql` | Added ~1300 lines of date parser implementation (lines 3363-4672) |
+
+### Next Steps for UI Integration (Phase 2)
+
+1. **P1002 Template Creation:**
+   - Call `date_parser` in DETECT mode when user classifies column as DATE
+   - Populate format mask LOV from `p_all_formats` JSON
+   - Pre-select highest confidence format
+   - Store selected format in template definition
+
+2. **P1010 Data Loading:**
+   - Extract format_mask from template definition
+   - Call `parse_date_safe` during row processing
+   - Handle year inference for no-year formats
