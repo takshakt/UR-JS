@@ -216,12 +216,7 @@ FUNCTION EVALUATE(
 
     log_debug('Alias parsing complete. Found ' || l_aliases.COUNT || ' unique attributes.'); -- (new log line)
 
-    IF l_aliases.COUNT = 0 THEN 
-      log_debug('EVALUATE ERROR: No attributes found in JSON. Halting.'); -- (new log line)
-      PIPE ROW(t_result_rec_obj(l_algo_name, NULL, NULL, NULL, 'ERROR: No attributes found in JSON')); 
-      RETURN; 
-    END IF;
-
+    -- Load event scores (needed regardless of attributes)
     DECLARE
       TYPE t_event_rec IS RECORD ( event_date_str VARCHAR2(10), max_score NUMBER ); TYPE t_event_tab IS TABLE OF t_event_rec; l_event_list t_event_tab;
     BEGIN
@@ -230,25 +225,45 @@ FUNCTION EVALUATE(
       log_debug('Loaded ' || l_event_list.COUNT || ' event scores.'); -- (new log line)
     END;
 
-    log_debug('Starting data load for ' || l_aliases.COUNT || ' attributes...'); -- (new log line)
-    l_current_id := l_aliases.FIRST;
-    WHILE l_current_id IS NOT NULL LOOP
-      log_debug('Loading data for attribute: ' || l_current_id); -- (new log line)
-      SELECT stay_date, TO_NUMBER(attribute_value), NULL BULK COLLECT INTO l_staged_data(l_current_id) FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id)) WHERE attribute_value IS NOT NULL;
-      log_debug('... Loaded ' || l_staged_data(l_current_id).COUNT || ' rows into staged data.'); -- (new log line)
+    IF l_aliases.COUNT > 0 THEN
+      -- Load attribute data and collect dates from attributes
+      log_debug('Starting data load for ' || l_aliases.COUNT || ' attributes...'); -- (new log line)
+      l_current_id := l_aliases.FIRST;
+      WHILE l_current_id IS NOT NULL LOOP
+        log_debug('Loading data for attribute: ' || l_current_id); -- (new log line)
+        SELECT stay_date, TO_NUMBER(attribute_value), NULL BULK COLLECT INTO l_staged_data(l_current_id) FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id)) WHERE attribute_value IS NOT NULL;
+        log_debug('... Loaded ' || l_staged_data(l_current_id).COUNT || ' rows into staged data.'); -- (new log line)
 
-      FOR rec IN (SELECT stay_date FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id))) LOOP
-        l_date_set(TO_CHAR(rec.stay_date, 'YYYY-MM-DD')) := TRUE;
+        FOR rec IN (SELECT stay_date FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id))) LOOP
+          l_date_set(TO_CHAR(rec.stay_date, 'YYYY-MM-DD')) := TRUE;
+        END LOOP;
+
+        l_current_id := l_aliases.NEXT(l_current_id);
       END LOOP;
-
-      l_current_id := l_aliases.NEXT(l_current_id);
-    END LOOP;
-    log_debug('Data loading complete. Total unique dates found: ' || l_date_set.COUNT); -- (new log line)
+      log_debug('Data loading complete. Total unique dates found: ' || l_date_set.COUNT); -- (new log line)
+    ELSE
+      -- No attributes found - likely all free text expressions
+      -- Generate dates from stay windows in regions
+      log_debug('No attributes found. Generating dates from stay windows for free text expressions...'); -- (new log line)
+      FOR sw_rec IN (
+        SELECT stay_from, stay_to
+        FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (
+          stay_from DATE PATH '$.filters.stayWindow.from',
+          stay_to DATE PATH '$.filters.stayWindow.to'
+        ))
+        WHERE stay_from IS NOT NULL AND stay_to IS NOT NULL
+      ) LOOP
+        FOR i IN 0 .. (sw_rec.stay_to - sw_rec.stay_from) LOOP
+          l_date_set(TO_CHAR(sw_rec.stay_from + i, 'YYYY-MM-DD')) := TRUE;
+        END LOOP;
+      END LOOP;
+      log_debug('Generated ' || l_date_set.COUNT || ' dates from stay windows.'); -- (new log line)
+    END IF;
 
     DECLARE v_date_key VARCHAR2(255) := l_date_set.FIRST; BEGIN WHILE v_date_key IS NOT NULL LOOP l_distinct_dates.EXTEND; l_distinct_dates(l_distinct_dates.LAST) := TO_DATE(v_date_key, 'YYYY-MM-DD'); v_date_key := l_date_set.NEXT(v_date_key); END LOOP; END;
 
     log_debug('Populated distinct dates collection. Count: ' || l_distinct_dates.COUNT); -- (new log line)
-    
+
     IF l_distinct_dates.COUNT = 0 THEN
       log_debug('WARNING: Distinct dates collection is EMPTY. Main loop will be skipped. No rows will be returned.'); -- (new log line)
     END IF;
@@ -503,11 +518,12 @@ FUNCTION EVALUATE(
                       log_debug('............ Final parsable expression: ' || l_eval_copy); -- (new log line)
 
                       EXECUTE IMMEDIATE 'SELECT ' || l_eval_copy || ' FROM DUAL' INTO l_expr_outcome;
-                      l_eval_result := l_expr_outcome;
+                      -- Round to nearest integer for numeric results
+                      l_eval_result := ROUND(l_expr_outcome);
 
-                      log_debug('............ Expression result: ' || l_eval_result); -- (new log line)
+                      log_debug('............ Expression result - Original: ' || l_expr_outcome || ', Rounded: ' || l_eval_result); -- (new log line)
 
-                      l_applied_rule_json := '{' || '"region":"' || REPLACE(region_rec.region_name,'"','\"') || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"') || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD') || '", "filters":{' || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"' || ', "lead_time":' || l_lead_time_json || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END || CASE WHEN region_rec.minimum_rate IS NOT NULL THEN ', "minimum_rate":' || TO_CHAR(region_rec.minimum_rate) ELSE '' END || '}' || ', "occupancy":' || CASE WHEN cond_rec.occ_attr IS NOT NULL THEN '{"attr":"' || REPLACE(cond_rec.occ_attr,'#','') || '", "actual":' || NVL(TO_CHAR(l_actual_occ_val),'null') || ', "operator":"' || cond_rec.occ_op || '", "threshold":' || TO_CHAR(cond_rec.occ_val) || ', "failed":' || CASE WHEN l_occ_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "property_ranking":' || CASE WHEN cond_rec.pr_type IS NOT NULL THEN '{"attr":"' || NVL(l_pr_attr_id,'') || '", "actual":' || NVL(TO_CHAR(l_actual_pr_val),'null') || ', "operator":"' || cond_rec.pr_op || '", "threshold":' || TO_CHAR(cond_rec.pr_val) || ', "failed":' || CASE WHEN l_pr_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "event_score":' || CASE WHEN cond_rec.es_val IS NOT NULL THEN '{"actual":' || NVL(TO_CHAR(l_actual_event_score),'null') || ', "operator":"' || cond_rec.es_op || '", "threshold":' || TO_CHAR(cond_rec.es_val) || ', "failed":' || CASE WHEN l_ev_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"') || '", "expression_values":' || l_attr_json || ', "evaluated_outcome":' || NVL(TO_CHAR(l_expr_outcome),'null');
+                      l_applied_rule_json := '{' || '"region":"' || REPLACE(region_rec.region_name,'"','\"') || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"') || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD') || '", "filters":{' || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"' || ', "lead_time":' || l_lead_time_json || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END || CASE WHEN region_rec.minimum_rate IS NOT NULL THEN ', "minimum_rate":' || TO_CHAR(region_rec.minimum_rate) ELSE '' END || '}' || ', "occupancy":' || CASE WHEN cond_rec.occ_attr IS NOT NULL THEN '{"attr":"' || REPLACE(cond_rec.occ_attr,'#','') || '", "actual":' || NVL(TO_CHAR(l_actual_occ_val),'null') || ', "operator":"' || cond_rec.occ_op || '", "threshold":' || TO_CHAR(cond_rec.occ_val) || ', "failed":' || CASE WHEN l_occ_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "property_ranking":' || CASE WHEN cond_rec.pr_type IS NOT NULL THEN '{"attr":"' || NVL(l_pr_attr_id,'') || '", "actual":' || NVL(TO_CHAR(l_actual_pr_val),'null') || ', "operator":"' || cond_rec.pr_op || '", "threshold":' || TO_CHAR(cond_rec.pr_val) || ', "failed":' || CASE WHEN l_pr_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "event_score":' || CASE WHEN cond_rec.es_val IS NOT NULL THEN '{"actual":' || NVL(TO_CHAR(l_actual_event_score),'null') || ', "operator":"' || cond_rec.es_op || '", "threshold":' || TO_CHAR(cond_rec.es_val) || ', "failed":' || CASE WHEN l_ev_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"') || '", "expression_values":' || l_attr_json || ', "original_result":' || NVL(TO_CHAR(l_expr_outcome),'null');
 
                       IF region_rec.minimum_rate IS NOT NULL AND l_eval_result < region_rec.minimum_rate THEN
                         l_applied_rule_json := l_applied_rule_json || ', "note":"min_rate_applied"';
