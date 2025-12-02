@@ -156,9 +156,6 @@ FUNCTION EVALUATE(
     l_hotel_id ur_algos.hotel_id%TYPE;
     TYPE t_event_score_map IS TABLE OF NUMBER INDEX BY VARCHAR2(10);
     l_event_scores t_event_score_map;
-    TYPE t_lead_date_map IS TABLE OF DATE INDEX BY VARCHAR2(255);
-    l_lead_dates t_lead_date_map; -- << CORRECTED THIS LINE
-    l_lead_attr_ids t_date_set;
 
     -- ++ NEW VARIABLES
     l_algo_name         ur_algos.name%TYPE;
@@ -202,14 +199,13 @@ FUNCTION EVALUATE(
     END;
     -- / MODIFIED LOGIC
 
-    FOR rec IN (SELECT JSON_VALUE(cond_json, '$.occupancyThreshold.attribute') as occ_attr, JSON_VALUE(cond_json, '$.propertyRanking.type') as pr_template, JSON_VALUE(cond_json, '$.expression') as expr, JSON_VALUE(lead_time_json, '$.attribute') as lead_attr FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (lead_time_json CLOB FORMAT JSON PATH '$.filters.leadTime', NESTED PATH '$.conditions[*]' COLUMNS (cond_json CLOB FORMAT JSON PATH '$')))) LOOP
+    FOR rec IN (SELECT JSON_VALUE(cond_json, '$.occupancyThreshold.attribute') as occ_attr, JSON_VALUE(cond_json, '$.propertyRanking.type') as pr_template, JSON_VALUE(cond_json, '$.expression') as expr FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (NESTED PATH '$.conditions[*]' COLUMNS (cond_json CLOB FORMAT JSON PATH '$')))) LOOP
       DECLARE
         l_occ_attr VARCHAR2(255) := REGEXP_REPLACE(NVL(rec.occ_attr, ''), '^#|#$', ''); l_pr_attr_id VARCHAR2(255);
-        l_lead_attr VARCHAR2(255) := REGEXP_REPLACE(NVL(rec.lead_attr, ''), '^#|#$', ''); l_pos PLS_INTEGER := 1;
+        l_pos PLS_INTEGER := 1;
         l_attr_in_expr VARCHAR2(255); l_clean_attr VARCHAR2(255);
       BEGIN
         IF l_occ_attr IS NOT NULL AND NOT l_aliases.EXISTS(l_occ_attr) THEN l_aliases(l_occ_attr) := l_occ_attr; END IF;
-        IF l_lead_attr IS NOT NULL AND NOT l_aliases.EXISTS(l_lead_attr) THEN l_aliases(l_lead_attr) := l_lead_attr; l_lead_attr_ids(l_lead_attr) := TRUE; END IF;
         IF rec.pr_template IS NOT NULL THEN l_pr_attr_id := get_attribute_id_from_template(REPLACE(rec.pr_template, '#', '')); IF l_pr_attr_id IS NOT NULL AND NOT l_aliases.EXISTS(l_pr_attr_id) THEN l_aliases(l_pr_attr_id) := l_pr_attr_id; END IF; END IF;
         -- Only extract attributes from expression if it's NOT free text (not wrapped in ~text~)
         IF NOT REGEXP_LIKE(rec.expr, '^~.*~$') THEN
@@ -238,21 +234,13 @@ FUNCTION EVALUATE(
     l_current_id := l_aliases.FIRST;
     WHILE l_current_id IS NOT NULL LOOP
       log_debug('Loading data for attribute: ' || l_current_id); -- (new log line)
-      IF l_lead_attr_ids.EXISTS(l_current_id) THEN
-        log_debug('... (as lead date attribute)'); -- (new log line)
-        FOR rec IN (SELECT stay_date, attribute_value FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id)) WHERE attribute_value IS NOT NULL) LOOP
-          DECLARE l_converted_date DATE; BEGIN l_converted_date := FLEXIBLE_TO_DATE(rec.attribute_value); IF l_converted_date IS NOT NULL THEN l_lead_dates(TO_CHAR(rec.stay_date, 'YYYY-MM-DD') || l_current_id) := l_converted_date; END IF; END;
-        END LOOP;
-      ELSE
-        log_debug('... (as standard value attribute)'); -- (new log line)
-        SELECT stay_date, TO_NUMBER(attribute_value), NULL BULK COLLECT INTO l_staged_data(l_current_id) FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id)) WHERE attribute_value IS NOT NULL;
-        log_debug('... Loaded ' || l_staged_data(l_current_id).COUNT || ' rows into staged data.'); -- (new log line)
-      END IF;
-      
-      FOR rec IN (SELECT stay_date FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id))) LOOP 
-        l_date_set(TO_CHAR(rec.stay_date, 'YYYY-MM-DD')) := TRUE; 
+      SELECT stay_date, TO_NUMBER(attribute_value), NULL BULK COLLECT INTO l_staged_data(l_current_id) FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id)) WHERE attribute_value IS NOT NULL;
+      log_debug('... Loaded ' || l_staged_data(l_current_id).COUNT || ' rows into staged data.'); -- (new log line)
+
+      FOR rec IN (SELECT stay_date FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id))) LOOP
+        l_date_set(TO_CHAR(rec.stay_date, 'YYYY-MM-DD')) := TRUE;
       END LOOP;
-      
+
       l_current_id := l_aliases.NEXT(l_current_id);
     END LOOP;
     log_debug('Data loading complete. Total unique dates found: ' || l_date_set.COUNT); -- (new log line)
@@ -281,14 +269,15 @@ FUNCTION EVALUATE(
 
         <<regions_loop>>
         FOR region_rec IN (
-          SELECT region_name, stay_from, stay_to, conditions, days_of_week, minimum_rate, sequence, lead_attr_raw, lead_type, lead_from_val, lead_to_val, lead_value
+          SELECT region_name, stay_from, stay_to, conditions, days_of_week, minimum_rate, sequence, lead_type, lead_from_val, lead_to_val, lead_value, lead_exclude
           FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (
             region_name  VARCHAR2(255) PATH '$.name', stay_from DATE PATH '$.filters.stayWindow.from', stay_to DATE PATH '$.filters.stayWindow.to',
             conditions   CLOB FORMAT JSON PATH '$.conditions', days_of_week VARCHAR2(100) FORMAT JSON PATH '$.filters.daysOfWeek',
             minimum_rate NUMBER PATH '$.filters.minimumRate', sequence NUMBER PATH '$.sequence',
-            lead_attr_raw  VARCHAR2(255) PATH '$.filters.leadTime.attribute', lead_type VARCHAR2(50) PATH '$.filters.leadTime.type',
+            lead_type VARCHAR2(50) PATH '$.filters.leadTime.type',
             lead_from_val  DATE PATH '$.filters.leadTime.from', lead_to_val DATE PATH '$.filters.leadTime.to',
-            lead_value     NUMBER PATH '$.filters.leadTime.value'
+            lead_value     NUMBER PATH '$.filters.leadTime.value',
+            lead_exclude   VARCHAR2(10) PATH '$.filters.leadTime.exclude'
           )) ORDER BY sequence
         ) LOOP
           DECLARE
@@ -308,24 +297,80 @@ FUNCTION EVALUATE(
               log_debug('... FILTER FAILED: Day of Week. ' || l_filter_failure_json); -- (new log line)
             ELSIF region_rec.lead_type IS NOT NULL THEN
               DECLARE
-                lt_passes BOOLEAN := TRUE; lt_attr_id VARCHAR2(255); actual_lt_date DATE; lt_key VARCHAR2(265);
+                lt_passes BOOLEAN := TRUE;
+                l_actual_lead_days NUMBER;
+                l_required_lead_days NUMBER;
+                l_is_exclude BOOLEAN := FALSE;
               BEGIN
-                lt_attr_id := REGEXP_REPLACE(NVL(region_rec.lead_attr_raw, ''), '^#|#$', ''); lt_key := TO_CHAR(v_stay_date, 'YYYY-MM-DD') || lt_attr_id;
-                IF l_lead_dates.EXISTS(lt_key) THEN actual_lt_date := l_lead_dates(lt_key); ELSE actual_lt_date := NULL; END IF;
-                IF actual_lt_date IS NULL THEN lt_passes := FALSE; END IF;
+                -- Calculate actual lead days: days from today until stay date
+                -- Positive = stay date is in future, Negative = stay date is in past, 0 = today
+                l_actual_lead_days := TRUNC(v_stay_date) - TRUNC(SYSDATE);
+
+                -- Check if exclude flag is set (default to false/inclusive if not present)
+                l_is_exclude := (UPPER(NVL(region_rec.lead_exclude, 'false')) = 'TRUE');
+
                 CASE region_rec.lead_type
                   WHEN 'date_range' THEN
-                    IF lt_passes AND NOT (actual_lt_date BETWEEN region_rec.lead_from_val AND region_rec.lead_to_val) THEN lt_passes := FALSE; END IF;
-                    l_lead_time_json := '{"filter_name":"lead_time", "type":"date_range", "attribute":"'||lt_attr_id||'", "actual":"'||TO_CHAR(actual_lt_date, 'YYYY-MM-DD')||'", "from":"'||TO_CHAR(region_rec.lead_from_val, 'YYYY-MM-DD')||'", "to":"'||TO_CHAR(region_rec.lead_to_val, 'YYYY-MM-DD')||'"}';
+                    -- For date range: check if TODAY falls within the lead time date range
+                    IF l_is_exclude THEN
+                      -- Exclude: filter passes when today is OUTSIDE the date range
+                      IF TRUNC(SYSDATE) BETWEEN region_rec.lead_from_val AND region_rec.lead_to_val THEN
+                        lt_passes := FALSE;
+                      END IF;
+                    ELSE
+                      -- Include: filter passes when today is WITHIN the date range
+                      IF NOT (TRUNC(SYSDATE) BETWEEN region_rec.lead_from_val AND region_rec.lead_to_val) THEN
+                        lt_passes := FALSE;
+                      END IF;
+                    END IF;
+                    l_lead_time_json := '{"filter_name":"lead_time", "type":"date_range", "exclude":'||CASE WHEN l_is_exclude THEN 'true' ELSE 'false' END||', "today":"'||TO_CHAR(TRUNC(SYSDATE), 'YYYY-MM-DD')||'", "from":"'||TO_CHAR(region_rec.lead_from_val, 'YYYY-MM-DD')||'", "to":"'||TO_CHAR(region_rec.lead_to_val, 'YYYY-MM-DD')||'"}';
                   WHEN 'days' THEN
-                    IF lt_passes AND (TRUNC(v_stay_date) - TRUNC(actual_lt_date)) < region_rec.lead_value THEN lt_passes := FALSE; END IF;
-                    l_lead_time_json := '{"filter_name":"lead_time", "type":"days", "attribute":"'||lt_attr_id||'", "actual_lead_days":'||(TRUNC(v_stay_date) - TRUNC(actual_lt_date))||', "required_lead_days":'||region_rec.lead_value||'}';
-                  ELSE l_lead_time_json := '{"filter_name":"lead_time", "type":"unknown"}';
+                    l_required_lead_days := region_rec.lead_value;
+                    IF l_is_exclude THEN
+                      -- Exclude: filter passes when actual lead days is OUTSIDE (greater than) the required
+                      IF l_actual_lead_days <= l_required_lead_days THEN
+                        lt_passes := FALSE;
+                      END IF;
+                    ELSE
+                      -- Include (default): filter passes when actual lead days is WITHIN (less than or equal to) the required
+                      IF l_actual_lead_days > l_required_lead_days OR l_actual_lead_days < 0 THEN
+                        lt_passes := FALSE;
+                      END IF;
+                    END IF;
+                    l_lead_time_json := '{"filter_name":"lead_time", "type":"days", "exclude":'||CASE WHEN l_is_exclude THEN 'true' ELSE 'false' END||', "actual_lead_days":'||l_actual_lead_days||', "required_lead_days":'||l_required_lead_days||'}';
+                  WHEN 'weeks' THEN
+                    l_required_lead_days := region_rec.lead_value * 7;
+                    IF l_is_exclude THEN
+                      IF l_actual_lead_days <= l_required_lead_days THEN
+                        lt_passes := FALSE;
+                      END IF;
+                    ELSE
+                      IF l_actual_lead_days > l_required_lead_days OR l_actual_lead_days < 0 THEN
+                        lt_passes := FALSE;
+                      END IF;
+                    END IF;
+                    l_lead_time_json := '{"filter_name":"lead_time", "type":"weeks", "exclude":'||CASE WHEN l_is_exclude THEN 'true' ELSE 'false' END||', "actual_lead_days":'||l_actual_lead_days||', "required_weeks":'||region_rec.lead_value||', "required_lead_days":'||l_required_lead_days||'}';
+                  WHEN 'months' THEN
+                    l_required_lead_days := region_rec.lead_value * 30;
+                    IF l_is_exclude THEN
+                      IF l_actual_lead_days <= l_required_lead_days THEN
+                        lt_passes := FALSE;
+                      END IF;
+                    ELSE
+                      IF l_actual_lead_days > l_required_lead_days OR l_actual_lead_days < 0 THEN
+                        lt_passes := FALSE;
+                      END IF;
+                    END IF;
+                    l_lead_time_json := '{"filter_name":"lead_time", "type":"months", "exclude":'||CASE WHEN l_is_exclude THEN 'true' ELSE 'false' END||', "actual_lead_days":'||l_actual_lead_days||', "required_months":'||region_rec.lead_value||', "required_lead_days":'||l_required_lead_days||'}';
+                  ELSE
+                    l_lead_time_json := '{"filter_name":"lead_time", "type":"unknown"}';
                 END CASE;
                 IF NOT lt_passes THEN
                   l_filters_passed := FALSE;
                   l_filter_failure_json := RTRIM(l_lead_time_json, '}') || ', "passed": false}';
-                  log_debug('... FILTER FAILED: Lead Time. ' || l_filter_failure_json); -- (new log line)
+                  log_debug('... FILTER FAILED: Lead Time. ' || l_filter_failure_json);
+                ELSE
+                  log_debug('... Lead Time PASSED. ' || l_lead_time_json);
                 END IF;
               END;
             END IF;
