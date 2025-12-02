@@ -735,7 +735,7 @@ function addFilterRegion() {
                 <div class="section-title"><span>Filters</span></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-stay-window" data-validates="stayWindow"><label for="${regionId}-stay-window">Stay Window</label><div class="field-content hidden"><label>From</label> <input type="date" class="stay-window-from" value="${formatDate(today)}"><label>To</label> <input type="date" class="stay-window-to" value="${formatDate(nextWeek)}"></div></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-load-time" data-validates="leadTime"><label for="${regionId}-load-time">Lead Time</label><div class="field-content hidden">
-                        <select class="load-time-select"><option value="">Select Type</option><option value="date_range">Date Range</option><option value="days">Day(s)</option><option value="weeks">Week(s)</option><option value="months">Month(s)</option></select><div class="lead-time-inputs"></div><div class="lead-time-exclude-container" style="margin-top: 8px;"><input type="checkbox" class="lead-time-exclude-checkbox" id="${regionId}-lead-time-exclude"><label for="${regionId}-lead-time-exclude">Exclude Lead Time</label></div></div></div>
+                        <select class="load-time-select"><option value="">Select Type</option><option value="date_range">Date Range</option><option value="days">Day(s)</option><option value="weeks">Week(s)</option><option value="months">Month(s)</option></select><div class="lead-time-inputs" style="margin-left: 10px; display: inline-flex; align-items: center; gap: 8px;"></div><div class="lead-time-exclude-container" style="margin-left: 15px; display: inline-flex; align-items: center; gap: 5px;"><label for="${regionId}-lead-time-exclude">Exclusive</label><input type="checkbox" class="lead-time-exclude-checkbox" id="${regionId}-lead-time-exclude"></div></div></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-days-of-week" data-validates="daysOfWeek"><label for="${regionId}-days-of-week">Day of Week</label><div class="field-content hidden"><div class="checkbox-group">${['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].map(day => `<div class="checkbox-item"><input type="checkbox" id="${regionId}-${day}" class="day-checkbox"><label for="${regionId}-${day}">${day.toUpperCase()}</label></div>`).join('')}</div></div></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-minimum-rate" data-validates="minimumRate"><label for="${regionId}-minimum-rate">Minimum Rate</label><div class="field-content hidden"><input type="number" value="4" min="0" class="minimum-rate-input"></div></div>
             </div>
@@ -986,10 +986,10 @@ function setupRegionEventListeners(regionElement) {
             const inputsContainer = e.target.nextElementSibling;
             inputsContainer.innerHTML = '';
             if (selectedValue === 'date_range') {
-                inputsContainer.innerHTML = `<label>From</label><input type="date" class="lead-time-from"><label>To</label><input type="date" class="lead-time-to">`;
+                inputsContainer.innerHTML = `<label>From</label> <input type="date" class="lead-time-from"> <label>To</label> <input type="date" class="lead-time-to">`;
             } else if (['days', 'weeks', 'months'].includes(selectedValue)) {
                 const label = selectedValue.charAt(0).toUpperCase() + selectedValue.slice(1);
-                inputsContainer.innerHTML = `<label>Number of ${label}</label><input type="number" class="lead-time-value" min="1">`;
+                inputsContainer.innerHTML = `<label>Number of ${label}</label> <input type="number" class="lead-time-value" min="1" style="width: 80px;">`;
             }
         });
     }
