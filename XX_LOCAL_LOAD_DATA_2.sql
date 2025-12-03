@@ -212,18 +212,25 @@ INSERT INTO debug_log(message) VALUES('l_template_id: ' || l_template_id);
                                                  '#[^.]+\.(\w+)#',
                                                  'p.\1'
                                                ) ;
-                       -- v_expr := GET_MAP_CALCULATION_FUN(v_expr,p_collection_name)||' AS ' || upper(l_mapping(k).tgt_col);    
-                    /*   v_expr := 'CASE WHEN REGEXP_LIKE(' 
-          || GET_MAP_CALCULATION_FUN(v_expr, p_collection_name)
-          || ', ''^[0-9.]+$'') THEN '
-          || GET_MAP_CALCULATION_FUN(v_expr, p_collection_name)
-          || ' ELSE NULL END AS ' 
-          || upper(l_mapping(k).tgt_col);*/
-          v_expr :=
-    'TO_NUMBER((' 
-    || GET_MAP_CALCULATION_FUN(v_expr, p_collection_name)
-    || ') DEFAULT NULL ON CONVERSION ERROR) AS "'
-    || UPPER(l_mapping(k).tgt_col) || '"';
+                        -- Apply GET_MAP_CALCULATION_FUN first
+                        v_expr := GET_MAP_CALCULATION_FUN(v_expr, p_collection_name);
+                        INSERT INTO debug_log(message) VALUES('Calculation v_expr before FN_CLEAN_NUMBER wrap: ' || v_expr);
+
+                        -- First, wrap column references WITH p. prefix: p.COLUMN -> FN_CLEAN_NUMBER(p.COLUMN)
+                        v_expr := REGEXP_REPLACE(
+                                                 v_expr,
+                                                 'p\.([A-Za-z_][A-Za-z0-9_]*)',
+                                                 'FN_CLEAN_NUMBER(p.\1)'
+                                               );
+                        -- Then, wrap standalone column references WITHOUT p. prefix (but not numbers, keywords, or already wrapped)
+                        -- Match word boundaries: column names not preceded by 'p.' or '(' and not followed by '('
+                        v_expr := REGEXP_REPLACE(
+                                                 v_expr,
+                                                 '(^|[^A-Za-z0-9_.])([A-Za-z_][A-Za-z0-9_]*)([^A-Za-z0-9_(]|$)',
+                                                 '\1FN_CLEAN_NUMBER(p.\2)\3'
+                                               );
+                        INSERT INTO debug_log(message) VALUES('Calculation v_expr after FN_CLEAN_NUMBER wrap: ' || v_expr);
+                        v_expr := '(' || v_expr || ') AS "' || UPPER(l_mapping(k).tgt_col) || '"';
 
 
 
