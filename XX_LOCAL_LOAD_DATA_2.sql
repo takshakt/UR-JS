@@ -212,7 +212,20 @@ INSERT INTO debug_log(message) VALUES('l_template_id: ' || l_template_id);
                                                  '#[^.]+\.(\w+)#',
                                                  'p.\1'
                                                ) ;
-                        v_expr := GET_MAP_CALCULATION_FUN(v_expr,p_collection_name)||' AS ' || upper(l_mapping(k).tgt_col);    
+                       -- v_expr := GET_MAP_CALCULATION_FUN(v_expr,p_collection_name)||' AS ' || upper(l_mapping(k).tgt_col);    
+                    /*   v_expr := 'CASE WHEN REGEXP_LIKE(' 
+          || GET_MAP_CALCULATION_FUN(v_expr, p_collection_name)
+          || ', ''^[0-9.]+$'') THEN '
+          || GET_MAP_CALCULATION_FUN(v_expr, p_collection_name)
+          || ' ELSE NULL END AS ' 
+          || upper(l_mapping(k).tgt_col);*/
+          v_expr :=
+    'TO_NUMBER((' 
+    || GET_MAP_CALCULATION_FUN(v_expr, p_collection_name)
+    || ') DEFAULT NULL ON CONVERSION ERROR) AS "'
+    || UPPER(l_mapping(k).tgt_col) || '"';
+
+
 
                     ELSIF UPPER(NVL(l_mapping(k).map_type, '')) = 'IGNORE' THEN
                           -- <-- KEY CHANGE: Ignore mapping -> always insert NULL for this target column
@@ -414,6 +427,8 @@ commit;
                     l_val := l_obj.get_string(l_keys(j));
                     INSERT INTO debug_log(message) VALUES('--- l_col:>' || l_col );
                     INSERT INTO debug_log(message) VALUES('--- l_val:>' || l_val );
+
+                   -- INSERT INTO debug_log(message) VALUES('--- l_mapping(k).data_type:>' || l_mapping(k).data_type);
                     l_sql_select := l_sql_select|| ''''||l_val || ''' as '|| l_col||' , ';
 
                     -- Capture STAY_DATE value
@@ -437,7 +452,7 @@ commit;
                     IF l_val_formatted IS NULL THEN
                         l_val_formatted := '''' || REPLACE(NVL(l_val,''), '''', '''''') || '''';
                     END IF;
-
+INSERT INTO debug_log(message) VALUES('--- l_val_formatted:>' || l_val_formatted );
                     -- Append to dynamic SQL parts
                     IF l_set IS NOT NULL THEN
                         l_set  := l_set || ', ';
