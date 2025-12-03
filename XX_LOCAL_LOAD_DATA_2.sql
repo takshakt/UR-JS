@@ -65,6 +65,11 @@ create or replace PROCEDURE XX_LOCAL_Load_Data_2 (
     -- ADDED: variable for duplicate check
     l_existing_cnt NUMBER;
     l_error varchar2(32000);
+
+    -- Warning tracking for column-level issues (row succeeded but with data quality issues)
+    l_warning_json   CLOB := '[';
+    l_warning_cnt    NUMBER := 0;
+    l_row_warnings   VARCHAR2(32767);  -- Accumulates warnings for current row
 BEGIN
     -------------------------------------------------------------------
     -- 0. DUPLICATE CHECK: stop if file already uploaded successfully
@@ -388,7 +393,8 @@ commit;
         l_vals := NULL;
         l_set  := NULL;
         l_stay_val := NULL;
-        
+        l_row_warnings := NULL;  -- Reset warnings for this row
+
 
         BEGIN
             DECLARE
@@ -404,6 +410,11 @@ commit;
                 l_col_s clob;
                 v_data_type VARCHAR2(1000);
                 l_key       VARCHAR2(32000);
+
+                -- Column validation variables
+                l_expected_type    VARCHAR2(100);
+                l_is_valid         BOOLEAN;
+                l_warning_detail   VARCHAR2(4000);
             BEGIN
                 IF NOT l_elem.is_object THEN
                     RAISE_APPLICATION_ERROR(-20002,'Row not a JSON object');
@@ -435,8 +446,59 @@ commit;
                     INSERT INTO debug_log(message) VALUES('--- l_col:>' || l_col );
                     INSERT INTO debug_log(message) VALUES('--- l_val:>' || l_val );
 
-                   -- INSERT INTO debug_log(message) VALUES('--- l_mapping(k).data_type:>' || l_mapping(k).data_type);
-                    l_sql_select := l_sql_select|| ''''||l_val || ''' as '|| l_col||' , ';
+                    -- ============================================================
+                    -- COLUMN-LEVEL VALIDATION: Check data quality and log warnings
+                    -- ============================================================
+                    IF l_mapping.exists(UPPER(l_col)) THEN
+                        l_expected_type := l_mapping(UPPER(l_col)).data_type;
+                        l_is_valid := TRUE;
+                        l_warning_detail := NULL;
+
+                        -- Validate NUMBER columns
+                        IF l_expected_type = 'NUMBER' AND l_val IS NOT NULL AND LENGTH(TRIM(l_val)) > 0 THEN
+                            -- Check if value is numeric (after cleaning)
+                            IF FN_CLEAN_NUMBER(l_val) IS NULL AND TRIM(l_val) IS NOT NULL THEN
+                                l_is_valid := FALSE;
+                                l_warning_detail := 'Column "' || l_col || '": Expected numeric value, got "' ||
+                                                   SUBSTR(l_val, 1, 50) ||
+                                                   CASE WHEN LENGTH(l_val) > 50 THEN '...' ELSE '' END ||
+                                                   '" - value will be set to NULL';
+                            END IF;
+                        END IF;
+
+                        -- Validate DATE columns
+                        IF l_expected_type = 'DATE' AND l_val IS NOT NULL AND LENGTH(TRIM(l_val)) > 0 THEN
+                            IF fn_safe_to_date(l_val) IS NULL THEN
+                                l_is_valid := FALSE;
+                                l_warning_detail := 'Column "' || l_col || '": Expected date value, got "' ||
+                                                   SUBSTR(l_val, 1, 50) ||
+                                                   CASE WHEN LENGTH(l_val) > 50 THEN '...' ELSE '' END ||
+                                                   '" - value will be set to NULL';
+                            END IF;
+                        END IF;
+
+                        -- Validate CALCULATION columns (check if source values used in calculation are valid)
+                        IF l_mapping(UPPER(l_col)).map_type = 'Calculation' AND l_val IS NOT NULL AND LENGTH(TRIM(l_val)) > 0 THEN
+                            IF FN_CLEAN_NUMBER(l_val) IS NULL AND TRIM(l_val) IS NOT NULL THEN
+                                l_is_valid := FALSE;
+                                l_warning_detail := 'Column "' || l_col || '" (used in calculation): Non-numeric value "' ||
+                                                   SUBSTR(l_val, 1, 50) ||
+                                                   CASE WHEN LENGTH(l_val) > 50 THEN '...' ELSE '' END ||
+                                                   '" - calculation result will be NULL';
+                            END IF;
+                        END IF;
+
+                        -- Accumulate warnings for this row
+                        IF NOT l_is_valid AND l_warning_detail IS NOT NULL THEN
+                            IF l_row_warnings IS NOT NULL THEN
+                                l_row_warnings := l_row_warnings || '; ';
+                            END IF;
+                            l_row_warnings := l_row_warnings || l_warning_detail;
+                        END IF;
+                    END IF;
+                    -- ============================================================
+
+                    l_sql_select := l_sql_select|| ''''|| REPLACE(l_val, '''', '''''') || ''' as '|| l_col||' , ';
 
                     -- Capture STAY_DATE value
                      INSERT INTO debug_log(message) VALUES(l_stay_col_name||'--- check stay_date:>   '||l_col);
@@ -528,17 +590,36 @@ END IF;
         
             
                 EXECUTE IMMEDIATE l_sql_main;
-           
-
-
 
                 l_success_cnt := l_success_cnt + 1;
+
+                -- ============================================================
+                -- LOG WARNINGS: Row succeeded but had data quality issues
+                -- ============================================================
+                IF l_row_warnings IS NOT NULL THEN
+                    l_warning_cnt := l_warning_cnt + 1;
+                    l_warning_json := l_warning_json ||
+                        '{"row":' || l_total_rows ||
+                        ',"line":' || NVL(TO_CHAR(v_line_number), 'null') ||
+                        ',"status":"WARNING"' ||
+                        ',"details":"' || REPLACE(REPLACE(l_row_warnings, '"', ''''), CHR(10), ' ') || '"},';
+                END IF;
+                -- ============================================================
 
             END;
         EXCEPTION
             WHEN OTHERS THEN
                 l_fail_cnt := l_fail_cnt + 1;
-                l_error_json := l_error_json || '{"row":' || l_total_rows || ',"error":"' || REPLACE(SQLERRM,'"','''') || '"},';
+                -- Enhanced error message with more context
+                l_error_json := l_error_json ||
+                    '{"row":' || l_total_rows ||
+                    ',"line":' || NVL(TO_CHAR(v_line_number), 'null') ||
+                    ',"status":"FAILED"' ||
+                    ',"error":"' || REPLACE(REPLACE(SQLERRM, '"', ''''), CHR(10), ' ') || '"' ||
+                    CASE WHEN l_row_warnings IS NOT NULL
+                         THEN ',"data_issues":"' || REPLACE(REPLACE(l_row_warnings, '"', ''''), CHR(10), ' ') || '"'
+                         ELSE ''
+                    END || '},';
         END;
     END LOOP;
     CLOSE c;
@@ -553,53 +634,94 @@ END IF;
         l_error_json := NULL;
     END IF;
 
+    -- finalize warning JSON
+    IF l_warning_json IS NOT NULL AND l_warning_json <> '[' THEN
+        IF SUBSTR(l_warning_json,-1) = ',' THEN
+            l_warning_json := SUBSTR(l_warning_json,1,LENGTH(l_warning_json)-1);
+        END IF;
+        l_warning_json := l_warning_json || ']';
+    ELSE
+        l_warning_json := NULL;
+    END IF;
+
     COMMIT;
 
-    -- Update log
+    -- Update log with both errors and warnings
+    -- Note: load_status limited to 20 chars
     UPDATE ur_interface_logs
        SET load_end_time = systimestamp,
-           load_status   = case when l_fail_cnt > 0 then 'FAILED' else 'SUCCESS' end,
+           load_status   = CASE
+                             WHEN l_fail_cnt > 0 AND l_success_cnt = 0 THEN 'FAILED'
+                             WHEN l_fail_cnt > 0 AND l_success_cnt > 0 THEN 'PARTIAL'
+                             WHEN l_warning_cnt > 0 THEN 'WARNING'
+                             ELSE 'SUCCESS'
+                           END,
            updated_on    = sysdate,
-           error_json    = l_error_json,
+           error_json    = CASE
+                             WHEN l_error_json IS NOT NULL AND l_warning_json IS NOT NULL THEN
+                               '{"errors":' || l_error_json || ',"warnings":' || l_warning_json || '}'
+                             WHEN l_error_json IS NOT NULL THEN
+                               '{"errors":' || l_error_json || '}'
+                             WHEN l_warning_json IS NOT NULL THEN
+                               '{"warnings":' || l_warning_json || '}'
+                             ELSE NULL
+                           END,
            RECORDS_PROCESSED = l_total_rows,
            RECORDS_SUCCESSFUL = l_success_cnt,
            RECORDS_FAILED = l_fail_cnt
      WHERE id = l_log_id;
 
 
-    p_status  := case when l_total_rows = l_fail_cnt then 'E' 
-                    when l_total_rows = l_success_cnt then 'S'
-                    ELSE 'W' END;
-   /* p_message := case when l_total_rows = l_fail_cnt then 'Failure' 
-                      when l_total_rows = l_success_cnt then 'Success'
-    ELSE 'Warning' END||': Upload completed → Total=' || l_total_rows || ', Success=' || l_success_cnt || ', Failed=' || l_fail_cnt;
-*/
-p_message :=
-    CASE
-        WHEN l_total_rows = l_success_cnt THEN
-            'Success: Upload completed → Total=' || l_total_rows ||
-            ', Success=' || l_success_cnt ||
-            ', Failed=' || l_fail_cnt
+    p_status  := CASE
+                    WHEN l_total_rows = l_fail_cnt THEN 'E'
+                    WHEN l_fail_cnt > 0 OR l_warning_cnt > 0 THEN 'W'
+                    ELSE 'S'
+                 END;
 
-        WHEN l_total_rows = l_fail_cnt THEN
-            '<span style="color:red;">Failure: ' || l_fail_cnt || ' rows failed. ' ||
-            '<a href="' ||
-                APEX_PAGE.GET_URL(
-                    p_page        => 4,
-                    p_items       => 'P4_INTERFACE_ID_1',
-                    p_values      => RAWTOHEX(l_log_id),
-                    p_request     => 'MODAL'
-                ) ||
-            '" class="u-success-text" data-dialog="true">Click here to view errors</a></span>' ||
-            '<br>Total=' || l_total_rows ||
-            ', Success=' || l_success_cnt ||
-            ', Failed=' || l_fail_cnt
+    p_message :=
+        CASE
+            -- All rows succeeded with no warnings
+            WHEN l_total_rows = l_success_cnt AND l_warning_cnt = 0 THEN
+                l_total_rows || ' rows uploaded successfully.'
 
-        ELSE
-            'Warning: Upload completed → Total=' || l_total_rows ||
-            ', Success=' || l_success_cnt ||
-            ', Failed=' || l_fail_cnt
-    END;
+            -- All rows succeeded but some had data quality warnings
+            WHEN l_total_rows = l_success_cnt AND l_warning_cnt > 0 THEN
+                '<a href="' ||
+                    APEX_PAGE.GET_URL(
+                        p_page        => 4,
+                        p_items       => 'P4_INTERFACE_ID_1',
+                        p_values      => RAWTOHEX(l_log_id),
+                        p_request     => 'MODAL'
+                    ) ||
+                '" style="color:#000;text-decoration:underline;" data-dialog="true">' ||
+                l_success_cnt || ' rows uploaded with ' || l_warning_cnt || ' data quality warnings</a>'
+
+            -- All rows failed
+            WHEN l_total_rows = l_fail_cnt THEN
+                '<a href="' ||
+                    APEX_PAGE.GET_URL(
+                        p_page        => 4,
+                        p_items       => 'P4_INTERFACE_ID_1',
+                        p_values      => RAWTOHEX(l_log_id),
+                        p_request     => 'MODAL'
+                    ) ||
+                '" style="color:#000;text-decoration:underline;" data-dialog="true">' ||
+                'Upload failed: ' || l_fail_cnt || ' rows with errors</a>'
+
+            -- Partial success (some rows failed, some succeeded)
+            ELSE
+                '<a href="' ||
+                    APEX_PAGE.GET_URL(
+                        p_page        => 4,
+                        p_items       => 'P4_INTERFACE_ID_1',
+                        p_values      => RAWTOHEX(l_log_id),
+                        p_request     => 'MODAL'
+                    ) ||
+                '" style="color:#000;text-decoration:underline;" data-dialog="true">' ||
+                l_success_cnt || ' rows uploaded, ' || l_fail_cnt || ' failed' ||
+                CASE WHEN l_warning_cnt > 0 THEN ', ' || l_warning_cnt || ' warnings' ELSE '' END ||
+                '</a>'
+        END;
 
     INSERT INTO debug_log(message) VALUES('Completed Load_Data - ' || p_message);
 
