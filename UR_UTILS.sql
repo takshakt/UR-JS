@@ -4366,6 +4366,7 @@ PROCEDURE date_parser(
     ) IS
         v_preprocessed VARCHAR2(500);
         v_date         DATE;
+        v_upper_str    VARCHAR2(500);
     BEGIN
         p_status := 'S';
 
@@ -4376,6 +4377,64 @@ PROCEDURE date_parser(
         END IF;
 
         append_debug('parse_date_internal: input="' || p_date_str || '", format="' || p_format || '"');
+
+        -- Handle special values FIRST (before any format-based parsing)
+        v_upper_str := UPPER(TRIM(p_date_str));
+
+        CASE v_upper_str
+            WHEN 'TODAY' THEN
+                p_result_date := TRUNC(SYSDATE);
+                p_message := 'Special value TODAY converted to ' || TO_CHAR(p_result_date, 'YYYY-MM-DD');
+                append_debug('Special value TODAY -> ' || TO_CHAR(p_result_date, 'YYYY-MM-DD'));
+                RETURN;
+            WHEN 'YESTERDAY' THEN
+                p_result_date := TRUNC(SYSDATE) - 1;
+                p_message := 'Special value YESTERDAY converted to ' || TO_CHAR(p_result_date, 'YYYY-MM-DD');
+                append_debug('Special value YESTERDAY -> ' || TO_CHAR(p_result_date, 'YYYY-MM-DD'));
+                RETURN;
+            WHEN 'TOMORROW' THEN
+                p_result_date := TRUNC(SYSDATE) + 1;
+                p_message := 'Special value TOMORROW converted to ' || TO_CHAR(p_result_date, 'YYYY-MM-DD');
+                append_debug('Special value TOMORROW -> ' || TO_CHAR(p_result_date, 'YYYY-MM-DD'));
+                RETURN;
+            WHEN 'N/A' THEN
+                p_result_date := NULL;
+                p_message := 'Special value N/A treated as NULL';
+                append_debug('Special value N/A -> NULL');
+                RETURN;
+            WHEN 'NA' THEN
+                p_result_date := NULL;
+                p_message := 'Special value NA treated as NULL';
+                append_debug('Special value NA -> NULL');
+                RETURN;
+            WHEN 'TBD' THEN
+                p_result_date := NULL;
+                p_message := 'Special value TBD treated as NULL';
+                append_debug('Special value TBD -> NULL');
+                RETURN;
+            WHEN 'NULL' THEN
+                p_result_date := NULL;
+                p_message := 'Special value NULL treated as NULL';
+                append_debug('Special value NULL -> NULL');
+                RETURN;
+            WHEN 'NONE' THEN
+                p_result_date := NULL;
+                p_message := 'Special value NONE treated as NULL';
+                append_debug('Special value NONE -> NULL');
+                RETURN;
+            WHEN '-' THEN
+                p_result_date := NULL;
+                p_message := 'Special value - treated as NULL';
+                append_debug('Special value - -> NULL');
+                RETURN;
+            WHEN '--' THEN
+                p_result_date := NULL;
+                p_message := 'Special value -- treated as NULL';
+                append_debug('Special value -- -> NULL');
+                RETURN;
+            ELSE
+                NULL; -- Continue with format-based parsing
+        END CASE;
 
         -- Preprocess the date string
         v_preprocessed := preprocess_date_sample(p_date_str);
