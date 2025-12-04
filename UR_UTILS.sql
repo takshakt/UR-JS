@@ -603,17 +603,23 @@ END sanitize_template_definition;
 
         IF l_attribute_rec.TYPE = 'M' THEN
             append_debug('Attribute type is Manual. Using static value.');
-            l_json_row_obj := JSON_OBJECT_T();
-            l_json_row_obj.put('stay_date', TO_CHAR(p_stay_date, 'DD-MON-YYYY'));
-            CASE UPPER(l_attribute_rec.DATA_TYPE)
-                WHEN 'NUMBER' THEN
-                    l_json_row_obj.put('attribute_value', ROUND(TO_NUMBER(l_attribute_rec.VALUE), p_round_digits));
-                ELSE
-                    l_json_row_obj.put('attribute_value', l_attribute_rec.VALUE);
-            END CASE;
-            l_json_payload_arr.append(l_json_row_obj);
-            l_records_fetched := 1;
-            l_message         := 'Manual value returned.';
+            -- FIX: Only add record if stay_date is not NULL
+            IF p_stay_date IS NOT NULL THEN
+                l_json_row_obj := JSON_OBJECT_T();
+                l_json_row_obj.put('stay_date', TO_CHAR(p_stay_date, 'DD-MON-YYYY'));
+                CASE UPPER(l_attribute_rec.DATA_TYPE)
+                    WHEN 'NUMBER' THEN
+                        l_json_row_obj.put('attribute_value', ROUND(TO_NUMBER(l_attribute_rec.VALUE), p_round_digits));
+                    ELSE
+                        l_json_row_obj.put('attribute_value', l_attribute_rec.VALUE);
+                END CASE;
+                l_json_payload_arr.append(l_json_row_obj);
+                l_records_fetched := 1;
+                l_message         := 'Manual value returned.';
+            ELSE
+                append_debug('Skipped Manual attribute record with NULL stay_date.');
+                l_message         := 'Manual value skipped (NULL stay_date).';
+            END IF;
 
 ELSIF l_attribute_rec.TYPE = 'S' THEN
     append_debug('Attribute type is Sourced. Parsing value formula.');
@@ -820,20 +826,25 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
                 LOOP
                     FETCH l_cursor INTO l_stay_date_val, l_attribute_val_out;
                     EXIT WHEN l_cursor%NOTFOUND;
-                    
-                    l_records_fetched := l_records_fetched + 1;
-                    l_json_row_obj := JSON_OBJECT_T();
-                    l_json_row_obj.put('stay_date', TO_CHAR(l_stay_date_val, 'DD-MON-YYYY'));
 
-                    -- Conditionally handle the attribute value based on its data type
-                    CASE UPPER(l_attribute_rec.DATA_TYPE)
-                        WHEN 'NUMBER' THEN
-                            l_json_row_obj.put('attribute_value', TO_NUMBER(l_attribute_val_out));
-                        ELSE -- For DATE, VARCHAR2, etc., treat as a string
-                            l_json_row_obj.put('attribute_value', l_attribute_val_out);
-                    END CASE;
-                    
-                    l_json_payload_arr.append(l_json_row_obj);
+                    -- FIX: Only add record if stay_date is not NULL
+                    IF l_stay_date_val IS NOT NULL THEN
+                        l_records_fetched := l_records_fetched + 1;
+                        l_json_row_obj := JSON_OBJECT_T();
+                        l_json_row_obj.put('stay_date', TO_CHAR(l_stay_date_val, 'DD-MON-YYYY'));
+
+                        -- Conditionally handle the attribute value based on its data type
+                        CASE UPPER(l_attribute_rec.DATA_TYPE)
+                            WHEN 'NUMBER' THEN
+                                l_json_row_obj.put('attribute_value', TO_NUMBER(l_attribute_val_out));
+                            ELSE -- For DATE, VARCHAR2, etc., treat as a string
+                                l_json_row_obj.put('attribute_value', l_attribute_val_out);
+                        END CASE;
+
+                        l_json_payload_arr.append(l_json_row_obj);
+                    ELSE
+                        append_debug('Skipped Sourced attribute record with NULL stay_date.');
+                    END IF;
                 END LOOP;
                 CLOSE l_cursor;
             END;
@@ -1141,8 +1152,8 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
 
                         append_debug('Calculated result: ' || NVL(TO_CHAR(l_calc_result), 'NULL'));
 
-                        -- Add to results (include NULL results with null value)
-                        IF l_calc_result IS NOT NULL THEN
+                        -- FIX: Add to results only if result is not NULL AND stay_date is not NULL
+                        IF l_calc_result IS NOT NULL AND l_date_str IS NOT NULL THEN
                             l_records_fetched := l_records_fetched + 1;
                             l_json_row_obj := JSON_OBJECT_T();
                             l_json_row_obj.put('stay_date', l_date_str);
