@@ -61,6 +61,54 @@ create or replace PACKAGE ur_utils IS
     p_message        OUT VARCHAR2
   );
 
+  -- ============================================================================
+  -- CALCULATED ATTRIBUTES: Template-agnostic computed attributes
+  -- ============================================================================
+  -- Helper functions for calculated attribute evaluation
+  FUNCTION safe_to_number(p_value IN VARCHAR2) RETURN NUMBER;
+
+  FUNCTION safe_divide(p_numerator IN NUMBER, p_denominator IN NUMBER) RETURN NUMBER;
+
+  FUNCTION evaluate_expression(p_expression IN VARCHAR2) RETURN NUMBER;
+
+  FUNCTION get_events_for_date(p_hotel_id IN RAW, p_stay_date IN DATE) RETURN VARCHAR2;
+
+  FUNCTION validate_calculated_formula(
+    p_formula        IN VARCHAR2,
+    p_attribute_key  IN VARCHAR2 DEFAULT NULL
+  ) RETURN VARCHAR2;
+
+  FUNCTION has_circular_dependency(
+    p_attribute_key  IN VARCHAR2,
+    p_formula        IN VARCHAR2,
+    p_visited        IN VARCHAR2 DEFAULT NULL,
+    p_depth          IN NUMBER DEFAULT 0
+  ) RETURN BOOLEAN;
+
+  -- Manage calculated (TYPE='C') attributes
+  PROCEDURE manage_calculated_attributes(
+    p_mode              IN  CHAR,
+    p_attribute_key     IN  VARCHAR2 DEFAULT NULL,
+    p_attribute_name    IN  VARCHAR2 DEFAULT NULL,
+    p_formula           IN  VARCHAR2 DEFAULT NULL,
+    p_data_type         IN  VARCHAR2 DEFAULT 'NUMBER',
+    p_description       IN  VARCHAR2 DEFAULT NULL,
+    p_hotel_id          IN  RAW DEFAULT NULL,
+    p_qualifier         IN  VARCHAR2 DEFAULT NULL,
+    p_source_table      IN  VARCHAR2 DEFAULT NULL,
+    p_source_config     IN  CLOB DEFAULT NULL,
+    p_delete_all_hotel  IN  BOOLEAN DEFAULT FALSE,
+    p_status            OUT BOOLEAN,
+    p_message           OUT VARCHAR2
+  );
+
+  -- Create predefined calculated attributes for a new hotel
+  PROCEDURE create_hotel_calculated_attributes(
+    p_hotel_id  IN  RAW,
+    p_status    OUT BOOLEAN,
+    p_message   OUT VARCHAR2
+  );
+
     procedure add_alert(
         p_existing_json   IN  CLOB,
         p_message         IN  VARCHAR2,
@@ -155,27 +203,6 @@ PROCEDURE fetch_templates(
     p_message    OUT VARCHAR2
   );
 
-    -- ============================================================================
-    -- PROCEDURE: refresh_file_profile_and_collection
-    -- Purpose: Refreshes file profile and repopulates data mapping collection
-    --          based on skip_rows and sheet_name parameters.
-    --          Called when user changes Skip Rows or Sheet Name on file upload.
-    -- Parameters:
-    --   p_file_name       - temp_blob.NAME (APEX temp file reference)
-    --   p_skip_rows       - Rows to skip before header (0 = first row is header)
-    --   p_sheet_name      - Excel sheet file name (e.g., 'sheet1.xml'), NULL for CSV
-    --   p_collection_name - Collection to repopulate with column metadata
-    --   p_status          - OUT: 'S' for success, 'E' for error
-    --   p_message         - OUT: Detailed status message
-    -- ============================================================================
-    PROCEDURE refresh_file_profile_and_collection (
-        p_file_name             IN  VARCHAR2,
-        p_skip_rows             IN  NUMBER   DEFAULT 0,
-        p_sheet_name            IN  VARCHAR2 DEFAULT NULL,
-        p_collection_name       IN  VARCHAR2 DEFAULT 'UR_FILE_DATA_PROFILES',
-        p_status                OUT VARCHAR2,
-        p_message               OUT VARCHAR2
-    );
 
     -- ============================================================================
     -- DATE PARSER: Comprehensive date format detection and parsing
