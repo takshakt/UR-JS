@@ -996,6 +996,23 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
                         ELSE
                             -- Attribute reference - need to look up by qualifier
                             BEGIN
+                                -- Check if multiple attributes exist with the same qualifier
+                                DECLARE
+                                    l_attr_count NUMBER;
+                                BEGIN
+                                    SELECT COUNT(*)
+                                    INTO l_attr_count
+                                    FROM ur_algo_attributes
+                                    WHERE UPPER(ATTRIBUTE_QUALIFIER) = UPPER(l_ref_key)
+                                      AND (hotel_id = l_attr_hotel_id OR hotel_id IS NULL);
+
+                                    IF l_attr_count > 1 THEN
+                                        append_debug('WARNING: Multiple attributes found (' || l_attr_count || ') for qualifier "' || l_ref_key || '". Using first match based on hotel_id precedence.');
+                                    ELSIF l_attr_count = 0 THEN
+                                        append_debug('WARNING: No attributes found for qualifier "' || l_ref_key || '".');
+                                    END IF;
+                                END;
+
                                 -- Find attribute by qualifier matching the reference
                                 FOR attr_rec IN (
                                     SELECT ID, KEY
