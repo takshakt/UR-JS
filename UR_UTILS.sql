@@ -564,8 +564,12 @@ END sanitize_template_definition;
         PROCEDURE append_debug(p_log_entry IN VARCHAR2) IS
         BEGIN
             IF p_debug_flag THEN
-                l_debug_log := l_debug_log || TO_CHAR(SYSTIMESTAMP, 'HH24:MI:SS.FF') || ' - ' || p_log_entry || CHR(10);
+                l_debug_log := l_debug_log || TO_CHAR(SYSTIMESTAMP, 'HH24:MI:SS.FF') || ' - ' || NVL(p_log_entry, '(null)') || CHR(10);
             END IF;
+        EXCEPTION
+            WHEN OTHERS THEN
+                -- Silently ignore debug logging errors to prevent breaking main logic
+                NULL;
         END append_debug;
 
     BEGIN
@@ -573,7 +577,7 @@ END sanitize_template_definition;
 
         IF (p_attribute_id IS NULL AND p_attribute_key IS NULL) OR (p_attribute_id IS NOT NULL AND p_attribute_key IS NOT NULL) THEN
             l_message := 'Validation Error: Provide either p_attribute_id or p_attribute_key, but not both.';
-            build_json_response('E', l_message, NULL, NULL, p_attribute_key, NULL, NULL, NULL, p_hotel_id, p_stay_date, p_debug_flag, 0, JSON_ARRAY_T('[]'), p_response_clob);
+            build_json_response('E', l_message, NULL, NULL, p_attribute_key, NULL, NULL, NULL, p_hotel_id, p_stay_date, p_debug_flag, 0, JSON_ARRAY_T(), p_response_clob);
             RETURN;
         END IF;
 
@@ -587,7 +591,7 @@ END sanitize_template_definition;
         EXCEPTION
             WHEN NO_DATA_FOUND THEN
                 l_message := 'Attribute not found for the specified ID or KEY.';
-                build_json_response('E', l_message, p_attribute_id, NULL, p_attribute_key, NULL, NULL, NULL, p_hotel_id, p_stay_date, p_debug_flag, 0, JSON_ARRAY_T('[]'), p_response_clob);
+                build_json_response('E', l_message, p_attribute_id, NULL, p_attribute_key, NULL, NULL, NULL, p_hotel_id, p_stay_date, p_debug_flag, 0, JSON_ARRAY_T(), p_response_clob);
                 RETURN;
         END;
 
@@ -679,7 +683,7 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
             IF p_hotel_id IS NULL THEN
                 append_debug('Validation failed: p_hotel_id is NULL for a non-templated Sourced attribute.');
                 l_message := 'Validation Error: A Hotel ID must be provided to retrieve values for this attribute configuration.';
-                build_json_response('E', l_message, l_attribute_rec.ID, l_attribute_rec.NAME, l_attribute_rec.KEY, l_attribute_rec.DATA_TYPE, l_attribute_rec.ATTRIBUTE_QUALIFIER, l_attribute_rec.VALUE, p_hotel_id, p_stay_date, p_debug_flag, 0, JSON_ARRAY_T('[]'), p_response_clob);
+                build_json_response('E', l_message, l_attribute_rec.ID, l_attribute_rec.NAME, l_attribute_rec.KEY, l_attribute_rec.DATA_TYPE, l_attribute_rec.ATTRIBUTE_QUALIFIER, l_attribute_rec.VALUE, p_hotel_id, p_stay_date, p_debug_flag, 0, JSON_ARRAY_T(), p_response_clob);
                 RETURN;
             END IF;
 
@@ -865,7 +869,7 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
                 IF l_attr_hotel_id IS NULL THEN
                     append_debug('Validation failed: hotel_id is NULL for Calculated attribute.');
                     l_message := 'Validation Error: A Hotel ID must be provided to retrieve calculated attribute values.';
-                    build_json_response('E', l_message, l_attribute_rec.ID, l_attribute_rec.NAME, l_attribute_rec.KEY, l_attribute_rec.DATA_TYPE, l_attribute_rec.ATTRIBUTE_QUALIFIER, l_attribute_rec.VALUE, p_hotel_id, p_stay_date, p_debug_flag, 0, JSON_ARRAY_T('[]'), p_response_clob);
+                    build_json_response('E', l_message, l_attribute_rec.ID, l_attribute_rec.NAME, l_attribute_rec.KEY, l_attribute_rec.DATA_TYPE, l_attribute_rec.ATTRIBUTE_QUALIFIER, l_attribute_rec.VALUE, p_hotel_id, p_stay_date, p_debug_flag, 0, JSON_ARRAY_T(), p_response_clob);
                     RETURN;
                 END IF;
 
@@ -948,7 +952,7 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
                     IF l_formula IS NULL THEN
                         append_debug('Formula is NULL, cannot calculate.');
                         l_message := 'Calculated attribute has no formula defined.';
-                        build_json_response('W', l_message, l_attribute_rec.ID, l_attribute_rec.NAME, l_attribute_rec.KEY, l_attribute_rec.DATA_TYPE, l_attribute_rec.ATTRIBUTE_QUALIFIER, l_attribute_rec.VALUE, p_hotel_id, p_stay_date, p_debug_flag, 0, JSON_ARRAY_T('[]'), p_response_clob);
+                        build_json_response('W', l_message, l_attribute_rec.ID, l_attribute_rec.NAME, l_attribute_rec.KEY, l_attribute_rec.DATA_TYPE, l_attribute_rec.ATTRIBUTE_QUALIFIER, l_attribute_rec.VALUE, p_hotel_id, p_stay_date, p_debug_flag, 0, JSON_ARRAY_T(), p_response_clob);
                         RETURN;
                     END IF;
 
@@ -1003,7 +1007,7 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
                                         p_hotel_id      => l_attr_hotel_id,
                                         p_stay_date     => p_stay_date,
                                         p_round_digits  => p_round_digits,
-                                        p_debug_flag    => FALSE,
+                                        p_debug_flag    => p_debug_flag,  -- Pass through debug flag to see nested errors
                                         p_response_clob => l_ref_response
                                     );
 
@@ -1013,32 +1017,42 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
                                         l_ref_payload := l_ref_json.get_array('RESPONSE_PAYLOAD');
                                         IF l_ref_payload IS NOT NULL THEN
                                             FOR i IN 0 .. l_ref_payload.get_size - 1 LOOP
-                                                l_ref_item := TREAT(l_ref_payload.get(i) AS JSON_OBJECT_T);
-                                                l_ref_stay_date := l_ref_item.get_string('stay_date');
-                                                l_ref_attr_value := l_ref_item.get_string('attribute_value');
+                                                BEGIN
+                                                    l_ref_item := TREAT(l_ref_payload.get(i) AS JSON_OBJECT_T);
+                                                    l_ref_stay_date := l_ref_item.get_string('stay_date');
+                                                    l_ref_attr_value := l_ref_item.get_string('attribute_value');
 
-                                                l_attr_data(l_ref_key)(l_ref_stay_date) := safe_to_number(l_ref_attr_value);
+                                                    -- FIX: Skip records with NULL stay_date to prevent ORA-06502
+                                                    IF l_ref_stay_date IS NOT NULL THEN
+                                                        l_attr_data(l_ref_key)(l_ref_stay_date) := safe_to_number(l_ref_attr_value);
 
-                                                -- Collect unique dates
-                                                IF NOT l_all_dates.EXISTS(l_date_idx) OR l_all_dates(l_date_idx) != l_ref_stay_date THEN
-                                                    -- Check if date already exists
-                                                    DECLARE
-                                                        l_found BOOLEAN := FALSE;
-                                                    BEGIN
-                                                        FOR j IN 1 .. l_date_idx LOOP
-                                                            IF l_all_dates(j) = l_ref_stay_date THEN
-                                                                l_found := TRUE;
-                                                                EXIT;
-                                                            END IF;
-                                                        END LOOP;
-                                                        IF NOT l_found THEN
-                                                            l_date_idx := l_date_idx + 1;
-                                                            l_all_dates(l_date_idx) := l_ref_stay_date;
+                                                        -- Collect unique dates
+                                                        IF NOT l_all_dates.EXISTS(l_date_idx) OR l_all_dates(l_date_idx) != l_ref_stay_date THEN
+                                                            -- Check if date already exists
+                                                            DECLARE
+                                                                l_found BOOLEAN := FALSE;
+                                                            BEGIN
+                                                                FOR j IN 1 .. l_date_idx LOOP
+                                                                    IF l_all_dates(j) = l_ref_stay_date THEN
+                                                                        l_found := TRUE;
+                                                                        EXIT;
+                                                                    END IF;
+                                                                END LOOP;
+                                                                IF NOT l_found THEN
+                                                                    l_date_idx := l_date_idx + 1;
+                                                                    l_all_dates(l_date_idx) := l_ref_stay_date;
+                                                                END IF;
+                                                            END;
                                                         END IF;
-                                                    END;
-                                                END IF;
 
-                                                append_debug('Stored ' || l_ref_key || '[' || l_ref_stay_date || '] = ' || l_ref_attr_value);
+                                                        append_debug('Stored ' || l_ref_key || '[' || l_ref_stay_date || '] = ' || l_ref_attr_value);
+                                                    ELSE
+                                                        append_debug('Skipped ' || l_ref_key || ' with NULL stay_date, value: ' || l_ref_attr_value);
+                                                    END IF;
+                                                EXCEPTION
+                                                    WHEN OTHERS THEN
+                                                        append_debug('Error processing ' || l_ref_key || ' record ' || i || ': ' || SQLERRM || ' (stay_date=' || l_ref_stay_date || ', value=' || l_ref_attr_value || ')');
+                                                END;
                                             END LOOP;
                                         END IF;
                                     END IF;
@@ -1057,30 +1071,35 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
                     -- Step 2: Calculate formula for each unique date
                     append_debug('Calculating formula for ' || l_date_idx || ' dates.');
 
-                    FOR i IN 1 .. l_date_idx LOOP
-                        l_date_str := l_all_dates(i);
-                        l_resolved_formula := l_formula;
+                    -- FIX: Check if we have any dates before attempting calculation
+                    IF l_date_idx = 0 THEN
+                        append_debug('No dates available for calculation. All referenced attributes may have NULL stay_dates or no records.');
+                        l_message := '0 calculated records fetched (no valid dates).';
+                    ELSE
+                        FOR i IN 1 .. l_date_idx LOOP
+                            l_date_str := l_all_dates(i);
+                            l_resolved_formula := l_formula;
 
-                        append_debug('Processing date: ' || l_date_str);
+                            append_debug('Processing date: ' || l_date_str);
 
-                        -- Substitute all references with values
-                        l_pos := 1;
-                        LOOP
-                            l_ref_key := REGEXP_SUBSTR(l_formula, '#([^#]+)#', l_pos, 1, NULL, 1);
-                            EXIT WHEN l_ref_key IS NULL;
+                            -- Substitute all references with values
+                            l_pos := 1;
+                            LOOP
+                                l_ref_key := REGEXP_SUBSTR(l_formula, '#([^#]+)#', l_pos, 1, NULL, 1);
+                                EXIT WHEN l_ref_key IS NULL;
 
-                            -- Get value for this reference and date
-                            IF l_attr_data.EXISTS(l_ref_key) THEN
-                                IF l_attr_data(l_ref_key).EXISTS('__CONSTANT__') THEN
-                                    l_ref_value := l_attr_data(l_ref_key)('__CONSTANT__');
-                                ELSIF l_attr_data(l_ref_key).EXISTS(l_date_str) THEN
-                                    l_ref_value := l_attr_data(l_ref_key)(l_date_str);
+                                -- Get value for this reference and date
+                                IF l_attr_data.EXISTS(l_ref_key) THEN
+                                    IF l_attr_data(l_ref_key).EXISTS('__CONSTANT__') THEN
+                                        l_ref_value := l_attr_data(l_ref_key)('__CONSTANT__');
+                                    ELSIF l_date_str IS NOT NULL AND l_attr_data(l_ref_key).EXISTS(l_date_str) THEN
+                                        l_ref_value := l_attr_data(l_ref_key)(l_date_str);
+                                    ELSE
+                                        l_ref_value := NULL;
+                                    END IF;
                                 ELSE
                                     l_ref_value := NULL;
                                 END IF;
-                            ELSE
-                                l_ref_value := NULL;
-                            END IF;
 
                             -- Substitute in formula
                             IF l_ref_value IS NOT NULL THEN
@@ -1116,6 +1135,7 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
                     END LOOP;
 
                     l_message := l_records_fetched || ' calculated records fetched.';
+                    END IF; -- Close the IF l_date_idx = 0 check
                 END IF;
             END;
 
@@ -1161,7 +1181,7 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
                 p_stay_date,
                 p_debug_flag,
                 0,
-                JSON_ARRAY_T('[]'),
+                JSON_ARRAY_T(),
                 p_response_clob
             );
     END GET_ATTRIBUTE_VALUE;
@@ -4746,12 +4766,14 @@ END test_date_parser;
         END IF;
 
         -- Validate expression safety - only allow numbers, operators, parentheses, and math functions
-        l_safe_expr := REGEXP_REPLACE(p_expression, '[0-9\.\+\-\*\/\(\)\s]', '');
+        -- Note: Put minus sign at the end of character class to avoid it being interpreted as a range
+        l_safe_expr := REGEXP_REPLACE(p_expression, '[0-9\.\+\*\/\(\)\s\-]', '');
         l_safe_expr := REGEXP_REPLACE(l_safe_expr, '(ROUND|ABS|CEIL|FLOOR|TRUNC)', '', 1, 0, 'i');
         l_safe_expr := TRIM(l_safe_expr);
 
         IF l_safe_expr IS NOT NULL AND LENGTH(l_safe_expr) > 0 THEN
             -- Expression contains unsafe characters
+            DBMS_OUTPUT.PUT_LINE('EVALUATE_EXPRESSION: Unsafe characters detected: [' || l_safe_expr || '] in expression: ' || p_expression);
             RETURN NULL;
         END IF;
 
@@ -4760,6 +4782,7 @@ END test_date_parser;
         RETURN l_result;
     EXCEPTION
         WHEN OTHERS THEN
+            DBMS_OUTPUT.PUT_LINE('EVALUATE_EXPRESSION: Error evaluating [' || p_expression || ']: ' || SQLERRM);
             RETURN NULL;
     END evaluate_expression;
 
@@ -5174,7 +5197,7 @@ END test_date_parser;
             'NUMBER',
             'Daily occupancy percentage (rooms sold / available rooms)',
             'C',
-            '#ROOM_NIGHT# / (#UR_HOTELS.CAPACITY# - #OUT_OF_ORDER_ROOMS#)',
+            'ROUND((#ROOM_NIGHTS# / (#UR_HOTELS.CAPACITY# - #OUT_OF_ORDER_ROOMS#)) * 100)',
             NULL,
             'CALCULATED_OCCUPANCY',
             v_user_id, v_user_id, SYSDATE, SYSDATE
