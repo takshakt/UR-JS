@@ -612,7 +612,7 @@ END IF;
                 l_fail_cnt := l_fail_cnt + 1;
                 -- Enhanced error message with more context
                 l_error_json := l_error_json ||
-                    '{"row":' || l_total_rows ||
+                    '{"row":' || NVL(TO_CHAR(l_total_rows), '0') ||
                     ',"line":' || NVL(TO_CHAR(v_line_number), 'null') ||
                     ',"status":"FAILED"' ||
                     ',"error":"' || REPLACE(REPLACE(SQLERRM, '"', ''''), CHR(10), ' ') || '"' ||
