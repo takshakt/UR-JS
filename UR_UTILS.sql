@@ -516,20 +516,26 @@ END sanitize_template_definition;
         l_json_obj JSON_OBJECT_T;
     BEGIN
         l_json_obj := JSON_OBJECT_T();
-        l_json_obj.put('attribute_id', RAWTOHEX(p_attribute_id));
-        l_json_obj.put('attribute_name', p_attribute_name);
-        l_json_obj.put('attribute_key', p_attribute_key);
-        l_json_obj.put('attribute_datatype', p_attribute_datatype);
-        l_json_obj.put('attribute_qualifier', p_attribute_qualifier);
-        l_json_obj.put('attribute_static_value', p_attribute_static_val);
-        l_json_obj.put('hotel_id', RAWTOHEX(p_hotel_id));
-        l_json_obj.put('stay_date', TO_CHAR(p_stay_date, 'YYYY-MM-DD'));
+        l_json_obj.put('attribute_id', NVL(RAWTOHEX(p_attribute_id), ''));
+        l_json_obj.put('attribute_name', NVL(p_attribute_name, ''));
+        l_json_obj.put('attribute_key', NVL(p_attribute_key, ''));
+        l_json_obj.put('attribute_datatype', NVL(p_attribute_datatype, ''));
+        l_json_obj.put('attribute_qualifier', NVL(p_attribute_qualifier, ''));
+        l_json_obj.put('attribute_static_value', NVL(p_attribute_static_val, ''));
+        l_json_obj.put('hotel_id', NVL(RAWTOHEX(p_hotel_id), ''));
+        l_json_obj.put('stay_date', NVL(TO_CHAR(p_stay_date, 'YYYY-MM-DD'), ''));
         l_json_obj.put('DEBUG_FLAG', CASE WHEN p_debug_flag THEN 'TRUE' ELSE 'FALSE' END);
         l_json_obj.put('RESPONSE_TIME', TO_CHAR(SYSTIMESTAMP, 'YYYY-MM-DD"T"HH24:MI:SS.FF"Z"'));
         l_json_obj.put('STATUS', p_status);
-        l_json_obj.put('RECORD_COUNT', p_record_count);
-        l_json_obj.put('MESSAGE', p_message);
-        l_json_obj.put('RESPONSE_PAYLOAD', p_payload_array);
+        l_json_obj.put('RECORD_COUNT', NVL(p_record_count, 0));
+        l_json_obj.put('MESSAGE', NVL(p_message, ''));
+
+        -- Handle NULL payload array
+        IF p_payload_array IS NOT NULL THEN
+            l_json_obj.put('RESPONSE_PAYLOAD', p_payload_array);
+        ELSE
+            l_json_obj.put('RESPONSE_PAYLOAD', JSON_ARRAY_T());
+        END IF;
 
         p_response_clob := l_json_obj.to_clob;
     EXCEPTION
