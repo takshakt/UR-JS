@@ -13,7 +13,7 @@ const hotelGroup = hotelLov.closest('.selector-group');
 if (hotelGroup) {
   hotelGroup.style.display = 'none';
   //notification
-}
+} 
 
     const templateLov = document.getElementById('template-lov');
     const reportLov = document.getElementById('report-lov');
@@ -26,7 +26,7 @@ if (hotelGroup) {
     const rightSearch = document.getElementById('right-search');
     const availableCount = document.getElementById('available-count');
     const selectedCount = document.getElementById('selected-count');
-    const notification = document.getElementById('notification');
+  
 
     const currentTemplateInfo = document.getElementById('current-template-info');
 
@@ -60,7 +60,7 @@ if (hotelGroup) {
                 { x01: hotelId },
                 {
                     success: function(data) {
-                        console.log('Received data:', data);
+                        // console.log('Received data:', data);
                         hotelTemplates = data; 
                     },
                     error: function(jqXHR, textStatus, errorThrown) {
@@ -69,6 +69,7 @@ if (hotelGroup) {
                 }
             );
         }
+        
 
  function loadHotelTemplates(hotelName) {
             console.time("AJAX_Execution_Time:>loadHotelTemplates");
@@ -78,12 +79,13 @@ if (hotelGroup) {
                     {
                         dataType: "json",
                         success: function(data) {
-                            console.log("Hotel templates JSON:", data);
+                            // console.log("Hotel templates JSON:", data);
                             console.timeEnd("AJAX_Execution_Time:>loadHotelTemplates");
                             hotelData = data;
+                            console.log('hotelData:>>>>>>>>>>>',hotelData);
                              algoArray = Object.entries(data)
                                             .find(([key]) => key.toLowerCase() === 'algo')?.[1] || [];
-                                            console.log('algoArray:>>>>>',algoArray);
+                                            // console.log('algoArray:>>>>>',algoArray);
 
                             // Example: pick first hotel key
                             const hotelKey = Object.keys(data)[0];
@@ -152,19 +154,19 @@ if (hotelGroup) {
 let hotel_qualifiers ;
 function getAllQualifiers() {
     var hotelId =  hotelLov.options[hotelLov.selectedIndex].value;
-    console.log('hotelId:>>>>>>>>',hotelId);
+    // console.log('hotelId:>>>>>>>>',hotelId);
     apex.server.process(
   "AJX_GET_REPORT_ALL_QUALIFIERS", // Process name
   {x01: hotelId },                             
   {
     dataType: "json",              // Expect JSON
     success: function(pData) {
-      console.log("Full response:", pData);
+      // console.log("Full response:", pData);
         hotel_qualifiers = pData;
       // Access array
       if (pData && pData.data) {
         pData.data.forEach(function(row) {
-          console.log("Name:", row.name, "Temp Name:", row.temp_name);
+          // console.log("Name:", row.name, "Temp Name:", row.temp_name);
         });
       }
     },
@@ -197,7 +199,9 @@ function getAllQualifiers() {
             sortAvailableDesc.addEventListener('click', () => sortColumns(availableColumns, false));
             sortSelectedAsc.addEventListener('click', () => sortColumns(selectedColumns, true));
             sortSelectedDesc.addEventListener('click', () => sortColumns(selectedColumns, false));
-            
+             
+
+
             callHotel();
             // Set up drag and drop events with the new handlers
             setupDragAndDrop();
@@ -205,13 +209,6 @@ function getAllQualifiers() {
             // Initialize counts
             updateCounts();
         }
-const element = document.getElementById('notification');
-
-// Check if the element was found
-if (element) {
-  // If the element exists, hide it by setting its display property to 'none'
-  element.style.display = 'none';
-}
 
 
 
@@ -368,7 +365,7 @@ function deleteFormatter(columnKey) {
     if (conditionalFormattingRules.hasOwnProperty(columnKey)) {
         delete conditionalFormattingRules[columnKey];
         
-        console.log(`Successfully deleted rules for column: ${columnKey}`);
+        // console.log(`Successfully deleted rules for column: ${columnKey}`);
         
         // 3. Update localStorage to persist the change
         try {
@@ -382,7 +379,7 @@ function deleteFormatter(columnKey) {
         saveAllDataToJSON();
         handleSave();
         
-        displayReportTable();
+        displayReportTable('deleteFormatter');
         loadSavedFormatters();
 
     } else {
@@ -395,7 +392,7 @@ function attachFormatterEventListeners() {
     document.querySelectorAll('.update-formatter').forEach(btn => {
         btn.addEventListener('click', function() {
             const columnKey = this.getAttribute('data-column');
-            console.log(`Edit clicked for column: ${columnKey}`);
+            // console.log(`Edit clicked for column: ${columnKey}`);
             
             //  Call the main loading function for editing
             loadFormatterForEdit(columnKey); 
@@ -407,7 +404,7 @@ function attachFormatterEventListeners() {
     document.querySelectorAll('.delete-formatter').forEach(btn => {
         btn.addEventListener('click', function() {
             const columnKey = this.getAttribute('data-column');
-            console.log(`Delete clicked for column: ${columnKey}`);
+            // console.log(`Delete clicked for column: ${columnKey}`);
             deleteFormatter(columnKey);
         });
     });
@@ -427,7 +424,7 @@ function callHotel() {
         {
             dataType: "json",
             success: function(data) {
-                console.log('AJX_GET_REPORT_HOTEL:>>>',data);
+                // console.log('AJX_GET_REPORT_HOTEL:>>>',data);
                 // Loop over hotel JSON and add options
                 data.forEach(function(hotel) {
                     const option = document.createElement("option");
@@ -526,7 +523,7 @@ function setLovValueAndText(selectId, value, text) {
 }
 
 function handleHotelSelection_onload() {
-    console.log('Before load template');
+    // console.log('Before load template');
 
     showReportLoading(); 
 
@@ -536,11 +533,11 @@ function handleHotelSelection_onload() {
 
     setLovValueAndText("hotel-lov", selectedValue, selectedText);
 
-    // ⛔ FIX: Avoid loading templates for Show all data
+    //  FIX: Avoid loading templates for Show all data
     if (selectedValue !== 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF') {
         hotelData = loadHotelTemplates(selectedText);
     } else {
-        console.log("Show all data selected → skipping template load");
+        // console.log("Show all data selected → skipping template load");
         hotelData = { templates: [] }; // Safe default
     }
 
@@ -555,7 +552,7 @@ function handleHotelSelection_onload() {
             
             updateCounts();
             updateButtonStates();
-            console.log('After call templ');
+            // console.log('After call templ');
             
         }
 
@@ -587,7 +584,7 @@ console.time("AJAX_Execution_Time");
                 hideReportLoading();
 
                 // Add the "Create New Report" option first
-                console.log('Report:>',pData);
+                // console.log('Report:>',pData);
                 reportData = pData;
                 reportLov.append('<option value="">-- Select Report --</option>');
 
@@ -654,14 +651,14 @@ console.time("AJAX_Execution_Time");
 
     } else {
         $('#New-Report').val(reportLov.options[reportLov.selectedIndex].text);
-        console.log('handleReportSelection---->>>',handleReportSelection);
+        // console.log('handleReportSelection---->>>',handleReportSelection);
         var selectedReport = reportData.find(item => item.ID === selectedValue);
         selectedFieldValues = selectedReport.DEFINITION.split(',').map(s => s.trim());
         
         if (selectedReport && selectedReport.DEFINITION) {
-            console.log('--selectedReport.DEFINITION:>' + selectedReport.DEFINITION);
+            // console.log('--selectedReport.DEFINITION:>' + selectedReport.DEFINITION);
             populateSelectedColumns(selectedReport.DEFINITION);
-            console.log('TEMP_FORMATTING_JSON:>>>>>>>',TEMP_FORMATTING_JSON);
+            // console.log('TEMP_FORMATTING_JSON:>>>>>>>',TEMP_FORMATTING_JSON);
  
             conditionalFormattingRules = TEMP_FORMATTING_JSON; 
             // -------------------------------------------------
@@ -727,6 +724,7 @@ document.addEventListener("click", function(e) {
     if (formula) {
       document.getElementById("calc-name").value = formula.name;
       document.getElementById("formula-preview").value = formula.expression;
+      document.getElementById("formulafilter-preview").value = formula.filter;
     }
   }
 });
@@ -878,11 +876,11 @@ function populateSelectedColumns(definitionString) {
 
         // Handle hotel selection
         function handleHotelSelection() {
-            console.log('Before load template');
+            // console.log('Before load template');
             // Show the spinner immediately on hotel selection
             showReportLoading();
             hotelData = loadHotelTemplates(hotelLov.options[hotelLov.selectedIndex].text);
-            console.log('After load templ');
+            // console.log('After load templ');
             $('#New-Report').val('');
             availableColumns.innerHTML = '';
             selectedColumns.innerHTML = '';
@@ -894,7 +892,7 @@ function populateSelectedColumns(definitionString) {
             
             updateCounts();
             updateButtonStates();
-            console.log('After call templ');
+            // console.log('After call templ');
         }
 
         // Handle template selection
@@ -903,7 +901,7 @@ function populateSelectedColumns(definitionString) {
             
             if (selectedHotel && selectedTemplate) {
                 const templateFieldsAll = hotelData[selectedHotel.toLowerCase().replace(/\s+/g, '')].templates;
-                //console.log('----templateFieldsAll:>', templateFieldsAll);
+                 console.log('----templateFieldsAll:>', templateFieldsAll);
                 const formattedArray = [];
 
                     for (const templateName in templateFieldsAll) {
@@ -917,7 +915,7 @@ function populateSelectedColumns(definitionString) {
                         }
                     }
                   //  formattedArray.push(...algoArray);
-                   // console.log('----formattedArray:>',formattedArray);
+                   // // console.log('----formattedArray:>',formattedArray);
                 const finalString = formattedArray.join(', ');
 
                 const finalArray = finalString.split(', ');
@@ -929,8 +927,8 @@ function populateSelectedColumns(definitionString) {
                                 const availableFields = templateFields.filter(field => 
                                     !selectedFieldValues.includes(field)
                                 );
-                               //console.log('----availableColumns:>', availableColumns);
-                               // console.log('----availableFields:>',availableFields);
+                              console.log('----availableColumns:>', availableColumns);
+                            console.log('----availableFields:>',availableFields);
                                 populateColumns(availableColumns, availableFields);
                                 populateColumns(selectedColumns, selectedFieldValues);
                                 
@@ -981,7 +979,7 @@ function populateSelectedColumns(definitionString) {
                 item.appendChild(dragIcon);
                 
                 // Add drag events
-                //console.log('added handleDragStart',item);
+                //// console.log('added handleDragStart',item);
                 item.addEventListener('dragstart', handleDragStart);
                 item.addEventListener('dragend', handleDragEnd);
                 
@@ -1277,7 +1275,7 @@ function handleDragOver(e) {
 
             // update the availableColumns variable with modified HTML
            // availableColumns.innerHTML = doc.body.innerHTML;
-            //console.log('availableColumns:>addAll:>>>',availableColumns);
+            //// console.log('availableColumns:>addAll:>>>',availableColumns);
             leftSearch.value = '';
             addSelected();
 
@@ -1354,7 +1352,7 @@ function handleDragOver(e) {
 
             // update the availableColumns variable with modified HTML
            // availableColumns.innerHTML = doc.body.innerHTML;
-            //console.log('availableColumns:>addAll:>>>',availableColumns);
+            //// console.log('availableColumns:>addAll:>>>',availableColumns);
             
             removeSelected();
             rightSearch.value = '';
@@ -1428,7 +1426,7 @@ var qualifr_coval ;
     const cols = colsByTable[table];
     const orderCol = cols[0];
     const alias = aliases[i];
-    console.log('cols:>>>>>',cols);
+    // console.log('cols:>>>>>',cols);
  
     var qualifr_col = hotel_qualifiers.data.find(item => item.temp_name === table);
      qualifr_coval = qualifr_col.name
@@ -1484,7 +1482,7 @@ var qualifr_coval ;
   hotelOccupancyCols.forEach((hc, i) => {
     const alias = `occ${i + 1}_rn`;
     ctes.push(`${alias} AS (
-  SELECT ID as hotel_id, OCCUPANCY,
+  SELECT ID as hotel_id, CAPACITY,
          1 as rn
   FROM UR_HOTELS
   WHERE ID = '${hotelId}'
@@ -1524,7 +1522,7 @@ var qualifr_coval ;
   // Add Hotel_Occupancy columns (single value per hotel)
   hotelOccupancyCols.forEach((hc, i) => {
     const alias = `occ${i + 1}_rn`;
-    selectCols.push(`${alias}.OCCUPANCY AS "${hc.col_name} - Hotel_Occupancy"`);
+    selectCols.push(`${alias}.CAPACITY AS "${hc.col_name} - Hotel_Occupancy"`);
   });
 
   // Build final FROM + JOIN logic
@@ -1540,7 +1538,7 @@ var qualifr_coval ;
 
 const joinClauses = allAliases.slice(1).map((alias, i) => {
   // Use LEFT JOIN for strategy columns and hotel occupancy (optional data)
-  const joinType = (alias.startsWith('s') || alias.startsWith('occ')) ? ' LEFT ' : 'FULL OUTER';
+  const joinType = (alias.startsWith('s') || alias.startsWith('occ')|| alias.startsWith('por')) ? ' LEFT ' : 'FULL OUTER';
 
   // Hotel_Occupancy has no pk_col (single value per hotel), join only on hotel_id
   if (alias.startsWith('occ')) {
@@ -1554,6 +1552,7 @@ const joinClauses = allAliases.slice(1).map((alias, i) => {
 });
 
   const finalSelect = `SELECT COALESCE(${allAliases.map(a => a + ".hotel_id").join(", ")}, null) AS hotelid,
+  COALESCE(${allAliases.map(a => a + ".pk_col").join(", ")}, null) AS pk_col,
        ${selectCols.join(",\n       ")}
 FROM ${allAliases[0]}
 ${joinClauses.join("\n")}
@@ -1561,7 +1560,7 @@ ORDER BY COALESCE(${allAliases.map(a => a + ".rn").join(", ")}, 0)`;
 
   const sql = `WITH ${ctes.join(",\n")}\n${finalSelect}`;
 
-  console.log("✅ FINAL SQL:\n", sql);
+   console.log("✅ FINAL SQL:\n", sql);
   return sql;
 }
 
@@ -1591,10 +1590,10 @@ function create_report(sqldata) {
         const mainValues = selectedcols.map(el => el.dataset.value);
 
 
-            console.log('JSON.stringify(jsondata_main):>',JSON.stringify(jsondata_main));
-            console.log('sqldata:>'+sqldata);
-            console.log('hotelLov.options[hotelLov.selectedIndex].value:>'+hotelLov.options[hotelLov.selectedIndex].value);
-            console.log('$(#New-Report).val():>'+$('#New-Report').val());
+             console.log('JSON.stringify(jsondata_main):>',JSON.stringify(jsondata_main));
+             console.log('sqldata:>'+sqldata);
+             console.log('hotelLov.options[hotelLov.selectedIndex].value:>'+hotelLov.options[hotelLov.selectedIndex].value);
+             console.log('$(#New-Report).val():>'+$('#New-Report').val());
             jsondata_details =  JSON.parse((JSON.stringify(jsondata_main)));
             apex.server.process(
                 'AJX_MANAGE_REPORT_VIEW',
@@ -1607,7 +1606,7 @@ function create_report(sqldata) {
                 {
                     success: function(data) {
                             showSuccessMessage(`View ${ data[0].l_message } saved successfully`);
-                            console.log('data:>>>>',data);
+                             console.log('data:>>>>',data);
                             //showSuccessMessage(`Column header updated to: ${newHeader}`);
 
                             // Save expressions/configuration after report is created
@@ -1634,39 +1633,68 @@ function create_report(sqldata) {
         } 
         var jsondata_main;
         var jsondata_details;
+
 function generateJson() {  
 
-            console.log('generateJson triggered');
+             console.log('generateJson report_expressions:>>>>',report_expressions);
+             console.log('generateJson selectedColumns:>>>>',selectedColumns);
+
+           // Updated full code with requested logic
 
             const columns = Array.from(
-                        selectedColumns.querySelectorAll('.column-checkbox')
-                    ).map(item => {
-                        const tempName = item.dataset.value.substring(
-                            item.dataset.value.indexOf('(') + 1,
-                            item.dataset.value.indexOf(')')
-                        ).trim();
+                selectedColumns.querySelectorAll('.column-checkbox')
+            ).map(item => {
+                const rawName = item.dataset.value.split('(')[0].trim();
+                const tempName = item.dataset.value.substring(
+                    item.dataset.value.indexOf('(') + 1,
+                    item.dataset.value.indexOf(')')
+                ).trim();
 
-                        const match = hotelTemplates.find(t => t.temp_name === tempName);
+                const match = hotelTemplates.find(t => t.temp_name === tempName);
 
-                        // Handle Hotel_Occupancy - single value from UR_HOTELS table
-                        if (tempName === 'Hotel_Occupancy') {
-                            return {
-                                col_name: item.dataset.value.split('(')[0].trim(),
-                                temp_name: 'Hotel_Occupancy',
-                                db_object_name: 'UR_HOTELS',
-                                alias_name: item.dataset.value.split('(')[0].trim(),
-                                hotel_id: hotelLov.options[hotelLov.selectedIndex].value,
-                            };
-                        }
+                // Find if this column already exists in report_expressions.columnConfiguration.selectedColumns
+                let existing = null;
+                if (
+                    report_expressions &&
+                    report_expressions.columnConfiguration &&
+                    Array.isArray(report_expressions.columnConfiguration.selectedColumns)
+                ) {
+                    existing = report_expressions.columnConfiguration.selectedColumns.find(sc => 
+                        sc.col_name === rawName && sc.temp_name === tempName
+                    );
+                }
 
-                        return {
-                            col_name: item.dataset.value.split('(')[0].trim(),
-                            temp_name: tempName,
-                            db_object_name: match ? match.db_object_name : null,
-                            alias_name: item.dataset.value.split('(')[0].trim(),
-                            hotel_id: match ? match.hotel_id : null,
-                        };
-                    });
+                // Handle Hotel_Occupancy - special case
+                if (tempName === 'Hotel_Occupancy') {
+                    return {
+                        col_name: rawName,
+                        temp_name: 'Hotel_Occupancy',
+                        db_object_name: 'UR_HOTELS',
+                        alias_name: rawName,
+                        hotel_id: hotelLov.options[hotelLov.selectedIndex].value,
+                    };
+                }
+
+                // If existing config found, return its values
+                if (existing) {
+                    return {
+                        col_name: existing.col_name,
+                        temp_name: existing.temp_name,
+                        db_object_name: existing.db_object_name,
+                        alias_name: existing.alias_name,
+                        hotel_id: existing.hotel_id,
+                    };
+                }
+
+                // Otherwise fall back to default logic
+                return {
+                    col_name: rawName,
+                    temp_name: tempName,
+                    db_object_name: match ? match.db_object_name : null,
+                    alias_name: rawName,
+                    hotel_id: match ? match.hotel_id : null,
+                };
+            });
             
             if (columns.length === 0) {
                 alert("Please select at least one column first!");
@@ -1682,14 +1710,10 @@ function generateJson() {
            // jsonOutput.textContent = JSON.stringify(jsonData, null, 2);
            // jsonOutput.style.display = 'block';
             
-            // Show notification
-            notification.classList.add('show');
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
+          
             
             jsondata_main = jsonData;
-            console.log('jsondata_main:>>>>>>>>',jsondata_main);
+            // console.log('jsondata_main:>>>>>>>>',jsondata_main);
         
             loadTempColDetails();
             
@@ -1711,7 +1735,7 @@ function generateJson() {
                     item.style.display = 'none';
                 }
             });
-            console.log('container:>>>>>',container);
+            // console.log('container:>>>>>',container);
         }
         
         // Sort columns in a container
@@ -1802,14 +1826,14 @@ function generateJson() {
                     {
                         dataType: "json",
                         success: function(data) {
-                            console.log("AJX_GET_TEMP_COL_DETAILS JSON:", data);
+                            // console.log("AJX_GET_TEMP_COL_DETAILS JSON:", data);
 
                             const enrichedJSON = enrichTargetWithDataType(data, jsondata_main);
                             jsondata_main = enrichedJSON;
-                            console.log('enrichTargetWithDataType-------------===============>>>>>>>>>',enrichedJSON);
+                            // console.log('enrichTargetWithDataType-------------===============>>>>>>>>>',enrichedJSON);
                             jsondata_main =  addTextDataType(jsondata_main);
                             const sql = buildSQLFromJSON(enrichedJSON);
-                            console.log('sql:>>>>',sql);
+                            // console.log('sql:>>>>',sql);
 
                             // create_report() is async - saveAllDataToJSON is now called inside its success callback
                             create_report(sql);
@@ -1886,7 +1910,7 @@ function generateJson() {
 function safeParseReportExpressions(data) {
     // If it's already a valid object with expected structure, return it
     if (data && typeof data === 'object' && data.columnConfiguration) {
-        console.log('Using existing object structure');
+        // console.log('Using existing object structure');
         return data;
     }
     
@@ -1894,7 +1918,7 @@ function safeParseReportExpressions(data) {
     if (typeof data === 'string') {
         try {
             const parsed = JSON.parse(data);
-            console.log('Successfully parsed from string');
+            // console.log('Successfully parsed from string');
             return parsed;
         } catch (error) {
             console.error('Failed to parse JSON string:', error);
@@ -1902,7 +1926,7 @@ function safeParseReportExpressions(data) {
     }
     
     // Return default structure for all other cases
-    console.log('Using default structure');
+    // console.log('Using default structure');
     return {
         "columnConfiguration": {
             "hotel": "Hotel",
@@ -1928,7 +1952,7 @@ function forceShowDashboard() {
         button.textContent = 'Hide Dashboard';
     }
     
-    console.log('Dashboard forcefully shown');
+    // console.log('Dashboard forcefully shown');
 }
 
 function enrichTargetColumnAliasWithDataType(source, targetData) {
@@ -1982,7 +2006,7 @@ function call_dashboard_data(selectedReport_Id){
         {
             dataType: "json",
             success: function(data) {
-                console.log('Report data received for tab:', data);
+                // console.log('Report data received for tab:', data);
    if (!jsondata_main || !jsondata_main.selectedColumns) {
        console.warn('jsondata_main is not ready or lacks selectedColumns, skipping enrichment');
    } else {
@@ -1996,15 +2020,15 @@ function call_dashboard_data(selectedReport_Id){
                     alias_name = report.COLUMN_ALIAS;
                     report_expressions = report.EXPRESSIONS_CLOB;
                 }); 
-                console.log('report_expressions:>>>>', report_expressions);
-                console.log('alias_name:>>>>', alias_name); 
+                // console.log('report_expressions:>>>>', report_expressions);
+                // console.log('alias_name:>>>>', alias_name); 
               let   parsedExpressions = safeParseReportExpressions(report_expressions);
             // Parse the report_expressions string into JSON
             try {
                  
                 parsedExpressions = parsedExpressions;
 
-                console.log('Parsed expressions:', parsedExpressions);
+                 console.log('Parsed expressions:', parsedExpressions);
 
                 } catch (error) {
                     
@@ -2019,7 +2043,9 @@ function call_dashboard_data(selectedReport_Id){
              INITIAL_CONFIG_JSON = {
                 columnMetadata: parsedExpressions.columnMetadata || [],
                 formulas: parsedExpressions.formulas || {},
-                filters: parsedExpressions.filters || {}
+                filters: parsedExpressions.filters || {},
+                conditionalFormatting: parsedExpressions.conditionalFormatting || {},
+                columnposition: parsedExpressions.columnposition || {}
             };
 
             savedFormulas = {};
@@ -2032,8 +2058,8 @@ function call_dashboard_data(selectedReport_Id){
             localStorage.clear(); 
             forceShowDashboard();
             
-            console.log('TEMP_FORMATTING_JSON:', TEMP_FORMATTING_JSON);
-            console.log('INITIAL_CONFIG_JSON:', INITIAL_CONFIG_JSON);
+            // console.log('TEMP_FORMATTING_JSON:', TEMP_FORMATTING_JSON);
+            // console.log('INITIAL_CONFIG_JSON:', INITIAL_CONFIG_JSON);
              
             conditionalFormattingRules = TEMP_FORMATTING_JSON;
        // loadDashboard (reporttblData);
@@ -2044,12 +2070,12 @@ function call_dashboard_data(selectedReport_Id){
                 if (alias_name) {
                 try {
                         reportcolalias = JSON.parse(alias_name);
-                        console.log("Successfully parsed JSON:", reportcolalias);
+                        // console.log("Successfully parsed JSON:", reportcolalias);
                     } catch (error) {
                         console.error('Failed to parse JSON:', error);
                     }
                     } else {
-                    console.log("alias_name is null, undefined, or empty. Skipping JSON parsing.");
+                    // console.log("alias_name is null, undefined, or empty. Skipping JSON parsing.");
                     }
 
                 const reportColObj = JSON.parse(reportCol);
@@ -2089,7 +2115,7 @@ function call_dashboard_data(selectedReport_Id){
 
                 jsondata_details = reportColObj;
                 loadSavedFormatters();
-                console.log('jsondata_details:>>>>>>>>>>>>>>>>>>>>>',jsondata_details);
+                // console.log('jsondata_details:>>>>>>>>>>>>>>>>>>>>>',jsondata_details);
                 // Generate columns_list from the JSON data
            const columns_list = reportColObj.selectedColumns.map(item => ({
                                 name: `${item.col_name} - ${item.temp_name}`,
@@ -2099,9 +2125,10 @@ function call_dashboard_data(selectedReport_Id){
                                     : 'string'
                                     : 'string' // ✅ default to 'number' if data_type is null
                             }));
-                console.log('Updated reportColObj:>><><><><><>', JSON.stringify(columns_list));
+                
                 tableColumns = columns_list;
-                console.log('Generated db_ob_name:', db_ob_name);
+                 console.log('Generated db_ob_name:', db_ob_name);
+                  console.log('Updated reportColObj:>><><><><><>', JSON.stringify(columns_list));
 //console.time("AJAX_Execution_Time:>TEMPLATE_REPORT_DATA");
              
                           
@@ -2114,7 +2141,7 @@ function call_dashboard_data(selectedReport_Id){
                     },
                     {
                         success: function(pData) {
-                            console.log('Table data received for tab:::>>>>>>', pData);
+                            // console.log('Table data received for tab:::>>>>>>', pData);
                             //  console.timeEnd("AJAX_Execution_Time:>TEMPLATE_REPORT_DATA");
                             
                                  
@@ -2123,7 +2150,7 @@ function call_dashboard_data(selectedReport_Id){
                             // 1. Set the immutable source data
                             pristineReportData = JSON.parse(JSON.stringify(pData.rows));
                     
-                                displayReportTable();
+                                displayReportTable('call_dashboard_data');
                             initializeControls();
                             loadDashboard(pData);
 
@@ -2231,7 +2258,7 @@ function getBaseColumnNames() {
 
 // Function to parse column name into col_name and temp_name
 function parseColumnName(fullColumnName) {
-    console.log('fullColumnName:>>>>>', fullColumnName);
+    // console.log('fullColumnName:>>>>>', fullColumnName);
 
         const index = fullColumnName.indexOf(' - ');
         let col_name = fullColumnName;
@@ -2252,7 +2279,7 @@ function parseColumnName(fullColumnName) {
  * Looks up the data type (e.g., 'number', 'string') from the global tableColumns array.
  */
 function findDataTypeFromTableColumns(colName, tempName) {
-        console.log('tableColumns>>>>>',tableColumns);
+        // console.log('tableColumns>>>>>',tableColumns);
     if (typeof tableColumns === 'undefined' || !Array.isArray(tableColumns)) {
         console.warn('tableColumns is not defined or is not an array.');
         return null;
@@ -2262,7 +2289,7 @@ function findDataTypeFromTableColumns(colName, tempName) {
     const lookupName = `${colName} - ${tempName}`;
 
     const columnMetadata = tableColumns.find(col => col.name === lookupName);
-    console.log('tableColumns:>>>>>>>>>>>',columnMetadata);
+    // console.log('tableColumns:>>>>>>>>>>>',columnMetadata);
     if (columnMetadata && columnMetadata.type) {
         // Convert to lowercase to be safe
         return columnMetadata.type.toLowerCase(); 
@@ -2290,7 +2317,7 @@ function showColumnPopup(columnName) {
     
    // const existingColumn = findColumnInJsonData(columnInfo.col_name, columnInfo.temp_name);
     const existingColumn = findColwithTemp(columnInfo.col_name, columnInfo.temp_name);
-    console.log('existingColumn:>>>>>>>',existingColumn);
+    // console.log('existingColumn:>>>>>>>',existingColumn);
     const aggregationGroup = document.getElementById('aggregation-group');
     const numericSelect = document.getElementById('numericAggregation');
     const dateSelect = document.getElementById('dateAggregation');
@@ -2460,7 +2487,7 @@ function handleSave() {
         existingColumn.visibility = selectedVisibility; 
         existingColumn.aggregation = selectedAggregation;
 
-        console.log('Updated column alias and visibility:', existingColumn);
+        // console.log('Updated column alias and visibility:', existingColumn);
     } else {
         // Add new column entry with alias and visibility
         jsondata_details.selectedColumns.push({
@@ -2475,11 +2502,11 @@ function handleSave() {
             hotel_id: '', 
             data_type: '' 
         });
-        console.log('Added new column with alias and visibility:', jsondata_details.selectedColumns[jsondata_details.selectedColumns.length - 1]);
+         console.log('Added new column with alias and visibility:', jsondata_details.selectedColumns[jsondata_details.selectedColumns.length - 1]);
     }
     
     // Log the updated JSON for verification
-    console.log('Updated jsondata_details:', jsondata_details);
+    // console.log('Updated jsondata_details:', jsondata_details);
     
     // Update the table header display - IMPORTANT: This function must now handle the red color logic
     updateTableHeaderDisplay(columnInfo.col_name, columnInfo.temp_name, newHeader, selectedVisibility);
@@ -2499,13 +2526,13 @@ function handleSave() {
         },
         {
             success: function(data) { 
-                console.log('AJAX Success:', data);
+                // console.log('AJAX Success:', data);
                 showSuccessMessage(`Column header updated to: ${newHeader} `);
                //  
                 
                 hideColumnPopup();
                 //loadDashboard(reporttblData);
-                 recalculateAllFormulas();
+                 //recalculateAllFormulas();
                  applyAggregations(); 
                 refreshTable();
                 updateCalculation();
@@ -2513,7 +2540,7 @@ function handleSave() {
                 
                 saveAllDataToJSON(); 
     
-                displayReportTable();
+                displayReportTable('handleSave');
                // refreshTable(); 
                    
                     
@@ -2619,9 +2646,9 @@ function applySimpleAggregations() {
 
 // Function to update the table header display
 function updateTableHeaderDisplay(col_name, temp_name, newAlias) {
-    console.log('col_name::>',col_name);
-    console.log('temp_name::>',temp_name);
-    console.log('newAlias::>',newAlias);
+    // console.log('col_name::>',col_name);
+    // console.log('temp_name::>',temp_name);
+    // console.log('newAlias::>',newAlias);
     const fullColumnName = `${col_name} - ${temp_name}`;
     const headers = document.querySelectorAll('#tableHeader th[data-full-name]');
     
@@ -2649,17 +2676,405 @@ function showSuccessMessage(message) {
 
 
 
-const CALCULATED_GROUP_NAME = 'Logical Column Group'; 
+const CALCULATED_GROUP_NAME = 'calc'; 
 
 
 
 
+// ====== POSITION MANAGEMENT FUNCTIONS ======
 
 
 
+// ====== DRAG AND DROP FUNCTIONS ======
+
+let draggedColumn = null;
+
+function enableColumnDragAndDrop() {
+    const tableHeader = document.getElementById('tableHeader');
+    const thElements = tableHeader.querySelectorAll('th:not(:first-child)'); // Exclude row number column
+    
+    thElements.forEach(th => {
+        th.setAttribute('draggable', 'true');
+        
+        th.addEventListener('dragstart', handleDragStartcol);
+        th.addEventListener('dragend', handleDragEndcol);
+        th.addEventListener('dragover', handleDragOvercol);
+        th.addEventListener('dragenter', handleDragEntercol);
+        th.addEventListener('dragleave', handleDragLeavecol);
+        th.addEventListener('drop', handleDropcol);
+    });
+}
+
+function handleDragStartcol(e) {
+    draggedColumn = this;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.outerHTML);
+    this.classList.add('dragging');
+    
+    // Store the original index
+    const headers = Array.from(document.querySelectorAll('#tableHeader th:not(:first-child)'));
+    this._dragIndex = headers.indexOf(this);
+}
+
+function handleDragEndcol(e) {
+    const thElements = document.querySelectorAll('#tableHeader th:not(:first-child)');
+    thElements.forEach(th => {
+        th.classList.remove('dragging', 'drag-over');
+    });
+    draggedColumn = null;
+}
+
+function handleDragOvercol(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    return false;
+}
+
+function handleDragEntercol(e) {
+    this.classList.add('drag-over');
+}
+
+function handleDragLeavecol(e) {
+    this.classList.remove('drag-over');
+}
+
+function handleDropcol(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (draggedColumn !== this && draggedColumn) {
+        const tableHeader = document.getElementById('tableHeader');
+        const tableBody = document.getElementById('tableBody');
+        
+        // Get all header cells (excluding row number)
+        const headers = Array.from(tableHeader.querySelectorAll('th:not(:first-child)'));
+        const draggedIndex = draggedColumn._dragIndex;
+        const targetIndex = headers.indexOf(this);
+        
+        // console.log(`Moving column from index ${draggedIndex} to ${targetIndex}`);
+        
+        if (draggedIndex !== targetIndex) {
+            // Reorder headers in DOM
+            if (draggedIndex < targetIndex) {
+                this.parentNode.insertBefore(draggedColumn, this.nextSibling);
+            } else {
+                this.parentNode.insertBefore(draggedColumn, this);
+            }
+            
+            // Reorder table body columns
+            reorderTableBodyColumns(draggedIndex, targetIndex);
+            
+            // Update positions in the column configuration
+            updateColumnPositionsAfterDrag();
+            
+            // Reorder the data columns in reporttblData
+            reorderDataColumns();
+            
+            // Update the table display
+            updateTableAfterReorder();
+        }
+    }
+    
+    this.classList.remove('drag-over');
+    return false;
+}
+
+function reorderTableBodyColumns(fromIndex, toIndex) {
+    const tableBody = document.getElementById('tableBody');
+    const rows = tableBody.querySelectorAll('tr');
+    
+    rows.forEach(row => {
+        const cells = Array.from(row.querySelectorAll('td:not(:first-child)'));
+        
+        if (cells.length > Math.max(fromIndex, toIndex)) {
+            const cellToMove = cells[fromIndex];
+            
+            if (fromIndex < toIndex) {
+                // Moving right
+                if (toIndex + 1 < cells.length) {
+                    row.insertBefore(cellToMove, cells[toIndex + 1]);
+                } else {
+                    // Moving to the end
+                    row.appendChild(cellToMove);
+                }
+            } else {
+                // Moving left
+                row.insertBefore(cellToMove, cells[toIndex]);
+            }
+        }
+    });
+}
+
+function updateColumnPositionsAfterDrag() {
+    // Get current header order
+    const tableHeader = document.getElementById('tableHeader');
+    const headers = Array.from(tableHeader.querySelectorAll('th:not(:first-child)'));
+    
+    // Ensure columnposition array exists
+    if (!report_expressions.columnposition) {
+        report_expressions.columnposition = [];
+    }
+    
+    // Clear existing positions
+    report_expressions.columnposition = [];
+    
+    // Update positions based on new order
+    headers.forEach((header, index) => {
+        const fullColumnName = header.getAttribute('data-full-name');
+        const baseColumnName = header.getAttribute('data-original-name');
+        const templateName = header.getAttribute('data-template-name');
+        
+        if (!fullColumnName) {
+            console.warn('Header missing data-full-name attribute', header);
+            return;
+        }
+        
+        report_expressions.columnposition.push({
+            fullColumnName: fullColumnName,
+            baseColumnName: baseColumnName,
+            templateName: templateName,
+            position: index
+        });
+    });
+    
+    // console.log('Updated column positions in columnposition:', report_expressions.columnposition);
+}
+
+function reorderDataColumns() {
+    if (!reporttblData.rows || reporttblData.rows.length === 0) return;
+    
+    // Get ordered column keys from current header order
+    const tableHeader = document.getElementById('tableHeader');
+    const headers = Array.from(tableHeader.querySelectorAll('th:not(:first-child)'));
+    const orderedKeys = headers.map(header => header.getAttribute('data-full-name'));
+    
+    // console.log('Reordering data columns to:', orderedKeys);
+    
+    // Reorder all rows in the data
+    reporttblData.rows = reporttblData.rows.map(row => {
+        const newRow = {};
+        orderedKeys.forEach(key => {
+            newRow[key] = row[key];
+        });
+        return newRow;
+    });
+}
+
+function updateTableAfterReorder() {
+    // Update any dependent functionality
+    addHeaderClickListeners();
+    loadConditionalFormattingBlocks();
+    
+    // Save the updated column order
+    saveColumnOrderToDatabase();
+    
+    // console.log('Table reorder completed');
+}
+
+// ====== POSITION MANAGEMENT FUNCTIONS ======
+
+// Add this function to parse report_expressions if it's a string
+function getParsedReportExpressions() {
+    if (typeof report_expressions === 'string') {
+        try {
+            return JSON.parse(report_expressions);
+        } catch (e) {
+            console.error('Error parsing report_expressions:', e);
+            // Return a default structure if parsing fails
+            return {
+                columnConfiguration: {
+                    hotel: "My Hotel",
+                    template: "All",
+                    selectedColumns: [],
+                    columnOrder: []
+                },
+                columnMetadata: [],
+                formulas: {},
+                filters: {},
+                conditionalFormatting: {}
+            };
+        }
+    }
+    return report_expressions;
+}
+
+function initializeColumnPositions() {
+    // Parse and ensure the structure exists
+    report_expressions = getParsedReportExpressions();
+    
+    // Check if we already have positions in columnposition
+    if (report_expressions.columnposition && report_expressions.columnposition.length > 0) {
+        // console.log('Column positions already exist in columnposition, skipping initialization');
+        return; // Don't overwrite existing positions
+    }
+    
+    // If not, check if we have positions in columnConfiguration.columnOrder
+    if (report_expressions.columnConfiguration && 
+        report_expressions.columnConfiguration.columnOrder && 
+        report_expressions.columnConfiguration.columnOrder.length > 0) {
+        // console.log('Column positions exist in columnConfiguration.columnOrder, moving to columnposition');
+        // Move the positions to columnposition for consistency
+        report_expressions.columnposition = report_expressions.columnConfiguration.columnOrder;
+        return;
+    }
+    
+    // Only initialize if we don't have positions anywhere
+    const allColumnKeys = Object.keys(reporttblData.rows[0] || {});
+    
+    // Initialize positions in columnposition array
+    report_expressions.columnposition = allColumnKeys.map((fullColumnName, index) => {
+        let baseCol = fullColumnName;
+        let template = '';
+        
+        const firstDashIndex = fullColumnName.indexOf(' - ');
+        if (firstDashIndex !== -1) {
+            baseCol = fullColumnName.substring(0, firstDashIndex);
+            template = fullColumnName.substring(firstDashIndex + 3);
+        }
+        
+        if (!template) {
+            baseCol = fullColumnName;
+            template = CALCULATED_GROUP_NAME;
+        }
+        
+        return {
+            fullColumnName: fullColumnName,
+            baseColumnName: baseCol,
+            templateName: template,
+            position: index
+        };
+    });
+    
+    // console.log('Initialized column positions in columnposition:', report_expressions.columnposition);
+}
 
 
-function displayReportTable() {
+function getOrderedColumns() {
+    // Ensure report_expressions is parsed
+    report_expressions = getParsedReportExpressions();
+    
+    // console.log('Looking for column positions in:', report_expressions);
+    
+    // Check if we have saved column positions in columnposition array
+    let savedColumnOrder = [];
+    if (report_expressions.columnposition && report_expressions.columnposition.length > 0) {
+        // console.log('Found column positions in columnposition array');
+        savedColumnOrder = report_expressions.columnposition;
+    } 
+    // Also check in columnConfiguration.columnOrder for backward compatibility
+    else if (report_expressions.columnConfiguration && 
+             report_expressions.columnConfiguration.columnOrder && 
+             report_expressions.columnConfiguration.columnOrder.length > 0) {
+        // console.log('Found column positions in columnConfiguration.columnOrder');
+        savedColumnOrder = report_expressions.columnConfiguration.columnOrder;
+    }
+    
+    // If no saved positions found, use default order
+    if (savedColumnOrder.length === 0) {
+        // console.log('No column order found, using default order');
+        const allColumnKeys = Object.keys(reporttblData.rows[0] || {});
+        return allColumnKeys.map((fullColumnName, index) => {
+            let baseCol = fullColumnName;
+            let template = '';
+            
+            const firstDashIndex = fullColumnName.indexOf(' - ');
+            if (firstDashIndex !== -1) {
+                baseCol = fullColumnName.substring(0, firstDashIndex);
+                template = fullColumnName.substring(firstDashIndex + 3);
+            }
+            
+            if (!template) {
+                baseCol = fullColumnName;
+                template = CALCULATED_GROUP_NAME;
+            }
+            
+            return {
+                fullColumnName: fullColumnName,
+                baseColumnName: baseCol,
+                templateName: template,
+                position: index
+            };
+        });
+    }
+    
+    // We have saved positions - use them!
+    const allColumnKeys = Object.keys(reporttblData.rows[0] || {});
+    
+    // console.log('Using saved column order:', savedColumnOrder);
+    // console.log('All available columns:', allColumnKeys);
+    
+    // Create a map of saved positions for quick lookup
+    const savedPositionMap = new Map();
+    savedColumnOrder.forEach(col => {
+        savedPositionMap.set(col.fullColumnName, col);
+    });
+    
+    // Separate columns into two groups:
+    // 1. Columns with saved positions
+    // 2. New columns without saved positions (added at the end)
+    const columnsWithPositions = [];
+    const columnsWithoutPositions = [];
+    
+    allColumnKeys.forEach(fullColumnName => {
+        let baseCol = fullColumnName;
+        let template = '';
+        
+        const firstDashIndex = fullColumnName.indexOf(' - ');
+        if (firstDashIndex !== -1) {
+            baseCol = fullColumnName.substring(0, firstDashIndex);
+            template = fullColumnName.substring(firstDashIndex + 3);
+        }
+        
+        if (!template) {
+            baseCol = fullColumnName;
+            template = CALCULATED_GROUP_NAME;
+        }
+        
+        const columnInfo = {
+            fullColumnName: fullColumnName,
+            baseColumnName: baseCol,
+            templateName: template
+        };
+        
+        // Check if this column has a saved position
+        const savedColumn = savedPositionMap.get(fullColumnName);
+        if (savedColumn) {
+            // Use the saved position
+            columnInfo.position = savedColumn.position;
+            columnsWithPositions.push(columnInfo);
+        } else {
+            // New column - will be added at the end
+            columnsWithoutPositions.push(columnInfo);
+        }
+    });
+    
+    // Sort columns with saved positions by their position
+    columnsWithPositions.sort((a, b) => a.position - b.position);
+    
+    // Add new columns at the end with sequential positions
+    let nextPosition = columnsWithPositions.length > 0 
+        ? Math.max(...columnsWithPositions.map(col => col.position)) + 1 
+        : 0;
+    
+    columnsWithoutPositions.forEach(columnInfo => {
+        columnInfo.position = nextPosition++;
+        columnsWithPositions.push(columnInfo);
+    });
+    
+    // console.log('Final ordered columns:', columnsWithPositions);
+    return columnsWithPositions;
+}
+
+
+function saveColumnOrderToDatabase() {
+    // console.log('Column order updated:', report_expressions.columnposition);
+    saveAllDataToJSON();
+  
+}
+
+// ====== MODIFIED DISPLAY REPORT TABLE ======
+function displayReportTable(callfrom) {
+ //console.log('displayReportTable reporttblData:>>>', callfrom, reporttblData);
     const tableHeader = document.getElementById('tableHeader');
     const tableBody = document.getElementById('tableBody');
     const noDataMessage = document.getElementById('noDataMessage');
@@ -2673,13 +3088,17 @@ function displayReportTable() {
         noDataMessage.style.display = 'block';
         return;
     }
-    console.log('reporttblData:::>>>',reporttblData);
+
+    // Initialize/update column positions (but don't overwrite existing ones)
+    initializeColumnPositions();
+    
     // Show table and hide no data message
     document.getElementById('reporttblDataTable').style.display = 'table';
     noDataMessage.style.display = 'none';
     
-    // Get all unique column names from the data (flattened approach)
-    const allColumnKeys = Object.keys(reporttblData.rows[0] || {});
+    // Get ordered columns based on position - THIS IS THE KEY FUNCTION
+    const orderedColumns = getOrderedColumns();
+    // console.log('Final columns order to display:', orderedColumns);
     
     // Create header row with column names
     const columnHeaderRow = document.createElement('tr');
@@ -2689,29 +3108,15 @@ function displayReportTable() {
     rowNumTh.textContent = '#';
     columnHeaderRow.appendChild(rowNumTh);
     
-    // Create header cells for all columns
-    allColumnKeys.forEach(fullColumnName => {
+    // Create header cells in position order
+    orderedColumns.forEach(columnInfo => {
+        const fullColumnName = columnInfo.fullColumnName;
         const th = document.createElement('th');
         
-        // Extract base column name (everything before first " - ")
-        let baseCol = fullColumnName;
-        let template = '';
-        
-        // Find the first occurrence of " - " to split column name from template
-        const firstDashIndex = fullColumnName.indexOf(' - ');
-        if (firstDashIndex !== -1) {
-            baseCol = fullColumnName.substring(0, firstDashIndex);
-            template = fullColumnName.substring(firstDashIndex + 3); // +3 to skip " - "
-        }
-        
-        // For calculated columns (no template), use the full name as base
-        if (!template) {
-            baseCol = fullColumnName;
-            template = CALCULATED_GROUP_NAME;
-        }
+        const baseCol = columnInfo.baseColumnName;
+        const template = columnInfo.templateName;
         
         // Find the existing column configuration
-     //   let existingColumn = findColumnInJsonData(baseCol, template);
         let existingColumn = findColwithTemp(baseCol, template);
         
         let displayName = baseCol;
@@ -2726,9 +3131,9 @@ function displayReportTable() {
         th.setAttribute('data-full-name', fullColumnName);
         th.setAttribute('data-original-name', baseCol);
         th.setAttribute('data-template-name', template);
+        th.setAttribute('data-position', columnInfo.position);
         
         // Apply red color class based on visibility
-       // console.log('existingColumn:::>>>>>>>',existingColumn); 
         const isHidden = existingColumn && existingColumn.visibility === 'hide';
         if (isHidden) {
             th.classList.add('hide-prompt');
@@ -2742,84 +3147,120 @@ function displayReportTable() {
     
     tableHeader.appendChild(columnHeaderRow);
     
-    // Create table rows with data
-        reporttblData.rows.forEach((row, index) => {
-            const tr = document.createElement('tr');
-            
-            // Row number cell
-            const rowNumberCell = document.createElement('td');
-            rowNumberCell.textContent = index + 1;
-            rowNumberCell.className = 'data-cell';
-            tr.appendChild(rowNumberCell);
-            
-            // Data cells for all columns
-            allColumnKeys.forEach(fullColumnName => {
-                const td = document.createElement('td');
-                let displayValue = row[fullColumnName];
+    // Create table rows with data in position order
+    reporttblData.rows.forEach((row, index) => {
+        const tr = document.createElement('tr');
+        
+        // Row number cell
+        const rowNumberCell = document.createElement('td');
+        rowNumberCell.textContent = index + 1;
+        rowNumberCell.className = 'data-cell';
+        tr.appendChild(rowNumberCell);
+        
+        // Data cells in position order
+        orderedColumns.forEach(columnInfo => {
+            const fullColumnName = columnInfo.fullColumnName;
+            const td = document.createElement('td');
+            let displayValue = row[fullColumnName];
 
-                // Extract base column name and template for finding column config
-                let baseCol = fullColumnName;
-                let template = '';
-                
-                const firstDashIndex = fullColumnName.indexOf(' - ');
-                if (firstDashIndex !== -1) {
-                    baseCol = fullColumnName.substring(0, firstDashIndex);
-                    template = fullColumnName.substring(firstDashIndex + 3);
-                }
-                
-                if (!template) {
-                    baseCol = fullColumnName;
-                    template = CALCULATED_GROUP_NAME;
-                } 
-                // Find the existing column configuration
-               // let existingColumn = findColumnInJsonData(baseCol, template);
-                let existingColumn = findColwithTemp(baseCol, template);
-                
-                // Format dates
-                if (existingColumn && existingColumn.data_type === 'date' && displayValue) {
-                    displayValue = formatDate(displayValue);
-                }
+            const baseCol = columnInfo.baseColumnName;
+            const template = columnInfo.templateName;
+            
+            // Find the existing column configuration
+            let existingColumn = findColwithTemp(baseCol, template);
+            
+            // Format dates
+            if (existingColumn && existingColumn.data_type === 'date' && displayValue) {
+                displayValue = formatDate(displayValue);
+            }
 
-                // Apply conditional formatting
-                const rules = conditionalFormattingRules[fullColumnName];
-                 
-                if (rules && rules.length > 0) {
-                    for (const rule of rules) {
-                        if (evaluateFormatterRule(rule.expression, row)) {
-                            td.style.backgroundColor = rule.color;
-                            td.classList.add('conditional-format');
-                            break;
-                        }
+            // Apply conditional formatting
+            const rules = conditionalFormattingRules[fullColumnName];
+             
+            if (rules && rules.length > 0) {
+                for (const rule of rules) {
+                    if (evaluateFormatterRule(rule.expression, row)) {
+                        td.style.backgroundColor = rule.color;
+                        td.classList.add('conditional-format');
+                        break;
                     }
                 }
+            }
 
-                // Round number fields only based on existingColumn data_type or calculated columns
-                if (existingColumn && existingColumn.data_type === 'number') {
-                    const num = typeof displayValue === 'number' ? displayValue : parseFloat(displayValue);
-                    if (!isNaN(num) && isFinite(num)) {
-                        displayValue = num.toFixed(2);
-                    }
-                } else if (template === CALCULATED_GROUP_NAME) {
-                    const num = typeof displayValue === 'number' ? displayValue : parseFloat(displayValue);
-                    if (!isNaN(num) && isFinite(num)) {
-                        displayValue = num.toFixed(2);
-                    }
-                } else if (displayValue === null || displayValue === undefined || displayValue === '') {
-                    displayValue = '-';
+            // Round number fields only based on existingColumn data_type or calculated columns
+            if (existingColumn && existingColumn.data_type === 'number') {
+                const num = typeof displayValue === 'number' ? displayValue : parseFloat(displayValue);
+                if (!isNaN(num) && isFinite(num)) {
+                    displayValue = num.toFixed(2);
                 }
-                
-                td.textContent = displayValue;
-                td.className = 'data-cell';
-                tr.appendChild(td);
-            });
+            } else if (template === CALCULATED_GROUP_NAME) {
+                const num = typeof displayValue === 'number' ? displayValue : parseFloat(displayValue);
+                if (!isNaN(num) && isFinite(num)) {
+                    displayValue = num.toFixed(2);
+                }
+            } else if (displayValue === null || displayValue === undefined || displayValue === '') {
+                displayValue = '-';
+            }
             
-            tableBody.appendChild(tr);
+            td.textContent = displayValue;
+            td.className = 'data-cell';
+            tr.appendChild(td);
         });
+        
+        tableBody.appendChild(tr);
+    });
     
     // Add click event listeners to column headers
     addHeaderClickListeners(); 
     loadConditionalFormattingBlocks();
+    
+    // Enable drag and drop after table is created
+    enableColumnDragAndDrop();
+    pristineReportData = JSON.parse(JSON.stringify(reporttblData.rows));
 }
+// ====== CSS STYLES ======
+
+const dragDropStyles = `
+    th[draggable="true"] {
+        cursor: grab;
+        user-select: none;
+        -webkit-user-drag: element;
+    }
+    
+    th[draggable="true"]:active {
+        cursor: grabbing;
+    }
+    
+    th.dragging {
+        opacity: 0.5;
+        background-color: #f0f0f0;
+    }
+    
+    th.drag-over {
+        border: 2px dashed #007bff;
+        background-color: #e3f2fd;
+    }
+    
+    th[draggable="true"]:hover {
+        background-color: #252627;
+    }
+`;
+
+// Inject the styles
+const styleSheet = document.createElement('style');
+styleSheet.textContent = dragDropStyles;
+document.head.appendChild(styleSheet);
+
+   
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2845,6 +3286,443 @@ function formatDate(dateString) {
     }
 }
 
+function populateColumnLOV(targetSelectId, columns, includeOnlyNumeric = false) {
+    const selectElement = document.getElementById(targetSelectId);
+    
+    if (!selectElement) {
+        console.error(`Element with ID "${targetSelectId}" not found`);
+        return;
+    }
+    
+    // Clear existing options
+    selectElement.innerHTML = '<option value="">Select Column</option>';
+    
+    // Filter columns if needed
+    const filteredColumns = includeOnlyNumeric 
+        ? columns.filter(column => column.type === 'number')
+        : columns;
+    
+    // Populate options
+    filteredColumns.forEach(column => {
+        // Create a shorter name for display clarity
+        const shortName = column.name.split(' - ')[0].replace(/_/g, ' ');
+        
+        const option = document.createElement('option');
+        option.value = column.name;
+        option.textContent = shortName;
+        selectElement.appendChild(option);
+    });
+}
+
+
+
+
+// Add change event to operator-lovfilter
+const operatorLovFilter = document.getElementById('operator-lovfilter');
+
+if (operatorLovFilter) {
+    operatorLovFilter.addEventListener('change', function() {
+        const selectedValue = this.value;
+        
+        // Remove any existing dynamic elements
+        const existingRange = document.getElementById('range-container');
+        const existingDays = document.getElementById('days-container');
+        if (existingRange) existingRange.remove();
+        if (existingDays) existingDays.remove();
+        
+        // Handle different operators
+        if (selectedValue === 'Range') {
+            // Create container with forced new line
+            const rangeContainer = document.createElement('div');
+           rangeContainer.id = 'range-container';
+            rangeContainer.style.cssText = `
+                margin-top: 10px;
+                width: 100%;
+                background-color: rgb(37 37 37);
+                color: white;
+                padding: 10px;
+                border-radius: 2px;
+                display: flex;
+                gap: 10px;       /* space between From/To */
+                align-items: flex-start;
+            `;
+                        
+            // From field
+            const fromDiv = document.createElement('div');
+            fromDiv.style.cssText = `
+    display: flex;
+    flex-direction: column;
+`;
+            
+            const fromLabel = document.createElement('label');
+            //fromLabel.textContent = 'From: ';
+            // fromLabel.style.cssText = `
+            //     margin-right: 2px;
+            //     color: #e2e8f0;
+            //     font-weight: 500;
+            // `;
+            
+            const fromInput = document.createElement('input');
+            fromInput.type = 'date';
+            fromInput.id = 'range-from';
+            fromInput.style.cssText = `
+                padding: 2px 5px;
+                display: block;
+                clear: both;
+                margin-top: 1px;
+                width: 100px;
+                background-color: rgb(37 37 37);
+                color: white;
+                border: 1px solid #718096;
+                border-radius: 4px;
+            `;
+            
+          //  fromDiv.appendChild(fromLabel);
+           // fromDiv.appendChild(document.createElement('br'));
+            fromDiv.appendChild(fromInput);
+            
+            // To field
+            const toDiv = document.createElement('div');
+            toDiv.style.cssText = `
+    display: flex;
+    flex-direction: column;
+`;
+            
+            const toLabel = document.createElement('label');
+            toLabel.textContent = ' - ';
+            // toLabel.style.cssText = `
+            //     margin-right: 2px;
+            //     color: #e2e8f0;
+            //     font-weight: 500;
+            // `;
+            
+            const toInput = document.createElement('input');
+           // toInput.textContent = ' - ';
+            toInput.type = 'date';
+            toInput.id = 'range-to';
+            toInput.style.cssText = `
+                padding: 2px 5px;
+                display: block;
+                clear: both;
+                margin-top: 1px;
+                width: 100px;
+                background-color: rgb(37 37 37);
+                color: white;
+                border: 1px solid #718096;
+                border-radius: 4px;
+            `;
+            
+          // toDiv.appendChild(toLabel);
+          //  toDiv.appendChild(document.createElement('br'));
+            toDiv.appendChild(toInput);
+            
+            // Append elements
+            rangeContainer.appendChild(fromDiv);
+            rangeContainer.appendChild(toDiv);
+            
+            // Add after operator dropdown with forced break
+            const br = document.createElement('br');
+            br.style.cssText = 'clear: both; display: block;';
+            
+            const parent = operatorLovFilter.parentNode;
+            parent.insertBefore(br, operatorLovFilter.nextSibling);
+            parent.insertBefore(rangeContainer, br.nextSibling);
+            
+        } else if (selectedValue === 'Day_Of_Week') {
+            // Create days container with forced new line
+            const daysContainer = document.createElement('div');
+            daysContainer.id = 'days-container';
+            daysContainer.style.cssText = `
+                margin-top: 10px;
+                clear: both;
+                display: block;
+                width: 100%;
+                float: left;
+                background-color: rgb(37 37 37);
+                color: white;
+                padding: 15px;
+                border-radius: 6px;
+                min-width: 180px;
+            `;
+            
+            const daysLabel = document.createElement('div');
+            daysLabel.textContent = 'Select Days:';
+            daysLabel.style.cssText = `
+                margin-bottom: 10px;
+                font-weight: bold;
+                color: #e2e8f0;
+                font-size: 14px;
+            `;
+            
+            // Create container for checkbox dropdown
+            const dropdownContainer = document.createElement('div');
+            dropdownContainer.style.cssText = `
+                position: relative;
+                display: inline-block;
+                width: 100%;
+            `;
+            
+            // Create a button to trigger dropdown
+            const dropdownButton = document.createElement('button');
+            dropdownButton.type = 'button';
+            dropdownButton.id = 'days-dropdown-button';
+            dropdownButton.textContent = 'Select Days';
+            dropdownButton.style.cssText = `
+                padding: 10px 15px;
+                width: 100%;
+                text-align: left;
+                background-color: rgb(37 37 37);
+                color: white;
+                border: 1px solid #718096;
+                border-radius: 4px;
+                cursor: pointer;
+                display: block;
+                clear: both;
+                font-size: 14px;
+                position: relative;
+            `;
+            
+            // Add dropdown arrow
+            const arrowSpan = document.createElement('span');
+            arrowSpan.textContent = '▼';
+            arrowSpan.style.cssText = `
+                position: absolute;
+                right: 15px;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: 12px;
+                color: #cbd5e0;
+            `;
+            dropdownButton.appendChild(arrowSpan);
+            
+            // Create dropdown content (hidden by default)
+            const dropdownContent = document.createElement('div');
+            dropdownContent.id = 'days-dropdown-content';
+            dropdownContent.style.cssText = `
+                display: none;
+                position: absolute;
+                background-color: rgb(37 37 37);
+                width: 100%;
+                border: 1px solid #718096;
+                border-radius: 4px;
+                padding: 15px;
+                z-index: 1000;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                margin-top: 5px;
+            `;
+            
+            // Days options as checkboxes
+            const days = [
+                { value: 'Mon', text: 'Monday' },
+                { value: 'Tue', text: 'Tuesday' },
+                { value: 'Wed', text: 'Wednesday' },
+                { value: 'Thu', text: 'Thursday' },
+                { value: 'Fri', text: 'Friday' },
+                { value: 'Sat', text: 'Saturday' },
+                { value: 'Sun', text: 'Sunday' }
+            ];
+            
+            days.forEach(day => {
+                const checkboxDiv = document.createElement('div');
+                checkboxDiv.style.cssText = `
+                    margin-bottom: 8px;
+                    display: flex;
+                    align-items: center;
+                    padding: 5px;
+                    border-radius: 3px;
+                    transition: background-color 0.2s;
+                `;
+                checkboxDiv.addEventListener('mouseover', () => {
+                    checkboxDiv.style.backgroundColor = '#4a5568';
+                });
+                checkboxDiv.addEventListener('mouseout', () => {
+                    checkboxDiv.style.backgroundColor = 'transparent';
+                });
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `day-${day.value}`;
+                checkbox.name = 'days';
+                checkbox.value = day.value;
+                checkbox.className = 'day-checkbox';
+                checkbox.style.cssText = `
+                    margin-right: 10px;
+                    width: 16px;
+                    height: 16px;
+                    cursor: pointer;
+                    accent-color: #4299e1;
+                `;
+                
+                // Close dropdown on checkbox click
+                checkbox.addEventListener('click', () => {
+    updateButtonText();   // update text only
+});
+                
+                const label = document.createElement('label');
+                label.htmlFor = `day-${day.value}`;
+                label.textContent = day.text;
+                label.style.cssText = `
+                    cursor: pointer;
+                    color: #e2e8f0;
+                    font-size: 14px;
+                    flex-grow: 1;
+                `;
+                
+                checkboxDiv.appendChild(checkbox);
+                checkboxDiv.appendChild(label);
+                dropdownContent.appendChild(checkboxDiv);
+            });
+            
+            // Add select all/none buttons
+            const buttonDiv = document.createElement('div');
+            buttonDiv.style.cssText = `
+                margin-top: 15px;
+                display: flex;
+                gap: 10px;
+                border-top: 1px solid #4a5568;
+                padding-top: 15px;
+            `;
+            
+            const selectAllBtn = document.createElement('button');
+            selectAllBtn.type = 'button';
+            selectAllBtn.textContent = 'All';
+            selectAllBtn.style.cssText = `
+                padding: 6px 12px;
+                font-size: 13px;
+                background: #38a169;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                flex: 1;
+                transition: background-color 0.2s;
+            `;
+            selectAllBtn.onmouseover = () => selectAllBtn.style.backgroundColor = '#2f855a';
+            selectAllBtn.onmouseout = () => selectAllBtn.style.backgroundColor = '#38a169';
+            selectAllBtn.onclick = () => {
+                dropdownContent.querySelectorAll('.day-checkbox').forEach(cb => cb.checked = true);
+                dropdownContent.style.display = 'none';
+                updateButtonText();
+            };
+            
+            const selectNoneBtn = document.createElement('button');
+            selectNoneBtn.type = 'button';
+            selectNoneBtn.textContent = 'None';
+            selectNoneBtn.style.cssText = `
+                padding: 6px 12px;
+                font-size: 13px;
+                background: #e53e3e;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                flex: 1;
+                transition: background-color 0.2s;
+            `;
+            selectNoneBtn.onmouseover = () => selectNoneBtn.style.backgroundColor = '#c53030';
+            selectNoneBtn.onmouseout = () => selectNoneBtn.style.backgroundColor = '#e53e3e';
+            selectNoneBtn.onclick = () => {
+                dropdownContent.querySelectorAll('.day-checkbox').forEach(cb => cb.checked = false);
+                dropdownContent.style.display = 'none';
+                updateButtonText();
+            };
+            
+            buttonDiv.appendChild(selectAllBtn);
+            buttonDiv.appendChild(selectNoneBtn);
+            dropdownContent.appendChild(buttonDiv);
+            
+            // Function to update button text based on selection
+            function updateButtonText() {
+                const selected = Array.from(dropdownContent.querySelectorAll('.day-checkbox:checked'))
+                    .map(cb => cb.value);
+                
+                if (selected.length === 0) {
+                    dropdownButton.textContent = 'Select Days';
+                } else if (selected.length === 7) {
+                    dropdownButton.textContent = 'All Days';
+                } else {
+                    const dayNames = selected.map(day => {
+                        const dayMap = {
+                            'Mon': 'Mon', 'Tue': 'Tue', 'Wed': 'Wed', 
+                            'Thu': 'Thu', 'Fri': 'Fri', 'Sat': 'Sat', 'Sun': 'Sun'
+                        };
+                        return dayMap[day];
+                    });
+                    dropdownButton.textContent = dayNames.join(', ');
+                }
+                
+                // Re-add arrow after updating text
+                dropdownButton.appendChild(arrowSpan);
+            }
+            
+            // Toggle dropdown visibility
+            dropdownButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                dropdownContent.style.display = 
+                    dropdownContent.style.display === 'block' ? 'none' : 'block';
+            });
+            
+            // Close dropdown when clicking outside anywhere
+            function closeDropdown() {
+                dropdownContent.style.display = 'none';
+            }
+            
+            // Don't close when clicking inside dropdown
+            dropdownContent.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+            
+            // Add global click listener to close dropdown
+            document.addEventListener('click', closeDropdown);
+            
+            // Clean up listener when element is removed
+            daysContainer.addEventListener('DOMNodeRemoved', () => {
+                document.removeEventListener('click', closeDropdown);
+            });
+            
+            // Assemble dropdown
+            dropdownContainer.appendChild(dropdownButton);
+            dropdownContainer.appendChild(dropdownContent);
+            
+            // Append elements
+            //daysContainer.appendChild(daysLabel);
+            daysContainer.appendChild(dropdownContainer);
+            
+            // Add after operator dropdown with forced break
+            const br = document.createElement('br');
+            br.style.cssText = 'clear: both; display: block;';
+            
+            const parent = operatorLovFilter.parentNode;
+            parent.insertBefore(br, operatorLovFilter.nextSibling);
+            parent.insertBefore(daysContainer, br.nextSibling);
+            
+        } 
+        // For "All" - do nothing, just remove any existing elements
+    });
+    
+    // Initialize if there's already a value
+    if (operatorLovFilter.value) {
+        operatorLovFilter.dispatchEvent(new Event('change'));
+    }
+}
+let selectedDays = [];
+// Helper function to get selected days
+function getSelectedDays() {
+    selectedDays = [];
+    document.querySelectorAll('.day-checkbox:checked').forEach(checkbox => {
+        selectedDays.push(checkbox.value);
+    });
+    return selectedDays;
+}
+
+
+
+
+
+
+
+
+
 let originalReportData = null; // Store original data for clearing filters
 
 let tableColumns ; // Use the explicit object
@@ -2855,36 +3733,10 @@ let currentFormulaName = '';
  
 function initializeControls() {
 
-        
-        
-   
-    const columnLOV = document.getElementById('column-lov');
-    
-    // NOTE: Removed const filterColumn = document.getElementById('filter-column'); 
+    populateColumnLOV('column-lov', tableColumns, false);
+
  
-    // NOTE: Removed filterColumn.innerHTML = ''; (This was the failing line)
-    columnLOV.innerHTML = '<option value="">Select Column</option>';
-    
-    // Use the explicit tableColumns list
-    tableColumns.forEach(column => {
-        // Create a shorter name for display clarity
-        const shortName = column.name.split(' - ')[0].replace(/_/g, ' '); 
-        
-        // 1. Formula Builder LOV (All Columns)
-        const lovOption = document.createElement('option');
-        lovOption.value = column.name;
-        lovOption.textContent = shortName;
-        columnLOV.appendChild(lovOption);
-
-        // 2. Column Operations (Numeric Columns Only)
-        if (column.type === 'number') {
-            const opOption = document.createElement('option');
-            opOption.value = column.name;
-            opOption.textContent = shortName;
-        }
-
-        // NOTE: Removed the logic that populated the old filter dropdown here.
-    });
+    populateColumnLOV('column-lovfilter', tableColumns, false);
     
     // Load saved formulas (kept here for control initialization)
     // NOTE: Ensure loadSavedFormulas() is defined elsewhere.
@@ -2928,7 +3780,7 @@ function addToFilter() {
     const column = document.getElementById('filter-column-lov').value;
     const operator = document.getElementById('filter-operator-lov').value;
     const preview = document.getElementById('filter-preview');
-    
+    console.log('addToFilter',column);
     // The column LOV already adds brackets []
     if (column) {
         // Replace placeholder VALUE if operator is for string functions
@@ -2939,16 +3791,76 @@ function addToFilter() {
         preview.value += ` ${operator} `; 
     }
 }
+
 function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
  
+
+ function replaceDateRangeExpressions(expression, row) {
+    if (!expression) return expression;
+    
+    // --- Pattern 1: [Column] between Start and End ---
+    // Match: [column name or alias] between [date] and [date]
+    // Capture Groups: 1=Column, 2=Start Date, 3=End Date
+    let betweenPattern = /\[(.*?)\]\s*between\s*(.*?)\s*and\s*(.*?)$/i;
+
+    // --- Pattern 2: [Column] DATE_RANGE (Start, End) ---
+    // Match: [column name or alias] DATE_RANGE (date, date)
+    let rangePattern = /\[(.*?)\]\s*DATE_RANGE\s*\((.*?)\)/i;
+    
+    let translatedExpression = expression;
+
+    // A. Handle 'between' pattern
+    translatedExpression = translatedExpression.replace(betweenPattern, (match, fullColumn, startStr, endStr) => {
+        // Remove spaces and quotes from dates for safer use in JS string
+        const cleanStart = startStr.trim().replace(/['"]/g, '');
+        const cleanEnd = endStr.trim().replace(/['"]/g, '');
+        const columnRef = `[${fullColumn.trim()}]`;
+
+        // The date value for 'fullColumn' will be substituted later by replaceColumnOccurrences.
+        // We must translate the dates into milliseconds for comparison, but keep the column reference.
+        // NOTE: We wrap the columnRef in new Date() and getTime() for date evaluation.
+        // This is complex because we need to parse the dates now, but substitute the column value later.
+        
+        // This translation assumes that replaceColumnOccurrences will substitute columnRef with a string date.
+        
+        // To safely handle date comparison in eval(), we must convert the date strings to a consistent format (like YYYY-MM-DD)
+        // AND convert them to milliseconds within the evaluated string.
+        
+        // Let's assume the column substitution (STEP 1) provides the correct row date as a quoted string, e.g., "2025-10-06".
+        
+        // Correct JS structure for: [DATE] >= StartDate && [DATE] <= EndDate
+        // We need to use new Date() and getTime() on all parts.
+        
+        // The column reference [X] will be replaced with a quoted string "YYYY-MM-DD" by STEP 1.
+        // We cannot use row[] here, so we must rely on the substituted value.
+        
+        // --- This is the key translation step ---
+        // (new Date([DATE_VALUE]).getTime()) >= (new Date('Start Date').getTime()) && (new Date([DATE_VALUE]).getTime()) <= (new Date('End Date').getTime())
+        
+        return `((new Date(${columnRef}).getTime()) >= (new Date('${cleanStart}').getTime()) && (new Date(${columnRef}).getTime()) <= (new Date('${cleanEnd}').setHours(23, 59, 59, 999)))`;
+    });
+    
+    // B. Handle 'DATE_RANGE' pattern (Similar translation)
+    translatedExpression = translatedExpression.replace(rangePattern, (match, fullColumn, rangeStr) => {
+        const [startStr, endStr] = rangeStr.split(',').map(s => s.trim().replace(/['"]/g, ''));
+        const columnRef = `[${fullColumn.trim()}]`;
+
+        if (!startStr || !endStr) return 'false';
+        
+        return `((new Date(${columnRef}).getTime()) >= (new Date('${startStr}').getTime()) && (new Date(${columnRef}).getTime()) <= (new Date('${endStr}').setHours(23, 59, 59, 999)))`;
+    });
+
+    return translatedExpression;
+}
+
 function loadConfigFromJSON(configData) {
     if (!configData || !configData.formulas || !configData.filters) {
         console.warn("No valid configuration data provided for loading formulas/filters.");
         return;
     }
-
+    console.log('loadConfigFromJSON call:>>>');
     // 1. Load Formulas and Filters into global memory
     Object.assign(savedFormulas, configData.formulas);
     Object.assign(savedFilters, configData.filters);
@@ -2975,75 +3887,97 @@ function loadConfigFromJSON(configData) {
             }
         });
     }
-
+    console.log('savedFormulas:>>>',savedFormulas);
     // 3. Apply Formulas to the current data set (reporttblData.rows)
     for (const [calcName, formulaObj] of Object.entries(savedFormulas)) {
-        // Handle both formats: string (old) and object (new)
-        let formulaString;
-        
-        if (typeof formulaObj === 'string') {
-            formulaString = formulaObj;
-        } else if (formulaObj && typeof formulaObj.formula === 'string') {
-            formulaString = formulaObj.formula;
-        } else {
-            console.warn(`Invalid formula format for ${calcName}:`, formulaObj);
-            continue;
-        }
-        
-        reporttblData.rows.forEach(row => {
-            let calculatedFormula = formulaString;
-            
-            // a. Substitute column names with values
-            tableColumns.forEach(col => {
-                // Check for column name with and without brackets
-                const patterns = [
-                    `\\[${escapeRegExp(col.name)}\\]`, // [COLUMN_NAME]
-                    escapeRegExp(col.name)             // COLUMN_NAME
-                ];
-                
-                patterns.forEach(pattern => {
-                    const regex = new RegExp(pattern, 'g');
-                    if (regex.test(calculatedFormula)) {
-                       // const cellValue = parseFloat(row[col.name]) || 0;
-                        // let rawValue = row[col.name].trim();
-                         let rawValue = row[col.name];
+    // Handle both formats: string (old) and object (new)
+    let formulaString = "";
+    let filterString = "";
 
-                            // Trim ONLY if it's a string
-                            if (typeof rawValue === 'string') {
-                                rawValue = rawValue.trim();
-                            }
-                                                    
-                        if(rawValue === null || rawValue === ""){
-                            rawValue = 0;
-                        }
-                         console.log('rawValue:>>>',rawValue);
-                        // If value is NOT a number → use raw string & SKIP formula
-                        if (rawValue !== null && rawValue !== "" && isNaN(rawValue)) {
-                            row[calcName] = rawValue;   // Example: "Sold Out"
-                            return;                      // Skip formula for this row
-                        } 
-
-                        const cellValue = parseFloat(rawValue);
-                        calculatedFormula = calculatedFormula.replace(regex, cellValue);
-                    }
-                });
-            });
-
-            // b. Final cleanup (convert 'and', 'or', '=')
-            calculatedFormula = calculatedFormula.replace(/\s+and\s+/gi, ' && ');
-            calculatedFormula = calculatedFormula.replace(/\s+or\s+/gi, ' || ');
-            calculatedFormula = calculatedFormula.replace(/([^=!<>])=([^=])/g, '$1===$2');
-
-            // c. Evaluate and store result
-            try {
-                let result = eval(`(${calculatedFormula})`);
-                row[calcName] = result;
-            } catch (error) {
-                console.error(`Error applying loaded formula ${calcName}:`, error);
-                //row[calcName] = row[col.name];
-            }
-        });
+    if (typeof formulaObj === 'string') {
+        formulaString = formulaObj;
+    } else if (formulaObj && typeof formulaObj.formula === 'string') {
+        formulaString = formulaObj.formula;
+        filterString = formulaObj.filter || "";
+    } else {
+        console.warn(`Invalid formula format for ${calcName}:`, formulaObj);
+        continue;
     }
+
+    reporttblData.rows.forEach(row => {
+        let calculatedFormula = formulaString;
+        let conditionalExpression = filterString;
+        let isBooleanCalculation = false;
+
+        // --- 0. Replace DAY_OF_WEEK expressions first ---
+       calculatedFormula = replaceDayOfWeekExpressions(calculatedFormula, row);
+    conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
+    
+    // --- NEW STEP: Replace BETWEEN / DATE_RANGE expressions ---
+    conditionalExpression = replaceDateRangeExpressions(conditionalExpression, row);
+    // calculatedFormula usually won't have date range filter syntax, so we skip it.
+
+        // --- 1. Replace column references ---
+        tableColumns.forEach(col => {
+            const fullColName = col.name;
+            const colType = col.type ? col.type.toLowerCase() : 'number';
+            let rowValue = row[fullColName];
+
+            // Trim strings
+            if (typeof rowValue === 'string') rowValue = rowValue.trim();
+
+            // Default empty/null to 0 for numeric operations
+            if (rowValue === null || rowValue === "") rowValue = 0;
+
+            calculatedFormula = replaceColumnOccurrences(calculatedFormula, fullColName, colType, rowValue, 'formula');
+            conditionalExpression = replaceColumnOccurrences(conditionalExpression, fullColName, colType, rowValue, 'filter');
+        });
+
+        // --- 2. Normalize filter logical operators and spaces ---
+        if (conditionalExpression) {
+            conditionalExpression = conditionalExpression
+                .replace(/\bAND\b/gi, '&&')
+                .replace(/\bOR\b/gi, '||')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        // --- 3. Evaluate filter condition ---
+        let conditionMet = true;
+        if (conditionalExpression) {
+            const trimmed = conditionalExpression.trim().toLowerCase();
+            if (trimmed === 'true') conditionMet = true;
+            else if (trimmed === 'false') conditionMet = false;
+            else {
+                try {
+                    conditionMet = new Function(`return (${conditionalExpression});`)();
+                } catch (error) {
+                    console.error(`Error evaluating filter condition for ${calcName}:`, conditionalExpression, error);
+                    conditionMet = false;
+                }
+            }
+        }
+
+        // --- 4. Evaluate the formula if filter passes ---
+        let result = null;
+        if (isBooleanCalculation) {
+            result = (String(calculatedFormula).trim().toLowerCase() === 'true');
+        } else if (conditionMet) {
+            try {
+                result = new Function(`return (${calculatedFormula});`)();
+            } catch (error) {
+                console.error(`Error applying formula for ${calcName}:`, calculatedFormula, error);
+                result = null;
+            }
+        } else {
+            result = null; // filter failed
+        }
+
+        // --- 5. Assign result to row ---
+        row[calcName] = result;
+    });
+}
+
 
     // 4. Apply the first available filter
     const firstFilterName = Object.keys(savedFilters)[0];
@@ -3058,7 +3992,7 @@ function loadConfigFromJSON(configData) {
         applySavedFilter(false); 
     } else {
         // No filter to apply, just refresh table to show calculated columns
-        displayReportTable();
+        displayReportTable('loadConfigFromJSON');
     }
     
     // 5. Refresh UI controls (dropdowns)
@@ -3139,7 +4073,7 @@ function applySavedFilter(clearFlag = false) {
 
         if (!filterExpression) {
             reporttblData.rows = originalReportData;
-            displayReportTable();
+            displayReportTable('applySavedFilter');
             resolve(); // no error, promise resolves
             return;
         }
@@ -3192,7 +4126,7 @@ function applySavedFilter(clearFlag = false) {
 
         if (filterErrorOccurred) {
             reporttblData.rows = originalReportData;
-            displayReportTable();
+            displayReportTable('filterErrorOccurred');
             reject(new Error('Error evaluating filter expression')); // reject promise
             return;
         }
@@ -3242,7 +4176,7 @@ function loadSavedFilters() {
         savedFilters = {};
     }
 
-    console.log('savedFilters:>>>>>>>',savedFilters); 
+    // console.log('savedFilters:>>>>>>>',savedFilters); 
      for (const [name, formulaObj] of Object.entries(savedFilters)) { 
     
             renderSavedFilter(name,formulaObj);
@@ -3285,7 +4219,7 @@ function useFilter(name) {
                     addButton.style.display = 'none';
                     const dialogSave = document.getElementById("apply-saved-filter");
                     dialogSave.style.display = "none";
-                    console.log('addButton:>>>>>',addButton);
+                    // console.log('addButton:>>>>>',addButton);
                
 
             }
@@ -3299,7 +4233,7 @@ function deleteFilter(name) {
         saveAllDataToJSON();
     handleSave();
     
-    displayReportTable();
+    displayReportTable('deleteFilter');
         if (currentFilterName === name) {
              clearFilterBuilder(); 
         }
@@ -3330,7 +4264,7 @@ function addSavedFilter() {
     
     
 
-    displayReportTable();
+    displayReportTable('addSavedFilter');
     loadSavedFormatters();
 
    // applySavedFilter();
@@ -3341,7 +4275,7 @@ async function updateSavedFilter() {
     try {
         await applySavedFilter(); // will stop here if promise rejects
     } catch (err) {
-        console.log('Filter application failed:', err.message);
+        // console.log('Filter application failed:', err.message);
         return; // execution stops here
     }
 
@@ -3360,7 +4294,7 @@ async function updateSavedFilter() {
     saveAllDataToJSON();
     handleSave();
     
-    displayReportTable();
+    displayReportTable('updateSavedFilter');
     loadSavedFormatters();
 }
 
@@ -3375,7 +4309,7 @@ function loadSavedFormulas() {
     if (storedFormulas) {
         savedFormulas = JSON.parse(storedFormulas);
     }
-    console.log('savedFormulas:>>>>', savedFormulas);
+    // console.log('savedFormulas:>>>>', savedFormulas);
     
     // Display saved formulas
     for (const [name, formulaObj] of Object.entries(savedFormulas)) {
@@ -3421,21 +4355,29 @@ renderSavedFormula(name, "", formulaDisplay);
             }
             
             const formulaObj = savedFormulas[formulaName];
-            let formulaString;
-            
-    // Handle both formats
-    if (typeof formulaObj === 'string') {
-        formulaString = formulaObj;
-    } else if (formulaObj && typeof formulaObj.formula === 'string') {
-        formulaString = formulaObj.formula;
-    } else {
-        alert(`Invalid formula format for "${formulaName}"!`);
-        return;
-    }
+        let formulaString = '';
+let formfilter = '';
+
+if (typeof formulaObj === 'string') {
+    formulaString = formulaObj;
+    // formfilter remains empty for string format, adjust if needed
+} else if (formulaObj && typeof formulaObj.formula === 'string') {
+    // This block handles the object format (which your example formulaObj uses)
+    formulaString = formulaObj.formula;  
+    formfilter = formulaObj.filter !== undefined ? formulaObj.filter : '';
     
-    document.getElementById('calc-name').value = formulaName;
-    document.getElementById('formula-preview').value = formulaString;
-    currentFormulaName = formulaName;
+} else if (formulaObj ) {
+ 
+    formfilter = formulaObj.filter;
+} else {
+    alert(`Invalid formula format for "${formulaName}"!`);
+    return;
+}
+ 
+document.getElementById('calc-name').value = formulaName;
+document.getElementById('formula-preview').value = formulaString;
+document.getElementById('formulafilter-preview').value = formfilter; // This will now have the correct value
+currentFormulaName = formulaName;
     
     // Enable update button
     const updateBtn = document.getElementById('update-calculation');
@@ -3443,7 +4385,7 @@ renderSavedFormula(name, "", formulaDisplay);
     updateBtn.style.opacity = '1';
     updateBtn.style.cursor = 'pointer';
     
-    console.log(`Loaded formula: ${formulaName} = ${formulaString}`);
+    // console.log(`Loaded formula: ${formulaName} = ${formulaString}`);
 
     const dialog = document.getElementById("formula-dialog");
     dialog.style.display = "flex";
@@ -3591,7 +4533,7 @@ function applyFilter() {
     reporttblData.rows = filteredRows;
     
     // !!! CRITICAL: You must ensure this function exists and refreshes your main table !!!
-    displayReportTable(); 
+    displayReportTable('applyFilter'); 
 }
 
 function clearFilter() {
@@ -3600,7 +4542,7 @@ function clearFilter() {
     if (originalReportData) {
         reporttblData.rows = originalReportData;
         
-        displayReportTable();
+        displayReportTable('clearFilter');
     }
 }
 
@@ -3645,8 +4587,8 @@ function roundAllNumbersInRows(rows) {
 }
 
 function loadDashboard(pData, configData = INITIAL_CONFIG_JSON) { // Added configData parameter
-    console.log('Table data received for tab:', pData);
-     console.log('INITIAL_CONFIG_JSON:', INITIAL_CONFIG_JSON);
+    // console.log('Table data received for tab:', pData);
+      console.log('INITIAL_CONFIG_JSON:', INITIAL_CONFIG_JSON);
     
     if (!pData || !pData.rows) {
         console.error("No valid data received.");
@@ -3670,13 +4612,16 @@ function loadDashboard(pData, configData = INITIAL_CONFIG_JSON) { // Added confi
     
     setupCollapseButtons(); 
  
-    displayReportTable();
+    displayReportTable('loadDashboard');
     initializeControls();
   // 3. Load Formulas/Filters from JSON and APPLY them
+  console.log('configData:>>>>',configData);
+    console.log('jsondata_details:>>>>',report_expressions);
+    console.log('report_expressions:>>>>',report_expressions);
     if (configData) {
         loadConfigFromJSON(configData);
     }
-
+    console.log('after loadconfig reporttblData:>',reporttblData);
 
  }
 
@@ -3737,7 +4682,7 @@ function applyDefaultBehavior() {
 
 
 function applyAggregations() {
-    console.log('jsondata_details>>>>>>>>>>>>>>>>>>>>>>',jsondata_details);
+    // console.log('jsondata_details>>>>>>>>>>>>>>>>>>>>>>',jsondata_details);
     const groupDateColumn = jsondata_details.selectedColumns.find(
         col => col.data_type === 'date' && ['week', 'month', 'year'].includes(col.aggregation)
     );
@@ -3888,253 +4833,397 @@ function applyAggregations() {
         }
         
         // Test formula
-        function testFormula() {
-            const currentFormula = document.getElementById('formula-preview').value;
-            if (!currentFormula) {
-                alert('Please create a formula first!');
-                return;
-            }
-                let calculatedFormula = currentFormula;
-            let result = null;
-            let isDateCalculation = false;
-            
-            try {
-        pristineReportData.forEach(row => {
-        
+       function testFormula() {
+    const currentFormula = document.getElementById('formula-preview').value.trim(); // formula only
+    const currentFilter = (document.getElementById('filter-preview') && document.getElementById('filter-preview').value.trim()) || ''; // filter
 
-            // Loop over all known columns
+    if (!currentFormula) {
+        alert('Please create a formula first!');
+        return;
+    }
+
+    try {
+        let testResults = []; // store results per row
+
+        pristineReportData.forEach(row => {
+            let calculatedFormula = currentFormula;
+            let conditionalExpression = currentFilter;
+            let result = null;
+            let isBooleanCalculation = false;
+
+            // --- 0. Replace DAY_OF_WEEK expressions first ---
+            calculatedFormula = replaceDayOfWeekExpressions(calculatedFormula, row);
+            conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
+
+            // --- 1. Replace all column references ---
             tableColumns.forEach(col => {
                 const fullColName = col.name;
+                const colType = col.type ? col.type.toLowerCase() : 'number';
+                const rowValue = row[fullColName];
 
-                if (calculatedFormula.includes(fullColName)) {
-                    const escapedName = escapeRegExp(fullColName);
-                    const regex = new RegExp(escapedName, 'g');
-
-                    // --- Handle DATE TYPE columns ---
-                    if (col.type && col.type.toLowerCase() === 'date') {
-                        isDateCalculation = true;
-                        const rawValue = row[fullColName];
-                        const dateObj = new Date(rawValue);
-
-                        if (isNaN(dateObj)) {
-                            console.warn("Invalid date in row:", rawValue);
-                            row[calcName] = "-";
-                            return;
-                        }
-
-                        // Handle "Day" (weekday)
-                        if (/day/i.test(calculatedFormula)) {
-                            const dayName = dateObj
-                                .toLocaleDateString("en-GB", { weekday: "short" })
-                                .toUpperCase();
-                            result = dayName;
-                        }
-                        // Handle "+ number" or "- number"
-                        else if (/\+/.test(calculatedFormula) || /-/.test(calculatedFormula)) {
-                            // Extract +/- and number
-                            const match = calculatedFormula.match(/([\+\-])\s*(\d+)/);
-                            if (match) {
-                                const sign = match[1];
-                                const num = parseInt(match[2]);
-                                if (sign === "+") dateObj.setDate(dateObj.getDate() + num);
-                                else dateObj.setDate(dateObj.getDate() - num);
-                            }
-
-                            result = dateObj
-                                .toLocaleDateString("en-GB", {
-                                    day: "2-digit",
-                                    month: "short",
-                                    year: "numeric"
-                                })
-                                .toUpperCase(); // e.g. 10-OCT-2025
-                        } 
-                        else {
-                            result = rawValue;
-                        }
-
-                        // Replace the date reference in formula to avoid numeric eval
-                        calculatedFormula = calculatedFormula.replace(regex, `"${result}"`);
-                    } 
-                    // --- Handle NUMBER columns as before ---
-                    else if (col.type && col.type.toLowerCase() === 'number') {
-                        const cellValue = parseFloat(row[fullColName]) || 0; 
-                        calculatedFormula = calculatedFormula.replace(regex, cellValue);
-                    }
-                }
+                // Replace in formula
+                calculatedFormula = replaceColumnOccurrences(calculatedFormula, fullColName, colType, rowValue, 'formula');
+                // Replace in filter/conditionalExpression
+                conditionalExpression = replaceColumnOccurrences(conditionalExpression, fullColName, colType, rowValue, 'filter');
             });
 
-            // --- Evaluate only numeric formulas ---
-            if (!isDateCalculation) {
-                result = eval(`(${calculatedFormula})`);
+            // --- 2. Normalize logical operators in filter ---
+            if (conditionalExpression) {
+                conditionalExpression = conditionalExpression
+                    .replace(/\bAND\b/gi, '&&')
+                    .replace(/\bOR\b/gi, '||')
+                    .replace(/\s+/g, ' ')
+                    .trim();
             }
- 
+
+            // --- 3. Evaluate filter condition ---
+            let conditionMet = true;
+            if (conditionalExpression) {
+                const trimmed = conditionalExpression.trim().toLowerCase();
+                if (trimmed === 'true') conditionMet = true;
+                else if (trimmed === 'false') conditionMet = false;
+                else {
+                    conditionMet = new Function(`return (${conditionalExpression});`)();
+                }
+            }
+
+            // --- 4. Evaluate the formula if filter passes ---
+            if (isBooleanCalculation) {
+                result = (String(calculatedFormula).trim().toLowerCase() === 'true');
+            } else if (conditionMet) {
+                try {
+                    result = new Function(`return (${calculatedFormula});`)();
+                } catch (e) {
+                    console.error('Error evaluating formula:', calculatedFormula, e);
+                    result = null;
+                }
+            } else {
+                result = null;
+            }
+
+            // Save result for display
+            testResults.push(result);
         });
- 
 
-        showSuccessMessage(`Formula test result: ${result}\n`);
-
+        showSuccessMessage(`Formula test results per row:\n${testResults.join('\n')}`);
 
     } catch (error) {
-        alert('Error in formula: ' + error.message + '. Please check your formula syntax.');
+        alert('Error in formula: ' + (error.message || error) + '. Please check your formula syntax.');
         console.error('Formula error:', error);
     }
-                
-          
 }
+
+
+
+
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+// ======================================================================
+// HELPER FUNCTIONS (Place these outside the main addCalculation function)
+// ======================================================================
+
+// ---------------------- Helper utilities ----------------------
 
 function escapeRegExp(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// Parse M/D/YYYY or MM/DD/YYYY to YYYY-MM-DD (returns null if not matched)
+function parseMMDDYYYY(dateString) {
+    console.log('dateString:>>>>',dateString);
+    try{
+    const match = dateString.match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})$/);
+    if (match) {
+        const month = match[1].padStart(2, '0');
+        const day = match[2].padStart(2, '0');
+        const year = match[3];
+        return `${year}-${month}-${day}`;
+    }
+    return null;
+    }
+    catch(e){
+         return null;
+    }
+}
 
-// ======================================================================
-// FORMULA BUILDER FUNCTION (CORRECTED)
-// ======================================================================
-function addCalculation() { 
-    const calcName = document.getElementById('calc-name').value;
-    const currentFormula = document.getElementById('formula-preview').value;
-    
-    if (!calcName) {
-        alert('Please enter a calculation name!');
+// If formula contains "between ... and ..." for a date column, return "true"/"false" or null
+function parseDateRange(formulaSegment, row) {
+    const rangeMatch = formulaSegment.match(/(\[.*?\]|\b[\w\s\-]+\b)\s+between\s+([^\s]+)\s+and\s+([^\s]+)/i);
+    if (!rangeMatch) return null;
+
+    let colRef = rangeMatch[1].replace(/[\[\]]/g, '').trim();
+    let startDateStr = rangeMatch[2];
+    let endDateStr = rangeMatch[3];
+
+    // Accept user MM/DD/YYYY or YYYY-MM-DD; normalize if possible
+    const standardizedStart = parseMMDDYYYY(startDateStr) || startDateStr;
+    const standardizedEnd = parseMMDDYYYY(endDateStr) || endDateStr;
+
+    const rawValue = row[colRef];
+    const colDateStr = parseMMDDYYYY(rawValue) || rawValue;
+
+    const colValue = new Date(colDateStr);
+    const startDate = new Date(standardizedStart);
+    const endDate = new Date(standardizedEnd);
+
+    if (isNaN(colValue) || isNaN(startDate) || isNaN(endDate)) {
+        console.warn("Invalid date format in range calculation for", colRef, rawValue);
+        return "false";
+    }
+
+    return (colValue.getTime() >= startDate.getTime() && colValue.getTime() <= endDate.getTime()) ? "true" : "false";
+}
+
+// Parse DAY_OF_WEEK([col]) In (Mon,Tue) - returns "true"/"false" or null
+// Parse [DateCol] DAY_OF_WEEK (Mon,Tue)
+function parseDayOfWeek(formulaSegment, row) {
+
+    const regex = /(\[.*?\]|\b[\w\s\-]+\b)\s+DAY_OF_WEEK\s*\(\s*(.*?)\s*\)/i;
+    const match = formulaSegment.match(regex);
+    if (!match) return null;
+
+    let colRef = match[1].replace(/[\[\]]/g, '').trim();
+    let daysStr = match[2];
+
+    const days = daysStr.split(",").map(d => d.trim().toUpperCase());
+
+    const rawDate = row[colRef];
+    const jsDate = new Date(rawDate);
+
+    if (isNaN(jsDate)) return "false";
+
+    const dow = jsDate.toLocaleDateString("en-GB", { weekday: "short" }).toUpperCase();
+
+    return days.includes(dow) ? "true" : "false";
+}
+
+
+// Safely quote/escape a string for insertion into an expression
+function jsStringLiteral(s) {
+    if (s === null || s === undefined) return '""';
+    return '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
+}
+
+// Replace all occurrences (bracketed and plain) of a column name in a text snippet.
+// - text: string to replace inside
+// - fullColName: column name from tableColumns (could have spaces etc.)
+// - colType: 'date'|'string'|'number'
+// - rowValue: raw value from row for this column
+// - context: "formula" or "filter" (affects how date values are substituted)
+function replaceColumnOccurrences(text, fullColName, colType, rowValue, context) {
+    const escapedName = escapeRegExp(fullColName);
+    const bracketedRegex = new RegExp('\\[\\s*' + escapedName + '\\s*\\]', 'gi');
+    const plainRegex = new RegExp('\\b' + escapedName + '\\b', 'gi');
+
+    let substitution;
+
+    if (colType === 'date') {
+        // For date, if context is filter and the text contains comparison operators, convert to getTime()
+        // Otherwise keep an ISO date string for direct usage.
+        const needsTimestamp = /[<>!=]=?|between|\bDAY_OF_WEEK\b/i.test(text) || context === 'formula' && /[\+\-*/]/.test(text);
+        if (needsTimestamp) {
+            // Use numeric timestamp for comparisons/arithmetic
+            const dateStr = parseMMDDYYYY(rowValue) || rowValue;
+            substitution = `(${isNaN(new Date(dateStr)) ? 'NaN' : 'new Date("' + dateStr + '").getTime()'})`;
+        } else {
+            substitution = jsStringLiteral(rowValue);
+        }
+    } else if (colType === 'string') {
+        substitution = jsStringLiteral(rowValue || '');
+    } else { // number (default)
+        const num = parseFloat(rowValue);
+        substitution = isNaN(num) ? 0 : num;
+    }
+
+    return text.replace(bracketedRegex, substitution).replace(plainRegex, substitution);
+}
+
+function replaceDayOfWeekExpressions(expr, row) {
+    // Regex: match any [Col] DAY_OF_WEEK (Mon,Tue) anywhere in the expression
+    const regex = /(\[.*?\]|\b[\w\s\-]+\b)\s+DAY_OF_WEEK\s*\(\s*(.*?)\s*\)/gi;
+
+    return expr.replace(regex, (match, colRef, daysStr) => {
+        colRef = colRef.replace(/[\[\]]/g, '').trim();
+        const days = daysStr.split(",").map(d => d.trim().toUpperCase());
+
+        const rawDate = row[colRef];
+        const jsDate = new Date(rawDate);
+
+        if (isNaN(jsDate)) return "false";
+
+        const dow = jsDate.toLocaleDateString("en-GB", { weekday: "short" }).toUpperCase();
+        return days.includes(dow) ? "true" : "false";
+    });
+}
+
+// ---------------------- Main function ----------------------
+
+function addCalculation() {
+    const calcName = document.getElementById('calc-name').value.trim();
+    const currentFormula = document.getElementById('formula-preview').value.trim(); // formula only
+    const currentFilter = (document.getElementById('formulafilter-preview') && document.getElementById('formulafilter-preview').value.trim()) || ''; // filter only (WHERE condition)
+
+    if (!calcName || !currentFormula) {
+        alert('Please enter a calculation name and create a formula!');
         return;
     }
-    
-    if (!currentFormula) {
-        alert('Please create a formula first!');
-        return;
-    }
-    
-    // Prevent duplicate calculation names
+
     if (tableColumns.find(col => col.name === calcName)) {
         alert('Calculation name already exists as a column or another calculation!');
         return;
     }
 
     try {
-        let ctype= 'string';
+        let ctype = 'number';
+        // Work on a deep copy? We'll mutate pristineReportData rows directly like before
         pristineReportData.forEach(row => {
-            let calculatedFormula = currentFormula;
+            let calculatedFormula = currentFormula;   // text to replace col references and evaluate
+            let conditionalExpression = currentFilter; // text to replace col refs and evaluate to boolean
             let result = null;
-            let isDateCalculation = false;
+            let isBooleanCalculation = false;
 
-            // Loop over all known columns
-            tableColumns.forEach(col => {
-                const fullColName = col.name;
+            // --- Handle complex date functions that may transform the formula into "true"/"false" ---
+            // If formula itself contains date range or day_of_week, evaluate those first (they return "true"/"false")
+            let dateRangeResult = parseDateRange(calculatedFormula, row);
+            let dayOfWeekResult = parseDayOfWeek(calculatedFormula, row);
+            
+if (dayOfWeekResult !== null) {
+    calculatedFormula = dayOfWeekResult;
+    isBooleanCalculation = true;
+    ctype = "boolean";
+}
 
-                if (calculatedFormula.includes(fullColName)) {
-                    const escapedName = escapeRegExp(fullColName);
-                    const regex = new RegExp(escapedName, 'g');
+ 
 
-                    // --- Handle DATE TYPE columns ---
-                    if (col.type && col.type.toLowerCase() === 'date') {
-                        isDateCalculation = true;
-                        const rawValue = row[fullColName];
-                        const dateObj = new Date(rawValue);
-
-                        if (isNaN(dateObj)) {
-                            console.warn("Invalid date in row:", rawValue);
-                            row[calcName] = "-";
-                            return;
-                        }
-
-                        // Handle "Day" (weekday)
-                        if (/day/i.test(calculatedFormula)) {
-                            const dayName = dateObj
-                                .toLocaleDateString("en-GB", { weekday: "short" })
-                                .toUpperCase();
-                            result = dayName;
-                        }
-                        // Handle "+ number" or "- number"
-                        else if (/\+/.test(calculatedFormula) || /-/.test(calculatedFormula)) {
-                            // Extract +/- and number
-                            const match = calculatedFormula.match(/([\+\-])\s*(\d+)/);
-                            if (match) {
-                                const sign = match[1];
-                                const num = parseInt(match[2]);
-                                if (sign === "+") dateObj.setDate(dateObj.getDate() + num);
-                                else dateObj.setDate(dateObj.getDate() - num);
-                            }
-
-                            result = dateObj
-                                .toLocaleDateString("en-GB", {
-                                    day: "2-digit",
-                                    month: "short",
-                                    year: "numeric"
-                                })
-                                .toUpperCase(); // e.g. 10-OCT-2025
-                        } 
-                        else {
-                            result = rawValue;
-                        }
-
-                        // Replace the date reference in formula to avoid numeric eval
-                        calculatedFormula = calculatedFormula.replace(regex, `"${result}"`);
-                    } 
-                    // --- Handle NUMBER columns as before ---
-                    else if (col.type && col.type.toLowerCase() === 'number') {
-                        ctype = 'number'
-                        const cellValue = parseFloat(row[fullColName]) || 0; 
-                        calculatedFormula = calculatedFormula.replace(regex, cellValue);
-                    }
-                }
-            });
-
-            // --- Evaluate only numeric formulas ---
-            if (!isDateCalculation) {
-                result = eval(`(${calculatedFormula})`);
+            if (dateRangeResult !== null) {
+                calculatedFormula = dateRangeResult; // "true" or "false"
+                isBooleanCalculation = true;
+                ctype = 'boolean';
+            } else if (dayOfWeekResult !== null) {
+                calculatedFormula = dayOfWeekResult;
+                isBooleanCalculation = true;
+                ctype = 'boolean';
             }
 
-            row[calcName] = result;
+            // If filter contains those date functions, evaluate them into "true"/"false" first
+            let filterDateRange = conditionalExpression ? parseDateRange(conditionalExpression, row) : null;
+            let filterDayOfWeek = conditionalExpression ? parseDayOfWeek(conditionalExpression, row) : null;
+            if (filterDateRange !== null) {
+                // Replace the whole filter with the evaluated boolean string so it can be used directly
+                conditionalExpression = filterDateRange;
+            } else if (filterDayOfWeek !== null) {
+                conditionalExpression = filterDayOfWeek;
+            }
+
+calculatedFormula = replaceDayOfWeekExpressions(calculatedFormula, row);
+conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
+            // --- Replace all column occurrences in both calculation formula and condition ---
+            tableColumns.forEach(col => {
+                const fullColName = col.name;
+                const colType = col.type ? col.type.toLowerCase() : 'number';
+                const rowValue = row[fullColName];
+
+                // Replace in formula
+                if (calculatedFormula && (new RegExp('\\b' + escapeRegExp(fullColName) + '\\b', 'i').test(calculatedFormula) ||
+                    new RegExp('\\[\\s*' + escapeRegExp(fullColName) + '\\s*\\]', 'i').test(calculatedFormula))) {
+                    calculatedFormula = replaceColumnOccurrences(calculatedFormula, fullColName, colType, rowValue, 'formula');
+
+                    // Set ctype based on first non-boolean column type encountered
+                    if (!isBooleanCalculation) {
+                        if (colType === 'string') ctype = 'string';
+                        else if (colType === 'date') ctype = 'string';
+                        else ctype = 'number';
+                    }
+                }
+
+                // Replace in conditionalExpression (filter)
+                if (conditionalExpression && (new RegExp('\\b' + escapeRegExp(fullColName) + '\\b', 'i').test(conditionalExpression) ||
+                    new RegExp('\\[\\s*' + escapeRegExp(fullColName) + '\\s*\\]', 'i').test(conditionalExpression))) {
+                    conditionalExpression = replaceColumnOccurrences(conditionalExpression, fullColName, colType, rowValue, 'filter');
+                }
+            });
+ 
+ 
+
+            // --- Evaluate the condition (if provided) ---
+            let conditionMet = true;
+            if (conditionalExpression) {
+                try {
+                    // When conditionalExpression is a literal "true"/"false" from date helpers, handle directly
+                    const trimmed = conditionalExpression.trim().toLowerCase();
+                    if (trimmed === 'true' || trimmed === '"true"' || trimmed === "'true'") {
+                        conditionMet = true;
+                    } else if (trimmed === 'false' || trimmed === '"false"' || trimmed === "'false'") {
+                        conditionMet = false;
+                    } else {
+                        // Evaluate JavaScript expression (after replacements)
+                        conditionMet = new Function(`return (${conditionalExpression});`)();
+                    }
+                } catch (e) {
+                    console.error('Error evaluating filter condition:', conditionalExpression, e);
+                    conditionMet = false;
+                }
+            }
+
+            // --- Final evaluation of the formula ---
+            if (isBooleanCalculation) {
+                // calculatedFormula should now be "true" or "false"
+                result = (String(calculatedFormula).trim().toLowerCase() === "true");
+            } else if (conditionMet) {
+                try {
+                    // Evaluate numeric/string expressions
+                    result = new Function(`return (${calculatedFormula});`)();
+                } catch (e) {
+                    console.error('Error evaluating calculated formula:', calculatedFormula, e);
+                    result = null;
+                }
+            } else {
+                result = null;
+            }
+
+            // Set result and coerce type for the column
+            if (ctype === 'number' && result !== null && result !== undefined) {
+                const numeric = parseFloat(result);
+                row[calcName] = isNaN(numeric) ? null : numeric;
+            } else if (ctype === 'boolean') {
+                row[calcName] = Boolean(result);
+            } else { // string or fallback
+                row[calcName] = result === null || result === undefined ? null : String(result);
+            }
         });
 
-        // Update table data and metadata
+        // --- Add metadata column if not present ---
+        const newCalcColumn = { name: calcName, type: ctype };
+        if (!tableColumns.find(col => col.name === calcName)) {
+            tableColumns.push(newCalcColumn);
+            report_expressions.columnMetadata.push(newCalcColumn);
+            savedCalculationColumns.push(newCalcColumn);
+
+            jsondata_details.selectedColumns.push({
+                col_name: calcName, temp_name: 'calc', alias_name: calcName,
+                aggregation: 'none', visibility: 'show', data_type: ctype
+            });
+        }
+
+        savedFormulas[calcName] = { formula: currentFormula, filter: currentFilter, type: ctype };
+        saveFormulas();
+
         reporttblData.rows = JSON.parse(JSON.stringify(pristineReportData));
         originalReportData = [...reporttblData.rows];
 
-        // Add metadata for new calculated column
-        const newCalcColumn = { name: calcName+' - calc', type: 'number' }; // formatted as text
-        tableColumns.push(newCalcColumn);
-
-        // Save formula metadata
-        const formulaType = currentFormula.match(/DAY/i) ? 'date'
-    : tableColumns.some(c => c.type === 'date' && currentFormula.includes(c.name))
-        ? 'date'
-        : 'number';
-
-savedFormulas[calcName] = {
-    formula: currentFormula,
-    type: formulaType
-};
-
-saveFormulas();
-
-        savedCalculationColumns.push(newCalcColumn);
-
-        // Add to jsondata_details for popup management
-        jsondata_details.selectedColumns.push({
-            col_name: calcName,
-            temp_name: 'calc',
-            alias_name: calcName, 
-            aggregation: 'none',
-            visibility: 'show',
-            data_type: ctype
-        });
-
-        // Refresh table
-        applyAggregations(); 
-        initializeControls(); 
-         
+        applyAggregations();
+        initializeControls();
         clearFormula();
 
     } catch (error) {
-        alert('Error in formula: ' + error.message + '. Please check your formula syntax.');
+        alert('Error in formula: ' + (error && error.message ? error.message : error) + '. Please check your formula syntax.');
         console.error('Formula error:', error);
     }
 
     saveAllDataToJSON();
     handleSave();
-    
-    displayReportTable();
+    displayReportTable('addCalculation');
 }
 
         
@@ -4145,8 +5234,8 @@ saveFormulas();
     if (!savedFormulas || Object.keys(savedFormulas).length === 0) return;
     if (!pristineReportData || pristineReportData.length === 0) return;
 
-    console.log("Recalculating all formulas...",pristineReportData);
-
+     console.log("Recalculating all formulas...",pristineReportData);
+        pristineReportData = reporttblData.rows;
     pristineReportData.forEach(row => {
         for (const [calcName, meta] of Object.entries(savedFormulas)) {
             const formula = typeof meta === 'object' ? meta.formula : meta;
@@ -4211,129 +5300,161 @@ saveFormulas();
 
     // Update report data
     reporttblData.rows = JSON.parse(JSON.stringify(pristineReportData));
-    displayReportTable();
+    displayReportTable('recalculateAllFormulas');
 }
 
 
-        // Update calculated column
-        function updateCalculation() {
-            // Check for disabled state on div
-            if (document.getElementById('update-calculation').getAttribute('aria-disabled') === 'true') {
-                return;
-            }
+       function updateCalculation() {
+    // Prevent action if disabled
+    if (document.getElementById('update-calculation').getAttribute('aria-disabled') === 'true') {
+        return;
+    }
 
-            const currentFormula = document.getElementById('formula-preview').value;
+    const currentFormula = document.getElementById('formula-preview').value.trim();
+    const currentFilter  = (document.getElementById('formulafilter-preview') && document.getElementById('formulafilter-preview').value.trim()) || '';
 
-            if (!currentFormulaName) {
-                alert('Please select a formula to update first!');
-                return;
-            }
-            
-            if (!currentFormula) {
-                alert('Please modify the formula first!');
-                return;
-            }
-            console.log('pristineReportData:>>>>>>',pristineReportData);
-            try {
-                // Apply formula to all rows
-                pristineReportData.forEach(row => {
+    if (!currentFormulaName) {
+        alert('Please select a formula to update first!');
+        return;
+    }
+
+    if (!currentFormula) {
+        alert('Please modify the formula first!');
+        return;
+    }
+
+    try {
+        // Apply formula to all rows
+        pristineReportData.forEach(row => {
             let calculatedFormula = currentFormula;
+            let conditionalExpression = currentFilter;
             let result = null;
-            let isDateCalculation = false;
+            let isBooleanCalculation = false;
+            let ctype = 'number';
 
-            // Loop over all known columns
+            // --- Handle complex date functions in formula
+            let dateRangeResult = parseDateRange(calculatedFormula, row);
+            let dayOfWeekResult = parseDayOfWeek(calculatedFormula, row);
+            if (dateRangeResult !== null) {
+                calculatedFormula = dateRangeResult;
+                isBooleanCalculation = true;
+                ctype = 'boolean';
+            } else if (dayOfWeekResult !== null) {
+                calculatedFormula = dayOfWeekResult;
+                isBooleanCalculation = true;
+                ctype = 'boolean';
+            }
+
+            // --- Handle complex date functions in filter
+            let filterDateRange = conditionalExpression ? parseDateRange(conditionalExpression, row) : null;
+            let filterDayOfWeek = conditionalExpression ? parseDayOfWeek(conditionalExpression, row) : null;
+            if (filterDateRange !== null) {
+                conditionalExpression = filterDateRange;
+            } else if (filterDayOfWeek !== null) {
+                conditionalExpression = filterDayOfWeek;
+            }
+
+calculatedFormula = replaceDayOfWeekExpressions(calculatedFormula, row);
+conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
+
+            // --- Replace column references in formula & filter ---
             tableColumns.forEach(col => {
                 const fullColName = col.name;
+                const colType = col.type ? col.type.toLowerCase() : 'number';
+                const rowValue = row[fullColName];
 
-                if (calculatedFormula.includes(fullColName)) {
-                    const escapedName = escapeRegExp(fullColName);
-                    const regex = new RegExp(escapedName, 'g');
+                if (calculatedFormula && (new RegExp('\\b' + escapeRegExp(fullColName) + '\\b', 'i').test(calculatedFormula) ||
+                    new RegExp('\\[\\s*' + escapeRegExp(fullColName) + '\\s*\\]', 'i').test(calculatedFormula))) {
+                    calculatedFormula = replaceColumnOccurrences(calculatedFormula, fullColName, colType, rowValue, 'formula');
 
-                    // --- Handle DATE TYPE columns ---
-                    if (col.type && col.type.toLowerCase() === 'date') {
-                        isDateCalculation = true;
-                        const rawValue = row[fullColName];
-                        const dateObj = new Date(rawValue);
-
-                        if (isNaN(dateObj)) {
-                            console.warn("Invalid date in row:", rawValue);
-                            row[calcName] = "-";
-                            return;
-                        }
-
-                        // Handle "Day" (weekday)
-                        if (/day/i.test(calculatedFormula)) {
-                            const dayName = dateObj
-                                .toLocaleDateString("en-GB", { weekday: "short" })
-                                .toUpperCase();
-                            result = dayName;
-                        }
-                        // Handle "+ number" or "- number"
-                        else if (/\+/.test(calculatedFormula) || /-/.test(calculatedFormula)) {
-                            // Extract +/- and number
-                            const match = calculatedFormula.match(/([\+\-])\s*(\d+)/);
-                            if (match) {
-                                const sign = match[1];
-                                const num = parseInt(match[2]);
-                                if (sign === "+") dateObj.setDate(dateObj.getDate() + num);
-                                else dateObj.setDate(dateObj.getDate() - num);
-                            }
-
-                            result = dateObj
-                                .toLocaleDateString("en-GB", {
-                                    day: "2-digit",
-                                    month: "short",
-                                    year: "numeric"
-                                })
-                                .toUpperCase(); // e.g. 10-OCT-2025
-                        } 
-                        else {
-                            result = rawValue;
-                        }
-
-                        // Replace the date reference in formula to avoid numeric eval
-                        calculatedFormula = calculatedFormula.replace(regex, `"${result}"`);
-                    } 
-                    // --- Handle NUMBER columns as before ---
-                    else if (col.type && col.type.toLowerCase() === 'number') {
-                        const cellValue = parseFloat(row[fullColName]) || 0; 
-                        calculatedFormula = calculatedFormula.replace(regex, cellValue);
+                    if (!isBooleanCalculation) {
+                        if (colType === 'string') ctype = 'string';
+                        else if (colType === 'date') ctype = 'string';
+                        else ctype = 'number';
                     }
+                }
+
+                if (conditionalExpression && (new RegExp('\\b' + escapeRegExp(fullColName) + '\\b', 'i').test(conditionalExpression) ||
+                    new RegExp('\\[\\s*' + escapeRegExp(fullColName) + '\\s*\\]', 'i').test(conditionalExpression))) {
+                    conditionalExpression = replaceColumnOccurrences(conditionalExpression, fullColName, colType, rowValue, 'filter');
                 }
             });
 
-            // --- Evaluate only numeric formulas ---
-            if (!isDateCalculation) {
-                result = eval(`(${calculatedFormula})`);
+ 
+
+            // --- Evaluate filter condition ---
+            let conditionMet = true;
+            if (conditionalExpression) {
+                try {
+                    const trimmed = conditionalExpression.trim().toLowerCase();
+                    if (trimmed === 'true' || trimmed === '"true"' || trimmed === "'true'") conditionMet = true;
+                    else if (trimmed === 'false' || trimmed === '"false"' || trimmed === "'false'") conditionMet = false;
+                    else conditionMet = new Function(`return (${conditionalExpression});`)();
+                } catch (e) {
+                    console.error('Error evaluating filter condition:', conditionalExpression, e);
+                    conditionMet = false;
+                }
             }
 
-            row[currentFormulaName] = result;
+            // --- Final formula evaluation ---
+            if (isBooleanCalculation) {
+                result = (String(calculatedFormula).trim().toLowerCase() === "true");
+            } else if (conditionMet) {
+                try {
+                    result = new Function(`return (${calculatedFormula});`)();
+                } catch (e) {
+                    console.error('Error evaluating formula:', calculatedFormula, e);
+                    result = null;
+                }
+            } else {
+                result = null;
+            }
+
+            // --- Coerce type ---
+            if (ctype === 'number' && result !== null && result !== undefined) {
+                const numeric = parseFloat(result);
+                row[currentFormulaName] = isNaN(numeric) ? null : numeric;
+            } else if (ctype === 'boolean') {
+                row[currentFormulaName] = Boolean(result);
+            } else {
+                row[currentFormulaName] = result === null || result === undefined ? null : String(result);
+            }
         });
-                    // Evaluate the formula
-                   // row[currentFormulaName] = eval(currentFormula);
-              
-                 reporttblData.rows = JSON.parse(JSON.stringify(pristineReportData));
-                originalReportData = [...reporttblData.rows];
-                // Update the saved formula
-                savedFormulas[currentFormulaName] = currentFormula;
-                saveFormulas();
-                applyAggregations(); 
-        initializeControls(); 
-        displayReportTable();  
-                // Clear inputs
-                clearFormula();
-                
-            } catch (error) {
-                alert('Error in formula::::> ' + error.message);
-            }
-            const dialog = document.getElementById("formula-dialog");
-             dialog.style.display = "none";
 
-             saveAllDataToJSON();
-            handleSave();
-            
-            displayReportTable();
-        }
+        // --- Save updated formula + filter ---
+        const formulaType = currentFormulaName.match(/DAY/i) ? 'date'
+            : tableColumns.some(c => c.type === 'date' && currentFormula.includes(c.name))
+                ? 'date'
+                : 'number';
+
+        savedFormulas[currentFormulaName] = {
+            formula: currentFormula,
+            filter: currentFilter,
+            type: formulaType
+        };
+        saveFormulas();
+
+        reporttblData.rows = JSON.parse(JSON.stringify(pristineReportData));
+        originalReportData = [...reporttblData.rows];
+
+        applyAggregations();
+        initializeControls();
+        displayReportTable('updateCalculation');
+        clearFormula();
+
+    } catch (error) {
+        alert('Error in formula: ' + (error && error.message ? error.message : error));
+        console.error(error);
+    }
+
+    // Close dialog
+    const dialog = document.getElementById("formula-dialog");
+    if (dialog) dialog.style.display = "none";
+
+    saveAllDataToJSON();
+    handleSave();
+    displayReportTable('updateCalculation');
+}
         
         
         
@@ -4366,7 +5487,7 @@ $(document).on("change", "#column-lov", function () {
     const selectedValue = $(this).val();
     if (!selectedValue) return;
 
-    console.log("Column changed:", selectedValue);
+    // console.log("Column changed:", selectedValue);
 
     // Try to get column data type from tableColumns or columns_list
     let columnType = null;
@@ -4377,7 +5498,7 @@ $(document).on("change", "#column-lov", function () {
         }
     }
 
-    console.log("Detected column type:", columnType);
+    // console.log("Detected column type:", columnType);
 
     const operatorLov = document.getElementById("operator-lov");
 
@@ -4414,16 +5535,16 @@ $(document).on("change", "#column-lov", function () {
         operatorLov.appendChild(opt);
     });
 
-    console.log("Operator LOV updated:", operators);
+    // console.log("Operator LOV updated:", operators);
 });
 
 
-     // --- Dynamic Operator LOV based on column type ---
-$(document).on("change", "#filter-column-lov", function () {
-    let selectedValue = $(this).val();
+  // --- Dynamic Operator LOV based on column type ---
+$(document).on("change", "#column-lovfilter", function () {
+    const selectedValue = $(this).val();
     if (!selectedValue) return;
-selectedValue = selectedValue.replace(/^\[(.*?)\]$/, '$1');
-    console.log("Column changed:", selectedValue);
+
+    // console.log("Column changed:", selectedValue);
 
     // Try to get column data type from tableColumns or columns_list
     let columnType = null;
@@ -4434,7 +5555,104 @@ selectedValue = selectedValue.replace(/^\[(.*?)\]$/, '$1');
         }
     }
 
-    console.log("Detected column type:", columnType);
+    // console.log("Detected column type:", columnType);
+
+    const operatorLov = document.getElementById("operator-lovfilter");
+
+    // Default operator list
+    let operators = [
+   { value: "===", label: "Equals (=)" },
+    { value: "!==", label: "Not Equals (!=)" },
+    { value: ">", label: "Greater Than (>)" },
+    { value: "<", label: "Less Than (<)" },
+    { value: ">=", label: "Greater Than or Equal (>=)" },
+    { value: "<=", label: "Less Than or Equal (<=)" },
+    { value: "&&", label: "AND (&&)" },
+    { value: "||", label: "OR (||)" } 
+    ];
+
+    // If Date type → show only +, -, Day
+    if (columnType === "date") {
+        operators = [
+         //   { value: "All", label: "All" },
+            { value: "Range", label: "Range" },
+            { value: "Day_Of_Week", label: "Day Of Week" }
+        ];
+    }
+
+    // Rebuild operator LOV dynamically
+    operatorLov.innerHTML = "";
+    const defaultOpt = document.createElement("option");
+    defaultOpt.value = "";
+    defaultOpt.textContent = "Select Operator";
+    operatorLov.appendChild(defaultOpt);
+
+    operators.forEach(op => {
+        const opt = document.createElement("option");
+        opt.value = op.value;
+        opt.textContent = op.label;
+        operatorLov.appendChild(opt);
+    });
+
+    // console.log("Operator LOV updated:", operators);
+});
+
+function filteraddToFormula() {
+        const column = document.getElementById('column-lovfilter').value;
+        const operator = document.getElementById('operator-lovfilter').value;
+        
+        const formulaPreview = document.getElementById('formulafilter-preview');
+
+            if (column && formulaPreview) {
+                // Check if the current value is an empty string ("")
+                if (formulaPreview.value === "") { 
+                    // ➡️ Field is empty: Add only the column name
+                    formulaPreview.value += ` [${column}] `;
+                } else {
+                    // ➡️ Field already has content: Add ' and ' before the new column
+                    formulaPreview.value += ` [${column}] `;
+                }
+            }
+        
+        if (operator) {
+            if (operator === 'Range'){
+                formulaPreview.value += ` between ${document.getElementById('range-from').value} and ${document.getElementById('range-to').value} ` ;
+            }
+            else if(operator === 'Day_Of_Week'){
+                    selectedDays = getSelectedDays() ;
+                    formulaPreview.value += ` DAY_OF_WEEK  ( ${selectedDays} )`;
+            }else if(operator === 'All'){
+                    selectedDays = getSelectedDays() ;
+                    formulaPreview.value += ` = All `;
+            }else{
+                    formulaPreview.value += ` ${operator} `;
+            }
+        }
+
+        // Optional: Add a space between elements if the input doesn't end with one
+        if (column && operator) {
+            formulaPreview.value = formulaPreview.value.trim() + ` `;
+        }
+    }
+
+
+     // --- Dynamic Operator LOV based on column type ---
+$(document).on("change", "#filter-column-lov", function () {
+    let selectedValue = $(this).val();
+    if (!selectedValue) return;
+selectedValue = selectedValue.replace(/^\[(.*?)\]$/, '$1');
+    // console.log("Column changed:", selectedValue);
+
+    // Try to get column data type from tableColumns or columns_list
+    let columnType = null;
+    if (typeof tableColumns !== "undefined" && Array.isArray(tableColumns)) {
+        const found = tableColumns.find(c => c.name === selectedValue);
+        if (found && found.type) {
+            columnType = found.type.toLowerCase();
+        }
+    }
+
+    // console.log("Detected column type:", columnType);
 
     const operatorLov = document.getElementById("filter-operator-lov");
 
@@ -4500,55 +5718,74 @@ selectedValue = selectedValue.replace(/^\[(.*?)\]$/, '$1');
         operatorLov.appendChild(opt);
     });
 
-    console.log("Operator LOV updated:", operators);
+    // console.log("Operator LOV updated:", operators);
 });
 
 
  function saveAllDataToJSON() { 
     
-console.log('savedFormulas:>>>>>>',savedFormulas);
+// console.log('savedFormulas:>>>>>>',savedFormulas);
 
+if (tableColumns && Array.isArray(tableColumns)) { 
 
-if (tableColumns && Array.isArray(tableColumns)) {
+    const selectedColumnsSet = new Set(
+        (jsondata_details?.selectedColumns || []).map(c => c.col_name)
+    );
 
     const filteredColumnMetadata = tableColumns.filter(column => {
-        // You should also add a check here to ensure 'column' and 'column.name' are not null/undefined
-        if (!column || !column.name) return false; 
-        
+        if (!column || !column.name) return false;
+
         const isCalcColumn = column.name.endsWith(' - calc');
-        const formulaKeys = Object.keys(savedFormulas); // Assuming savedFormulas is available and is an object
+        const formulaKeys = Object.keys(savedFormulas || {}); // savedFormulas should be defined
 
         if (isCalcColumn) {
+            // Keep only if formula exists
             const baseName = column.name.replace(' - calc', '');
             return formulaKeys.includes(baseName);
         } else {
-            return true;
+            // Keep only if column exists in selectedColumns of jsondata_details
+            const baseName = column.name.split(' - ')[0]; // Remove suffix like '- MCL LoS1'
+            return selectedColumnsSet.has(baseName);
         }
     });
 
     tableColumns = filteredColumnMetadata;
-} 
-// If tableColumns was null/undefined, it retains its original value (which might be null/undefined)
-// You might want to ensure it's an empty array if it was missing.
-else {
+
+} else {
+    // If tableColumns was null/undefined
     tableColumns = [];
 }
 
+
 // Ensure tableColumns is an array before using it in the configuration
-const finalTableColumns = Array.isArray(tableColumns) ? tableColumns : [];
+const finalTableColumns = Array.isArray(tableColumns) ? tableColumns : []; 
+
+
+// First, check if report_expressions exists
+if (!report_expressions) {
+    report_expressions = {
+        columnposition: []
+    };
+} else if (!report_expressions.columnposition) {
+    report_expressions.columnposition = [];
+}
+
+//console.log('report_expressions.columnposition:>>>>>', report_expressions?.columnposition);
+
 
 const configuration = {
     columnConfiguration: jsondata_details,
-    columnMetadata: finalTableColumns, // Use the guaranteed array
+    columnMetadata: finalTableColumns, 
     formulas: savedFormulas,
     filters: savedFilters,
-    conditionalFormatting: conditionalFormattingRules
+    conditionalFormatting: conditionalFormattingRules,
+    columnposition: report_expressions.columnposition
 };
 
      const jsonString = JSON.stringify(configuration, null, 4);
 
-     console.log(hotelLov.options[hotelLov.selectedIndex].value+"--- EXPORTED CONFIGURATION JSON ---"+$('#New-Report').val());
-    console.log(jsonString);
+     // console.log(hotelLov.options[hotelLov.selectedIndex].value+"--- EXPORTED CONFIGURATION JSON ---"+$('#New-Report').val());
+    // console.log(jsonString);
 
  apex.server.process(
         'AJX_MANAGE_REPORT_VIEW',
@@ -4560,7 +5797,7 @@ const configuration = {
         },
         {
             success: function(data) { 
-                console.log('AJAX Success:', data);
+                // console.log('AJAX Success:', data);
                 showSuccessMessage(`Expressions Saved! `);
               
                     
@@ -4572,7 +5809,7 @@ const configuration = {
         }
     ); 
 
-    console.log("-----------------------------------");
+    // console.log("-----------------------------------");
 
     // Optional: Add logic here to display the JSON to the user or initiate a download
     // For example: downloadJSON(jsonString, 'report_configuration.json');
@@ -4587,7 +5824,7 @@ function loadConditionalFormattingBlocks() {
      if (typeof conditionalFormattingRules !== 'object' || conditionalFormattingRules === null) {
         conditionalFormattingRules = {}; 
     }
-    console.log('conditionalFormattingRules:>>>',conditionalFormattingRules);
+    // console.log('conditionalFormattingRules:>>>',conditionalFormattingRules);
     const container = document.getElementById('formatterConfigurationsContainer');
     // 1. Clear the existing UI blocks before redrawing
     if (container) {
@@ -4609,8 +5846,8 @@ function loadConditionalFormattingBlocks() {
     for (const columnKey in conditionalFormattingRules) {
         if (conditionalFormattingRules.hasOwnProperty(columnKey)) {
             const rulesArray = conditionalFormattingRules[columnKey];
-           // console.log('conditionalFormattingRules:>>>>>>>>>',rulesArray);
-           // console.log('conditionalFormattingRules:>>>>>>>>>',columnKey);
+           // // console.log('conditionalFormattingRules:>>>>>>>>>',rulesArray);
+           // // console.log('conditionalFormattingRules:>>>>>>>>>',columnKey);
             // 3. For each column, call addColumnFormatterBlock, passing the 
             //    column key and the array of rules to pre-populate it.
             loadSavedFormatters();
@@ -4835,7 +6072,7 @@ document.addEventListener("click", function (e) {
   if (e.target && e.target.id === "addColumnFormatterBtn") {
     clearFormatter();
     document.getElementById("formatter-dialog").style.display = "flex";
-    console.log('addColumnFormatterBtn:>>>>Call');
+    // console.log('addColumnFormatterBtn:>>>>Call');
     populateFormatterColumnLov_temp('rule_set_column');
     populateFormatterColumnLov_temp('column-select_ftr');
    
@@ -4912,7 +6149,7 @@ null;
 }
 
 function populateFormatterColumnLov_temp(classname) {
-    console.log('populateFormatterColumnLov:>>>>>>>>');
+    // console.log('populateFormatterColumnLov:>>>>>>>>');
     
     // Get all elements with the specified class name
     const lovElements = document.getElementsByClassName(classname);
@@ -4928,7 +6165,7 @@ function populateFormatterColumnLov_temp(classname) {
         // Populate with column options
         if (jsondata_details && jsondata_details.selectedColumns) {
             jsondata_details.selectedColumns.forEach(col => {
-              //  console.log('populateFormatterColumnLov:>>>>>>>>col>', col);
+              //  // console.log('populateFormatterColumnLov:>>>>>>>>col>', col);
                 const fullKey = getColumnDataKey(col);
                 const alias = col.alias_name || col.col_name;
                 const option = new Option(alias, fullKey, false, fullKey);
@@ -5104,7 +6341,7 @@ function removeFormatterRule(ruleId) {
 function populateFormatterRuleLovs(ruleId) {
     const columnLov = document.getElementById(`formatterRuleColumnLov_${ruleId}`);
     const operatorLov = document.getElementById(`formatterRuleOperator_${ruleId}`);
-    console.log('ruleId',ruleId);
+    // console.log('ruleId',ruleId);
     columnLov.innerHTML = '';
     columnLov.appendChild(new Option('-- Select Column --', ''));
 
@@ -5249,7 +6486,7 @@ function saveConditionalFormatting() {
     
     // No localStorage saving. The data remains in the global JS variable.
     
-    console.log('FINAL CONDITIONAL FORMATTING JSON:', conditionalFormattingRules);
+    // console.log('FINAL CONDITIONAL FORMATTING JSON:', conditionalFormattingRules);
 
     // Call your final actions
     // You should ensure the dialog is hidden here.
@@ -5259,7 +6496,7 @@ function saveConditionalFormatting() {
     saveAllDataToJSON();
     handleSave();
     
-    displayReportTable();
+    displayReportTable('saveConditionalFormatting');
     loadSavedFormatters();
 }
 
@@ -5268,7 +6505,7 @@ function saveConditionalFormatting() {
 function clearAllFormatters() {
     conditionalFormattingRules = {};
     loadSavedFormatters(); // Resets the UI to one empty block
-    displayReportTable(); 
+    displayReportTable('clearAllFormatters'); 
     showSuccessMessage('All conditional formatting rules cleared globally.', 'warning');
 }
  
@@ -5300,7 +6537,7 @@ function clearConditionalFormatting() {
     
     // Refresh the UI (clear rule inputs) and the table
     document.getElementById('formatterRulesContainer').innerHTML = ''; 
-    displayReportTable(); 
+    displayReportTable('clearConditionalFormatting'); 
 }
 
 
@@ -5325,11 +6562,11 @@ function loadFormatterRules(columnKey) {
 
 // Helper to evaluate the formatting rule expression (similar to formula evaluation)
 function evaluateFormatterRule(expression, row) {
-console.log('evaluateFormatterRule expression:>',expression);
-console.log('evaluateFormatterRule row:>',row);
+// // console.log('evaluateFormatterRule expression:>',expression);
+// // console.log('evaluateFormatterRule row:>',row);
     if (!expression || typeof expression !== 'string' || !row) {
         console.warn('evaluateFormatterRule: invalid parameters');
-        console.log('evaluateFormatterRule 1');
+        // // console.log('evaluateFormatterRule 1');
         return false;
     }
 
@@ -5348,29 +6585,25 @@ console.log('evaluateFormatterRule row:>',row);
                 (typeof cellValue === 'string' && cellValue.trim() === '')
             ) {
                 const numericContext = /[\+\-\*\/%<>]=?|\d/.test(expression);
-                console.log('evaluateFormatterRule → null/empty/space handled');
-                return numericContext ? 0 : "''";
+                 return numericContext ? 0 : "''";
             }
 
 
         // Try to parse numbers
         if (!isNaN(cellValue) && cellValue !== '') {
-            console.log('evaluateFormatterRule 3');
-            return parseFloat(cellValue);
+             return parseFloat(cellValue);
         }
 
         // Otherwise treat as string/date
         const strVal = String(cellValue).replace(/'/g, "\\'");
-        console.log('evaluateFormatterRule 4');
-        return `'${strVal}'`;
+         return `'${strVal}'`;
     });
 
     calculatedExpression = calculatedExpression.trim();
 
     if (!calculatedExpression) {
         console.warn('evaluateFormatterRule: Empty expression after substitution');
-        console.log('evaluateFormatterRule 5');
-        return false;
+         return false;
     }
 
     // 🔹 STEP 2: Replace single = with == (for logical checks)
@@ -5380,19 +6613,16 @@ console.log('evaluateFormatterRule row:>',row);
     // 🔹 STEP 3: Prevent evaluating broken expressions
     const danglingOperatorRegex = /([=!><+\-*/%]|AND|OR)$/i;
     if (danglingOperatorRegex.test(calculatedExpression)) {
-        console.log('evaluateFormatterRule 6');
-        console.warn('Evaluation skipped: dangling operator ->', calculatedExpression);
+         console.warn('Evaluation skipped: dangling operator ->', calculatedExpression);
         return false;
     }
 
     // 🔹 STEP 4: Evaluate safely
     try {
         const result = new Function('return ' + calculatedExpression)();
-        console.log('evaluateFormatterRule 7');
-        return result;
+         return result;
     } catch (e) {
-        console.log('evaluateFormatterRule 8');
-        console.warn('Error evaluating expression:', calculatedExpression, 'Error:', e.message);
+         console.warn('Error evaluating expression:', calculatedExpression, 'Error:', e.message);
         return false;
     }
 }
@@ -5410,6 +6640,8 @@ let currentFilterName = '';
             // Event listeners for the new div elements
            // document.getElementById('calculate-btn').addEventListener('click', calculateOperation); 
             document.getElementById('add-to-formula').addEventListener('click', addToFormula);
+            document.getElementById('add-to-formulafilter').addEventListener('click', filteraddToFormula);
+            
             document.getElementById('add-calculation').addEventListener('click', addCalculation);
             // Must check for disabled state on click for update-calculation
             document.getElementById('update-calculation').addEventListener('click', updateCalculation);
@@ -5443,7 +6675,7 @@ if (container) {
         const addRuleBtn = e.target.closest('[id^="addFormatterRuleBtn_"]');
         if (addRuleBtn) {
             const blockId = addRuleBtn.getAttribute('data-block-id');
-            console.log('blockId:>>>>>',blockId);
+            // console.log('blockId:>>>>>',blockId);
             if (blockId) {
                 addFormatterRule(blockId);
                 return; 
@@ -5503,7 +6735,7 @@ function addHeaderClickListeners() {
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
     // Additional debug info
-    console.log('DOM loaded - jsondata_details:', jsondata_details);
+    // console.log('DOM loaded - jsondata_details:', jsondata_details);
     
     // Uncomment this line to display the table when needed
     // displayReportTable();
@@ -5535,8 +6767,8 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function refreshTable() {
-    console.log('Refreshing table...');
-    displayReportTable();
+    // console.log('Refreshing table...');
+    displayReportTable('refreshTable');
 }
 
 
