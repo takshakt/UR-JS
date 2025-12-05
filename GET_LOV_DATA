@@ -54,25 +54,19 @@ BEGIN
     END LOOP;
     apex_json.close_array;
 
-    -- Fetch Occupancy Attributes as {id, name} pairs
+    -- Fetch Occupancy Attribute (CALCULATED_OCCUPANCY only)
     apex_json.open_array('occupancyAttributes');
     FOR rec IN (
-        -- MODIFICATION: Select the ID from the attributes table
         SELECT
             a.id,
-            a.name || ' (' || t.name || ')' AS name
+            a.name
         FROM
-            ur_algo_attributes a,
-            ur_templates t
+            ur_algo_attributes a
         WHERE
-            a.template_id = t.id
-            AND a.hotel_id = l_hotel_id
-            AND a.attribute_qualifier = 'OCCUPANCY'
-            and t.active = 'Y'
-        ORDER BY
-            name
+            a.hotel_id = l_hotel_id
+            AND a.attribute_qualifier = 'CALCULATED_OCCUPANCY'
+            AND a.type = 'C'
     ) LOOP
-        -- MODIFICATION: Write an object instead of a string
         apex_json.open_object;
         apex_json.write('id', rec.id);
         apex_json.write('name', rec.name);

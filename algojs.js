@@ -212,9 +212,31 @@ function updateAllDropdowns() {
         populateSelect(el, dynamicData.propertyTypes, 'Select Type');
     });
 
-    document.querySelectorAll('.occupancy-attribute-select').forEach(el => {
-        populateSelect(el, dynamicData.occupancyAttributes, 'Select Attribute');
-    });
+    // Handle occupancy attribute - set hidden input and update availability state
+    if (dynamicData.occupancyAttributes && dynamicData.occupancyAttributes.length > 0) {
+        // Use first (and only) attribute in array
+        document.querySelectorAll('.occupancy-attribute-id').forEach(el => {
+            el.value = dynamicData.occupancyAttributes[0].id;
+        });
+
+        document.querySelectorAll('.occupancy-info').forEach(el => {
+            el.textContent = `Using: ${dynamicData.occupancyAttributes[0].name}`;
+        });
+    } else {
+        // Disable and uncheck all occupancy checkboxes when array is empty
+        document.querySelectorAll('[id$="-occupancy-threshold"]').forEach(checkbox => {
+            if (checkbox.checked) {
+                console.warn('Disabling occupancy threshold condition - not available for selected hotel');
+            }
+            checkbox.checked = false;
+            checkbox.disabled = true;
+
+            const fieldContainer = checkbox.closest('.field-container');
+            if (fieldContainer) {
+                fieldContainer.classList.add('disabled-field');
+            }
+        });
+    }
 
 }
 
@@ -787,16 +809,24 @@ function addCondition(regionId) {
         <div class="condition-body" style="display: flex; align-items: flex-start; gap: 20px;">
             <div class="condition-fields" style="flex: 3;">
                 <div class="section-title"><span>Conditions</span></div>
-                <div class="field-container">
-                    <input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold" data-validates="occupancyThreshold">
-                    <label for="${conditionId}-occupancy-threshold">Occupancy Threshold %</label>
+                <div class="field-container ${!dynamicData.occupancyAttributes || dynamicData.occupancyAttributes.length === 0 ? 'disabled-field' : ''}">
+                    <input type="checkbox" class="field-checkbox" id="${conditionId}-occupancy-threshold" data-validates="occupancyThreshold" ${!dynamicData.occupancyAttributes || dynamicData.occupancyAttributes.length === 0 ? 'disabled' : ''}>
+                    <label for="${conditionId}-occupancy-threshold">
+                        Occupancy Threshold %
+                        ${!dynamicData.occupancyAttributes || dynamicData.occupancyAttributes.length === 0 ? '<span class="unavailable-badge">Unavailable</span>' : ''}
+                    </label>
                     <div class="field-content hidden">
-                        <select class="occupancy-attribute-select">
-                            <option value="">Select Attribute</option>
-                            ${(dynamicData.occupancyAttributes || []).map(op => `<option value="${op.id}">${op.name}</option>`).join('')}
-                        </select>
-                        <select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
-                        <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
+                        ${dynamicData.occupancyAttributes && dynamicData.occupancyAttributes.length > 0 ? `
+                            <input type="hidden" class="occupancy-attribute-id" value="${dynamicData.occupancyAttributes[0].id}">
+                            <select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
+                            <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
+                            <span class="occupancy-info">Using: ${dynamicData.occupancyAttributes[0].name}</span>
+                        ` : `
+                            <div class="unavailable-message">
+                                <strong>⚠️ Not Available</strong>
+                                <p>CALCULATED_OCCUPANCY attribute not configured for this hotel.</p>
+                            </div>
+                        `}
                     </div>
                 </div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${(dynamicData.propertyTypes || []).map(type => `<option value="${type.id}">${type.name}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div>
@@ -1307,10 +1337,26 @@ function validateRegion(regionElement) {
                 }
             }
             cond.querySelectorAll('.condition-fields .field-checkbox:checked').forEach(checkbox => {
+                // Skip validation if checkbox is disabled (e.g., occupancy not available)
+                if (checkbox.disabled) {
+                    return;
+                }
+
                 const fc = checkbox.closest('.field-container');
                 const validationType = checkbox.dataset.validates;
                 let signature = null;
-                const inputs = Array.from(fc.querySelectorAll('input:not([type=checkbox]), select'));
+                const inputs = Array.from(fc.querySelectorAll('input:not([type=checkbox]):not([type=hidden]), select'));
+
+                // Special handling for occupancy threshold - check hidden input
+                if (validationType === 'occupancyThreshold') {
+                    const hiddenInput = fc.querySelector('.occupancy-attribute-id');
+                    if (!hiddenInput || !hiddenInput.value) {
+                        errors.push(`${condTitle}: CALCULATED_OCCUPANCY attribute not found for this hotel. Please contact administrator.`);
+                        fc.classList.add('invalid-field');
+                        return;
+                    }
+                }
+
                 if (inputs.some(i => !i.value)) {
                     errors.push(`${condTitle}: A value for "${fc.querySelector('label').textContent.trim()}" is missing.`);
                     fc.classList.add('invalid-field');
@@ -1404,13 +1450,20 @@ function getRegionData(regionElement) {
             sequence: parseInt(cond.dataset.sequence, 10)
         };
         
-        if (cond.querySelector(`#${cond.id}-occupancy-threshold`)?.checked) {
-            conditionData.occupancyThreshold = {
-                // attribute: cond.querySelector('.occupancy-attribute-select').value,
-                attribute: `#${cond.querySelector('.occupancy-attribute-select').value}#`,
-                operator: cond.querySelector('.occupancy-operator').value,
-                value: parseFloat(cond.querySelector('.occupancy-value').value)
-            };
+        const occupancyCheckbox = cond.querySelector(`#${cond.id}-occupancy-threshold`);
+        if (occupancyCheckbox?.checked && !occupancyCheckbox.disabled) {
+            const occupancyAttrId = cond.querySelector('.occupancy-attribute-id')?.value;
+
+            if (!occupancyAttrId) {
+                console.warn('No CALCULATED_OCCUPANCY attribute found for this hotel');
+                // Skip this condition if attribute is not available
+            } else {
+                conditionData.occupancyThreshold = {
+                    attribute: `#${occupancyAttrId}#`,
+                    operator: cond.querySelector('.occupancy-operator').value,
+                    value: parseFloat(cond.querySelector('.occupancy-value').value)
+                };
+            }
         }
         if (cond.querySelector(`#${cond.id}-property-ranking`)?.checked) {
             const val = cond.querySelector('.property-value').value;
@@ -1772,13 +1825,30 @@ function populateCondition(conditionElement, conditionData) {
             
             const fieldContent = checkbox.closest('.field-container').querySelector('.field-content');
             if (key === 'occupancyThreshold') {
-                // fieldContent.querySelector('.occupancy-attribute-select').value = data.attribute;
-                const occupancyAttrSelect = fieldContent.querySelector('.occupancy-attribute-select');
-                if (occupancyAttrSelect && data.attribute) {
-                    occupancyAttrSelect.value = data.attribute.replace(/#/g, '');
+                // Check if occupancy is available (empty array means unavailable)
+                if (!dynamicData.occupancyAttributes || dynamicData.occupancyAttributes.length === 0) {
+                    console.warn('Cannot load occupancy threshold - CALCULATED_OCCUPANCY not available for this hotel');
+                    // Uncheck the checkbox since condition cannot be active
+                    checkbox.checked = false;
+                    checkbox.disabled = true;
+                    return; // Skip loading this condition
                 }
-                fieldContent.querySelector('.operator-select').value = data.operator;
-                fieldContent.querySelector('.value-input').value = data.value;
+
+                // Validate that saved attribute matches current CALCULATED_OCCUPANCY
+                const savedAttrId = data.attribute.replace(/#/g, '');
+                const currentAttrId = fieldContent.querySelector('.occupancy-attribute-id')?.value;
+
+                if (savedAttrId !== currentAttrId) {
+                    console.warn(`Saved occupancy attribute (${savedAttrId}) differs from current CALCULATED_OCCUPANCY (${currentAttrId}). Using current attribute.`);
+                    // Auto-update to use current attribute (will be saved on next save)
+                }
+
+                // Set operator and value (only if inputs exist - they won't if unavailable)
+                const operatorSelect = fieldContent.querySelector('.operator-select');
+                const valueInput = fieldContent.querySelector('.value-input');
+
+                if (operatorSelect) operatorSelect.value = data.operator;
+                if (valueInput) valueInput.value = data.value;
             } else if (key === 'eventScore') {
                 fieldContent.querySelector('.operator-select').value = data.operator;
                 fieldContent.querySelector('.value-input').value = data.value;
@@ -1879,12 +1949,20 @@ function getConditionData(cond) {
         sequence: parseInt(cond.dataset.sequence, 10)
     };
         
-    if (cond.querySelector(`#${cond.id}-occupancy-threshold`)?.checked) {
-        conditionData.occupancyThreshold = {
-            attribute: `#${cond.querySelector('.occupancy-attribute-select').value}#`,
-            operator: cond.querySelector('.occupancy-operator').value,
-            value: parseFloat(cond.querySelector('.occupancy-value').value)
-        };
+    const occupancyCheckbox = cond.querySelector(`#${cond.id}-occupancy-threshold`);
+    if (occupancyCheckbox?.checked && !occupancyCheckbox.disabled) {
+        const occupancyAttrId = cond.querySelector('.occupancy-attribute-id')?.value;
+
+        if (!occupancyAttrId) {
+            console.warn('No CALCULATED_OCCUPANCY attribute found for this hotel');
+            // Skip this condition if attribute is not available
+        } else {
+            conditionData.occupancyThreshold = {
+                attribute: `#${occupancyAttrId}#`,
+                operator: cond.querySelector('.occupancy-operator').value,
+                value: parseFloat(cond.querySelector('.occupancy-value').value)
+            };
+        }
     }
     if (cond.querySelector(`#${cond.id}-property-ranking`)?.checked) {
         const val = cond.querySelector('.property-value').value;
@@ -1908,3 +1986,76 @@ function getConditionData(cond) {
 
     return conditionData;
 }
+
+// ============================================================================
+// CSS Styles for Occupancy Disabled State
+// ============================================================================
+(function injectOccupancyStyles() {
+    const styleId = 'occupancy-disabled-styles';
+
+    // Check if styles already exist
+    if (document.getElementById(styleId)) {
+        return;
+    }
+
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+        /* Disabled field container styling */
+        .field-container.disabled-field {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .field-container.disabled-field label {
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        /* Unavailable badge styling */
+        .unavailable-badge {
+            display: inline-block;
+            margin-left: 0.5rem;
+            padding: 0.15rem 0.5rem;
+            background: #ffc107;
+            color: #000;
+            font-size: 0.75em;
+            font-weight: bold;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Unavailable message styling */
+        .unavailable-message {
+            padding: 0.75rem;
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 4px;
+            color: #856404;
+            line-height: 1.4;
+        }
+
+        .unavailable-message strong {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 1em;
+        }
+
+        .unavailable-message p {
+            margin: 0;
+            font-size: 0.9em;
+        }
+
+        /* Occupancy info text styling */
+        .occupancy-info {
+            display: block;
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+    `;
+
+    document.head.appendChild(style);
+})();
