@@ -1,56 +1,123 @@
 DECLARE
     l_hotel_id VARCHAR2(255) := apex_application.g_x01;
 BEGIN
-      INSERT INTO debug_log(message) VALUES('--- l_hotel_id:>   '||l_hotel_id);
-    -- Initialize the internal JSON buffer
+    INSERT INTO debug_log(message) VALUES('--- GET_LOV_DATA for hotel_id: ' || l_hotel_id);
+    
     apex_json.initialize_clob_output;
+    apex_json.open_object; -- Start the main JSON object
 
-    -- Start the main JSON object
-    apex_json.open_object;
-
-    -- Fetch Attributes
+    -- Fetch Attributes as {id, name} pairs
     apex_json.open_array('attributes');
-    -- *** REPLACE WITH YOUR QUERY FOR ATTRIBUTES ***
-    FOR rec IN (SELECT name || ' (' || (select name from ur_templates where id = a.template_id) || ')' AS name FROM ur_algo_attributes a WHERE hotel_id = l_hotel_id ORDER BY name) LOOP
-        apex_json.write(rec.name);
+    FOR rec IN (
+        -- MODIFICATION: Select the ID from the attributes table
+        SELECT
+            a.id,
+            a.name || ' (' || (SELECT name FROM ur_templates WHERE id = a.template_id) || '||' || a.ATTRIBUTE_QUALIFIER || ')' AS name
+        FROM
+            ur_algo_attributes a, ur_templates t
+        WHERE
+            a.hotel_id = l_hotel_id
+            and a.template_id = t.id
+            and t.active = 'Y'
+        ORDER BY
+            name
+    ) LOOP
+        -- MODIFICATION: Write an object instead of a string for each record
+        apex_json.open_object;
+        apex_json.write('id', rec.id);
+        apex_json.write('name', rec.name);
+        apex_json.close_object;
     END LOOP;
     apex_json.close_array;
 
-    -- Fetch Property Types
+    -- Fetch Property Types as {id, name} pairs
     apex_json.open_array('propertyTypes');
-    -- *** REPLACE WITH YOUR QUERY FOR PROPERTY TYPES ***
-    FOR rec IN (SELECT name AS name FROM ur_templates WHERE hotel_id = l_hotel_id and type = 'RST' ORDER BY name) LOOP
-        apex_json.write(rec.name);
+    FOR rec IN (
+        -- MODIFICATION: Select the ID from the templates table
+        SELECT
+            id,
+            name
+        FROM
+            ur_templates
+        WHERE
+            hotel_id = l_hotel_id
+            AND type = 'RST'
+            and active = 'Y'
+        ORDER BY
+            name
+    ) LOOP
+        -- MODIFICATION: Write an object instead of a string
+        apex_json.open_object;
+        apex_json.write('id', rec.id);
+        apex_json.write('name', rec.name);
+        apex_json.close_object;
     END LOOP;
     apex_json.close_array;
 
-    -- Fetch Occupancy Attributes
+    -- Fetch Occupancy Attributes as {id, name} pairs
     apex_json.open_array('occupancyAttributes');
-    -- *** REPLACE WITH YOUR QUERY FOR OCCUPANCY ATTRIBUTES ***
-    FOR rec IN (SELECT a.name || ' ('|| t.name ||')' AS name FROM ur_algo_attributes a, ur_templates t WHERE 1 = 1 and a.template_id = t.id and a.hotel_id = l_hotel_id and ATTRIBUTE_QUALIFIER = 'OCCUPANCY' ORDER BY name) LOOP
-        apex_json.write(rec.name);
+    FOR rec IN (
+        -- MODIFICATION: Select the ID from the attributes table
+        SELECT
+            a.id,
+            a.name || ' (' || t.name || ')' AS name
+        FROM
+            ur_algo_attributes a,
+            ur_templates t
+        WHERE
+            a.template_id = t.id
+            AND a.hotel_id = l_hotel_id
+            AND a.attribute_qualifier = 'OCCUPANCY'
+            and t.active = 'Y'
+        ORDER BY
+            name
+    ) LOOP
+        -- MODIFICATION: Write an object instead of a string
+        apex_json.open_object;
+        apex_json.write('id', rec.id);
+        apex_json.write('name', rec.name);
+        apex_json.close_object;
+    END LOOP;
+    apex_json.close_array;
+
+       -- Fetch Lead Time Attributes as {id, name} pairs
+    apex_json.open_array('leadTimeAttributes');
+    FOR rec IN (
+        -- MODIFICATION: Select the ID from the attributes table
+        SELECT
+            a.id,
+            a.name || ' (' || t.name || ')' AS name
+        FROM
+            ur_algo_attributes a,
+            ur_templates t
+        WHERE
+            a.template_id = t.id
+            AND a.hotel_id = l_hotel_id
+            AND a.attribute_qualifier = 'BOOKING_DATE'
+        ORDER BY
+            name
+    ) LOOP
+        -- MODIFICATION: Write an object instead of a string
+        apex_json.open_object;
+        apex_json.write('id', rec.id);
+        apex_json.write('name', rec.name);
+        apex_json.close_object;
     END LOOP;
     apex_json.close_array;
     
-    -- Add the static operators (these are not fetched from the DB in this example)
-    -- apex_json.write('operators',           apex_string.split('=:=!=>:=<:=>=:=<=', ':='));
-    -- apex_json.write('expressionOperators', apex_string.split('+:-:/:*', ':'));
-
-    -- Close the main JSON object
-    apex_json.close_object;
+    apex_json.close_object; -- Close the main JSON object
 
     -- Set the response header and print the generated JSON
     owa_util.mime_header('application/json', TRUE);
     htp.p(apex_json.get_clob_output);
-    -- htp.p('{"success":"Successfully executed the AJAX Call"}');
     
     -- Free the resources used by the writer
-    -- apex_json.free_output;
+    apex_json.free_output;
 
 EXCEPTION
     WHEN OTHERS THEN
         -- Always free resources, even if an error occurs
         apex_json.free_output; 
         owa_util.mime_header('application/json', TRUE);
-        htp.p('{"error":"Could not fetch LoV data."}');
+        htp.p('{"error":"Could not fetch LoV data. SQLERRM: ' || apex_escape.js_literal(sqlerrm) || '"}');
 END;
