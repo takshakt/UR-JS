@@ -222,6 +222,25 @@ function updateAllDropdowns() {
         document.querySelectorAll('.occupancy-info').forEach(el => {
             el.textContent = `Using: ${dynamicData.occupancyAttributes[0].name}`;
         });
+
+        // Enable checkboxes and remove "Unavailable" badges
+        document.querySelectorAll('[id$="-occupancy-threshold"]').forEach(checkbox => {
+            checkbox.disabled = false;
+
+            const fieldContainer = checkbox.closest('.field-container');
+            if (fieldContainer) {
+                fieldContainer.classList.remove('disabled-field');
+            }
+
+            // Remove the "Unavailable" badge from the label
+            const label = fieldContainer ? fieldContainer.querySelector('label[for="' + checkbox.id + '"]') : null;
+            if (label) {
+                const badge = label.querySelector('.unavailable-badge');
+                if (badge) {
+                    badge.remove();
+                }
+            }
+        });
     } else {
         // Disable and uncheck all occupancy checkboxes when array is empty
         document.querySelectorAll('[id$="-occupancy-threshold"]').forEach(checkbox => {
@@ -234,6 +253,18 @@ function updateAllDropdowns() {
             const fieldContainer = checkbox.closest('.field-container');
             if (fieldContainer) {
                 fieldContainer.classList.add('disabled-field');
+            }
+
+            // Add "Unavailable" badge if not present
+            const label = fieldContainer ? fieldContainer.querySelector('label[for="' + checkbox.id + '"]') : null;
+            if (label) {
+                const existingBadge = label.querySelector('.unavailable-badge');
+                if (!existingBadge) {
+                    const badge = document.createElement('span');
+                    badge.className = 'unavailable-badge';
+                    badge.textContent = 'Unavailable';
+                    label.appendChild(badge);
+                }
             }
         });
     }
