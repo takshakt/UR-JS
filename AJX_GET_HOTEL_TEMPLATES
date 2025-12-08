@@ -20,28 +20,56 @@ BEGIN
         -- templates object
         APEX_JSON.OPEN_OBJECT('templates');
 
-        -- write each template array
-        FOR rec_tpl IN (
-            SELECT UT.ID, UT.DEFINITION, UT.NAME
-              FROM UR_TEMPLATES UT
-             WHERE UT.HOTEL_ID = rec_hotel.ID
-             and UT.active = 'Y'
-             and UT.ID in (select TEMPLATE_ID FROM UR_ALGO_ATTRIBUTES where ATTRIBUTE_QUALIFIER = 'STAY_DATE' and HOTEL_ID = rec_hotel.ID )
-               --AND UPPER(UT.DEFINITION) LIKE '%'||(select NAME FROM UR_ALGO_ATTRIBUTES where ATTRIBUTE_QUALIFIER = 'STAY_DATE' and TEMPLATE_ID  = UT.ID)||'%'
+                -- write each template array
+                FOR rec_tpl IN (
+                    SELECT UT.ID, UT.DEFINITION, UT.NAME
+                      FROM UR_TEMPLATES UT
+                     WHERE UT.HOTEL_ID = rec_hotel.ID
+                     and UT.active = 'Y'
+                     and UT.ID in (select TEMPLATE_ID FROM UR_ALGO_ATTRIBUTES where ATTRIBUTE_QUALIFIER = 'STAY_DATE' and HOTEL_ID = rec_hotel.ID )
+                       --AND UPPER(UT.DEFINITION) LIKE '%'||(select NAME FROM UR_ALGO_ATTRIBUTES where ATTRIBUTE_QUALIFIER = 'STAY_DATE' and TEMPLATE_ID  = UT.ID)||'%'
+                ) LOOP
+                   APEX_JSON.OPEN_ARRAY(rec_tpl.NAME);
+
+                            FOR rec_col IN (
+                                SELECT jt."name" AS col_name
+                                  FROM JSON_TABLE(rec_tpl.DEFINITION, '$[*]'
+                                        COLUMNS ("name" VARCHAR2(200) PATH '$.name')) jt
+                            ) LOOP
+                                APEX_JSON.WRITE(rec_col.col_name);
+                            END LOOP;
+                    APEX_JSON.CLOSE_ARRAY;
+                 END LOOP; 
+
+
+        APEX_JSON.OPEN_ARRAY('Global_Attributes');
+        FOR rec_attr IN (
+            SELECT id, name
+              FROM ur_algo_attributes
+             WHERE hotel_id = rec_hotel.id
+               AND type = 'C'
+             ORDER BY id DESC
         ) LOOP
-           APEX_JSON.OPEN_ARRAY(rec_tpl.NAME);
-
-            FOR rec_col IN (
-                SELECT jt."name" AS col_name
-                  FROM JSON_TABLE(rec_tpl.DEFINITION, '$[*]'
-                        COLUMNS ("name" VARCHAR2(200) PATH '$.name')) jt
-            ) LOOP
-                APEX_JSON.WRITE(rec_col.col_name);
-            END LOOP;
-            APEX_JSON.CLOSE_ARRAY;
+            APEX_JSON.OPEN_OBJECT;
+            APEX_JSON.WRITE('id', rec_attr.id);
+            APEX_JSON.WRITE('name', rec_attr.name);
+            APEX_JSON.CLOSE_OBJECT;
         END LOOP;
+        APEX_JSON.CLOSE_ARRAY; -- Global_Attributes
+      
+        --  APEX_JSON.OPEN_ARRAY('Global_Attributes');
+        -- FOR rec_algo IN (
 
+        --               SELECT   name AS Global_Attributes
+        --       FROM ur_algo_attributes
+        --      WHERE hotel_id = rec_hotel.id
+        --        AND type = 'C'  
+        -- ) LOOP
+        --     APEX_JSON.WRITE(rec_algo.Global_Attributes);
+        -- END LOOP;
+        -- APEX_JSON.CLOSE_ARRAY; -- Global_Attributes
 
+/*
         APEX_JSON.OPEN_ARRAY('Strategies');
         FOR rec_algo IN (
             SELECT DISTINCT REPLACE(a.name, ' ', '_') || '(Strategy_Column)' AS EVALUATED_PRICE
@@ -55,7 +83,22 @@ BEGIN
         ) LOOP
             APEX_JSON.WRITE(rec_algo.EVALUATED_PRICE);
         END LOOP;
-        APEX_JSON.CLOSE_ARRAY; -- Strategies 
+        APEX_JSON.CLOSE_ARRAY; -- Strategies
+
+        APEX_JSON.OPEN_ARRAY('Global_Attributes');
+        FOR rec_attr IN (
+            SELECT id, name
+              FROM ur_algo_attributes
+             WHERE hotel_id = rec_hotel.id
+               AND type = 'C'
+             ORDER BY id DESC
+        ) LOOP
+            APEX_JSON.OPEN_OBJECT;
+            APEX_JSON.WRITE('id', rec_attr.id);
+            APEX_JSON.WRITE('name', rec_attr.name);
+            APEX_JSON.CLOSE_OBJECT;
+        END LOOP;
+        APEX_JSON.CLOSE_ARRAY; -- Global_Attributes
 
         -- APEX_JSON.OPEN_ARRAY('OCCUPANCY');
         -- FOR rec_algo IN (
@@ -85,7 +128,7 @@ BEGIN
         APEX_JSON.OPEN_ARRAY('Hotel_Occupancy');
         APEX_JSON.WRITE('OCCUPANCY');
         APEX_JSON.CLOSE_ARRAY; -- Hotel_Occupancy
-
+*/
 
         APEX_JSON.CLOSE_OBJECT; -- templates 
 

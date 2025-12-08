@@ -900,13 +900,27 @@ function populateSelectedColumns(definitionString) {
             selectedTemplate = 'All'; // templateLov.options[templateLov.selectedIndex].text;
             
             if (selectedHotel && selectedTemplate) {
-                const templateFieldsAll = hotelData[selectedHotel.toLowerCase().replace(/\s+/g, '')].templates;
+
+                const hotelKey = selectedHotel.toLowerCase().replace(/\s+/g, '');
+                const hotelObject = hotelData[hotelKey];
+                console.log('----Full hotel object:>', hotelObject);
+                const templateFieldsAll = hotelObject.templates;
+
+               // const templateFieldsAll = hotelData[selectedHotel.toLowerCase().replace(/\s+/g, '')].templates;
                  console.log('----templateFieldsAll:>', templateFieldsAll);
                 const formattedArray = [];
 
-                    for (const templateName in templateFieldsAll) {
+                   for (const templateName in templateFieldsAll) {
                         if (Object.hasOwnProperty.call(templateFieldsAll, templateName)) {
                             const fields = templateFieldsAll[templateName];
+
+                            // Handle Global_Attributes specially - they are objects with {id, name}
+                            if (templateName === 'Global_Attributes') {
+                                fields.forEach(attr => {
+                                    formattedArray.push(`${attr.name} ( Global_Attributes )`);
+                                });
+                                continue;
+                            }
 
                             fields.forEach(field => {
                                 const formattedString = `${field} ( ${templateName} )`;
@@ -914,6 +928,7 @@ function populateSelectedColumns(definitionString) {
                             });
                         }
                     }
+
                   //  formattedArray.push(...algoArray);
                    // // console.log('----formattedArray:>',formattedArray);
                 const finalString = formattedArray.join(', ');
@@ -927,8 +942,8 @@ function populateSelectedColumns(definitionString) {
                                 const availableFields = templateFields.filter(field => 
                                     !selectedFieldValues.includes(field)
                                 );
-                              console.log('----availableColumns:>', availableColumns);
-                            console.log('----availableFields:>',availableFields);
+                         //     console.log('----availableColumns:>', availableColumns);
+                       //     console.log('----availableFields:>',availableFields);
                                 populateColumns(availableColumns, availableFields);
                                 populateColumns(selectedColumns, selectedFieldValues);
                                 
@@ -1398,7 +1413,8 @@ function buildSQLFromJSON(data) {
 var qualifr_coval ;
   // Group normal columns by table
   data.selectedColumns.forEach(col => {
-    if (col.temp_name !== "Strategy_Column" && col.temp_name !== "Price_Override" && col.temp_name !== "Hotel_Occupancy") {
+    if (col.temp_name !== "Strategy_Column" && col.temp_name !== "Price_Override" && col.temp_name !== "Hotel_Occupancy" &&
+        col.temp_name !== "Global_Attributes") {
       if (!colsByTable[col.db_object_name]) {
         colsByTable[col.db_object_name] = [];
         hotelIds[col.db_object_name] = col.hotel_id;
@@ -1416,8 +1432,9 @@ var qualifr_coval ;
   const strategyCols = data.selectedColumns.filter(c => c.temp_name === "Strategy_Column");
   const price_or_cols = data.selectedColumns.filter(c => c.temp_name === "Price_Override");
   const hotelOccupancyCols = data.selectedColumns.filter(c => c.temp_name === "Hotel_Occupancy");
+  const globalAttrCols = data.selectedColumns.filter(c => c.temp_name === "Global_Attributes");
   const hotelId = data.selectedColumns.find(c => c.hotel_id)?.hotel_id || '';
-
+console.log('globalAttrCols:>>>>>>>>>>>>>',globalAttrCols);
   const tables = Object.keys(colsByTable);
   const aliases = tables.map((t, i) => "t" + (i + 1) + "_rn");
 
@@ -1489,6 +1506,25 @@ var qualifr_coval ;
 )`);
   });
 
+    // Build CTE for each Global_Attribute (uses attribute_id to fetch calculated values)
+  globalAttrCols.forEach((gc, i) => {
+    const alias = `ga${i + 1}_rn`;
+    ctes.push(`${alias} AS (
+  SELECT
+      '${hotelId}' as hotel_id,
+      t.STAY_DATE as pk_col,
+      t.attribute_value,
+      ROW_NUMBER() OVER (ORDER BY t.STAY_DATE) as rn
+  FROM TABLE(
+      ur_utils.GET_ATTRIBUTE_VALUE(
+          p_attribute_id => '${gc.attribute_id}',
+          p_hotel_id => '${hotelId}',
+          p_stay_date => NULL
+      )
+  ) t
+)`);
+  });
+
   // Build SELECT list
   const selectCols = [];
 
@@ -1525,33 +1561,65 @@ var qualifr_coval ;
     selectCols.push(`${alias}.CAPACITY AS "${hc.col_name} - Hotel_Occupancy"`);
   });
 
+  // Add Global_Attributes columns
+  globalAttrCols.forEach((gc, i) => {
+    const alias = `ga${i + 1}_rn`;
+    selectCols.push(`${alias}.attribute_value AS "${gc.col_name} - Global_Attributes"`);
+  });
+
   // Build final FROM + JOIN logic
 //  const allAliases = [...aliases, ...strategyCols.map((_, i) => `s${i + 1}_rn`)];
 
-   const allAliases = [...aliases, ...strategyCols.map((_, i) => `s${i + 1}_rn`), ...price_or_cols.map((_, i) => `por${i + 1}_rn`), ...hotelOccupancyCols.map((_, i) => `occ${i + 1}_rn`)];
+ //  const allAliases = [...aliases, ...strategyCols.map((_, i) => `s${i + 1}_rn`), ...price_or_cols.map((_, i) => `por${i + 1}_rn`), ...hotelOccupancyCols.map((_, i) => `occ${i + 1}_rn`)];
+ const allAliases = [
+       ...aliases,
+      // ...strategyCols.map((_, i) => `s${i + 1}_rn`),
+     //  ...price_or_cols.map((_, i) => `por${i + 1}_rn`),
+     //  ...hotelOccupancyCols.map((_, i) => `occ${i + 1}_rn`),
+       ...globalAttrCols.map((_, i) => `ga${i + 1}_rn`)
+   ];
 
+    const selectallAliases = [
+       ...aliases
+      // ...strategyCols.map((_, i) => `s${i + 1}_rn`),
+     //  ...price_or_cols.map((_, i) => `por${i + 1}_rn`),
+     //  ...hotelOccupancyCols.map((_, i) => `occ${i + 1}_rn`),
+     // ...globalAttrCols.map((_, i) => `ga${i + 1}_rn`)
+   ];
 //   const joinClauses = allAliases.slice(1).map((alias, i) =>
 //     `FULL OUTER JOIN ${alias}
 //       ON ${allAliases[0]}.hotel_id = ${alias}.hotel_id
 //      AND ${allAliases[0]}.pk_col = ${alias}.pk_col`
 //   );
 
+// const joinClauses = allAliases.slice(1).map((alias, i) => {
+//   // Use LEFT JOIN for strategy columns and hotel occupancy (optional data)
+//   const joinType = (alias.startsWith('s') || alias.startsWith('occ')|| alias.startsWith('por')) ? ' LEFT ' : 'FULL OUTER';
+
+//   // Hotel_Occupancy has no pk_col (single value per hotel), join only on hotel_id
+//   if (alias.startsWith('occ')) {
+//     return `${joinType} JOIN ${alias}
+//       ON ${allAliases[0]}.hotel_id = ${alias}.hotel_id`;
+//   }
+
+//   return `${joinType} JOIN ${alias}
+//       ON ${allAliases[0]}.hotel_id = ${alias}.hotel_id
+//      AND ${allAliases[0]}.pk_col = ${alias}.pk_col`;
+// });
+
+
 const joinClauses = allAliases.slice(1).map((alias, i) => {
-  // Use LEFT JOIN for strategy columns and hotel occupancy (optional data)
-  const joinType = (alias.startsWith('s') || alias.startsWith('occ')|| alias.startsWith('por')) ? ' LEFT ' : 'FULL OUTER';
+  // Use LEFT JOIN for strategy columns, hotel occupancy, price override, and global attributes (optional data)
+  const joinType = (alias.startsWith('ga')) ? ' LEFT ' : 'FULL OUTER';
+ 
 
-  // Hotel_Occupancy has no pk_col (single value per hotel), join only on hotel_id
-  if (alias.startsWith('occ')) {
-    return `${joinType} JOIN ${alias}
-      ON ${allAliases[0]}.hotel_id = ${alias}.hotel_id`;
-  }
-
+  // All other tables including Global_Attributes have pk_col (STAY_DATE), join on both hotel_id and pk_col
   return `${joinType} JOIN ${alias}
       ON ${allAliases[0]}.hotel_id = ${alias}.hotel_id
      AND ${allAliases[0]}.pk_col = ${alias}.pk_col`;
 });
 
-  const finalSelect = `SELECT COALESCE(${allAliases.map(a => a + ".hotel_id").join(", ")}, null) AS hotelid,
+  const finalSelect = `SELECT COALESCE(${selectallAliases.map(a => a + ".hotel_id").join(", ")}, null) AS hotelid,
   COALESCE(${allAliases.map(a => a + ".pk_col").join(", ")}, null) AS pk_col,
        ${selectCols.join(",\n       ")}
 FROM ${allAliases[0]}
@@ -1633,68 +1701,71 @@ function create_report(sqldata) {
         } 
         var jsondata_main;
         var jsondata_details;
-
 function generateJson() {  
 
-             console.log('generateJson report_expressions:>>>>',report_expressions);
-             console.log('generateJson selectedColumns:>>>>',selectedColumns);
-
-           // Updated full code with requested logic
+            // console.log('generateJson triggered');
 
             const columns = Array.from(
-                selectedColumns.querySelectorAll('.column-checkbox')
-            ).map(item => {
-                const rawName = item.dataset.value.split('(')[0].trim();
-                const tempName = item.dataset.value.substring(
-                    item.dataset.value.indexOf('(') + 1,
-                    item.dataset.value.indexOf(')')
-                ).trim();
+				selectedColumns.querySelectorAll('.column-checkbox')
+			).map(item => {
+				const rawName = item.dataset.value.split('(')[0].trim();
+				const tempName = item.dataset.value.substring(
+					item.dataset.value.indexOf('(') + 1,
+					item.dataset.value.indexOf(')')
+				).trim();
 
-                const match = hotelTemplates.find(t => t.temp_name === tempName);
+				const match = hotelTemplates.find(t => t.temp_name === tempName);
 
-                // Find if this column already exists in report_expressions.columnConfiguration.selectedColumns
-                let existing = null;
-                if (
-                    report_expressions &&
-                    report_expressions.columnConfiguration &&
-                    Array.isArray(report_expressions.columnConfiguration.selectedColumns)
-                ) {
-                    existing = report_expressions.columnConfiguration.selectedColumns.find(sc => 
-                        sc.col_name === rawName && sc.temp_name === tempName
-                    );
-                }
+				// Find if this column already exists in report_expressions.columnConfiguration.selectedColumns
+				let existing = null;
+				if (
+					report_expressions &&
+					report_expressions.columnConfiguration &&
+					Array.isArray(report_expressions.columnConfiguration.selectedColumns)
+				) {
+					existing = report_expressions.columnConfiguration.selectedColumns.find(sc => 
+						sc.col_name === rawName && sc.temp_name === tempName
+					);
+				}
 
-                // Handle Hotel_Occupancy - special case
-                if (tempName === 'Hotel_Occupancy') {
+				if (tempName === 'Global_Attributes') {
+                    // Extract the attribute name from the formatted string
+                    const attrName = item.dataset.value.split('(')[0].trim(); 
+                    // Find the attribute ID from hotelData.templates.Global_Attributes
+                    const hotelKey = selectedHotel.toLowerCase().replace(/\s+/g, '');
+                    const globalAttrs = hotelData[hotelKey].templates.Global_Attributes || [];
+                    const attrMatch = globalAttrs.find(a => a.name === attrName);
+
                     return {
-                        col_name: rawName,
-                        temp_name: 'Hotel_Occupancy',
-                        db_object_name: 'UR_HOTELS',
-                        alias_name: rawName,
+                        col_name: attrName,
+                        temp_name: 'Global_Attributes',
+                        db_object_name: 'UR_ALGO_ATTRIBUTES',
+                        alias_name: attrName,
+                        attribute_id: attrMatch ? attrMatch.id : null,
                         hotel_id: hotelLov.options[hotelLov.selectedIndex].value,
                     };
                 }
 
-                // If existing config found, return its values
-                if (existing) {
-                    return {
-                        col_name: existing.col_name,
-                        temp_name: existing.temp_name,
-                        db_object_name: existing.db_object_name,
-                        alias_name: existing.alias_name,
-                        hotel_id: existing.hotel_id,
-                    };
-                }
+				// If existing config found, return its values
+				if (existing) {
+					return {
+						col_name: existing.col_name,
+						temp_name: existing.temp_name,
+						db_object_name: existing.db_object_name,
+						alias_name: existing.alias_name,
+						hotel_id: existing.hotel_id,
+					};
+				}
 
-                // Otherwise fall back to default logic
-                return {
-                    col_name: rawName,
-                    temp_name: tempName,
-                    db_object_name: match ? match.db_object_name : null,
-                    alias_name: rawName,
-                    hotel_id: match ? match.hotel_id : null,
-                };
-            });
+				// Otherwise fall back to default logic
+				return {
+					col_name: rawName,
+					temp_name: tempName,
+					db_object_name: match ? match.db_object_name : null,
+					alias_name: rawName,
+					hotel_id: match ? match.hotel_id : null,
+				};
+			});
             
             if (columns.length === 0) {
                 alert("Please select at least one column first!");
