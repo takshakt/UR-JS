@@ -821,12 +821,7 @@ function addCondition(regionId) {
                             <select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
                             <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
                             <span class="occupancy-info">Using: ${dynamicData.occupancyAttributes[0].name}</span>
-                        ` : `
-                            <div class="unavailable-message">
-                                <strong>⚠️ Not Available</strong>
-                                <p>CALCULATED_OCCUPANCY attribute not configured for this hotel.</p>
-                            </div>
-                        `}
+                        ` : ''}
                     </div>
                 </div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${(dynamicData.propertyTypes || []).map(type => `<option value="${type.id}">${type.name}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div>
