@@ -1,0 +1,26 @@
+create or replace PACKAGE ALGO_EVALUATOR_PKG IS
+
+  FUNCTION build_dynamic_query(p_rules_json IN CLOB) RETURN CLOB;
+
+  FUNCTION EVALUATE(
+    p_algo_id    IN ur_algos.id%TYPE,
+    p_version_id IN ur_algo_versions.id%TYPE DEFAULT NULL,
+    p_stay_date  IN DATE DEFAULT NULL
+  ) RETURN t_result_tab_obj PIPELINED;
+
+
+    TYPE t_result_rec IS RECORD (
+    stay_date       DATE,
+    evaluated_price NUMBER,
+    applied_rule    CLOB
+  );
+  TYPE t_result_tab IS TABLE OF t_result_rec;
+
+    FUNCTION GENERIC_MATH_EVAL(
+    p_function_name IN VARCHAR2,
+    p_values IN VARCHAR2
+  ) RETURN NUMBER;
+
+
+END ALGO_EVALUATOR_PKG;
+/

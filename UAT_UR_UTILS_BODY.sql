@@ -1,0 +1,3012 @@
+create or replace PACKAGE BODY ur_utils IS
+
+-- --------------------------------------------------------------------------
+-- Function Implementation: sanitize_reserved_words
+-- --------------------------------------------------------------------------
+FUNCTION sanitize_reserved_words(
+  p_column_name IN VARCHAR2,
+  p_suffix      IN VARCHAR2 DEFAULT 'COL'
+) RETURN VARCHAR2
+IS
+  v_upper_name       VARCHAR2(128);
+  v_is_reserved      VARCHAR2(5) := 'false';
+  v_is_sanitized     VARCHAR2(5) := 'false';
+  v_sanitized_name   VARCHAR2(128);
+  v_result_json      VARCHAR2(500);
+
+  -- Oracle 91 Core Reserved Words
+  TYPE t_reserved_array IS TABLE OF VARCHAR2(30);
+  c_reserved_words t_reserved_array := t_reserved_array(
+    'ACCESS', 'ADD', 'ALL', 'ALTER', 'AND', 'ANY', 'AS', 'ASC', 'AUDIT',
+    'BETWEEN', 'BY', 'CHAR', 'CHECK', 'CLUSTER', 'COLUMN', 'COMMENT',
+    'COMPRESS', 'CONNECT', 'CREATE', 'CURRENT', 'DATE', 'DECIMAL',
+    'DEFAULT', 'DELETE', 'DESC', 'DISTINCT', 'DROP', 'ELSE', 'EXCLUSIVE',
+    'EXISTS', 'FILE', 'FLOAT', 'FOR', 'FROM', 'GRANT', 'GROUP', 'HAVING',
+    'IDENTIFIED', 'IMMEDIATE', 'IN', 'INCREMENT', 'INDEX', 'INITIAL',
+    'INSERT', 'INTEGER', 'INTERSECT', 'INTO', 'IS', 'LEVEL', 'LIKE',
+    'LOCK', 'LONG', 'MAXEXTENTS', 'MINUS', 'MODE', 'MODIFY', 'NOAUDIT',
+    'NOCOMPRESS', 'NOT', 'NOTFOUND', 'NOWAIT', 'NULL', 'NUMBER', 'OF',
+    'OFFLINE', 'ON', 'ONLINE', 'OPTION', 'OR', 'ORDER', 'PCTFREE', 'PRIOR',
+    'PRIVILEGES', 'PUBLIC', 'RAW', 'RENAME', 'RESOURCE', 'REVOKE', 'ROW',
+    'ROWID', 'ROWNUM', 'ROWS', 'SELECT', 'SESSION', 'SET', 'SHARE', 'SIZE',
+    'SMALLINT', 'SQL', 'START', 'SUCCESSFUL', 'SYNONYM', 'SYSDATE', 'TABLE',
+    'THEN', 'TO', 'TRIGGER', 'UID', 'UNION', 'UNIQUE', 'UPDATE', 'USER',
+    'VALIDATE', 'VALUES', 'VARCHAR', 'VARCHAR2', 'VIEW', 'WHENEVER',
+    'WHERE', 'WITH'
+  );
+
+  -- Additional High-Priority Keywords (most commonly problematic)
+  c_keywords t_reserved_array := t_reserved_array(
+    -- Data Types
+    'BINARY', 'BLOB', 'BOOLEAN', 'BYTE', 'CLOB', 'DOUBLE', 'INT',
+    'INTERVAL', 'JSON', 'NCHAR', 'NCLOB', 'NVARCHAR2', 'PRECISION',
+    'REAL', 'TIMESTAMP',
+    -- Common Functions
+    'ABS', 'AVG', 'CAST', 'CEIL', 'COALESCE', 'CONCAT', 'COUNT', 'CUBE',
+    'DECODE', 'DENSE_RANK', 'EXTRACT', 'FIRST', 'FLOOR', 'GREATEST',
+    'LAG', 'LAST', 'LEAD', 'LEAST', 'LENGTH', 'LISTAGG', 'LOWER', 'LPAD',
+    'LTRIM', 'MAX', 'MEDIAN', 'MIN', 'NVL', 'NVL2', 'RANK', 'REGEXP_LIKE',
+    'REGEXP_REPLACE', 'REPLACE', 'ROLLUP', 'ROUND', 'ROW_NUMBER', 'RPAD',
+    'RTRIM', 'SUBSTR', 'SUM', 'TRIM', 'TRUNC', 'UPPER', 'VARIANCE',
+    -- PL/SQL
+    'ARRAY', 'BEGIN', 'BINARY_INTEGER', 'BODY', 'BULK', 'CALL', 'CASE',
+    'CLOSE', 'CONSTANT', 'CONTINUE', 'CURSOR', 'DECLARE', 'DO', 'ELSIF',
+    'EXCEPTION', 'EXECUTE', 'EXIT', 'FETCH', 'FORALL', 'FUNCTION', 'GOTO',
+    'IF', 'LOOP', 'OPEN', 'PACKAGE', 'PRAGMA', 'PROCEDURE', 'RAISE',
+    'RETURN',
+    -- Database Objects
+    'CONSTRAINT', 'DATABASE', 'DIMENSION', 'DIRECTORY', 'EDITION',
+    'FLASHBACK', 'HIERARCHY', 'INDEXTYPE', 'JAVA', 'LIBRARY',
+    'MATERIALIZED', 'OPERATOR', 'OUTLINE', 'PARTITION', 'PROFILE', 'PURGE',
+    'QUEUE', 'ROLE', 'ROLLBACK', 'SCHEMA', 'SEGMENT', 'SEQUENCE',
+    'SNAPSHOT', 'TABLESPACE', 'TYPE',
+    -- Transaction
+    'COMMIT', 'FORCE', 'ISOLATION', 'NEXT', 'REFERENCES', 'SAVEPOINT',
+    'SERIALIZABLE', 'SQLCODE', 'SQLERRM', 'TRANSACTION', 'WORK', 'READ',
+    'WRITE', 'REPEATABLE', 'UNCOMMITTED', 'LOCAL', 'GLOBAL', 'TEMP',
+    'TEMPORARY', 'CASCADE',
+    -- Commonly Problematic
+    'ACTION', 'ACTIVE', 'AMOUNT', 'APPEND', 'APPLY', 'ASYNC', 'AWAIT',
+    'CHANGE', 'CLASS', 'CODE', 'CONDITION', 'CONFIG', 'CONNECTION',
+    'CONTENT', 'DEPTH', 'DESCRIPTION', 'END', 'EVENT', 'FALSE', 'FINAL',
+    'FORMAT', 'GRAPH', 'NAME', 'STATUS', 'TYPE'
+  );
+
+BEGIN
+  -- Convert to uppercase for comparison
+  v_upper_name := UPPER(TRIM(p_column_name));
+
+  -- Step 1: Replace one or more spaces with single underscore
+  v_sanitized_name := REGEXP_REPLACE(v_upper_name, ' +', '_');
+
+  -- Step 2: Remove special characters except allowed ones
+  -- Keep: A-Z, 0-9, _ - % . and common currency symbols ($, GBP, Euro, Yen)
+  v_sanitized_name := REGEXP_REPLACE(
+    v_sanitized_name,
+    '[^A-Z0-9_\-\%\.' || CHR(36) || CHR(163) || CHR(8364) || CHR(165) || ']',
+    ''
+  );
+
+  -- Step 3: Collapse multiple consecutive underscores into single underscore
+  v_sanitized_name := REGEXP_REPLACE(v_sanitized_name, '_+', '_');
+
+  -- Check if name was sanitized (spaces replaced, special chars removed, or underscores collapsed)
+  IF v_sanitized_name != v_upper_name THEN
+    v_is_sanitized := 'true';
+  END IF;
+
+  -- Check against core reserved words
+  FOR i IN 1..c_reserved_words.COUNT LOOP
+    IF v_sanitized_name = c_reserved_words(i) THEN
+      v_is_reserved := 'true';
+      v_sanitized_name := v_sanitized_name || '_' || UPPER(p_suffix);
+      EXIT;
+    END IF;
+  END LOOP;
+
+  -- If not found in reserved, check keywords
+  IF v_is_reserved = 'false' THEN
+    FOR i IN 1..c_keywords.COUNT LOOP
+      IF v_sanitized_name = c_keywords(i) THEN
+        v_is_reserved := 'true';
+        v_sanitized_name := v_sanitized_name || '_' || UPPER(p_suffix);
+        EXIT;
+      END IF;
+    END LOOP;
+  END IF;
+
+  -- Build result JSON
+  v_result_json := JSON_OBJECT(
+    'is_reserved'     VALUE v_is_reserved,
+    'is_sanitized'    VALUE v_is_sanitized,
+    'sanitized_name'  VALUE v_sanitized_name
+  );
+
+  RETURN v_result_json;
+
+EXCEPTION
+  WHEN OTHERS THEN
+    -- Return error info in JSON
+    RETURN JSON_OBJECT(
+      'is_reserved'     VALUE 'false',
+      'is_sanitized'    VALUE 'false',
+      'sanitized_name'  VALUE p_column_name,
+      'error'           VALUE SQLERRM
+    );
+END sanitize_reserved_words;
+
+-- ============================================================================
+-- PROCEDURE: sanitize_template_definition
+-- ============================================================================
+-- Purpose: Process template definition JSON and sanitize reserved words
+-- Input:
+--   p_definition_json: Template definition JSON (array of column objects)
+--   p_suffix: Suffix to append for reserved words (default: 'COL')
+-- Output:
+--   p_sanitized_json: New JSON with sanitized names and original_name added
+--   p_status: 'S' (Success), 'E' (Error), or 'W' (Warning)
+--   p_message: Status message
+-- ============================================================================
+PROCEDURE sanitize_template_definition(
+  p_definition_json IN  CLOB,
+  p_suffix          IN  VARCHAR2 DEFAULT 'COL',
+  p_sanitized_json  OUT CLOB,
+  p_status          OUT VARCHAR2,
+  p_message         OUT VARCHAR2
+)
+IS
+  l_array           JSON_ARRAY_T;
+  l_obj             JSON_OBJECT_T;
+  v_column_count    NUMBER := 0;
+  v_reserved_count  NUMBER := 0;
+  v_sanitized_count NUMBER := 0;
+  v_check_result    VARCHAR2(500);
+  v_is_reserved     VARCHAR2(10);
+  v_is_sanitized    VARCHAR2(10);
+  v_sanitized_name  VARCHAR2(128);
+  v_name            VARCHAR2(128);
+  v_original_name   VARCHAR2(128);
+
+BEGIN
+  -- Initialize output parameters
+  p_status := 'S';
+  p_message := '';
+  p_sanitized_json := NULL;
+
+  -- Validate input
+  IF p_definition_json IS NULL THEN
+    p_status := 'E';
+    p_message := 'Input JSON is null';
+    RETURN;
+  END IF;
+
+  -- Parse and modify JSON in-place
+  BEGIN
+    -- Parse JSON array (creates a mutable object)
+    l_array := JSON_ARRAY_T(p_definition_json);
+    v_column_count := l_array.get_size;
+
+    IF v_column_count = 0 THEN
+      p_status := 'E';
+      p_message := 'No columns found in JSON array';
+      RETURN;
+    END IF;
+
+    -- Loop through each element (0-based indexing)
+    FOR i IN 0..v_column_count - 1 LOOP
+      -- Get the object from the array
+      l_obj := TREAT(l_array.get(i) AS JSON_OBJECT_T);
+
+      -- Read the name field
+      v_name := l_obj.get_string('name');
+
+      -- Get or set original_name
+      IF l_obj.has('original_name') THEN
+        v_original_name := l_obj.get_string('original_name');
+      ELSE
+        v_original_name := v_name;
+        -- Add original_name field to preserve the original name
+        l_obj.put('original_name', v_original_name);
+      END IF;
+
+      -- Check if reserved word or needs sanitization
+      v_check_result := sanitize_reserved_words(v_name, p_suffix);
+      v_is_reserved := JSON_VALUE(v_check_result, '$.is_reserved');
+      v_is_sanitized := JSON_VALUE(v_check_result, '$.is_sanitized');
+      v_sanitized_name := JSON_VALUE(v_check_result, '$.sanitized_name');
+
+      -- Update name if it was sanitized (special chars) or is a reserved word
+      IF v_is_sanitized = 'true' OR v_is_reserved = 'true' THEN
+        -- Modify the name field IN-PLACE
+        l_obj.put('name', v_sanitized_name);
+
+        -- Track counts separately for clear messaging
+        IF v_is_reserved = 'true' THEN
+          v_reserved_count := v_reserved_count + 1;
+        END IF;
+        IF v_is_sanitized = 'true' THEN
+          v_sanitized_count := v_sanitized_count + 1;
+        END IF;
+      END IF;
+
+      -- ALL OTHER FIELDS ARE AUTOMATICALLY PRESERVED
+      -- (data_type, mapping_type, value, qualifier, selector, format_mask, is_json, etc.)
+
+      -- Ensure mapping_type is always set (safe inline version)
+DECLARE
+  l_elem JSON_ELEMENT_T;
+  l_map  VARCHAR2(4000);
+BEGIN
+  IF NOT l_obj.has('mapping_type') THEN
+    l_map := NULL;
+  ELSE
+    l_elem := l_obj.get('mapping_type'); -- may be NULL if key present but value missing
+    IF l_elem IS NULL OR l_elem.is_null THEN
+      l_map := NULL;
+    ELSE
+      l_map := l_obj.get_string('mapping_type');
+    END IF;
+  END IF;
+
+  IF l_map IS NULL OR TRIM(l_map) = '' THEN
+    l_obj.put('mapping_type', 'Maps To');
+  END IF;
+END;
+
+
+
+    END LOOP;
+
+    -- Convert modified array back to CLOB
+    p_sanitized_json := l_array.to_clob;
+
+    -- Set success message
+    p_message := 'Processed ' || v_column_count || ' columns. ' ||
+                 'Sanitized ' || v_sanitized_count || ' column names (spaces/special chars). ' ||
+                 'Renamed ' || v_reserved_count || ' reserved words.';
+
+  EXCEPTION
+    WHEN OTHERS THEN
+      p_status := 'E';
+      p_message := 'Error processing JSON: ' || SQLERRM;
+      p_sanitized_json := NULL;
+  END;
+
+END sanitize_template_definition;
+
+    PROCEDURE POPULATE_ERROR_COLLECTION_FROM_LOG (
+        p_interface_log_id IN  UR_INTERFACE_LOGS.ID%TYPE,
+        p_collection_name  IN  VARCHAR2,
+        p_status           OUT VARCHAR2,
+        p_message          OUT VARCHAR2
+    )
+    IS
+        l_error_json CLOB;
+        l_json_array_count NUMBER;
+    BEGIN
+        -- Initialize OUT parameters to a default error state.
+        p_status  := 'E';
+        p_message := 'An unexpected error occurred during processing.';
+
+        -- Step 1: Validate inputs
+        IF p_interface_log_id IS NULL THEN
+            p_status  := 'E';
+            p_message := 'Error: The Interface Log ID cannot be null.';
+            RETURN;
+        END IF;
+
+        IF p_collection_name IS NULL OR TRIM(p_collection_name) IS NULL THEN
+            p_status  := 'E';
+            p_message := 'Error: The Collection Name cannot be null or empty.';
+            RETURN;
+        END IF;
+
+        -- Step 2: Fetch the ERROR_JSON from the logs table
+        BEGIN
+            SELECT error_json
+            INTO   l_error_json
+            FROM   ur_interface_logs
+            WHERE  id = p_interface_log_id;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                p_status  := 'E';
+                p_message := 'Error: No record found for Interface Log ID: ' || RAWTOHEX(p_interface_log_id) || '.';
+                RETURN;
+        END;
+
+        -- Step 3: Check if the fetched JSON is null or empty
+        IF l_error_json IS NULL OR DBMS_LOB.GETLENGTH(l_error_json) = 0 THEN
+            p_status  := 'W';
+            p_message := 'Warning: The error log for the specified ID is empty. No data to populate.';
+            -- It's a good practice to still ensure the collection is empty in this case.
+            APEX_COLLECTION.CREATE_OR_TRUNCATE_COLLECTION(p_collection_name => p_collection_name);
+            RETURN;
+        END IF;
+
+        -- Step 4: Parse the JSON and check for validity
+        BEGIN
+            APEX_JSON.PARSE(l_error_json);
+        EXCEPTION
+            WHEN OTHERS THEN
+                -- APEX_JSON raises an unhandled exception (ORA-20987) for parse errors.
+                p_status  := 'E';
+                p_message := 'Error: Failed to parse the ERROR_JSON content. The JSON string may be malformed.';
+                RETURN;
+        END;
+
+        -- Step 5: Initialize the APEX Collection
+        -- This creates the collection if it doesn't exist or clears it if it does.
+        APEX_COLLECTION.CREATE_OR_TRUNCATE_COLLECTION(
+            p_collection_name => p_collection_name
+        );
+
+        -- Step 6: Loop through the JSON array and populate the collection
+        l_json_array_count := APEX_JSON.GET_COUNT(p_path => '.');
+
+        IF l_json_array_count > 0 THEN
+            FOR i IN 1..l_json_array_count LOOP
+                -- Add members to the collection.
+                -- c001 for row number, c002 for the error message.
+                APEX_COLLECTION.ADD_MEMBER(
+                    p_collection_name => p_collection_name,
+                    p_c001            => APEX_JSON.GET_VARCHAR2(p_path => '[%d].row', p0 => i),
+                    p_c002            => APEX_JSON.GET_VARCHAR2(p_path => '[%d].error', p0 => i)
+                );
+            END LOOP;
+            
+            p_status  := 'S';
+            p_message := 'Success: Collection ''' || p_collection_name || ''' has been populated with ' || l_json_array_count || ' error(s).';
+
+        ELSE
+            -- This handles cases where the JSON is valid but is an empty array, e.g., '[]'.
+            p_status  := 'W';
+            p_message := 'Warning: The error log contains an empty array. The collection is empty.';
+        END IF;
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            -- A final catch-all for any other unexpected Oracle errors.
+            p_status  := 'E';
+            p_message := 'An unexpected system error occurred: ' || SQLERRM;
+    END POPULATE_ERROR_COLLECTION_FROM_LOG;
+
+
+    PROCEDURE VALIDATE_TEMPLATE_DEFINITION(
+        p_json_clob  IN            CLOB,
+        p_alert_clob IN OUT NOCOPY CLOB,
+        p_status     OUT           VARCHAR2
+    ) IS
+        l_error_found BOOLEAN := FALSE;
+    BEGIN
+        -- Loop through each JSON object in the array where a 'qualifier' exists.
+        FOR r IN (
+            SELECT
+                nm,
+                dt,
+                qlf
+            FROM
+                JSON_TABLE(p_json_clob, '$[*]'
+                    COLUMNS (
+                        nm  VARCHAR2(255) PATH '$.name',
+                        dt  VARCHAR2(50)  PATH '$.data_type',
+                        qlf VARCHAR2(255) PATH '$.qualifier'
+                    )
+                )
+            WHERE
+                qlf IS NOT NULL
+        ) LOOP
+            -- RULE 1: Qualifiers with 'DATE' in the name must have a 'DATE' data_type.
+            IF INSTR(UPPER(r.qlf), 'DATE') > 0 THEN
+                IF r.dt <> 'DATE' THEN
+                    l_error_found := TRUE;
+                    ur_utils.add_alert(
+                        p_alert_clob,
+                        'Field "' || r.nm || '": Qualifier "' || r.qlf || '" must be DATE.',
+                        'error',
+                        NULL,
+                        NULL,
+                        p_alert_clob
+                    );
+                END IF;
+            -- RULE 2: All other qualifiers must have a 'NUMBER' data_type.
+            ELSE
+                IF r.dt <> 'NUMBER' THEN
+                    l_error_found := TRUE;
+                    ur_utils.add_alert(
+                        p_alert_clob,
+                        'Field "' || r.nm || '": Qualifier "' || r.qlf || '" must be NUMBER.',
+                        'error',
+                        NULL,
+                        NULL,
+                        p_alert_clob
+                    );
+                END IF;
+            END IF;
+        END LOOP;
+
+        -- Set the final status ('S'uccess or 'E'rror) and add a success message if needed.
+        IF l_error_found THEN
+            p_status := 'E';
+        ELSE
+            p_status := 'S';
+            ur_utils.add_alert(p_alert_clob, 'Template definition validated successfully.', 'success', NULL, NULL, p_alert_clob);
+        END IF;
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            p_status := 'E';
+            ur_utils.add_alert(p_alert_clob, 'Unexpected validation error: ' || SQLERRM, 'error', NULL, NULL, p_alert_clob);
+    END VALIDATE_TEMPLATE_DEFINITION;
+
+    --------------------------------------------------------------------------------
+
+    FUNCTION GET_ATTRIBUTE_VALUE(
+        p_attribute_id   IN RAW      DEFAULT NULL,
+        p_attribute_key  IN VARCHAR2 DEFAULT NULL,
+        p_hotel_id       IN RAW      DEFAULT NULL,
+        p_stay_date      IN DATE     DEFAULT NULL,
+        p_round_digits   IN NUMBER   DEFAULT 2
+    ) RETURN UR_attribute_value_table PIPELINED AS
+        l_response_clob CLOB;
+        l_status        VARCHAR2(1);
+    BEGIN
+        -- This internal call remains the same. The JSON it produces should have
+        -- the attribute_value as a number, date string, or text string.
+        GET_ATTRIBUTE_VALUE(
+            p_attribute_id  => p_attribute_id,
+            p_attribute_key => p_attribute_key,
+            p_hotel_id      => p_hotel_id,
+            p_stay_date     => p_stay_date,
+            p_round_digits  => p_round_digits,
+            p_debug_flag    => FALSE,
+            p_response_clob => l_response_clob
+        );
+
+        l_status := JSON_VALUE(l_response_clob, '$.STATUS');
+
+        IF l_status = 'S' THEN
+            FOR rec IN (
+                SELECT
+                    TO_DATE(jt.stay_date, 'DD-MON-YYYY') AS stay_date,
+                    jt.attribute_value
+                FROM
+                    JSON_TABLE(
+                        l_response_clob,
+                        '$.RESPONSE_PAYLOAD[*]'
+                        COLUMNS (
+                            stay_date       VARCHAR2(20)   PATH '$.stay_date',
+                            -- MODIFIED: Read the value as VARCHAR2 to handle all types.
+                            attribute_value VARCHAR2(4000) PATH '$.attribute_value'
+                        )
+                    ) jt
+            ) LOOP
+                -- This now works for any data type since attribute_value is a string.
+                PIPE ROW(UR_attribute_value_row(rec.stay_date, rec.attribute_value));
+            END LOOP;
+        END IF;
+
+        RETURN;
+    EXCEPTION
+        WHEN OTHERS THEN
+            -- Gracefully exit on error
+            RETURN;
+    END GET_ATTRIBUTE_VALUE;
+
+    --------------------------------------------------------------------------------
+
+    -- =================================================================
+    --  MAIN PROCEDURE IMPLEMENTATION (Returns JSON CLOB)
+    -- =================================================================
+    PROCEDURE build_json_response(
+        p_status                 IN VARCHAR2,
+        p_message                IN CLOB,
+        p_attribute_id           IN RAW,
+        p_attribute_name         IN VARCHAR2,
+        p_attribute_key          IN VARCHAR2,
+        p_attribute_datatype     IN VARCHAR2,
+        p_attribute_qualifier    IN VARCHAR2,
+        p_attribute_static_val   IN VARCHAR2,
+        p_hotel_id               IN RAW,
+        p_stay_date              IN DATE,
+        p_debug_flag             IN BOOLEAN,
+        p_record_count           IN NUMBER,
+        p_payload_array          IN JSON_ARRAY_T,
+        p_response_clob          OUT CLOB
+    ) IS
+        l_json_obj JSON_OBJECT_T;
+    BEGIN
+        l_json_obj := JSON_OBJECT_T();
+        l_json_obj.put('attribute_id', RAWTOHEX(p_attribute_id));
+        l_json_obj.put('attribute_name', p_attribute_name);
+        l_json_obj.put('attribute_key', p_attribute_key);
+        l_json_obj.put('attribute_datatype', p_attribute_datatype);
+        l_json_obj.put('attribute_qualifier', p_attribute_qualifier);
+        l_json_obj.put('attribute_static_value', p_attribute_static_val);
+        l_json_obj.put('hotel_id', RAWTOHEX(p_hotel_id));
+        l_json_obj.put('stay_date', TO_CHAR(p_stay_date, 'YYYY-MM-DD'));
+        l_json_obj.put('DEBUG_FLAG', CASE WHEN p_debug_flag THEN 'TRUE' ELSE 'FALSE' END);
+        l_json_obj.put('RESPONSE_TIME', TO_CHAR(SYSTIMESTAMP, 'YYYY-MM-DD"T"HH24:MI:SS.FF"Z"'));
+        l_json_obj.put('STATUS', p_status);
+        l_json_obj.put('RECORD_COUNT', p_record_count);
+        l_json_obj.put('MESSAGE', p_message);
+        l_json_obj.put('RESPONSE_PAYLOAD', p_payload_array);
+
+        p_response_clob := l_json_obj.to_clob;
+    EXCEPTION
+        WHEN OTHERS THEN
+            p_response_clob := '{"STATUS":"E", "MESSAGE":"Failed to generate final JSON response: ' || SQLERRM || '"}';
+    END build_json_response;
+
+    --------------------------------------------------------------------------------
+
+    PROCEDURE GET_ATTRIBUTE_VALUE(
+        p_attribute_id  IN  RAW      DEFAULT NULL,
+        p_attribute_key IN  VARCHAR2 DEFAULT NULL,
+        p_hotel_id      IN  RAW      DEFAULT NULL,
+        p_stay_date     IN  DATE     DEFAULT NULL,
+        p_round_digits  IN  NUMBER   DEFAULT 2,
+        p_debug_flag    IN  BOOLEAN  DEFAULT FALSE,
+        p_response_clob OUT CLOB
+    ) IS
+        l_attribute_rec     UR_ALGO_ATTRIBUTES%ROWTYPE;
+        l_template_rec      UR_TEMPLATES%ROWTYPE;
+        l_sql_stmt          VARCHAR2(8000);
+        l_cursor            SYS_REFCURSOR;
+        l_stay_date_val     DATE;
+        l_attribute_val_out VARCHAR2(4000);
+        l_records_fetched   NUMBER := 0;
+        l_json_payload_arr  JSON_ARRAY_T := JSON_ARRAY_T();
+        l_json_row_obj      JSON_OBJECT_T;
+        l_status            VARCHAR2(1) := 'S';
+        l_message           CLOB;
+        l_debug_log         CLOB;
+
+        PROCEDURE append_debug(p_log_entry IN VARCHAR2) IS
+        BEGIN
+            IF p_debug_flag THEN
+                l_debug_log := l_debug_log || TO_CHAR(SYSTIMESTAMP, 'HH24:MI:SS.FF') || ' - ' || p_log_entry || CHR(10);
+            END IF;
+        END append_debug;
+
+    BEGIN
+        append_debug('Procedure started.');
+
+        IF (p_attribute_id IS NULL AND p_attribute_key IS NULL) OR (p_attribute_id IS NOT NULL AND p_attribute_key IS NOT NULL) THEN
+            l_message := 'Validation Error: Provide either p_attribute_id or p_attribute_key, but not both.';
+            build_json_response('E', l_message, NULL, NULL, p_attribute_key, NULL, NULL, NULL, p_hotel_id, p_stay_date, p_debug_flag, 0, JSON_ARRAY_T('[]'), p_response_clob);
+            RETURN;
+        END IF;
+
+        BEGIN
+            IF p_attribute_id IS NOT NULL THEN
+                SELECT * INTO l_attribute_rec FROM UR_ALGO_ATTRIBUTES WHERE ID = p_attribute_id;
+            ELSE
+                SELECT * INTO l_attribute_rec FROM UR_ALGO_ATTRIBUTES WHERE KEY = p_attribute_key;
+            END IF;
+            append_debug('Found attribute with ID: ' || RAWTOHEX(l_attribute_rec.ID) || ', TYPE: ' || l_attribute_rec.TYPE || ', VALUE: ' || l_attribute_rec.VALUE);
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                l_message := 'Attribute not found for the specified ID or KEY.';
+                build_json_response('E', l_message, p_attribute_id, NULL, p_attribute_key, NULL, NULL, NULL, p_hotel_id, p_stay_date, p_debug_flag, 0, JSON_ARRAY_T('[]'), p_response_clob);
+                RETURN;
+        END;
+
+        IF l_attribute_rec.TYPE = 'M' THEN
+            append_debug('Attribute type is Manual. Using static value.');
+            l_json_row_obj := JSON_OBJECT_T();
+            l_json_row_obj.put('stay_date', TO_CHAR(p_stay_date, 'DD-MON-YYYY'));
+            CASE UPPER(l_attribute_rec.DATA_TYPE)
+                WHEN 'NUMBER' THEN
+                    l_json_row_obj.put('attribute_value', ROUND(TO_NUMBER(l_attribute_rec.VALUE), p_round_digits));
+                ELSE
+                    l_json_row_obj.put('attribute_value', l_attribute_rec.VALUE);
+            END CASE;
+            l_json_payload_arr.append(l_json_row_obj);
+            l_records_fetched := 1;
+            l_message         := 'Manual value returned.';
+
+ELSIF l_attribute_rec.TYPE = 'S' THEN
+    append_debug('Attribute type is Sourced. Parsing value formula.');
+    DECLARE
+        TYPE t_table_map IS TABLE OF VARCHAR2(10) INDEX BY VARCHAR2(150);
+        l_tables             t_table_map;
+        l_formula            VARCHAR2(4000) := l_attribute_rec.VALUE;
+        l_expression         VARCHAR2(4000) := l_formula;
+        l_from_clause        VARCHAR2(4000);
+        l_where_clause       VARCHAR2(1000) := ' WHERE 1=1';
+        l_stay_date_column   VARCHAR2(150); -- This variable is the target of our change
+        l_base_table_alias   VARCHAR2(10)   := 't1';
+        l_table_counter      NUMBER         := 1;
+        l_pos                NUMBER         := 1;
+        l_source_ref         VARCHAR2(200);
+    BEGIN
+        -- ### MODIFIED LOGIC: Determine the STAY_DATE column name ###
+        IF l_attribute_rec.TEMPLATE_ID IS NOT NULL THEN
+            -- **[1] Original Logic: Use Template ID if it exists**
+            append_debug('Template ID found. Looking up STAY_DATE column from template definition.');
+            -- Check if OWN_PROPERTY/COMP_PROPERTY with a VIEW object - only then use hardcoded STAY_DATE
+            IF l_attribute_rec.ATTRIBUTE_QUALIFIER IN ('OWN_PROPERTY', 'COMP_PROPERTY') THEN
+                DECLARE
+                    l_db_object_name  VARCHAR2(128);
+                    l_object_type     VARCHAR2(30);
+                BEGIN
+                    -- Extract DB object name from formula (e.g., #UR_TMPLT_XXX.COLUMN# -> UR_TMPLT_XXX)
+                    l_db_object_name := REGEXP_SUBSTR(l_formula, '#([^#.]+)\.', 1, 1, NULL, 1);
+                    append_debug('Extracted DB object name from formula: ' || l_db_object_name);
+
+                    -- Check the object type (VIEW or TABLE)
+                    BEGIN
+                        SELECT object_type
+                        INTO   l_object_type
+                        FROM   USER_OBJECTS
+                        WHERE  object_name = UPPER(l_db_object_name)
+                          AND  object_type IN ('TABLE', 'VIEW')
+                        FETCH FIRST 1 ROWS ONLY;
+                    EXCEPTION
+                        WHEN NO_DATA_FOUND THEN
+                            l_object_type := NULL;
+                            append_debug('DB object not found in USER_OBJECTS: ' || l_db_object_name);
+                    END;
+
+                    append_debug('DB object type: ' || NVL(l_object_type, 'UNKNOWN'));
+
+                    IF l_object_type = 'VIEW' THEN
+                        -- VIEW: Use hardcoded STAY_DATE
+                        l_stay_date_column := 'STAY_DATE';
+                        append_debug('Object is a VIEW. Using default STAY_DATE column.');
+                    END IF;
+                END;
+            END IF;
+
+            -- For non-VIEW cases (TABLE or other qualifiers), look up from template definition
+            IF l_stay_date_column IS NULL THEN
+                append_debug('Looking up STAY_DATE column from template definition.');
+                BEGIN
+                    SELECT * INTO l_template_rec FROM UR_TEMPLATES WHERE ID = l_attribute_rec.TEMPLATE_ID;
+                    SELECT jt.name
+                    INTO   l_stay_date_column
+                    FROM   JSON_TABLE(l_template_rec.DEFINITION, '$[*]' COLUMNS (name VARCHAR2(100) PATH '$.name', qualifier VARCHAR2(100) PATH '$.qualifier')) jt
+                    WHERE  jt.qualifier = 'STAY_DATE';
+                EXCEPTION
+                    WHEN NO_DATA_FOUND THEN
+                        RAISE_APPLICATION_ERROR(-20004, 'Critical error: The associated template definition requires a column with the ''STAY_DATE'' qualifier.');
+                END;
+            END IF;
+        ELSE
+            -- **[2] New Logic: Introspect the formula if no Template ID**
+            append_debug('Template ID is NULL. Starting non-templated attribute logic.');
+
+            IF p_hotel_id IS NULL THEN
+                append_debug('Validation failed: p_hotel_id is NULL for a non-templated Sourced attribute.');
+                l_message := 'Validation Error: A Hotel ID must be provided to retrieve values for this attribute configuration.';
+                build_json_response('E', l_message, l_attribute_rec.ID, l_attribute_rec.NAME, l_attribute_rec.KEY, l_attribute_rec.DATA_TYPE, l_attribute_rec.ATTRIBUTE_QUALIFIER, l_attribute_rec.VALUE, p_hotel_id, p_stay_date, p_debug_flag, 0, JSON_ARRAY_T('[]'), p_response_clob);
+                RETURN;
+            END IF;
+
+            append_debug('Template ID is NULL. Introspecting formula to find base table and verify STAY_DATE column.');
+            
+            DECLARE
+                l_base_table_name VARCHAR2(128);
+                l_column_exists   NUMBER;
+            BEGIN
+                -- Extract the first table name from the formula (e.g., from #TABLE.COLUMN#)
+                l_base_table_name := REGEXP_SUBSTR(l_formula, '#([^#.]+)\.', 1, 1, NULL, 1);
+
+                IF l_base_table_name IS NULL THEN
+                    RAISE_APPLICATION_ERROR(-20006, 'Invalid formula format. Cannot determine base table from value: ' || l_formula);
+                END IF;
+                
+                append_debug('Inferred base table is: ' || l_base_table_name);
+
+                -- Check if a 'STAY_DATE' column exists in that table
+                SELECT COUNT(*)
+                INTO   l_column_exists
+                FROM   ALL_TAB_COLUMNS
+                WHERE  TABLE_NAME = UPPER(l_base_table_name)
+                  AND  COLUMN_NAME = 'STAY_DATE';
+
+                IF l_column_exists > 0 THEN
+                    l_stay_date_column := 'STAY_DATE';
+                ELSE
+                    RAISE_APPLICATION_ERROR(-20007, 'Configuration error: The base table ''' || l_base_table_name || ''' for this attribute does not have a required ''STAY_DATE'' column.');
+                END IF;
+            END;
+        END IF;
+
+        append_debug('Determined Stay Date column is: ' || l_stay_date_column);
+
+        -- 1. Parse all source references and build FROM clause (This logic remains the same)
+        LOOP
+            l_source_ref := REGEXP_SUBSTR(l_formula, '#([^#]+)#', l_pos, 1, NULL, 1);
+            EXIT WHEN l_source_ref IS NULL;
+
+                    DECLARE
+                        l_table_name VARCHAR2(150) := REGEXP_SUBSTR(l_source_ref, '^[^.]+');
+                        l_col_name   VARCHAR2(150) := REGEXP_SUBSTR(l_source_ref, '[^.]+$');
+                        l_alias      VARCHAR2(10);
+                    BEGIN
+                        IF NOT l_tables.EXISTS(l_table_name) THEN
+                            l_alias              := 't' || l_table_counter;
+                            l_tables(l_table_name) := l_alias;
+
+                            IF l_table_counter = 1 THEN
+                                l_from_clause := DBMS_ASSERT.ENQUOTE_NAME(l_table_name) || ' ' || l_alias;
+                            ELSE
+                                l_from_clause := l_from_clause || ' LEFT JOIN ' || DBMS_ASSERT.ENQUOTE_NAME(l_table_name) || ' ' || l_alias ||
+                                                 ' ON ' || l_base_table_alias || '.' || DBMS_ASSERT.ENQUOTE_NAME(l_stay_date_column) || ' = ' || l_alias || '.' || DBMS_ASSERT.ENQUOTE_NAME(l_stay_date_column);
+                            END IF;
+                            l_table_counter := l_table_counter + 1;
+                        ELSE
+                            l_alias := l_tables(l_table_name);
+                        END IF;
+
+                        l_expression := REPLACE(l_expression, '#' || l_source_ref || '#', l_alias || '.' || DBMS_ASSERT.ENQUOTE_NAME(l_col_name));
+                    END;
+                    l_pos := REGEXP_INSTR(l_formula, '#', l_pos, 2) + 1;
+                END LOOP;
+
+                IF l_from_clause IS NULL THEN
+                    RAISE_APPLICATION_ERROR(-20001, 'Invalid Sourced Attribute: Formula is missing a source reference like #TABLE.COLUMN#.');
+                END IF;
+
+                -- 2. Validate expression (now includes brackets)
+                DECLARE
+                    l_validation_check VARCHAR2(4000);
+                BEGIN
+                    l_validation_check := REGEXP_REPLACE(l_expression, '[''a-zA-Z0-9_."''\(\)0-9\.\+\*\/ \t\r\n-]', '');
+                    IF l_validation_check IS NOT NULL THEN
+                        RAISE_APPLICATION_ERROR(-20003, 'Invalid Sourced Attribute: Formula contains illegal characters.');
+                    END IF;
+                END;
+
+                -- 4. Build final SQL (Conditionally apply ROUND based on data type)
+                IF p_stay_date IS NOT NULL THEN l_where_clause := l_where_clause || ' AND TRUNC(' || l_base_table_alias || '.' || DBMS_ASSERT.ENQUOTE_NAME(l_stay_date_column) || ') = TRUNC(:stay_date)'; END IF;
+                IF p_hotel_id IS NOT NULL THEN l_where_clause := l_where_clause || ' AND ' || l_base_table_alias || '.' || DBMS_ASSERT.ENQUOTE_NAME('HOTEL_ID') || ' = :hotel_id'; END IF;
+
+                IF l_attribute_rec.DATA_TYPE = 'NUMBER' THEN
+                    append_debug('Data type is NUMBER, applying ROUND().');
+                    l_sql_stmt := 'SELECT ' || l_base_table_alias || '.' || DBMS_ASSERT.ENQUOTE_NAME(l_stay_date_column) ||
+                                  ', ROUND((' || l_expression || '), :round_digits)' ||
+                                  ' FROM ' || l_from_clause || l_where_clause;
+                ELSE
+                    append_debug('Data type is ' || l_attribute_rec.DATA_TYPE || ', not applying ROUND().');
+                    l_sql_stmt := 'SELECT ' || l_base_table_alias || '.' || DBMS_ASSERT.ENQUOTE_NAME(l_stay_date_column) ||
+                                  ', ' || l_expression ||
+                                  ' FROM ' || l_from_clause || l_where_clause;
+                END IF;
+
+                append_debug('Dynamic SQL: ' || l_sql_stmt);
+
+                -- Open the cursor with the correct bind variables based on the data type
+                IF l_attribute_rec.DATA_TYPE = 'NUMBER' THEN
+                    -- This block handles NUMBER types, which always need :round_digits
+                    CASE
+                        WHEN p_stay_date IS NOT NULL AND p_hotel_id IS NOT NULL THEN
+                            OPEN l_cursor FOR l_sql_stmt USING p_round_digits, p_stay_date, p_hotel_id;
+                        WHEN p_stay_date IS NOT NULL AND p_hotel_id IS NULL THEN
+                            OPEN l_cursor FOR l_sql_stmt USING p_round_digits, p_stay_date;
+                        WHEN p_stay_date IS NULL AND p_hotel_id IS NOT NULL THEN
+                            OPEN l_cursor FOR l_sql_stmt USING p_round_digits, p_hotel_id;
+                        ELSE
+                            OPEN l_cursor FOR l_sql_stmt USING p_round_digits;
+                    END CASE;
+                ELSE
+                    -- This block handles non-NUMBER types (DATE, VARCHAR2, etc.), which do NOT have :round_digits
+                    CASE
+                        WHEN p_stay_date IS NOT NULL AND p_hotel_id IS NOT NULL THEN
+                            OPEN l_cursor FOR l_sql_stmt USING p_stay_date, p_hotel_id;
+                        WHEN p_stay_date IS NOT NULL AND p_hotel_id IS NULL THEN
+                            OPEN l_cursor FOR l_sql_stmt USING p_stay_date;
+                        WHEN p_stay_date IS NULL AND p_hotel_id IS NOT NULL THEN
+                            OPEN l_cursor FOR l_sql_stmt USING p_hotel_id;
+                        ELSE
+                            -- No bind variables are needed if all parameters are null for non-numeric types
+                            OPEN l_cursor FOR l_sql_stmt;
+                    END CASE;
+                END IF;
+
+
+
+                LOOP
+                    FETCH l_cursor INTO l_stay_date_val, l_attribute_val_out;
+                    EXIT WHEN l_cursor%NOTFOUND;
+                    
+                    l_records_fetched := l_records_fetched + 1;
+                    l_json_row_obj := JSON_OBJECT_T();
+                    l_json_row_obj.put('stay_date', TO_CHAR(l_stay_date_val, 'DD-MON-YYYY'));
+
+                    -- Conditionally handle the attribute value based on its data type
+                    CASE UPPER(l_attribute_rec.DATA_TYPE)
+                        WHEN 'NUMBER' THEN
+                            l_json_row_obj.put('attribute_value', TO_NUMBER(l_attribute_val_out));
+                        ELSE -- For DATE, VARCHAR2, etc., treat as a string
+                            l_json_row_obj.put('attribute_value', l_attribute_val_out);
+                    END CASE;
+                    
+                    l_json_payload_arr.append(l_json_row_obj);
+                END LOOP;
+                CLOSE l_cursor;
+            END;
+        ELSE
+            RAISE_APPLICATION_ERROR(-20005, 'Attribute validation error: Unknown TYPE ''' || l_attribute_rec.TYPE || '''. Must be ''M'' (Manual) or ''S'' (Sourced).');
+        END IF;
+
+        IF l_message IS NULL THEN
+            l_message := l_records_fetched || ' records fetched successfully.';
+            IF l_records_fetched = 0 AND l_attribute_rec.TYPE != 'M' THEN
+                l_status  := 'W';
+                l_message := 'No records found for the given criteria.';
+            END IF;
+        END IF;
+
+        IF p_debug_flag THEN
+            l_message := l_message || CHR(10) || '--- DEBUG LOG ---' || CHR(10) || l_debug_log;
+        END IF;
+
+        build_json_response(l_status, l_message, l_attribute_rec.ID, l_attribute_rec.NAME, l_attribute_rec.KEY, l_attribute_rec.DATA_TYPE, l_attribute_rec.ATTRIBUTE_QUALIFIER, l_attribute_rec.VALUE, p_hotel_id, p_stay_date, p_debug_flag, l_records_fetched, l_json_payload_arr, p_response_clob);
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            IF l_cursor%ISOPEN THEN
+                CLOSE l_cursor;
+            END IF;
+            l_status  := 'E';
+            l_message := 'An unexpected error occurred: ' || SQLERRM;
+            append_debug(l_message);
+            IF p_debug_flag THEN
+                l_message := l_message || CHR(10) || '--- DEBUG LOG ---' || CHR(10) || l_debug_log;
+            END IF;
+            build_json_response(
+                'E',
+                l_message,
+                l_attribute_rec.ID,
+                NVL(l_attribute_rec.NAME, 'UNKNOWN'),
+                NVL(l_attribute_rec.KEY, p_attribute_key),
+                NVL(l_attribute_rec.DATA_TYPE, 'UNKNOWN'),
+                NVL(l_attribute_rec.ATTRIBUTE_QUALIFIER, 'UNKNOWN'),
+                NVL(l_attribute_rec.VALUE, 'UNKNOWN'),
+                p_hotel_id,
+                p_stay_date,
+                p_debug_flag,
+                0,
+                JSON_ARRAY_T('[]'),
+                p_response_clob
+            );
+    END GET_ATTRIBUTE_VALUE;
+
+    --------------------------------------------------------------------------------
+
+    FUNCTION Clean_TEXT(p_text IN VARCHAR2) RETURN VARCHAR2 IS
+        v_clean VARCHAR2(4000);
+    BEGIN
+        v_clean := UPPER(
+            SUBSTR(
+                REGEXP_REPLACE(
+                    REGEXP_REPLACE(
+                        REGEXP_REPLACE(
+                            TRIM(p_text),
+                            '^[^A-Za-z0-9]+|[^A-Za-z0-9]+$',
+                            ''
+                        ),
+                        '[^A-Za-z0-9]+',
+                        '_'
+                    ),
+                    '_+',
+                    '_'
+                ),
+                1,
+                110
+            )
+        );
+        RETURN v_clean;
+    END Clean_TEXT;
+
+    --------------------------------------------------------------------------------
+
+    FUNCTION normalize_json(p_json CLOB) RETURN CLOB IS
+    BEGIN
+        RETURN REPLACE(REPLACE(p_json, '"data-type"', '"data_type"'), '"DATA-TYPE"', '"data_type"');
+    END normalize_json;
+
+    --------------------------------------------------------------------------------
+
+    PROCEDURE get_collection_json(
+        p_collection_name IN  VARCHAR2,
+        p_json_clob       OUT CLOB,
+        p_status          OUT VARCHAR2,
+        p_message         OUT VARCHAR2
+    ) IS
+        l_count NUMBER;
+    BEGIN
+        SELECT
+            COUNT(*)
+        INTO l_count
+        FROM
+            apex_collections
+        WHERE
+            collection_name = p_collection_name;
+
+        IF l_count = 0 THEN
+            p_status    := 'E';
+            p_message   := 'Failure: Collection "' || p_collection_name || '" does not exist or is empty';
+            p_json_clob := NULL;
+            RETURN;
+        END IF;
+
+        -- Initialize and build JSON output
+        apex_json.initialize_clob_output;
+        apex_json.open_array;
+
+        FOR rec IN (
+            SELECT
+                c001,
+                c002,
+                c003,
+                c004,
+                c005,
+                c006
+            FROM
+                apex_collections
+            WHERE
+                collection_name = p_collection_name
+            ORDER BY
+                seq_id
+        ) LOOP
+            apex_json.open_object;
+            apex_json.write('name', rec.c001);
+            apex_json.write('data_type', rec.c002);
+            apex_json.write('qualifier', rec.c003);
+            apex_json.write('value', rec.c004);
+            apex_json.write('mapping_type', rec.c005);
+            apex_json.write('original_name', rec.c006);
+            apex_json.close_object;
+        END LOOP;
+
+        apex_json.close_array;
+
+        p_json_clob := apex_json.get_clob_output;
+
+        apex_json.free_output;
+
+        p_status  := 'S';
+        p_message := 'JSON generated for collection "' || p_collection_name || '"';
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            p_status    := 'E';
+            p_message   := 'Failure: ' || SQLERRM;
+            p_json_clob := NULL;
+    END get_collection_json;
+
+    --------------------------------------------------------------------------------
+
+    PROCEDURE define_db_object(
+        p_template_key IN  VARCHAR2,
+        p_status       OUT BOOLEAN,
+        p_message      OUT VARCHAR2,
+        p_mode         IN  VARCHAR2 DEFAULT 'N' -- 'N' = new create, 'U' = update/replace existing
+    ) IS
+        v_db_object_name VARCHAR2(130);
+        v_sql            CLOB;
+        v_col_defs       CLOB := '';
+        v_unique_defs    CLOB := '';
+        v_definition     CLOB;
+        v_exists         NUMBER;
+        v_trigger_name   VARCHAR2(130);
+        l_col_name       VARCHAR2(100);
+    BEGIN
+        -- 🔒 Lock and fetch details
+        SELECT
+            db_object_name,
+            definition
+        INTO
+            v_db_object_name,
+            v_definition
+        FROM
+            ur_templates
+        WHERE
+            key = p_template_key
+        FOR UPDATE;
+
+        IF v_definition IS NULL THEN
+            p_status  := FALSE;
+            p_message := 'Failure: Definition JSON is NULL for template_key ' || p_template_key;
+            RETURN;
+        END IF;
+
+        -- Generate table name if not already defined
+        IF v_db_object_name IS NULL THEN
+            v_db_object_name := 'UR_TMPLT_' || UPPER(p_template_key) || '_T';
+        END IF;
+
+        -- 🔍 Check if table exists
+        SELECT
+            COUNT(*)
+        INTO v_exists
+        FROM
+            all_tables
+        WHERE
+            table_name = UPPER(v_db_object_name);
+
+        -- 🧩 Handle based on mode
+        IF v_exists > 0 THEN
+            IF p_mode = 'N' THEN
+                p_status  := FALSE;
+                p_message := 'Failure: Table ' || v_db_object_name || ' already exists.';
+                RETURN;
+            ELSIF p_mode = 'U' THEN
+                -- Drop existing trigger if exists
+                BEGIN
+                    v_trigger_name := v_db_object_name || '_BI_TRG';
+                    EXECUTE IMMEDIATE 'DROP TRIGGER "' || v_trigger_name || '"';
+                EXCEPTION
+                    WHEN OTHERS THEN
+                        NULL; -- ignore if not exists
+                END;
+
+                -- Drop existing table
+                BEGIN
+                    EXECUTE IMMEDIATE 'DROP TABLE "' || v_db_object_name || '" CASCADE CONSTRAINTS';
+                EXCEPTION
+                    WHEN OTHERS THEN
+                        p_status  := FALSE;
+                        p_message := 'Failure dropping existing table: ' || SQLERRM;
+                        RETURN;
+                END;
+            END IF;
+        END IF;
+
+        -- Start with ID RAW(16) as primary key column
+        v_col_defs := '"REC_ID" RAW(16)';
+
+        -- Parse JSON definition
+        FOR rec IN (
+            SELECT
+                jt.name,
+                jt.data_type,
+                jt.qualifier
+            FROM
+                JSON_TABLE(
+                    normalize_json(v_definition),
+                    '$[*]' COLUMNS (
+                        name      VARCHAR2(100) PATH '$.name',
+                        data_type VARCHAR2(30)  PATH '$.data_type',
+                        qualifier VARCHAR2(30)  PATH '$.qualifier'
+                    )
+                ) jt
+        ) LOOP
+            -- Sanitize and normalize column name
+            l_col_name := UPPER(TRIM(BOTH '_' FROM rec.name));
+            l_col_name := REGEXP_REPLACE(l_col_name, '_{2,}', '_');
+            -- l_col_name := REGEXP_REPLACE(l_col_name, '[^A-Za-z0-9]', '_');  -- ADDED THIS LINE ON 26/11
+
+            INSERT INTO DEBUG_LOG (MESSAGE) VALUES (l_col_name);
+            v_col_defs := v_col_defs || ', ';
+
+            -- Map data types
+            IF UPPER(rec.data_type) = 'TEXT' THEN
+                v_col_defs := v_col_defs || '"' || l_col_name || '" VARCHAR2(4000)';
+            ELSIF UPPER(rec.data_type) = 'NUMBER' THEN
+                v_col_defs := v_col_defs || '"' || l_col_name || '" NUMBER';
+            ELSIF UPPER(rec.data_type) = 'DATE' THEN
+                v_col_defs := v_col_defs || '"' || l_col_name || '" DATE';
+            ELSE
+                v_col_defs := v_col_defs || '"' || l_col_name || '" VARCHAR2(4000)';
+            END IF;
+
+            -- Add unique constraint for special qualifiers
+            IF UPPER(rec.qualifier) = 'STAY_DATE' THEN
+                v_unique_defs :=
+                    v_unique_defs ||
+                    ', CONSTRAINT "' || v_db_object_name || '_' || l_col_name || '_UQ" UNIQUE ("' ||
+                    l_col_name || '")';
+            END IF;
+        END LOOP;
+
+        -- Add WHO / AUDIT columns
+        v_col_defs :=
+            v_col_defs ||
+            ', CREATED_BY RAW(16), UPDATED_BY RAW(16), CREATED_ON DATE, UPDATED_ON DATE, HOTEL_ID RAW(16), INTERFACE_LOG_ID RAW(16)';
+
+        -- Build CREATE TABLE DDL
+        v_sql :=
+            'CREATE TABLE "' || v_db_object_name || '" (' ||
+            v_col_defs ||
+            ', CONSTRAINT "' || v_db_object_name || '_PK" PRIMARY KEY ("REC_ID")' ||
+            v_unique_defs || ')';
+
+        EXECUTE IMMEDIATE v_sql;
+
+        -- Create or replace trigger
+        v_trigger_name := v_db_object_name || '_BI_TRG';
+        v_sql          := '
+CREATE OR REPLACE EDITIONABLE TRIGGER "' || v_trigger_name || '"
+BEFORE INSERT OR UPDATE ON "' || v_db_object_name || '"
+FOR EACH ROW
+DECLARE
+  v_user_id UR_USERS.USER_ID%TYPE;
+BEGIN
+  SELECT USER_ID INTO v_user_id
+    FROM UR_USERS
+   WHERE USER_NAME = SYS_CONTEXT(''APEX$SESSION'', ''APP_USER'');
+
+  IF :NEW.REC_ID IS NULL THEN
+    :NEW.REC_ID := SYS_GUID();
+  END IF;
+
+  IF INSERTING THEN
+    :NEW.CREATED_BY := v_user_id;
+    :NEW.CREATED_ON := SYSDATE;
+    :NEW.UPDATED_BY := v_user_id;
+    :NEW.UPDATED_ON := SYSDATE;
+  ELSIF UPDATING THEN
+    :NEW.UPDATED_BY := v_user_id;
+    :NEW.UPDATED_ON := SYSDATE;
+  END IF;
+END ' || v_trigger_name || ';
+';
+        EXECUTE IMMEDIATE v_sql;
+
+        -- Update UR_TEMPLATES
+        UPDATE ur_templates
+        SET
+            db_object_name         = v_db_object_name,
+            db_object_created_on   = SYSDATE
+        WHERE
+            key = p_template_key;
+
+        COMMIT;
+
+        p_status := TRUE;
+        IF p_mode = 'U' THEN
+            p_message := 'Success: Table "' || v_db_object_name || '" redefined (replaced) successfully.';
+        ELSE
+            p_message := 'Success: Table "' || v_db_object_name || '" created with ID primary key and trigger.';
+        END IF;
+
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            p_status  := FALSE;
+            p_message := 'Failure: Template key not found';
+        WHEN OTHERS THEN
+            p_status  := FALSE;
+            p_message := 'Failure: ' || SQLERRM;
+    END define_db_object;
+
+    --------------------------------------------------------------------------------
+
+    PROCEDURE create_ranking_view(
+        p_template_key IN  VARCHAR2,
+        p_status       OUT BOOLEAN,
+        p_message      OUT VARCHAR2
+    ) IS
+        -- Metadata Variables
+        v_definition       CLOB;
+        v_data_table_name  VARCHAR2(128);
+        v_view_name        VARCHAR2(128);
+        v_sdate_col        VARCHAR2(128);
+        v_own_property_col VARCHAR2(128);
+        v_property_list    CLOB;
+
+        -- Dynamic SQL Variables
+        v_sql              CLOB;
+        v_pivot_clause     CLOB; -- For inside the subquery
+        v_final_columns    CLOB; -- For the final SELECT list
+        v_property_count   NUMBER := 0;
+        v_exists           NUMBER;
+
+    BEGIN
+        -- Step 1: Lock row and get metadata
+        SELECT
+            definition,
+            db_object_name
+        INTO
+            v_definition,
+            v_data_table_name
+        FROM
+            ur_templates
+        WHERE
+            key = p_template_key
+        FOR UPDATE;
+
+        -- Step 2: Validation checks
+        IF v_definition IS NULL THEN
+            p_status  := FALSE;
+            p_message := 'Failure: Definition JSON is NULL.';
+            ROLLBACK;
+            RETURN;
+        END IF;
+        IF v_data_table_name IS NULL THEN
+            p_status  := FALSE;
+            p_message := 'Failure: DB object not yet defined.';
+            ROLLBACK;
+            RETURN;
+        END IF;
+        SELECT COUNT(*) INTO v_exists FROM user_tables WHERE table_name = UPPER(v_data_table_name);
+        IF v_exists = 0 THEN
+            p_status  := FALSE;
+            p_message := 'Failure: Source table ' || v_data_table_name || ' does not exist.';
+            ROLLBACK;
+            RETURN;
+        END IF;
+
+        -- Step 3: Parse JSON to get column names and count all properties
+        SELECT jt.name
+        INTO   v_sdate_col
+        FROM   JSON_TABLE(v_definition, '$[*]' COLUMNS (name VARCHAR2(128) PATH '$.name', qualifier VARCHAR2(128) PATH '$.qualifier')) jt
+        WHERE  jt.qualifier = 'STAY_DATE';
+
+        SELECT jt.name
+        INTO   v_own_property_col
+        FROM   JSON_TABLE(v_definition, '$[*]' COLUMNS (name VARCHAR2(128) PATH '$.name', qualifier VARCHAR2(128) PATH '$.qualifier')) jt
+        WHERE  jt.qualifier = 'OWN_PROPERTY';
+
+        SELECT
+            LISTAGG('"' || jt.name || '"', ', ') WITHIN GROUP(
+                ORDER BY
+                    jt.name
+            ),
+            COUNT(jt.name)
+        INTO
+            v_property_list,
+            v_property_count
+        FROM
+            JSON_TABLE(v_definition, '$[*]' COLUMNS (name VARCHAR2(128) PATH '$.name', qualifier VARCHAR2(128) PATH '$.qualifier')) jt
+        WHERE
+            jt.qualifier IN ('OWN_PROPERTY', 'COMP_PROPERTY');
+
+        -- Step 4: Build the dynamic PIVOT and final column list clauses
+        -- (REMOVED HOTEL_ID from this pivot logic)
+        FOR i IN 1..v_property_count LOOP
+            v_pivot_clause := v_pivot_clause ||
+                              'MAX(CASE WHEN overall_rank = ' || i || ' THEN hotel_name END) AS "RANK_' || i || '_NAME",' || CHR(10) ||
+                              'MAX(CASE WHEN overall_rank = ' || i || ' THEN price END) AS "RANK_' || i || '_RATE",' || CHR(10);
+
+            v_final_columns := v_final_columns ||
+                               'p."RANK_' || i || '_NAME",' || CHR(10) ||
+                               'p."RANK_' || i || '_RATE",' || CHR(10);
+        END LOOP;
+        v_pivot_clause  := RTRIM(v_pivot_clause, ',' || CHR(10));
+        v_final_columns := RTRIM(v_final_columns, ',' || CHR(10));
+
+
+        -- Step 5: Build the final CREATE VIEW statement
+        v_view_name := 'UR_TMPLT_' || p_template_key || '_RANK_V';
+
+        v_sql := 'CREATE OR REPLACE VIEW "' || v_view_name || '" AS ' || CHR(10) ||
+                 'WITH all_properties_ranked AS (' || CHR(10) ||
+                 '  SELECT ' || CHR(10) ||
+                 '      "HOTEL_ID",' || CHR(10) ||                          -- 1. Select base HOTEL_ID here
+                 '      "' || v_sdate_col || '",' || CHR(10) ||
+                 '      hotel_name,' || CHR(10) ||
+                 '      CASE WHEN REGEXP_LIKE(price, ''^[0-9,.]+$'') THEN TO_NUMBER(REPLACE(price, '','', '''')) ELSE NULL END AS price,' || CHR(10) ||
+                 '      ROW_NUMBER() OVER(PARTITION BY "' || v_sdate_col || '" ORDER BY CASE WHEN REGEXP_LIKE(price, ''^[0-9,.]+$'') THEN TO_NUMBER(REPLACE(price, '','', '''')) ELSE NULL END ASC NULLS LAST) as overall_rank' || CHR(10) ||
+                 '  FROM "' || v_data_table_name || '"' || CHR(10) ||
+                 '  UNPIVOT (price FOR hotel_name IN (' || v_property_list || '))' || CHR(10) ||
+                 ')' || CHR(10) ||
+                 'SELECT ' || CHR(10) ||
+                 '  p."' || v_sdate_col || '" AS "STAY_DATE",' || CHR(10) ||
+                 '  p."HOTEL_ID",' || CHR(10) ||                           -- 2. Select HOTEL_ID from the pivot subquery 'p'
+                 '  own.price AS "OWN_PROPERTY_RATE",' || CHR(10) ||
+                 '  own.overall_rank AS "OWN_PROPERTY_RANK",' || CHR(10) ||
+                 '  ' || v_final_columns || CHR(10) ||
+                 'FROM (' || CHR(10) ||
+                 '  SELECT ' || CHR(10) ||
+                 '      "' || v_sdate_col || '",' || CHR(10) ||
+                 '      "HOTEL_ID",' || CHR(10) ||                         -- 3. Select HOTEL_ID in the 'p' subquery
+                 '      ' || v_pivot_clause || CHR(10) ||
+                 '  FROM all_properties_ranked ' || CHR(10) ||
+                 '  GROUP BY "' || v_sdate_col || '", "HOTEL_ID"' || CHR(10) || -- 4. Add HOTEL_ID to the GROUP BY
+                 ') p' || CHR(10) ||
+                 'JOIN (' || CHR(10) ||
+                 '  SELECT "' || v_sdate_col || '", price, overall_rank FROM all_properties_ranked WHERE hotel_name = ''' || v_own_property_col || '''' || CHR(10) ||
+                 ') own ON p."' || v_sdate_col || '" = own."' || v_sdate_col || '"';
+
+        -- Step 6: Execute the dynamic SQL
+        EXECUTE IMMEDIATE v_sql;
+
+        -- Update UR_TEMPLATES with the new db_view_object_name and timestamp
+        UPDATE ur_templates
+        SET
+            db_view_object_name        = v_view_name,
+            db_view_object_created_on  = SYSDATE
+        WHERE
+            key = p_template_key;
+
+        COMMIT;
+        p_status  := TRUE;
+        p_message := 'Success! Ranking view "' || v_view_name || '" created or replaced.';
+
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+             p_status  := TRUE;
+          --  p_status  := FALSE;
+           -- p_message := 'Failure: Could not find a required qualifier (STAY_DATE, OWN_PROPERTY) in template key ''' || p_template_key || '''.'; commented on 7/11
+          
+            ROLLBACK;
+        WHEN OTHERS THEN
+            p_status := FALSE;
+            p_message := 'Failure: ' || SQLERRM;
+            DBMS_OUTPUT.PUT_LINE('--- FAILED SQL ---');
+            DBMS_OUTPUT.PUT_LINE(v_sql);
+            DBMS_OUTPUT.PUT_LINE('------------------');
+            ROLLBACK;
+    END create_ranking_view;
+
+    --------------------------------------------------------------------------------
+
+    PROCEDURE LOAD_DATA_MAPPING_COLLECTION(
+        p_file_id           IN  VARCHAR2,
+        p_template_id       IN  VARCHAR2,
+        p_collection_name   IN  VARCHAR2,
+        p_use_original_name IN  VARCHAR2 DEFAULT 'AUTO',
+        p_match_datatype    IN  VARCHAR2 DEFAULT 'Y',
+        p_status            OUT VARCHAR2,
+        p_message           OUT VARCHAR2
+    ) IS
+        -- Local variables
+        v_seq_id                 NUMBER;
+        v_use_original_name_use  VARCHAR2(10);
+        v_match_datatype_use     VARCHAR2(10);
+    BEGIN
+        -- Initialize outputs
+        p_status  := 'S';
+        p_message := 'Processing completed successfully.';
+
+        ------------------------------------------------------------------------
+        -- Step 0: Validate and normalize input parameters
+        ------------------------------------------------------------------------
+        -- Validate p_use_original_name
+        v_use_original_name_use := UPPER(NVL(p_use_original_name, 'AUTO'));
+        IF v_use_original_name_use NOT IN ('Y', 'N', 'AUTO') THEN
+            v_use_original_name_use := 'AUTO';
+        END IF;
+
+        -- Validate p_match_datatype
+        v_match_datatype_use := UPPER(NVL(p_match_datatype, 'Y'));
+        IF v_match_datatype_use NOT IN ('Y', 'N') THEN
+            v_match_datatype_use := 'Y';
+        END IF;
+
+        ------------------------------------------------------------------------
+        -- Step 1: Create or truncate the APEX collection
+        ------------------------------------------------------------------------
+        BEGIN
+            IF APEX_COLLECTION.COLLECTION_EXISTS(p_collection_name) THEN
+                APEX_COLLECTION.DELETE_COLLECTION(p_collection_name);
+            END IF;
+
+            APEX_COLLECTION.CREATE_COLLECTION(p_collection_name);
+
+        EXCEPTION
+            WHEN OTHERS THEN
+                p_status  := 'E';
+                p_message := 'Failed to create or truncate collection "' || p_collection_name || '": ' || SQLERRM;
+                RETURN;
+        END;
+
+        ------------------------------------------------------------------------
+        -- Step 2: Insert data from TEMP_BLOB JSON into collection (c001)
+        ------------------------------------------------------------------------
+        BEGIN
+            FOR rec IN (
+                SELECT
+                    jt.name || ' (' || jt.data_type || ')' AS column_desc,
+                    jt.col_position
+                FROM
+                    TEMP_BLOB t,
+                    JSON_TABLE(
+                        normalize_json(t.columns),
+                        '$[*]' COLUMNS (
+                            name       VARCHAR2(100) PATH '$.name',
+                            data_type  VARCHAR2(100) PATH '$.data_type',
+                            col_position VARCHAR2(100) PATH '$.pos'
+                        )
+                    ) jt
+                WHERE
+                    t.id = p_file_id
+            ) LOOP
+                APEX_COLLECTION.ADD_MEMBER(
+                    p_collection_name => p_collection_name,
+                    p_c001            => rec.column_desc,
+                    p_c004            => rec.col_position
+                );
+            END LOOP;
+
+        EXCEPTION
+            WHEN OTHERS THEN
+                p_status  := 'E';
+                p_message := 'Failed to insert data from TEMP_BLOB (File ID: ' || p_file_id || '): ' || SQLERRM;
+                RETURN;
+        END;
+
+        ------------------------------------------------------------------------
+        -- Step 3: Update existing collection members with matching data from UR_TEMPLATES
+        -- Now extracts: name, original_name, data_type, mapping_type, value, qualifier
+        ------------------------------------------------------------------------
+        BEGIN
+            FOR rec IN (
+                SELECT
+                    jt.name,
+                    jt.original_name,
+                    jt.data_type,
+                    NVL(jt.mapping_type, 'Maps To') AS mapping_type,
+                    jt.value,
+                    jt.qualifier,
+                    jt.name || ' (' || jt.data_type || ')' AS column_desc
+                FROM
+                    UR_TEMPLATES t,
+                    JSON_TABLE(
+                        normalize_json(t.definition),
+                        '$[*]' COLUMNS (
+                            name          VARCHAR2(100) PATH '$.name',
+                            original_name VARCHAR2(100) PATH '$.original_name',
+                            data_type     VARCHAR2(100) PATH '$.data_type',
+                            mapping_type  VARCHAR2(100) PATH '$.mapping_type',
+                            value         VARCHAR2(4000) PATH '$.value',
+                            qualifier     VARCHAR2(100) PATH '$.qualifier'
+                        )
+                    ) jt
+                WHERE
+                    t.id = p_template_id
+                ORDER BY
+                    t.id DESC
+            ) LOOP
+                BEGIN
+                    -- Determine which template name to use for matching
+                    DECLARE
+                        v_template_match_name VARCHAR2(100);
+                        v_source_name         VARCHAR2(100);
+                        v_source_data_type    VARCHAR2(100);
+                        v_match_found         BOOLEAN := FALSE;
+                    BEGIN
+                        -- Determine template name based on p_use_original_name
+                        IF v_use_original_name_use = 'Y' THEN
+                            -- Use original_name only
+                            v_template_match_name := LOWER(TRIM(rec.original_name));
+                        ELSIF v_use_original_name_use = 'N' THEN
+                            -- Use name only
+                            v_template_match_name := LOWER(TRIM(rec.name));
+                        ELSE  -- 'AUTO'
+                            -- AUTO mode: use original_name if available and not empty, else use name
+                            v_template_match_name := LOWER(TRIM(NVL(NULLIF(rec.original_name, ''), rec.name)));
+                        END IF;
+
+                        -- Try to find matching collection member with flexible matching
+                        FOR coll_rec IN (
+                            SELECT seq_id, c001
+                            FROM apex_collections
+                            WHERE collection_name = p_collection_name
+                              AND c001 IS NOT NULL
+                        ) LOOP
+                            -- Extract source name and data type from c001 format "NAME (TYPE)"
+                            v_source_name      := LOWER(TRIM(REGEXP_SUBSTR(coll_rec.c001, '^[^(]+')));
+                            v_source_data_type := LOWER(TRIM(REGEXP_SUBSTR(coll_rec.c001, '\(([^)]+)\)', 1, 1, NULL, 1)));
+
+                            -- Skip if we couldn't extract a valid source name or template name
+                            IF v_source_name IS NULL OR v_template_match_name IS NULL THEN
+                                CONTINUE;
+                            END IF;
+
+                            -- Check if names match (case-insensitive)
+                            IF v_source_name = v_template_match_name THEN
+                                -- If matching data type is required, check it
+                                IF v_match_datatype_use = 'Y' THEN
+                                    IF v_source_data_type = LOWER(TRIM(rec.data_type)) THEN
+                                        v_seq_id := coll_rec.seq_id;
+                                        v_match_found := TRUE;
+                                        EXIT;
+                                    END IF;
+                                ELSE
+                                    -- Data type matching not required
+                                    v_seq_id := coll_rec.seq_id;
+                                    v_match_found := TRUE;
+                                    EXIT;
+                                END IF;
+                            END IF;
+                        END LOOP;
+
+                        IF NOT v_match_found THEN
+                            RAISE NO_DATA_FOUND;
+                        END IF;
+                    END;
+
+                    -- Update c002: Target column descriptor
+                    APEX_COLLECTION.UPDATE_MEMBER_ATTRIBUTE(
+                        p_collection_name => p_collection_name,
+                        p_seq             => v_seq_id,
+                        p_attr_number     => 2,
+                        p_attr_value      => rec.column_desc
+                    );
+
+                    -- Update c003: mapping_type from template (was hardcoded 'Maps To')
+                    APEX_COLLECTION.UPDATE_MEMBER_ATTRIBUTE(
+                        p_collection_name => p_collection_name,
+                        p_seq             => v_seq_id,
+                        p_attr_number     => 3,
+                        p_attr_value      => rec.mapping_type
+                    );
+
+                    -- Update c004: value from template (for Calculation/Default)
+                    APEX_COLLECTION.UPDATE_MEMBER_ATTRIBUTE(
+                        p_collection_name => p_collection_name,
+                        p_seq             => v_seq_id,
+                        p_attr_number     => 4,
+                        p_attr_value      => rec.value
+                    );
+
+                    -- Update c005: original_name from template
+                    APEX_COLLECTION.UPDATE_MEMBER_ATTRIBUTE(
+                        p_collection_name => p_collection_name,
+                        p_seq             => v_seq_id,
+                        p_attr_number     => 5,
+                        p_attr_value      => rec.original_name
+                    );
+
+                    -- Update c006: qualifier from template
+                    APEX_COLLECTION.UPDATE_MEMBER_ATTRIBUTE(
+                        p_collection_name => p_collection_name,
+                        p_seq             => v_seq_id,
+                        p_attr_number     => 6,
+                        p_attr_value      => rec.qualifier
+                    );
+
+                EXCEPTION
+                    WHEN NO_DATA_FOUND THEN
+                        -- No matching collection member found — ignore gracefully
+                        NULL;
+                    WHEN OTHERS THEN
+                        p_status  := 'E';
+                        p_message := 'Failed to update member attribute in collection "' || p_collection_name || '" for "'
+                                     || rec.column_desc || '": ' || SQLERRM;
+                        RETURN;
+                END;
+            END LOOP;
+
+        EXCEPTION
+            WHEN OTHERS THEN
+                p_status  := 'E';
+                p_message := 'Failed to update collection members from UR_TEMPLATES (ID: ' || p_template_id || '): ' || SQLERRM;
+                RETURN;
+        END;
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            p_status  := 'E';
+            p_message := 'Unexpected error occurred: ' || SQLERRM;
+    END LOAD_DATA_MAPPING_COLLECTION;
+
+    --------------------------------------------------------------------------------
+
+    PROCEDURE Load_Data(
+        p_file_id         IN  NUMBER,
+        p_template_key    IN  VARCHAR2,
+        p_hotel_id        IN  RAW,
+        p_collection_name IN  VARCHAR2,
+        p_status          OUT BOOLEAN,
+        p_message         OUT VARCHAR2
+    ) IS
+        -------------------------------------------------------------------
+        -- Variables
+        -------------------------------------------------------------------
+        l_blob          BLOB;
+        l_file_name     VARCHAR2(255);
+        l_table_name    VARCHAR2(255);
+        l_template_id   RAW(16);
+        l_total_rows    NUMBER := 0;
+        l_success_cnt   NUMBER := 0;
+        l_fail_cnt      NUMBER := 0;
+        l_log_id        RAW(16);
+        l_error_json    CLOB := '[';
+        l_apex_user     VARCHAR2(255) := NVL(v('APP_USER'), 'APEX_USER');
+        l_sql           CLOB;
+
+        -- Dynamic headers
+        TYPE t_headers IS TABLE OF VARCHAR2(4000) INDEX BY PLS_INTEGER;
+        v_headers       t_headers;
+        v_col_count     PLS_INTEGER := 0;
+
+        -- JSON / dynamic variables
+        v_profile_clob  CLOB;
+        v_sql_json      CLOB;
+        c               SYS_REFCURSOR;
+        v_row_json      CLOB;
+        v_line_number   NUMBER;
+
+        -- Row processing
+        l_cols          VARCHAR2(32767);
+        l_vals          VARCHAR2(32767);
+        l_set           VARCHAR2(32767);
+        l_stay_col_name VARCHAR2(200);
+        l_stay_val      VARCHAR2(4000);
+
+    BEGIN
+        INSERT INTO debug_log(message) VALUES ('START Load_Data - file_id=' || p_file_id);
+
+        -------------------------------------------------------------------
+        -- 0. Check for duplicate upload
+        -------------------------------------------------------------------
+        SELECT
+            COUNT(*)
+        INTO l_total_rows
+        FROM
+            ur_interface_logs
+        WHERE
+            file_id = p_file_id AND load_status = 'SUCCESS';
+
+        IF l_total_rows > 0 THEN
+            p_status  := FALSE;
+            p_message := 'Failure: File is already uploaded successfully.';
+            INSERT INTO debug_log(message) VALUES (p_message);
+            RETURN;
+        END IF;
+
+        -------------------------------------------------------------------
+        -- 1. Get blob and file name
+        -------------------------------------------------------------------
+        SELECT
+            blob_content,
+            filename
+        INTO
+            l_blob,
+            l_file_name
+        FROM
+            temp_blob
+        WHERE
+            id = p_file_id;
+
+        INSERT INTO debug_log(message) VALUES ('Got blob and filename: ' || NVL(l_file_name, '<null>'));
+
+        -------------------------------------------------------------------
+        -- 2. Get target table name + template id
+        -------------------------------------------------------------------
+        SELECT
+            db_object_name,
+            id
+        INTO
+            l_table_name,
+            l_template_id
+        FROM
+            ur_templates
+        WHERE
+            upper(id) = upper(p_template_key);
+
+        INSERT INTO debug_log(message) VALUES ('Target table: ' || l_table_name || ', template_id: ' || RAWTOHEX(l_template_id));
+
+        -------------------------------------------------------------------
+        -- 3. Get STAY_DATE column name from template definition (if any)
+        -------------------------------------------------------------------
+        BEGIN
+            SELECT
+                jt.name
+            INTO l_stay_col_name
+            FROM
+                ur_templates t,
+                JSON_TABLE(
+                    t.definition,
+                    '$[*]'
+                    COLUMNS (
+                        name      VARCHAR2(200) PATH '$.name',
+                        qualifier VARCHAR2(200) PATH '$.qualifier'
+                    )
+                ) jt
+            WHERE
+                t.id = l_template_id AND UPPER(jt.qualifier) = 'STAY_DATE'
+            FETCH FIRST 1 ROWS ONLY;
+            INSERT INTO debug_log(message) VALUES ('Found STAY_DATE column in template: ' || l_stay_col_name);
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                l_stay_col_name := NULL;
+                INSERT INTO debug_log(message) VALUES ('No STAY_DATE configured in template');
+        END;
+
+        -------------------------------------------------------------------
+        -- 4. Discover file profile
+        -------------------------------------------------------------------
+        v_profile_clob := apex_data_parser.discover(
+            p_content   => l_blob,
+            p_file_name => l_file_name
+        );
+
+        INSERT INTO debug_log(message) VALUES ('apex_data_parser.discover done');
+
+        -------------------------------------------------------------------
+        -- 5. Insert initial log row
+        -------------------------------------------------------------------
+        l_log_id := sys_guid();
+        INSERT INTO ur_interface_logs (
+            id, hotel_id, template_id, interface_type,
+            load_start_time, load_status, created_by, updated_by,
+            created_on, updated_on, file_id
+        ) VALUES (
+            l_log_id,
+            p_hotel_id,
+            l_template_id,
+            'UPLOAD',
+            systimestamp,
+            'IN_PROGRESS',
+            hextoraw(rawtohex(utl_raw.cast_to_raw(l_apex_user))),
+            hextoraw(rawtohex(utl_raw.cast_to_raw(l_apex_user))),
+            sysdate, sysdate,
+            p_file_id
+        );
+
+        INSERT INTO debug_log(message) VALUES ('Inserted ur_interface_logs id=' || RAWTOHEX(l_log_id));
+
+        -------------------------------------------------------------------
+        -- 6. Get dynamic headers from file
+        -------------------------------------------------------------------
+        FOR r IN (
+            SELECT
+                column_position,
+                column_name
+            FROM
+                TABLE(apex_data_parser.get_columns(v_profile_clob))
+            ORDER BY
+                column_position
+        ) LOOP
+            v_headers(r.column_position) := r.column_name;
+            v_col_count                  := r.column_position;
+        END LOOP;
+
+        INSERT INTO debug_log(message) VALUES ('Detected ' || v_col_count || ' columns from file.');
+        IF v_col_count = 0 THEN
+            RAISE_APPLICATION_ERROR(-20001, 'No columns detected in uploaded file.');
+        END IF;
+
+        -------------------------------------------------------------------
+        -- 7. Build JSON SQL
+        -------------------------------------------------------------------
+        v_sql_json := 'SELECT p.line_number, JSON_OBJECT(';
+        FOR i IN 1..v_col_count LOOP
+            IF i > 1 THEN
+                v_sql_json := v_sql_json || ', ';
+            END IF;
+            v_sql_json := v_sql_json || '''' || REPLACE(v_headers(i), '''', '''''') || ''' VALUE NVL(p.col' || LPAD(i, 3, '0') || ', '''')';
+        END LOOP;
+        v_sql_json := v_sql_json || ') AS row_json FROM TABLE(apex_data_parser.parse(p_content => :1, p_file_name => :2, p_skip_rows => 1)) p';
+
+        INSERT INTO debug_log(message) VALUES ('Built SQL for JSON parse (len=' || LENGTH(v_sql_json) || ')');
+
+        -------------------------------------------------------------------
+        -- 8. Process each row
+        -------------------------------------------------------------------
+        OPEN c FOR v_sql_json USING l_blob, l_file_name;
+        LOOP
+            FETCH c INTO v_line_number, v_row_json;
+            EXIT WHEN c%NOTFOUND;
+
+            l_total_rows := l_total_rows + 1;
+            INSERT INTO debug_log(message) VALUES ('--- Processing row #' || l_total_rows || ' line=' || NVL(TO_CHAR(v_line_number), 'N/A'));
+
+            -- Reset dynamic variables
+            l_cols     := NULL;
+            l_vals     := NULL;
+            l_set      := NULL;
+            l_stay_val := NULL;
+
+            BEGIN
+                DECLARE
+                    l_elem          JSON_ELEMENT_T := JSON_ELEMENT_T.parse(v_row_json);
+                    l_obj           JSON_OBJECT_T;
+                    l_keys          JSON_KEY_LIST;
+                    l_col           VARCHAR2(4000);
+                    l_val           VARCHAR2(4000);
+                    l_val_formatted VARCHAR2(4000);
+                BEGIN
+                    IF NOT l_elem.is_object THEN
+                        RAISE_APPLICATION_ERROR(-20002, 'Row not a JSON object');
+                    END IF;
+
+                    l_obj  := TREAT(l_elem AS JSON_OBJECT_T);
+                    l_keys := l_obj.get_keys;
+
+                    FOR j IN 1..l_keys.count LOOP
+                        l_col := sanitize_column_name(l_keys(j));
+                        l_val := l_obj.get_string(l_keys(j));
+
+                        -- Capture STAY_DATE value
+                        IF l_stay_col_name IS NOT NULL AND l_col = UPPER(l_stay_col_name) THEN
+                            l_stay_val := l_val;
+                        END IF;
+
+                        -- Format value
+                        l_val_formatted := NULL;
+                        IF l_val IS NOT NULL AND REGEXP_LIKE(l_val, '^-?\d+(\.\d+)?$') THEN
+                            l_val_formatted := TO_CHAR(TO_NUMBER(l_val));
+                        END IF;
+
+                        IF l_val_formatted IS NULL THEN
+                            l_val_formatted := '''' || REPLACE(NVL(l_val, ''), '''', '''''') || '''';
+                        END IF;
+
+                        -- Append to dynamic SQL parts
+                        IF l_set IS NOT NULL THEN
+                            l_set  := l_set || ', ';
+                            l_cols := l_cols || ', ';
+                            l_vals := l_vals || ', ';
+                        END IF;
+
+                        l_set  := NVL(l_set, '') || l_col || ' = ' || l_val_formatted;
+                        l_cols := NVL(l_cols, '') || l_col;
+                        l_vals := NVL(l_vals, '') || l_val_formatted;
+                    END LOOP;
+
+                    -- Always append HOTEL_ID to the set/insert
+                    IF NVL(l_cols, '') <> '' THEN
+                        l_cols := l_cols || ', HOTEL_ID';
+                        l_vals := l_vals || ', HEXTORAW(''' || RAWTOHEX(p_hotel_id) || ''')';
+                        l_set  := l_set || ', HOTEL_ID = ''' || p_hotel_id || '''';
+                    END IF;
+
+                    ----------------------------------------------------------------
+                    -- UPSERT logic (update first, then insert)
+                    ----------------------------------------------------------------
+                    l_sql := 'UPDATE ' || l_table_name ||
+                             ' SET ' || l_set ||
+                             ' WHERE HOTEL_ID = HEXTORAW(''' || RAWTOHEX(p_hotel_id) || ''')';
+
+                    -- Optional: include STAY_DATE if available
+                    IF l_stay_val IS NOT NULL THEN
+                        l_sql := l_sql || ' AND ' || l_stay_col_name || ' = ''' || REPLACE(l_stay_val, '''', '''''') || '''';
+                    END IF;
+
+                    -- Debug
+                    INSERT INTO debug_log(message) VALUES ('UPDATE SQL: ' || SUBSTR(l_sql, 1, 2000));
+
+                    EXECUTE IMMEDIATE l_sql;
+
+                    IF SQL%ROWCOUNT = 0 THEN
+                        -- No row updated → INSERT
+                        l_cols := l_cols || ', HOTEL_ID';
+                        l_vals := l_vals || ', HEXTORAW(''' || RAWTOHEX(p_hotel_id) || ''')';
+
+                        l_sql := 'INSERT INTO ' || l_table_name || ' (' || l_cols || ') VALUES (' || l_vals || ')';
+                        INSERT INTO debug_log(message) VALUES ('INSERT SQL: ' || SUBSTR(l_sql, 1, 2000));
+                        EXECUTE IMMEDIATE l_sql;
+                    END IF;
+
+                    l_success_cnt := l_success_cnt + 1;
+
+                END;
+            EXCEPTION
+                WHEN OTHERS THEN
+                    l_fail_cnt   := l_fail_cnt + 1;
+                    l_error_json := l_error_json || '{"row":' || l_total_rows || ',"error":"' || REPLACE(SQLERRM, '"', '''') || '"},';
+            END;
+        END LOOP;
+        CLOSE c;
+
+        -- finalize error JSON
+        IF l_error_json IS NOT NULL AND l_error_json <> '[' THEN
+            IF SUBSTR(l_error_json, -1) = ',' THEN
+                l_error_json := SUBSTR(l_error_json, 1, LENGTH(l_error_json) - 1);
+            END IF;
+            l_error_json := l_error_json || ']';
+        ELSE
+            l_error_json := NULL;
+        END IF;
+
+        COMMIT;
+
+        -- Update log
+        UPDATE ur_interface_logs
+        SET
+            load_end_time   = systimestamp,
+            load_status     = 'SUCCESS',
+            updated_on      = sysdate,
+            error_json      = l_error_json
+        WHERE
+            id = l_log_id;
+
+        p_status  := TRUE;
+        p_message := 'Success: Upload completed → Total=' || l_total_rows || ', Success=' || l_success_cnt || ', Failed=' || l_fail_cnt;
+
+        INSERT INTO debug_log(message) VALUES ('Completed Load_Data - ' || p_message);
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            BEGIN
+                UPDATE ur_interface_logs
+                SET
+                    load_end_time   = systimestamp,
+                    load_status     = 'FAILED',
+                    updated_on      = sysdate
+                WHERE
+                    id = l_log_id;
+            EXCEPTION
+                WHEN OTHERS THEN
+                    NULL;
+            END;
+
+            ROLLBACK;
+            p_status  := FALSE;
+            p_message := 'Failure: ' || SQLERRM;
+    END Load_Data;
+
+    --------------------------------------------------------------------------------
+
+    PROCEDURE fetch_templates(
+        p_file_id           IN  NUMBER,
+        p_hotel_id          IN  VARCHAR2,
+        p_min_score         IN  NUMBER DEFAULT 90,
+        p_debug_flag        IN  VARCHAR2 DEFAULT 'N',
+        p_use_original_name IN  VARCHAR2 DEFAULT 'AUTO',
+        p_match_datatype    IN  VARCHAR2 DEFAULT 'Y',
+        p_output_json       OUT CLOB,
+        p_status            OUT VARCHAR2,
+        p_message           OUT VARCHAR2
+    ) IS
+        -- Local types
+        TYPE t_name_type_rec IS RECORD(
+            name          VARCHAR2(100),
+            original_name VARCHAR2(100),
+            data_type     VARCHAR2(30)
+        );
+        TYPE t_name_type_tab IS TABLE OF t_name_type_rec;
+
+        TYPE t_template_rec IS RECORD(
+            id         VARCHAR2(50),
+            name       VARCHAR2(200),
+            definition t_name_type_tab
+        );
+        TYPE t_template_tab IS TABLE OF t_template_rec INDEX BY PLS_INTEGER;
+
+        -- Variables
+        v_source_clob         CLOB;
+        v_source_normalized   CLOB;
+
+        v_target_id           VARCHAR2(50);
+        v_target_name         VARCHAR2(200);
+        v_target_def_clob     CLOB;
+        v_target_normalized   CLOB;
+
+        v_source_defs         t_name_type_tab := t_name_type_tab();
+        v_target_defs         t_name_type_tab := t_name_type_tab();
+
+        v_templates           t_template_tab;
+        v_count_templates     PLS_INTEGER := 0;
+
+        v_json_output         CLOB := '[';
+        v_min_score_use       NUMBER;
+        v_separator           VARCHAR2(1) := '';
+
+        v_match_count         NUMBER;
+        v_score               NUMBER;
+
+        v_use_original_name_use VARCHAR2(10);
+        v_match_datatype_use    VARCHAR2(10);
+
+        CURSOR c_targets IS
+            SELECT
+                ID,
+                NAME,
+                DEFINITION
+            FROM
+                UR_TEMPLATES
+            WHERE
+                hotel_id = p_hotel_id
+                and active = 'Y';
+
+        -- Debug procedure
+        PROCEDURE debug(p_msg VARCHAR2) IS
+        BEGIN
+            IF UPPER(p_debug_flag) = 'Y' THEN
+                DBMS_OUTPUT.PUT_LINE('[DEBUG] ' || p_msg);
+            END IF;
+        END;
+
+        -- Normalize data-type keys in JSON string (case sensitive replacement)
+        FUNCTION normalize_json(p_json CLOB) RETURN CLOB IS
+        BEGIN
+            RETURN REPLACE(REPLACE(p_json, '"data-type"', '"data_type"'), '"DATA-TYPE"', '"data_type"');
+        END;
+
+        -- Parse definition JSON into PL/SQL collection
+        FUNCTION parse_definition(p_clob CLOB) RETURN t_name_type_tab IS
+            l_defs t_name_type_tab := t_name_type_tab();
+            idx    PLS_INTEGER := 0;
+        BEGIN
+            FOR rec IN (
+                SELECT
+                    lower(trim(name)) AS name,
+                    lower(trim(original_name)) AS original_name,
+                    lower(trim(data_type)) AS data_type
+                FROM
+                    JSON_TABLE(
+                        p_clob,
+                        '$[*]' COLUMNS (
+                            name          VARCHAR2(100) PATH '$.name',
+                            original_name VARCHAR2(100) PATH '$.original_name',
+                            data_type     VARCHAR2(30)  PATH '$.data_type'
+                        )
+                    )
+            ) LOOP
+                idx := idx + 1;
+                l_defs.EXTEND;
+                l_defs(idx).name          := rec.name;
+                l_defs(idx).original_name := rec.original_name;
+                l_defs(idx).data_type     := rec.data_type;
+            END LOOP;
+            RETURN l_defs;
+        EXCEPTION
+            WHEN OTHERS THEN
+                RETURN NULL;
+        END;
+
+        -- Count matches with configurable matching logic
+        -- NOTE: Source (uploaded file) always uses 'name' field only
+        --       Target (template) applies the parameter-based logic to choose between 'original_name' and 'name'
+        FUNCTION count_matches(
+            p_source            t_name_type_tab,
+            p_target            t_name_type_tab,
+            p_use_original_name VARCHAR2,
+            p_match_datatype    VARCHAR2
+        ) RETURN NUMBER IS
+            v_count        NUMBER := 0;
+            v_source_name  VARCHAR2(100);
+            v_target_name  VARCHAR2(100);
+            v_name_match   BOOLEAN;
+            v_type_match   BOOLEAN;
+        BEGIN
+            FOR i IN 1..p_source.COUNT LOOP
+                -- Source (uploaded file) always uses 'name' field only (no original_name expected)
+                v_source_name := p_source(i).name;
+
+                FOR j IN 1..p_target.COUNT LOOP
+                    -- Determine which name to use for target (template) based on mode
+                    IF UPPER(p_use_original_name) = 'Y' THEN
+                        -- Use original_name only
+                        v_target_name := p_target(j).original_name;
+                    ELSIF UPPER(p_use_original_name) = 'N' THEN
+                        -- Use name only
+                        v_target_name := p_target(j).name;
+                    ELSE
+                        -- AUTO mode: use original_name if available and not empty, else use name
+                        v_target_name := NVL(NULLIF(p_target(j).original_name, ''), p_target(j).name);
+                    END IF;
+
+                    -- Check name match
+                    v_name_match := (v_source_name = v_target_name);
+
+                    -- Check data type match if enabled
+                    IF UPPER(p_match_datatype) = 'Y' THEN
+                        v_type_match := (p_source(i).data_type = p_target(j).data_type);
+                    ELSE
+                        -- If data type matching is disabled, consider it always matched
+                        v_type_match := TRUE;
+                    END IF;
+
+                    -- Count as match if both conditions are met
+                    IF v_name_match AND v_type_match THEN
+                        v_count := v_count + 1;
+                        EXIT;
+                    END IF;
+                END LOOP;
+            END LOOP;
+            RETURN v_count;
+        END;
+
+    BEGIN
+        -- Validate inputs and assign to local variable
+        v_min_score_use := NVL(p_min_score, 90);
+        IF v_min_score_use < 0 OR v_min_score_use > 100 THEN
+            v_min_score_use := 90;
+        END IF;
+
+        -- Validate and normalize p_use_original_name parameter
+        v_use_original_name_use := UPPER(NVL(p_use_original_name, 'AUTO'));
+        IF v_use_original_name_use NOT IN ('Y', 'N', 'AUTO') THEN
+            v_use_original_name_use := 'AUTO';
+        END IF;
+
+        -- Validate and normalize p_match_datatype parameter
+        v_match_datatype_use := UPPER(NVL(p_match_datatype, 'Y'));
+        IF v_match_datatype_use NOT IN ('Y', 'N') THEN
+            v_match_datatype_use := 'Y';
+        END IF;
+
+        IF p_file_id IS NULL THEN
+            p_status      := 'E';
+            p_message     := 'File ID must be provided';
+            p_output_json := NULL;
+            RETURN;
+        END IF;
+
+        IF p_hotel_id IS NULL THEN
+            p_status      := 'E';
+            p_message     := 'Hotel ID must be provided';
+            p_output_json := NULL;
+            RETURN;
+        END IF;
+
+        debug('Starting processing...');
+        debug('File ID: ' || p_file_id);
+        debug('Hotel ID: ' || p_hotel_id);
+        debug('Minimum Score: ' || v_min_score_use);
+        debug('Use Original Name: ' || v_use_original_name_use);
+        debug('Match Data Type: ' || v_match_datatype_use);
+
+        -- Fetch and normalize source CLOB
+        BEGIN
+            SELECT columns INTO v_source_clob FROM temp_blob WHERE id = p_file_id;
+            IF v_source_clob IS NULL THEN
+                p_status      := 'E';
+                p_message     := 'Source definition not found for file_id ' || p_file_id;
+                p_output_json := NULL;
+                RETURN;
+            END IF;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                p_status      := 'E';
+                p_message     := 'Source file not found for id ' || p_file_id;
+                p_output_json := NULL;
+                RETURN;
+            WHEN OTHERS THEN
+                p_status      := 'E';
+                p_message     := 'Error fetching source definition: ' || SQLERRM;
+                p_output_json := NULL;
+                RETURN;
+        END;
+
+        v_source_normalized := normalize_json(v_source_clob);
+
+        -- Parse source defs
+        v_source_defs := parse_definition(v_source_normalized);
+        IF v_source_defs IS NULL OR v_source_defs.COUNT = 0 THEN
+            p_status      := 'E';
+            p_message     := 'Cannot parse source definition JSON or empty definition';
+            p_output_json := NULL;
+            RETURN;
+        END IF;
+        debug('Parsed Source definitions: ' || v_source_defs.COUNT || ' fields');
+
+        -- Initialize JSON output
+        v_json_output     := '[';
+        v_count_templates := 0;
+
+        -- Loop over target templates from cursor
+        FOR r_target IN c_targets LOOP
+            v_target_id       := r_target.ID;
+            v_target_name     := r_target.NAME;
+            v_target_def_clob := r_target.DEFINITION;
+
+            IF v_target_def_clob IS NULL THEN
+                debug('Skipping template ' || v_target_id || ' due to NULL definition');
+                CONTINUE;
+            END IF;
+
+            v_target_normalized := normalize_json(v_target_def_clob);
+
+            v_target_defs := parse_definition(v_target_normalized);
+            IF v_target_defs IS NULL OR v_target_defs.COUNT = 0 THEN
+                debug('Skipping template ' || v_target_id || ' due to parsing error or empty definition');
+                CONTINUE;
+            END IF;
+
+            v_match_count := count_matches(v_source_defs, v_target_defs, v_use_original_name_use, v_match_datatype_use);
+
+            v_score := ROUND((2 * v_match_count) / (v_source_defs.COUNT + v_target_defs.COUNT) * 100);
+
+            debug(
+                'Template ' || v_target_id || ' (' || v_target_name || '): Matches=' ||
+                v_match_count || ', Score=' || v_score
+            );
+
+            IF v_score >= v_min_score_use THEN
+                IF v_count_templates > 0 THEN
+                    v_json_output := v_json_output || ',';
+                END IF;
+                v_json_output     := v_json_output || '{"Template_id":"' || v_target_id ||
+                                     '","Template_Name":"' || REPLACE(v_target_name, '"', '\"') ||
+                                     '","Score":' || v_score || '}';
+                v_count_templates := v_count_templates + 1;
+            END IF;
+        END LOOP;
+
+        v_json_output := v_json_output || ']';
+
+        IF v_count_templates = 0 THEN
+            p_output_json := '[{}]';
+            p_message     := 'No templates matched the minimum score threshold';
+            debug('No matching templates found.');
+        ELSE
+            p_output_json := v_json_output;
+            p_message     := 'Templates matched: ' || v_count_templates;
+            debug('Matching templates count: ' || v_count_templates);
+        END IF;
+
+        p_status := 'S';
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            p_status      := 'E';
+            p_message     := 'Unexpected error: ' || SQLERRM;
+            p_output_json := NULL;
+    END fetch_templates;
+
+    --------------------------------------------------------------------------------
+
+    PROCEDURE DELETE_TEMPLATES(
+        p_id           IN  VARCHAR2 DEFAULT NULL,
+        p_hotel_id     IN  VARCHAR2 DEFAULT NULL,
+        p_key          IN  VARCHAR2 DEFAULT NULL,
+        p_name         IN  VARCHAR2 DEFAULT NULL,
+        p_type         IN  VARCHAR2 DEFAULT NULL,
+        p_active       IN  CHAR     DEFAULT NULL,
+        p_db_obj_empty IN  CHAR     DEFAULT NULL,
+        p_delete_all   IN  CHAR     DEFAULT 'N',
+        p_debug        IN  CHAR     DEFAULT 'N',
+        p_json_output  OUT CLOB
+    ) AS
+        v_sql          VARCHAR2(1000);
+        v_rows_count   NUMBER;
+        v_status       CHAR(1);
+        v_message      VARCHAR2(4000);
+        v_json_list    CLOB := '[';
+        v_first        BOOLEAN := TRUE;
+
+        CURSOR c_templates IS
+            SELECT
+                id,
+                hotel_id,
+                key,
+                name,
+                type,
+                active,
+                db_object_name
+            FROM
+                ur_templates
+            WHERE
+                (p_delete_all = 'Y' OR (p_id IS NULL OR id = p_id)) AND (p_delete_all = 'Y' OR (p_hotel_id IS NULL OR hotel_id = p_hotel_id)) AND (p_delete_all = 'Y' OR (p_key IS NULL OR key = p_key)) AND (p_delete_all = 'Y' OR (p_name IS NULL OR name = p_name)) AND (p_delete_all = 'Y' OR (p_type IS NULL OR type = p_type)) AND (p_delete_all = 'Y' OR (p_active IS NULL OR active = p_active));
+
+        -- Helper to escape JSON strings (basic)
+        FUNCTION json_escape(str IN VARCHAR2) RETURN VARCHAR2 IS
+        BEGIN
+            RETURN REPLACE(REPLACE(REPLACE(REPLACE(str, '\', '\\'), '"', '\"'), CHR(10), '\n'), CHR(13), '');
+        EXCEPTION
+            WHEN OTHERS THEN
+                RETURN '';
+        END;
+
+        PROCEDURE dbg(p_msg VARCHAR2) IS
+        BEGIN
+            IF p_debug = 'Y' THEN
+                apex_debug.message(p_msg);
+            END IF;
+        END;
+
+        PROCEDURE append_result(
+            p_id          IN VARCHAR2,
+            p_hotel_id    IN VARCHAR2,
+            p_key         IN VARCHAR2,
+            p_name        IN VARCHAR2,
+            p_type        IN VARCHAR2,
+            p_active      IN CHAR,
+            p_db_obj_name IN VARCHAR2,
+            p_status      IN CHAR,
+            p_message     IN VARCHAR2
+        ) IS
+        BEGIN
+            IF v_first THEN
+                v_first := FALSE;
+            ELSE
+                v_json_list := v_json_list || ',';
+            END IF;
+
+            v_json_list := v_json_list || '{' ||
+                           '"id":"' || json_escape(p_id) || '",' ||
+                           '"hotel_id":"' || json_escape(p_hotel_id) || '",' ||
+                           '"key":"' || json_escape(p_key) || '",' ||
+                           '"name":"' || json_escape(p_name) || '",' ||
+                           '"type":"' || json_escape(p_type) || '",' ||
+                           '"active":"' || json_escape(p_active) || '",' ||
+                           '"db_object_name":"' || json_escape(p_db_obj_name) || '",' ||
+                           '"status":"' || json_escape(p_status) || '",' ||
+                           '"message":"' || json_escape(p_message) || '"' ||
+                           '}';
+        END;
+
+    BEGIN
+        dbg('Started DELETE_TEMPLATES_AND_DB_OBJECTS_JSON procedure.');
+
+        FOR rec IN c_templates LOOP
+            dbg('Processing template ID=' || rec.id || ', DB_OBJECT_NAME=' || rec.db_object_name);
+
+            IF rec.db_object_name IS NULL THEN
+                v_status  := 'E';
+                v_message := 'No DB_OBJECT_NAME specified for template, skipping.';
+                dbg(v_message);
+                append_result(rec.id, rec.hotel_id, rec.key, rec.name, rec.type, rec.active, NULL, v_status, v_message);
+                CONTINUE;
+            END IF;
+
+            -- Check if table should be empty before deleting
+            IF p_db_obj_empty = 'Y' THEN
+                v_sql := 'SELECT COUNT(*) FROM ' || rec.db_object_name;
+                BEGIN
+                    EXECUTE IMMEDIATE v_sql INTO v_rows_count;
+                EXCEPTION
+                    WHEN OTHERS THEN
+                        v_rows_count := -1; -- can't count, treat as error or non-empty
+                END;
+
+                IF v_rows_count > 0 THEN
+                    v_status  := 'E';
+                    v_message := 'DB Object table [' || rec.db_object_name || '] is not empty (ROWS=' || v_rows_count || '), skipping deletion.';
+                    dbg(v_message);
+                    append_result(rec.id, rec.hotel_id, rec.key, rec.name, rec.type, rec.active, rec.db_object_name, v_status, v_message);
+                    CONTINUE;
+                END IF;
+                dbg('DB Object table [' || rec.db_object_name || '] is empty, proceeding.');
+            END IF;
+
+            -- Try to drop the table and delete template
+            BEGIN
+                v_sql := 'DROP TABLE ' || rec.db_object_name || ' CASCADE CONSTRAINTS';
+                dbg('Executing: ' || v_sql);
+                EXECUTE IMMEDIATE v_sql;
+
+                dbg('Dropped table ' || rec.db_object_name);
+
+                DELETE FROM ur_templates WHERE id = rec.id;
+
+                dbg('Deleted template id=' || rec.id);
+
+                v_status  := 'S';
+                v_message := 'Successfully dropped table and deleted template.';
+                append_result(rec.id, rec.hotel_id, rec.key, rec.name, rec.type, rec.active, rec.db_object_name, v_status, v_message);
+
+            EXCEPTION
+                WHEN OTHERS THEN
+                    v_status  := 'E';
+                    v_message := 'Error dropping table or deleting template: ' || SQLERRM;
+                    dbg(v_message);
+                    append_result(rec.id, rec.hotel_id, rec.key, rec.name, rec.type, rec.active, rec.db_object_name, v_status, v_message);
+            END;
+        END LOOP;
+
+        v_json_list   := v_json_list || ']';
+        p_json_output := v_json_list;
+
+        dbg('Completed DELETE_TEMPLATES_AND_DB_OBJECTS_JSON procedure.');
+    END DELETE_TEMPLATES;
+
+    --------------------------------------------------------------------------------
+
+   PROCEDURE manage_algo_attributes(
+        p_template_key   IN  VARCHAR2,
+        p_mode           IN  CHAR,
+        p_attribute_key  IN  VARCHAR2 DEFAULT NULL,
+        p_status         OUT BOOLEAN,
+        p_message        OUT VARCHAR2
+    ) IS
+      -- Original Variables
+      v_db_object_name UR_TEMPLATES.DB_OBJECT_NAME%TYPE;
+      v_definition     UR_TEMPLATES.DEFINITION%TYPE;
+      v_hotel_id       UR_TEMPLATES.HOTEL_ID%TYPE;
+      v_user_id        RAW(16);
+      v_insert_count   NUMBER := 0;
+      v_delete_count   NUMBER := 0;
+      v_template_id    RAW(16);
+      v_attr_qualifier VARCHAR2(4000) := NULL;
+
+      -- New Variables for RST logic
+      v_template_type        UR_TEMPLATES.TYPE%TYPE;
+      v_db_view_object_name  UR_TEMPLATES.DB_VIEW_OBJECT_NAME%TYPE;
+      v_own_property_count   NUMBER := 0;
+      v_comp_property_count  NUMBER := 0;
+      v_object_exists        NUMBER := 0;
+      v_column_exists        NUMBER := 0;
+
+      -- Local helper procedure updated to accept qualifier name
+        PROCEDURE create_rst_attribute (
+          p_attr_name       IN VARCHAR2,
+          p_attr_key        IN VARCHAR2,
+          p_attr_val        IN VARCHAR2,
+          p_qualifier_name  IN VARCHAR2,
+          p_data_type       IN VARCHAR2 DEFAULT 'NUMBER'
+      ) IS
+          v_exists NUMBER;
+      BEGIN
+          SELECT COUNT(*) INTO v_exists FROM ur_algo_attributes WHERE key = p_attr_key;
+          IF v_exists = 0 THEN
+              INSERT INTO ur_algo_attributes (
+                  id, algo_id, hotel_id, name, key, data_type, description, type, value, template_id, attribute_qualifier,
+                  created_by, updated_by, created_on, updated_on
+              ) VALUES (
+                  SYS_GUID(), NULL, v_hotel_id, p_attr_name, p_attr_key, p_data_type,
+                  NULL,
+                  'S', 
+                  '#' || p_attr_val || '#', -- Value wrapped in #
+                  v_template_id,
+                  p_qualifier_name,
+                  v_user_id, v_user_id, SYSDATE, SYSDATE
+              );
+              v_insert_count := v_insert_count + 1;
+          END IF;
+      END create_rst_attribute;
+
+    BEGIN
+      -- Initialization
+      p_status := FALSE;
+      p_message := NULL;
+
+      -- Obtain needed data from UR_TEMPLATES
+      BEGIN
+        SELECT db_object_name, definition, hotel_id, id, type, db_view_object_name
+        INTO v_db_object_name, v_definition, v_hotel_id, v_template_id, v_template_type, v_db_view_object_name
+        FROM ur_templates
+        WHERE key = p_template_key;
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          p_message := 'Failure: Template key not found: ' || p_template_key;
+          RETURN;
+      END;
+
+      IF v_db_object_name IS NULL THEN
+        p_message := 'Failure: DB_OBJECT_NAME not defined for template_key ' || p_template_key;
+        RETURN;
+      END IF;
+
+      -- Get USER_ID once for audit columns
+      BEGIN
+        SELECT USER_ID INTO v_user_id
+        FROM UR_USERS
+        WHERE USER_NAME = SYS_CONTEXT('APEX$SESSION', 'APP_USER');
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          v_user_id := NULL;
+      END;
+
+      IF p_mode = 'C' THEN
+        IF v_definition IS NULL THEN
+          p_message := 'Failure: Definition JSON is NULL for template_key ' || p_template_key;
+          RETURN;
+        END IF;
+
+        -- ====================================================================================
+        -- START: LOGIC FOR RST TEMPLATES
+        -- ====================================================================================
+        IF v_template_type = 'RST' THEN
+          -- Count OWN_PROPERTY and COMP_PROPERTY qualifiers
+          SELECT
+            COUNT(CASE WHEN UPPER(jt.qualifier) = 'OWN_PROPERTY' THEN 1 END),
+            COUNT(CASE WHEN UPPER(jt.qualifier) = 'COMP_PROPERTY' THEN 1 END)
+          INTO v_own_property_count, v_comp_property_count
+          FROM JSON_TABLE(v_definition, '$[*]' COLUMNS (qualifier VARCHAR2(30) PATH '$.qualifier')) jt;
+
+          -- Check if the special qualifiers exist to trigger the RST logic
+          IF v_own_property_count > 0 AND v_comp_property_count > 0 THEN
+            -- 1. Validate DB_VIEW_OBJECT_NAME
+            IF v_db_view_object_name IS NULL THEN
+              p_message := 'Failure: DB_VIEW_OBJECT_NAME is not defined for RST template ' || p_template_key;
+              RETURN;
+            END IF;
+
+            -- 2. Validate the view/object exists
+            BEGIN
+              SELECT 1 INTO v_object_exists FROM user_objects
+              WHERE object_name = UPPER(v_db_view_object_name) AND object_type IN ('VIEW', 'TABLE', 'SYNONYM');
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                v_object_exists := 0;
+            END;
+
+            IF v_object_exists = 0 THEN
+              p_message := 'Failure: The specified DB_VIEW_OBJECT_NAME ''' || v_db_view_object_name || ''' does not exist.';
+              RETURN;
+            END IF;
+
+            -- 3. Validate and create attributes for OWN_PROPERTY
+            FOR r_col IN (
+                SELECT 'OWN_PROPERTY_RANK' AS col_name FROM DUAL
+                UNION ALL
+                SELECT 'OWN_PROPERTY_RATE' AS col_name FROM DUAL
+            ) LOOP
+                SELECT COUNT(*) INTO v_column_exists FROM user_tab_columns
+                WHERE table_name = UPPER(v_db_view_object_name) AND column_name = r_col.col_name;
+
+                IF v_column_exists = 0 THEN
+                    p_message := 'Failure: Required column ' || r_col.col_name || ' not found in view ' || v_db_view_object_name;
+                    RETURN;
+                END IF;
+            END LOOP;
+            
+            create_rst_attribute('OWN PROPERTY RANK', v_db_view_object_name || '.OWN_PROPERTY_RANK', v_db_view_object_name || '.OWN_PROPERTY_RANK', 'OWN_PROPERTY');
+            create_rst_attribute('OWN PROPERTY RATE', v_db_view_object_name || '.OWN_PROPERTY_RATE', v_db_view_object_name || '.OWN_PROPERTY_RATE', 'OWN_PROPERTY');
+            
+            -- 4. Create attributes for COMP_PROPERTY
+            FOR i IN 1 .. (v_comp_property_count + 1) LOOP
+              DECLARE
+                l_col_name   VARCHAR2(100) := 'RANK_' || i || '_RATE';
+                l_attr_name  VARCHAR2(100) := 'COMP SET R' || i || ' RATE';
+                l_attr_key   VARCHAR2(200) := v_db_view_object_name || '.' || l_col_name;
+              BEGIN
+                -- Validate that the required rank column exists
+                SELECT COUNT(*) INTO v_column_exists FROM user_tab_columns
+                WHERE table_name = UPPER(v_db_view_object_name) AND column_name = l_col_name;
+
+                IF v_column_exists = 0 THEN
+                  p_message := 'Failure: Required column ' || l_col_name || ' not found in view ' || v_db_view_object_name || '.';
+                  ROLLBACK;
+                  RETURN;
+                END IF;
+                
+                -- Create the attribute using the helper
+                create_rst_attribute(l_attr_name, l_attr_key, l_attr_key, 'COMP_PROPERTY');
+              END;
+            END LOOP;
+          END IF;
+        END IF;
+
+        -- ====================================================================================
+        -- STANDARD ATTRIBUTE CREATION FOR ALL TEMPLATES (RST AND NON-RST)
+        -- ====================================================================================
+        -- For RST: Creates standard attributes for all qualifiers including OWN_PROPERTY and COMP_PROPERTY
+        -- For Non-RST: Creates standard attributes for all qualifiers
+        FOR rec IN (
+            SELECT jt.name, jt.data_type, jt.qualifier
+            FROM JSON_TABLE(
+              v_definition, '$[*]' COLUMNS (
+                name      VARCHAR2(100) PATH '$.name',
+                data_type VARCHAR2(30)  PATH '$.data_type',
+                qualifier VARCHAR2(30)  PATH '$.qualifier'
+              )
+            ) jt
+            WHERE jt.qualifier IS NOT NULL
+              AND UPPER(jt.qualifier) <> 'UNIQUE'
+          )
+          LOOP
+            DECLARE
+              l_col_name VARCHAR2(150) := UPPER(REGEXP_REPLACE(TRIM(rec.name), '_+$', ''));
+              v_key      VARCHAR2(150) := v_db_object_name || '.' || l_col_name;
+              v_exists   NUMBER;
+            BEGIN
+              SELECT COUNT(*) INTO v_exists FROM ur_algo_attributes WHERE key = v_key;
+              IF v_exists = 0 THEN
+                INSERT INTO ur_algo_attributes (
+                  id, algo_id, hotel_id, name, key, data_type, description, type, value, template_id, attribute_qualifier,
+                  created_by, updated_by, created_on, updated_on
+                ) VALUES (
+                  SYS_GUID(), NULL, v_hotel_id, l_col_name, v_key, NVL(UPPER(rec.data_type), 'NUMBER'),
+                  NULL, 'S', 
+                  '#' || v_key || '#', -- Value wrapped in #
+                  v_template_id, rec.qualifier,
+                  v_user_id, v_user_id, SYSDATE, SYSDATE
+                );
+                v_insert_count := v_insert_count + 1;
+              END IF;
+            END;
+          END LOOP;
+
+        COMMIT;
+        p_status := TRUE;
+        p_message := 'Success: ' || v_insert_count || ' attribute'
+                   || CASE WHEN v_insert_count = 1 THEN '' ELSE 's' END
+                   || ' inserted for template_key ' || p_template_key;
+
+      ELSIF p_mode = 'D' THEN
+        -- Delete logic remains unchanged
+        IF p_attribute_key IS NOT NULL THEN
+          IF p_attribute_key LIKE v_db_object_name || '.%' OR p_attribute_key LIKE v_db_view_object_name || '.%' THEN
+            DELETE FROM ur_algo_attributes WHERE key = p_attribute_key;
+            v_delete_count := SQL%ROWCOUNT;
+            COMMIT;
+            p_status := TRUE;
+            IF v_delete_count > 0 THEN
+              p_message := 'Success: ' || v_delete_count || ' attribute deleted with key ' || p_attribute_key;
+            ELSE
+              p_message := 'Info: No attribute found to delete with key ' || p_attribute_key;
+            END IF;
+          ELSE
+            p_status := FALSE;
+            p_message := 'Failure: Attribute key does not belong to template ' || p_template_key;
+          END IF;
+        ELSE
+          DELETE FROM ur_algo_attributes WHERE template_id = v_template_id; -- Safer delete by template_id
+          v_delete_count := SQL%ROWCOUNT;
+          COMMIT;
+          p_status := TRUE;
+          p_message := 'Success: ' || v_delete_count || ' attribute'
+                       || CASE WHEN v_delete_count = 1 THEN '' ELSE 's' END
+                       || ' deleted for template_key ' || p_template_key;
+        END IF;
+
+       ELSIF p_mode = 'U' THEN
+        p_status := TRUE;
+        p_message := 'Update Implemented successfully';
+ 
+
+      ELSE
+        p_status := FALSE;
+        p_message := 'Invalid mode: ' || p_mode || '. Valid modes are C, U, D.';
+      END IF;
+
+    EXCEPTION
+      WHEN OTHERS THEN
+        ROLLBACK;
+        p_status := FALSE;
+        p_message := 'Failure: ' || SQLERRM;
+    END manage_algo_attributes;
+
+    --------------------------------------------------------------------------------
+
+    PROCEDURE add_alert(
+        p_existing_json IN  CLOB,
+        p_message       IN  VARCHAR2,
+        p_icon          IN  VARCHAR2 DEFAULT NULL,
+        p_title         IN  VARCHAR2 DEFAULT NULL,
+        p_timeout       IN  NUMBER   DEFAULT NULL,
+        p_updated_json  OUT CLOB
+    ) IS
+        l_json_array json_array_t;
+        l_new_object json_object_t;
+    BEGIN
+        -- Create the new JSON object
+        l_new_object := new json_object_t();
+        l_new_object.put('message', p_message);
+        l_new_object.put('icon', nvl(p_icon, 'success'));
+        l_new_object.put('title', nvl(p_title, ''));
+
+        IF p_timeout IS NOT NULL THEN
+            l_new_object.put('timeOut', to_char(p_timeout));
+        END IF;
+
+        -- Append the new object to the existing array or create a new array
+        IF p_existing_json IS NULL OR trim(p_existing_json) = '' THEN
+            -- Create a new array with the new object
+            l_json_array := new json_array_t();
+        ELSE
+            -- Parse the existing JSON string into a JSON array
+            l_json_array := json_array_t(p_existing_json);
+        END IF;
+
+        -- Append the new object
+        l_json_array.append(l_new_object);
+
+        -- Convert the JSON array back to a CLOB
+        p_updated_json := l_json_array.to_clob;
+    END add_alert;
+
+    --------------------------------------------------------------------------------
+
+    PROCEDURE validate_expression(
+        p_expression IN  VARCHAR2,
+        p_mode       IN  CHAR,
+        p_hotel_id   IN  VARCHAR2,
+        p_status     OUT VARCHAR2, -- 'S' or 'E'
+        p_message    OUT VARCHAR2
+    ) IS
+        TYPE t_str_list IS TABLE OF VARCHAR2(100) INDEX BY PLS_INTEGER;
+        v_attributes         t_str_list;
+        v_functions          t_str_list;
+        v_operators          t_str_list;
+        v_attr_count         NUMBER := 0;
+        v_func_count         NUMBER := 0;
+        v_oper_count         NUMBER := 0;
+
+        TYPE t_token_rec IS RECORD(
+            token     VARCHAR2(4000),
+            start_pos PLS_INTEGER,
+            end_pos   PLS_INTEGER
+        );
+        TYPE t_token_tab IS TABLE OF t_token_rec INDEX BY PLS_INTEGER;
+        v_tokens             t_token_tab;
+        v_token_count        PLS_INTEGER := 0;
+
+        TYPE t_token_tab_nt IS TABLE OF VARCHAR2(100) INDEX BY PLS_INTEGER;
+        v_unmatched_tokens   t_token_tab;
+        v_unmatched_count    PLS_INTEGER := 0;
+
+        -- To mark tokens consumed by multi-word operators
+        TYPE t_bool_tab IS TABLE OF BOOLEAN INDEX BY PLS_INTEGER;
+        v_token_consumed     t_bool_tab;
+
+        v_mode               CHAR := UPPER(p_mode);
+
+        -- Trim and uppercase token helper
+        FUNCTION normalize_token(p_token VARCHAR2) RETURN VARCHAR2 IS
+        BEGIN
+            RETURN UPPER(TRIM(p_token));
+        END;
+
+        -- Strip function parameters, e.g. "ROUND (n,d)" -> "ROUND"
+        FUNCTION normalize_func_name(p_func VARCHAR2) RETURN VARCHAR2 IS
+        BEGIN
+            RETURN REGEXP_REPLACE(UPPER(TRIM(p_func)), '\s*\(.*\)$');
+        END;
+
+        -- Checks if token is numeric
+        FUNCTION is_number(p_token VARCHAR2) RETURN BOOLEAN IS
+        BEGIN
+            RETURN REGEXP_LIKE(p_token, '^[+-]?(\d+(\.\d*)?|\.\d+)([Ee][+-]?\d+)?$');
+        END;
+
+        -- Check presence in list
+        FUNCTION is_in_list(
+            p_token VARCHAR2,
+            p_list  t_str_list,
+            cnt     NUMBER
+        ) RETURN BOOLEAN IS
+        BEGIN
+            FOR i IN 1..cnt LOOP
+                IF p_list(i) = p_token THEN
+                    RETURN TRUE;
+                END IF;
+            END LOOP;
+            RETURN FALSE;
+        END;
+
+        -- Check if token valid: attribute, operator, function, number, parentheses
+        FUNCTION is_token_valid(p_token VARCHAR2) RETURN BOOLEAN IS
+            l_token VARCHAR2(100) := p_token;
+        BEGIN
+            -- Parentheses always valid tokens
+            IF l_token IN ('(', ')') THEN
+                RETURN TRUE;
+            END IF;
+
+            -- Strip trailing '(' from function calls
+            IF SUBSTR(l_token, -1) = '(' THEN
+                l_token := SUBSTR(l_token, 1, LENGTH(l_token) - 1);
+            END IF;
+
+            -- Check if number
+            IF is_number(l_token) THEN
+                RETURN TRUE;
+            END IF;
+
+            l_token := normalize_token(l_token);
+
+            IF is_in_list(l_token, v_attributes, v_attr_count) THEN
+                RETURN TRUE;
+            ELSIF is_in_list(l_token, v_functions, v_func_count) THEN
+                RETURN TRUE;
+            ELSIF is_in_list(l_token, v_operators, v_oper_count) THEN
+                RETURN TRUE;
+            END IF;
+
+            RETURN FALSE;
+        END;
+
+        PROCEDURE load_functions(
+            p_list  OUT t_str_list,
+            p_count OUT NUMBER
+        ) IS
+        BEGIN
+            p_list.DELETE;
+            p_count := 0;
+            FOR r IN (
+                SELECT
+                    return_value
+                FROM
+                    apex_application_lov_entries
+                WHERE
+                    list_of_values_name = 'UR EXPRESSION FUNCTIONS'
+                ORDER BY
+                    return_value
+            ) LOOP
+                p_count        := p_count + 1;
+                p_list(p_count) := normalize_func_name(r.return_value);
+            END LOOP;
+            IF p_count = 0 THEN
+                RAISE_APPLICATION_ERROR(-20010, 'Functions LOV missing or empty');
+            END IF;
+        END;
+
+        PROCEDURE load_operators(
+            p_list  OUT t_str_list,
+            p_count OUT NUMBER
+        ) IS
+        BEGIN
+            p_list.DELETE;
+            p_count := 0;
+            FOR r IN (
+                SELECT
+                    return_value
+                FROM
+                    apex_application_lov_entries
+                WHERE
+                    list_of_values_name = 'UR EXPRESSION OPERATORS'
+                ORDER BY
+                    return_value
+            ) LOOP
+                p_count        := p_count + 1;
+                p_list(p_count) := UPPER(TRIM(r.return_value));
+            END LOOP;
+            IF p_count = 0 THEN
+                RAISE_APPLICATION_ERROR(-20011, 'Operators LOV missing or empty');
+            END IF;
+        END;
+
+        PROCEDURE load_attributes(
+            p_hotel_id IN  VARCHAR2,
+            p_list     OUT t_str_list,
+            p_count    OUT NUMBER
+        ) IS
+        BEGIN
+            p_list.DELETE;
+            p_count := 0;
+            FOR r IN (
+                SELECT
+                    key
+                FROM
+                    ur_algo_attributes
+                WHERE
+                    hotel_id = p_hotel_id
+            ) LOOP
+                p_count        := p_count + 1;
+                p_list(p_count) := UPPER(TRIM(r.key));
+            END LOOP;
+            IF p_count = 0 THEN
+                RAISE_APPLICATION_ERROR(-20012, 'Attributes missing for hotel_id ' || p_hotel_id);
+            END IF;
+        END;
+
+        -- Tokenizer splitting expression into tokens, tracking start/end pos
+        PROCEDURE tokenize_expression(
+            p_expr  IN  VARCHAR2,
+            p_tokens OUT t_token_tab,
+            p_count OUT NUMBER
+        ) IS
+            l_pos         PLS_INTEGER := 1;
+            l_len         PLS_INTEGER := LENGTH(p_expr);
+            l_token       VARCHAR2(4000);
+            l_token_start PLS_INTEGER;
+            l_token_end   PLS_INTEGER;
+        BEGIN
+            p_tokens.DELETE;
+            p_count := 0;
+            WHILE l_pos <= l_len LOOP
+                l_token := REGEXP_SUBSTR(
+                    p_expr,
+                    '([A-Za-z0-9_\.]+|\d+(\.\d+)?|\(|\)|\S)',
+                    l_pos,
+                    1,
+                    'i'
+                );
+                EXIT WHEN l_token IS NULL;
+                l_token_start := INSTR(p_expr, l_token, l_pos);
+                l_token_end   := l_token_start + LENGTH(l_token) - 1;
+                p_count       := p_count + 1;
+                p_tokens(p_count) := t_token_rec(token => l_token, start_pos => l_token_start, end_pos => l_token_end);
+                l_pos         := l_token_end + 1;
+                WHILE l_pos <= l_len AND SUBSTR(p_expr, l_pos, 1) = ' ' LOOP
+                    l_pos := l_pos + 1;
+                END LOOP;
+            END LOOP;
+        END;
+
+        FUNCTION build_json_errors(
+            p_unmatched t_token_tab,
+            p_count     PLS_INTEGER
+        ) RETURN VARCHAR2 IS
+            v_json VARCHAR2(4000) := '[';
+        BEGIN
+            IF p_count = 0 THEN
+                RETURN '[]';
+            END IF;
+            FOR i IN 1..p_count LOOP
+                v_json := v_json || '{"token":"' || p_unmatched(i).token ||
+                          '","start":' || p_unmatched(i).start_pos ||
+                          ',"end":' || p_unmatched(i).end_pos || '}';
+                IF i < p_count THEN
+                    v_json := v_json || ',';
+                END IF;
+            END LOOP;
+            v_json := v_json || ']';
+            RETURN v_json;
+        END;
+
+        -- Return number of consecutive tokens matched as an operator starting at start_idx
+        FUNCTION get_longest_operator_match(start_idx IN PLS_INTEGER) RETURN PLS_INTEGER IS
+            combined      VARCHAR2(4000);
+            max_words     CONSTANT PLS_INTEGER := 4; -- max operator words count
+            words_count   PLS_INTEGER;
+            l_len         PLS_INTEGER := LEAST(max_words, v_token_count - start_idx + 1);
+            i             PLS_INTEGER;
+        BEGIN
+            FOR words_count IN REVERSE 1..l_len LOOP
+                combined := '';
+                FOR i IN start_idx..start_idx + words_count - 1 LOOP
+                    IF combined IS NULL OR combined = '' THEN
+                        combined := UPPER(TRIM(v_tokens(i).token));
+                    ELSE
+                        combined := combined || ' ' || UPPER(TRIM(v_tokens(i).token));
+                    END IF;
+                END LOOP;
+                IF is_in_list(combined, v_operators, v_oper_count) THEN
+                    RETURN words_count;
+                END IF;
+            END LOOP;
+            RETURN 0;
+        END;
+
+    BEGIN
+        p_status  := 'E';
+        p_message := NULL;
+
+        IF v_mode NOT IN ('V', 'C') THEN
+            p_status  := 'E';
+            p_message := 'Invalid mode "' || p_mode || '". Valid are V or C.';
+            RETURN;
+        END IF;
+
+        IF p_hotel_id IS NULL THEN
+            p_status  := 'E';
+            p_message := 'hotel_id is mandatory';
+            RETURN;
+        END IF;
+
+        IF p_expression IS NULL OR LENGTH(TRIM(p_expression)) = 0 THEN
+            p_status  := 'E';
+            p_message := 'Expression is empty';
+            RETURN;
+        END IF;
+
+        load_functions(v_functions, v_func_count);
+        load_operators(v_operators, v_oper_count);
+        load_attributes(p_hotel_id, v_attributes, v_attr_count);
+
+        tokenize_expression(p_expression, v_tokens, v_token_count);
+
+        -- Initialize consumed array
+        v_token_consumed.DELETE;
+
+        DECLARE
+            i             PLS_INTEGER := 1;
+            words_matched PLS_INTEGER := 0;
+        BEGIN
+            WHILE i <= v_token_count LOOP
+                words_matched := get_longest_operator_match(i);
+                IF words_matched > 0 THEN
+                    FOR j IN i..i + words_matched - 1 LOOP
+                        v_token_consumed(j) := TRUE;
+                    END LOOP;
+                    i := i + words_matched;
+                ELSE
+                    -- Single token valid check
+                    v_token_consumed(i) := is_token_valid(normalize_token(v_tokens(i).token));
+                    i                   := i + 1;
+                END IF;
+            END LOOP;
+        END;
+
+        IF v_mode = 'V' THEN
+            v_unmatched_tokens.DELETE;
+            v_unmatched_count := 0;
+            FOR i IN 1..v_token_count LOOP
+                IF v_token_consumed.EXISTS(i) AND v_token_consumed(i) = FALSE THEN
+                    v_unmatched_count                       := v_unmatched_count + 1;
+                    v_unmatched_tokens(v_unmatched_count) := v_tokens(i);
+                END IF;
+            END LOOP;
+
+            IF v_unmatched_count > 0 THEN
+                p_status  := 'E';
+                p_message := 'Invalid tokens: ' || build_json_errors(v_unmatched_tokens, v_unmatched_count);
+            ELSE
+                p_status  := 'S';
+                p_message := 'Expression validated successfully.';
+            END IF;
+
+        ELSIF v_mode = 'C' THEN
+            p_status  := 'S';
+            p_message := '';
+            FOR i IN 1..v_token_count LOOP
+                IF v_token_consumed.EXISTS(i) AND v_token_consumed(i) = TRUE THEN
+                    p_message := p_message || v_tokens(i).token || ' ';
+                END IF;
+            END LOOP;
+            p_message := RTRIM(p_message);
+        END IF;
+
+    EXCEPTION
+        WHEN OTHERS THEN
+            p_status  := 'E';
+            p_message := 'Failure: ' || SQLERRM;
+    END validate_expression;
+
+END ur_utils;
+/
