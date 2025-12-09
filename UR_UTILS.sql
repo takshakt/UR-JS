@@ -1532,13 +1532,13 @@ END ' || v_trigger_name || ';
         v_view_name        VARCHAR2(128);
         v_sdate_col        VARCHAR2(128);
         v_own_property_col VARCHAR2(128);
-        v_property_list    CLOB;
+        v_comp_property_list CLOB;  -- Only competitor properties (COMP_PROPERTY qualifier)
 
         -- Dynamic SQL Variables
         v_sql              CLOB;
         v_pivot_clause     CLOB; -- For inside the subquery
         v_final_columns    CLOB; -- For the final SELECT list
-        v_property_count   NUMBER := 0;
+        v_comp_count       NUMBER := 0;  -- Count of competitor properties only
         v_exists           NUMBER;
 
     BEGIN
@@ -1587,6 +1587,7 @@ END ' || v_trigger_name || ';
         FROM   JSON_TABLE(v_definition, '$[*]' COLUMNS (name VARCHAR2(128) PATH '$.name', qualifier VARCHAR2(128) PATH '$.qualifier')) jt
         WHERE  jt.qualifier = 'OWN_PROPERTY';
 
+        -- Get only COMP_PROPERTY columns for competitor ranking (excludes OWN_PROPERTY)
         SELECT
             LISTAGG('"' || jt.name || '"', ', ') WITHIN GROUP(
                 ORDER BY
@@ -1594,16 +1595,16 @@ END ' || v_trigger_name || ';
             ),
             COUNT(jt.name)
         INTO
-            v_property_list,
-            v_property_count
+            v_comp_property_list,
+            v_comp_count
         FROM
             JSON_TABLE(v_definition, '$[*]' COLUMNS (name VARCHAR2(128) PATH '$.name', qualifier VARCHAR2(128) PATH '$.qualifier')) jt
         WHERE
-            jt.qualifier IN ('OWN_PROPERTY', 'COMP_PROPERTY');
+            jt.qualifier = 'COMP_PROPERTY';
 
         -- Step 4: Build the dynamic PIVOT and final column list clauses
-        -- (REMOVED HOTEL_ID from this pivot logic)
-        FOR i IN 1..v_property_count LOOP
+        -- Generate RANK_N columns based on competitor count only (OWN_PROPERTY excluded from ranking)
+        FOR i IN 1..v_comp_count LOOP
             v_pivot_clause := v_pivot_clause ||
                               'MAX(CASE WHEN overall_rank = ' || i || ' THEN hotel_name END) AS "RANK_' || i || '_NAME",' || CHR(10) ||
                               'MAX(CASE WHEN overall_rank = ' || i || ' THEN price END) AS "RANK_' || i || '_RATE",' || CHR(10);
@@ -1617,36 +1618,77 @@ END ' || v_trigger_name || ';
 
 
         -- Step 5: Build the final CREATE VIEW statement
+        -- New logic:
+        --   1. Exclude OWN_PROPERTY from competitor rankings (RANK_1 to RANK_N are competitors only)
+        --   2. Filter out invalid prices ($0, NULL, non-numeric) from competitor ranking
+        --   3. Calculate OWN_PROPERTY_RANK separately (ties go against own property - worse rank)
+        --   4. Add VALID_COMP_COUNT for rank shifting in evaluation engine
         v_view_name := 'UR_TMPLT_' || p_template_key || '_RANK_V';
 
         v_sql := 'CREATE OR REPLACE VIEW "' || v_view_name || '" AS ' || CHR(10) ||
-                 'WITH all_properties_ranked AS (' || CHR(10) ||
+                 -- CTE 1: Get valid competitor prices only (exclude own property, filter out $0/NULL/non-numeric)
+                 'WITH valid_competitors AS (' || CHR(10) ||
                  '  SELECT ' || CHR(10) ||
-                 '      "HOTEL_ID",' || CHR(10) ||                          -- 1. Select base HOTEL_ID here
+                 '      "HOTEL_ID",' || CHR(10) ||
                  '      "' || v_sdate_col || '",' || CHR(10) ||
                  '      hotel_name,' || CHR(10) ||
-                 '      CASE WHEN REGEXP_LIKE(price, ''^[0-9,.]+$'') THEN TO_NUMBER(REPLACE(price, '','', '''')) ELSE NULL END AS price,' || CHR(10) ||
-                 '      ROW_NUMBER() OVER(PARTITION BY "' || v_sdate_col || '" ORDER BY CASE WHEN REGEXP_LIKE(price, ''^[0-9,.]+$'') THEN TO_NUMBER(REPLACE(price, '','', '''')) ELSE NULL END ASC NULLS LAST) as overall_rank' || CHR(10) ||
+                 '      TO_NUMBER(REPLACE(price, '','', '''')) AS price' || CHR(10) ||
                  '  FROM "' || v_data_table_name || '"' || CHR(10) ||
-                 '  UNPIVOT (price FOR hotel_name IN (' || v_property_list || '))' || CHR(10) ||
-                 ')' || CHR(10) ||
-                 'SELECT ' || CHR(10) ||
-                 '  p."' || v_sdate_col || '" AS "STAY_DATE",' || CHR(10) ||
-                 '  p."HOTEL_ID",' || CHR(10) ||                           -- 2. Select HOTEL_ID from the pivot subquery 'p'
-                 '  own.price AS "OWN_PROPERTY_RATE",' || CHR(10) ||
-                 '  own.overall_rank AS "OWN_PROPERTY_RANK",' || CHR(10) ||
-                 '  ' || v_final_columns || CHR(10) ||
-                 'FROM (' || CHR(10) ||
+                 '  UNPIVOT (price FOR hotel_name IN (' || v_comp_property_list || '))' || CHR(10) ||
+                 '  WHERE REGEXP_LIKE(price, ''^[0-9,.]+$'')' || CHR(10) ||
+                 '    AND TO_NUMBER(REPLACE(price, '','', '''')) > 0' || CHR(10) ||
+                 '),' || CHR(10) ||
+                 -- CTE 2: Rank valid competitors by price (ascending - cheapest = rank 1)
+                 'competitors_ranked AS (' || CHR(10) ||
+                 '  SELECT ' || CHR(10) ||
+                 '      "HOTEL_ID",' || CHR(10) ||
+                 '      "' || v_sdate_col || '",' || CHR(10) ||
+                 '      hotel_name,' || CHR(10) ||
+                 '      price,' || CHR(10) ||
+                 '      ROW_NUMBER() OVER(PARTITION BY "' || v_sdate_col || '" ORDER BY price ASC) as overall_rank' || CHR(10) ||
+                 '  FROM valid_competitors' || CHR(10) ||
+                 '),' || CHR(10) ||
+                 -- CTE 3: Get own property price data (filter out invalid prices)
+                 'own_property_data AS (' || CHR(10) ||
+                 '  SELECT ' || CHR(10) ||
+                 '      "HOTEL_ID",' || CHR(10) ||
+                 '      "' || v_sdate_col || '",' || CHR(10) ||
+                 '      TO_NUMBER(REPLACE("' || v_own_property_col || '", '','', '''')) AS own_price' || CHR(10) ||
+                 '  FROM "' || v_data_table_name || '"' || CHR(10) ||
+                 '  WHERE REGEXP_LIKE("' || v_own_property_col || '", ''^[0-9,.]+$'')' || CHR(10) ||
+                 '    AND TO_NUMBER(REPLACE("' || v_own_property_col || '", '','', '''')) > 0' || CHR(10) ||
+                 '),' || CHR(10) ||
+                 -- CTE 4: Calculate own property rank against valid competitors
+                 -- Ties go AGAINST own property (use <= to count equal prices, pushing own to worse rank)
+                 'own_property_rank AS (' || CHR(10) ||
+                 '  SELECT ' || CHR(10) ||
+                 '      o."HOTEL_ID",' || CHR(10) ||
+                 '      o."' || v_sdate_col || '",' || CHR(10) ||
+                 '      o.own_price,' || CHR(10) ||
+                 '      (SELECT COUNT(*) + 1 FROM valid_competitors vc' || CHR(10) ||
+                 '       WHERE vc."' || v_sdate_col || '" = o."' || v_sdate_col || '"' || CHR(10) ||
+                 '         AND vc.price <= o.own_price) AS own_rank' || CHR(10) ||
+                 '  FROM own_property_data o' || CHR(10) ||
+                 '),' || CHR(10) ||
+                 -- CTE 5: Pivot competitors into RANK_N_NAME and RANK_N_RATE columns
+                 'pivoted_competitors AS (' || CHR(10) ||
                  '  SELECT ' || CHR(10) ||
                  '      "' || v_sdate_col || '",' || CHR(10) ||
-                 '      "HOTEL_ID",' || CHR(10) ||                         -- 3. Select HOTEL_ID in the 'p' subquery
+                 '      "HOTEL_ID",' || CHR(10) ||
                  '      ' || v_pivot_clause || CHR(10) ||
-                 '  FROM all_properties_ranked ' || CHR(10) ||
-                 '  GROUP BY "' || v_sdate_col || '", "HOTEL_ID"' || CHR(10) || -- 4. Add HOTEL_ID to the GROUP BY
-                 ') p' || CHR(10) ||
-                 'JOIN (' || CHR(10) ||
-                 '  SELECT "' || v_sdate_col || '", price, overall_rank FROM all_properties_ranked WHERE hotel_name = ''' || v_own_property_col || '''' || CHR(10) ||
-                 ') own ON p."' || v_sdate_col || '" = own."' || v_sdate_col || '"';
+                 '  FROM competitors_ranked' || CHR(10) ||
+                 '  GROUP BY "' || v_sdate_col || '", "HOTEL_ID"' || CHR(10) ||
+                 ')' || CHR(10) ||
+                 -- Final SELECT: Combine pivoted competitors with own property data
+                 'SELECT ' || CHR(10) ||
+                 '  p."' || v_sdate_col || '" AS "STAY_DATE",' || CHR(10) ||
+                 '  p."HOTEL_ID",' || CHR(10) ||
+                 '  opr.own_price AS "OWN_PROPERTY_RATE",' || CHR(10) ||
+                 '  opr.own_rank AS "OWN_PROPERTY_RANK",' || CHR(10) ||
+                 '  (SELECT COUNT(*) FROM valid_competitors vc WHERE vc."' || v_sdate_col || '" = p."' || v_sdate_col || '") AS "VALID_COMP_COUNT",' || CHR(10) ||
+                 '  ' || v_final_columns || CHR(10) ||
+                 'FROM pivoted_competitors p' || CHR(10) ||
+                 'LEFT JOIN own_property_rank opr ON p."' || v_sdate_col || '" = opr."' || v_sdate_col || '"';
 
         -- Step 6: Execute the dynamic SQL
         EXECUTE IMMEDIATE v_sql;
@@ -2844,11 +2886,13 @@ END ' || v_trigger_name || ';
               RETURN;
             END IF;
 
-            -- 3. Validate and create attributes for OWN_PROPERTY
+            -- 3. Validate and create attributes for OWN_PROPERTY and VALID_COMP_COUNT
             FOR r_col IN (
                 SELECT 'OWN_PROPERTY_RANK' AS col_name FROM DUAL
                 UNION ALL
                 SELECT 'OWN_PROPERTY_RATE' AS col_name FROM DUAL
+                UNION ALL
+                SELECT 'VALID_COMP_COUNT' AS col_name FROM DUAL
             ) LOOP
                 SELECT COUNT(*) INTO v_column_exists FROM user_tab_columns
                 WHERE table_name = UPPER(v_db_view_object_name) AND column_name = r_col.col_name;
@@ -2858,12 +2902,14 @@ END ' || v_trigger_name || ';
                     RETURN;
                 END IF;
             END LOOP;
-            
+
             create_rst_attribute('OWN PROPERTY RANK', v_db_view_object_name || '.OWN_PROPERTY_RANK', v_db_view_object_name || '.OWN_PROPERTY_RANK', 'OWN_PROPERTY');
             create_rst_attribute('OWN PROPERTY RATE', v_db_view_object_name || '.OWN_PROPERTY_RATE', v_db_view_object_name || '.OWN_PROPERTY_RATE', 'OWN_PROPERTY');
+            -- Create VALID_COMP_COUNT attribute for rank shifting logic in evaluation engine
+            create_rst_attribute('VALID COMP COUNT', v_db_view_object_name || '.VALID_COMP_COUNT', v_db_view_object_name || '.VALID_COMP_COUNT', 'COMP_PROPERTY');
             
-            -- 4. Create attributes for COMP_PROPERTY
-            FOR i IN 1 .. (v_comp_property_count + 1) LOOP
+            -- 4. Create attributes for COMP_PROPERTY (RANK_1 to RANK_N where N = number of COMP_PROPERTY columns)
+            FOR i IN 1 .. v_comp_property_count LOOP
               DECLARE
                 l_col_name   VARCHAR2(100) := 'RANK_' || i || '_RATE';
                 l_attr_name  VARCHAR2(100) := 'COMP SET R' || i || ' RATE';
@@ -5189,14 +5235,17 @@ END test_date_parser;
     -- PROCEDURE: create_hotel_calculated_attributes
     -- Purpose: Create all 5 predefined calculated attributes for a new hotel
     --------------------------------------------------------------------------------
-    PROCEDURE create_hotel_calculated_attributes(
+  PROCEDURE create_hotel_calculated_attributes(
         p_hotel_id  IN  RAW,
+        p_mode      IN Varchar2,
         p_status    OUT BOOLEAN,
         p_message   OUT VARCHAR2
     ) IS
+    --PRAGMA AUTONOMOUS_TRANSACTION;
         v_user_id       RAW(16);
         v_key_prefix    VARCHAR2(50);
         v_insert_count  NUMBER := 0;
+         v_delete_count  NUMBER := 0;
     BEGIN
         p_status := FALSE;
         p_message := NULL;
@@ -5211,6 +5260,8 @@ END test_date_parser;
             SELECT USER_ID INTO v_user_id
             FROM UR_USERS
             WHERE USER_NAME = SYS_CONTEXT('APEX$SESSION', 'APP_USER');
+           
+
         EXCEPTION
             WHEN NO_DATA_FOUND THEN
                 v_user_id := NULL;
@@ -5218,6 +5269,11 @@ END test_date_parser;
 
         -- Use hotel ID as key prefix
         v_key_prefix := RAWTOHEX(p_hotel_id);
+
+        ---------------------------------------------------------------------
+    --  MODE : CREATE (Insert all 5 default attributes)
+    ---------------------------------------------------------------------
+    IF UPPER(p_mode) = 'CREATE' THEN
 
         -- 1. Insert OCCUPANCY attribute
         INSERT INTO ur_algo_attributes (
@@ -5314,13 +5370,32 @@ END test_date_parser;
         );
         v_insert_count := v_insert_count + 1;
 
-        COMMIT;
+       -- COMMIT;
         p_status := TRUE;
         p_message := 'Success: ' || v_insert_count || ' calculated attributes created for hotel ' || v_key_prefix;
 
+         ---------------------------------------------------------------------
+    --  MODE : DELETE 
+    ---------------------------------------------------------------------
+    ELSIF UPPER(p_mode) = 'DELETE' THEN
+
+        DELETE FROM ur_algo_attributes
+         WHERE hotel_id = p_hotel_id AND TYPE = 'C' AND template_id IS NULL;
+
+        v_delete_count := SQL%ROWCOUNT;
+
+        p_status  := TRUE;
+        p_message := 'Success: ' || v_delete_count || ' attributes deleted';
+
+    ---------------------------------------------------------------------
+    ELSE
+        p_status  := FALSE;
+        p_message := 'Invalid mode: ' || p_mode;
+    END IF;
+
     EXCEPTION
         WHEN OTHERS THEN
-            ROLLBACK;
+            --ROLLBACK;
             p_status := FALSE;
             p_message := 'Failure: ' || SQLERRM;
     END create_hotel_calculated_attributes;

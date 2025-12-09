@@ -54,6 +54,114 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
   EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
   END get_attribute_id_from_template;
 
+  -- =============================================================================
+  -- RANK SHIFTING HELPER FUNCTIONS
+  -- These functions support dynamic rank shifting when some competitors are
+  -- sold out (have $0 or NULL prices). When an expression references ranks
+  -- that don't exist for a given date, we shift down to available ranks.
+  -- =============================================================================
+
+  -- Returns the rank number if the attribute is a "COMP SET R{N} RATE" attribute, NULL otherwise
+  FUNCTION get_rank_number_from_attr_id(p_attr_id IN VARCHAR2) RETURN NUMBER IS
+    l_attr_name VARCHAR2(255);
+    l_rank_num NUMBER;
+  BEGIN
+    SELECT name INTO l_attr_name FROM ur_algo_attributes WHERE id = p_attr_id;
+    -- Match pattern "COMP SET R{N} RATE" where N is the rank number
+    IF REGEXP_LIKE(l_attr_name, '^COMP SET R[0-9]+ RATE$') THEN
+      l_rank_num := TO_NUMBER(REGEXP_SUBSTR(l_attr_name, '[0-9]+'));
+      RETURN l_rank_num;
+    END IF;
+    RETURN NULL;
+  EXCEPTION WHEN OTHERS THEN RETURN NULL;
+  END get_rank_number_from_attr_id;
+
+  -- Returns the attribute ID for a given rank number within the same template
+  FUNCTION get_attr_id_for_rank(p_template_id IN VARCHAR2, p_rank_num IN NUMBER) RETURN VARCHAR2 IS
+    l_attr_id VARCHAR2(255);
+    l_target_name VARCHAR2(100) := 'COMP SET R' || p_rank_num || ' RATE';
+  BEGIN
+    SELECT id INTO l_attr_id FROM ur_algo_attributes
+    WHERE template_id = p_template_id AND name = l_target_name AND ROWNUM = 1;
+    RETURN l_attr_id;
+  EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
+  END get_attr_id_for_rank;
+
+  -- Returns the VALID_COMP_COUNT attribute ID for a template
+  FUNCTION get_valid_comp_count_attr_id(p_template_id IN VARCHAR2) RETURN VARCHAR2 IS
+    l_attr_id VARCHAR2(255);
+  BEGIN
+    SELECT id INTO l_attr_id FROM ur_algo_attributes
+    WHERE template_id = p_template_id AND name = 'VALID COMP COUNT' AND ROWNUM = 1;
+    RETURN l_attr_id;
+  EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
+  END get_valid_comp_count_attr_id;
+
+  -- Applies rank shifting to an expression based on VALID_COMP_COUNT
+  -- If expression references R8, R9, R10 but only 6 competitors exist,
+  -- shifts to R4, R5, R6 (keeping the relative positions at the end)
+  FUNCTION apply_rank_shifting(
+    p_expression IN VARCHAR2,
+    p_valid_comp_count IN NUMBER,
+    p_template_id IN VARCHAR2
+  ) RETURN VARCHAR2 IS
+    l_result VARCHAR2(4000) := p_expression;
+    l_max_rank NUMBER := 0;
+    l_shift_amount NUMBER := 0;
+    l_attr_id VARCHAR2(255);
+    l_rank_num NUMBER;
+    l_new_rank NUMBER;
+    l_new_attr_id VARCHAR2(255);
+    l_pos PLS_INTEGER := 1;
+    l_attr_in_expr VARCHAR2(255);
+    TYPE t_rank_map IS TABLE OF NUMBER INDEX BY VARCHAR2(255);
+    l_rank_attrs t_rank_map;
+  BEGIN
+    -- If no valid competitors or NULL, return original expression
+    IF p_valid_comp_count IS NULL OR p_valid_comp_count = 0 THEN
+      RETURN p_expression;
+    END IF;
+
+    -- Step 1: Find all rank attributes in the expression and determine max rank
+    LOOP
+      l_attr_in_expr := REGEXP_SUBSTR(p_expression, '#[A-F0-9]+#', 1, l_pos);
+      EXIT WHEN l_attr_in_expr IS NULL;
+      l_attr_id := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '');
+      l_rank_num := get_rank_number_from_attr_id(l_attr_id);
+      IF l_rank_num IS NOT NULL THEN
+        l_rank_attrs(l_attr_id) := l_rank_num;
+        IF l_rank_num > l_max_rank THEN
+          l_max_rank := l_rank_num;
+        END IF;
+      END IF;
+      l_pos := l_pos + 1;
+    END LOOP;
+
+    -- Step 2: Calculate shift amount if needed
+    IF l_max_rank > p_valid_comp_count THEN
+      l_shift_amount := l_max_rank - p_valid_comp_count;
+      log_debug('Rank shifting: max_rank=' || l_max_rank || ', valid_comp=' || p_valid_comp_count || ', shift=' || l_shift_amount);
+    ELSE
+      -- No shifting needed
+      RETURN p_expression;
+    END IF;
+
+    -- Step 3: Replace rank attribute IDs with shifted ones (process in reverse to handle multi-digit ranks)
+    l_attr_id := l_rank_attrs.FIRST;
+    WHILE l_attr_id IS NOT NULL LOOP
+      l_rank_num := l_rank_attrs(l_attr_id);
+      l_new_rank := GREATEST(l_rank_num - l_shift_amount, 1);
+      l_new_attr_id := get_attr_id_for_rank(p_template_id, l_new_rank);
+      IF l_new_attr_id IS NOT NULL THEN
+        l_result := REPLACE(l_result, '#' || l_attr_id || '#', '#' || l_new_attr_id || '#');
+        log_debug('Shifted rank ' || l_rank_num || ' -> ' || l_new_rank || ' (attr: ' || l_attr_id || ' -> ' || l_new_attr_id || ')');
+      END IF;
+      l_attr_id := l_rank_attrs.NEXT(l_attr_id);
+    END LOOP;
+
+    RETURN l_result;
+  END apply_rank_shifting;
+
   FUNCTION get_value_for_date(p_data_table IN t_result_tab, p_target_date IN DATE) RETURN NUMBER IS
   BEGIN
     IF p_data_table IS NULL THEN RETURN NULL; END IF;
@@ -162,6 +270,11 @@ FUNCTION EVALUATE(
     l_effective_algo_id ur_algos.id%TYPE;
     l_version_id_to_use ur_algo_versions.id%TYPE;
     -- / NEW VARIABLES
+
+    -- ++ RANK SHIFTING VARIABLES
+    l_valid_comp_count_attr_id VARCHAR2(255);  -- Attribute ID for VALID_COMP_COUNT
+    l_ranking_template_id VARCHAR2(255);       -- Template ID for ranking attributes
+    -- / RANK SHIFTING VARIABLES
   BEGIN
     log_debug('EVALUATE START: p_algo_id=' || p_algo_id || ', p_version_id=' || p_version_id || ', p_stay_date=' || TO_CHAR(p_stay_date, 'YYYY-MM-DD')); -- (new log line)
 
@@ -204,15 +317,49 @@ FUNCTION EVALUATE(
         l_occ_attr VARCHAR2(255) := REGEXP_REPLACE(NVL(rec.occ_attr, ''), '^#|#$', ''); l_pr_attr_id VARCHAR2(255);
         l_pos PLS_INTEGER := 1;
         l_attr_in_expr VARCHAR2(255); l_clean_attr VARCHAR2(255);
+        l_attr_rank_num NUMBER;
       BEGIN
         IF l_occ_attr IS NOT NULL AND NOT l_aliases.EXISTS(l_occ_attr) THEN l_aliases(l_occ_attr) := l_occ_attr; END IF;
-        IF rec.pr_template IS NOT NULL THEN l_pr_attr_id := get_attribute_id_from_template(REPLACE(rec.pr_template, '#', '')); IF l_pr_attr_id IS NOT NULL AND NOT l_aliases.EXISTS(l_pr_attr_id) THEN l_aliases(l_pr_attr_id) := l_pr_attr_id; END IF; END IF;
+        IF rec.pr_template IS NOT NULL THEN
+          l_pr_attr_id := get_attribute_id_from_template(REPLACE(rec.pr_template, '#', ''));
+          IF l_pr_attr_id IS NOT NULL AND NOT l_aliases.EXISTS(l_pr_attr_id) THEN l_aliases(l_pr_attr_id) := l_pr_attr_id; END IF;
+          -- Capture the ranking template ID for rank shifting
+          IF l_ranking_template_id IS NULL THEN
+            l_ranking_template_id := REPLACE(rec.pr_template, '#', '');
+          END IF;
+        END IF;
         -- Only extract attributes from expression if it's NOT free text (not wrapped in ~text~)
         IF NOT REGEXP_LIKE(rec.expr, '^~.*~$') THEN
-          LOOP l_attr_in_expr := REGEXP_SUBSTR(rec.expr, '#[A-F0-9]+#', l_pos); EXIT WHEN l_attr_in_expr IS NULL; l_clean_attr := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', ''); IF NOT l_aliases.EXISTS(l_clean_attr) THEN l_aliases(l_clean_attr) := l_clean_attr; END IF; l_pos := INSTR(rec.expr, l_attr_in_expr, l_pos) + LENGTH(l_attr_in_expr); END LOOP;
+          LOOP
+            l_attr_in_expr := REGEXP_SUBSTR(rec.expr, '#[A-F0-9]+#', l_pos);
+            EXIT WHEN l_attr_in_expr IS NULL;
+            l_clean_attr := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '');
+            IF NOT l_aliases.EXISTS(l_clean_attr) THEN l_aliases(l_clean_attr) := l_clean_attr; END IF;
+            -- Check if this attribute is a rank attribute to capture the template_id
+            IF l_ranking_template_id IS NULL THEN
+              l_attr_rank_num := get_rank_number_from_attr_id(l_clean_attr);
+              IF l_attr_rank_num IS NOT NULL THEN
+                -- Get the template_id from this rank attribute
+                BEGIN
+                  SELECT template_id INTO l_ranking_template_id FROM ur_algo_attributes WHERE id = l_clean_attr AND ROWNUM = 1;
+                EXCEPTION WHEN NO_DATA_FOUND THEN NULL;
+                END;
+              END IF;
+            END IF;
+            l_pos := INSTR(rec.expr, l_attr_in_expr, l_pos) + LENGTH(l_attr_in_expr);
+          END LOOP;
         END IF;
       END;
     END LOOP;
+
+    -- If we found a ranking template, load the VALID_COMP_COUNT attribute
+    IF l_ranking_template_id IS NOT NULL THEN
+      l_valid_comp_count_attr_id := get_valid_comp_count_attr_id(l_ranking_template_id);
+      IF l_valid_comp_count_attr_id IS NOT NULL AND NOT l_aliases.EXISTS(l_valid_comp_count_attr_id) THEN
+        l_aliases(l_valid_comp_count_attr_id) := l_valid_comp_count_attr_id;
+        log_debug('Added VALID_COMP_COUNT attribute: ' || l_valid_comp_count_attr_id || ' for template: ' || l_ranking_template_id);
+      END IF;
+    END IF;
 
     log_debug('Alias parsing complete. Found ' || l_aliases.COUNT || ' unique attributes.'); -- (new log line)
 
@@ -507,8 +654,28 @@ FUNCTION EVALUATE(
 
                     ELSE
                       -- Handle Mathematical Expression (existing logic)
-                      l_raw_expr := cond_rec.expr; l_eval_copy := cond_rec.expr; l_attr_json := '{'; l_attr_counter := 0; l_pos := 1;
-                      LOOP l_attr_in_expr := REGEXP_SUBSTR(cond_rec.expr, '#[A-F0-9]+#', 1, l_pos); EXIT WHEN l_attr_in_expr IS NULL; l_current_id := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', ''); l_attr_val := TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)); l_eval_copy := REPLACE(l_eval_copy, '#' || l_current_id || '#', NVL(l_attr_val, '0')); IF l_attr_counter > 0 THEN l_attr_json := l_attr_json || ','; END IF; l_attr_json := l_attr_json || '"' || l_current_id || '":' || NVL(l_attr_val, 'null'); l_pos := l_pos + 1; l_attr_counter := l_attr_counter + 1; END LOOP;
+                      l_raw_expr := cond_rec.expr;
+
+                      -- ++ RANK SHIFTING: Apply rank shifting if we have ranking data
+                      DECLARE
+                        l_valid_comp_count NUMBER := NULL;
+                        l_shifted_expr VARCHAR2(4000);
+                      BEGIN
+                        IF l_valid_comp_count_attr_id IS NOT NULL AND l_staged_data.EXISTS(l_valid_comp_count_attr_id) THEN
+                          l_valid_comp_count := get_value_for_date(l_staged_data(l_valid_comp_count_attr_id), v_stay_date);
+                          IF l_valid_comp_count IS NOT NULL THEN
+                            l_shifted_expr := apply_rank_shifting(l_raw_expr, l_valid_comp_count, l_ranking_template_id);
+                            IF l_shifted_expr <> l_raw_expr THEN
+                              log_debug('............ Rank shifting applied. Original: ' || l_raw_expr || ' -> Shifted: ' || l_shifted_expr);
+                              l_raw_expr := l_shifted_expr;
+                            END IF;
+                          END IF;
+                        END IF;
+                      END;
+                      -- / RANK SHIFTING
+
+                      l_eval_copy := l_raw_expr; l_attr_json := '{'; l_attr_counter := 0; l_pos := 1;
+                      LOOP l_attr_in_expr := REGEXP_SUBSTR(l_raw_expr, '#[A-F0-9]+#', 1, l_pos); EXIT WHEN l_attr_in_expr IS NULL; l_current_id := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', ''); l_attr_val := TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)); l_eval_copy := REPLACE(l_eval_copy, '#' || l_current_id || '#', NVL(l_attr_val, '0')); IF l_attr_counter > 0 THEN l_attr_json := l_attr_json || ','; END IF; l_attr_json := l_attr_json || '"' || l_current_id || '":' || NVL(l_attr_val, 'null'); l_pos := l_pos + 1; l_attr_counter := l_attr_counter + 1; END LOOP;
                       l_attr_json := l_attr_json || '}';
 
                       log_debug('............ Expression with values: ' || l_eval_copy); -- (new log line)
@@ -543,8 +710,27 @@ FUNCTION EVALUATE(
                     -- [This section builds l_failed_cond_json, which is good]
                     log_debug('......... Condition NOT MET.'); -- (new log line)
                     -- ... (your existing code for l_failed_cond_json)
-                    l_raw_expr := cond_rec.expr; l_eval_copy := cond_rec.expr; l_attr_json := '{'; l_attr_counter := 0; l_pos := 1;
-                    LOOP l_attr_in_expr := REGEXP_SUBSTR(cond_rec.expr, '#[A-F0-9]+#', 1, l_pos); EXIT WHEN l_attr_in_expr IS NULL; l_current_id := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', ''); l_attr_val := TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)); l_eval_copy := REPLACE(l_eval_copy, '#' || l_current_id || '#', NVL(l_attr_val, '0')); IF l_attr_counter > 0 THEN l_attr_json := l_attr_json || ','; END IF; l_attr_json := l_attr_json || '"' || l_current_id || '":' || NVL(l_attr_val, 'null'); l_pos := l_pos + 1; l_attr_counter := l_attr_counter + 1; END LOOP;
+                    l_raw_expr := cond_rec.expr;
+
+                    -- ++ RANK SHIFTING: Apply rank shifting if we have ranking data (for failed conditions too)
+                    DECLARE
+                      l_valid_comp_count NUMBER := NULL;
+                      l_shifted_expr VARCHAR2(4000);
+                    BEGIN
+                      IF l_valid_comp_count_attr_id IS NOT NULL AND l_staged_data.EXISTS(l_valid_comp_count_attr_id) THEN
+                        l_valid_comp_count := get_value_for_date(l_staged_data(l_valid_comp_count_attr_id), v_stay_date);
+                        IF l_valid_comp_count IS NOT NULL THEN
+                          l_shifted_expr := apply_rank_shifting(l_raw_expr, l_valid_comp_count, l_ranking_template_id);
+                          IF l_shifted_expr <> l_raw_expr THEN
+                            l_raw_expr := l_shifted_expr;
+                          END IF;
+                        END IF;
+                      END IF;
+                    END;
+                    -- / RANK SHIFTING
+
+                    l_eval_copy := l_raw_expr; l_attr_json := '{'; l_attr_counter := 0; l_pos := 1;
+                    LOOP l_attr_in_expr := REGEXP_SUBSTR(l_raw_expr, '#[A-F0-9]+#', 1, l_pos); EXIT WHEN l_attr_in_expr IS NULL; l_current_id := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', ''); l_attr_val := TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date)); l_eval_copy := REPLACE(l_eval_copy, '#' || l_current_id || '#', NVL(l_attr_val, '0')); IF l_attr_counter > 0 THEN l_attr_json := l_attr_json || ','; END IF; l_attr_json := l_attr_json || '"' || l_current_id || '":' || NVL(l_attr_val, 'null'); l_pos := l_pos + 1; l_attr_counter := l_attr_counter + 1; END LOOP;
                     l_attr_json := l_attr_json || '}';
                     BEGIN
                       -- Only evaluate if NOT free text expression

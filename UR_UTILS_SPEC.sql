@@ -105,6 +105,7 @@ create or replace PACKAGE ur_utils IS
   -- Create predefined calculated attributes for a new hotel
   PROCEDURE create_hotel_calculated_attributes(
     p_hotel_id  IN  RAW,
+     p_mode      IN varchar2,
     p_status    OUT BOOLEAN,
     p_message   OUT VARCHAR2
   );
