@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -65,7 +65,7 @@ wwv_flow_imp_page.create_page_item(
 'ORDER BY SORT_ORDER, DISPLAY_VALUE'))
 ,p_cHeight=>1
 ,p_display_when=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'INSTR('':1026:17:1023:9:19:1075:1001:1002:29:1010:28:1601:33:1006:24:15:167:'', '':''||:APP_PAGE_ID||'':'') > 0',
+'INSTR('':1026:17:1023:9:19:1075:1001:1002:29:1010:28:1601:33:1006:24:15:167:27:32:'', '':''||:APP_PAGE_ID||'':'') > 0',
 '-- removinge strategy page 1050 from the global hotel'))
 ,p_display_when2=>'PLSQL'
 ,p_display_when_type=>'EXPRESSION'

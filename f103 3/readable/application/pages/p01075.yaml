@@ -47,11 +47,11 @@ regions:
     location: Local Database
     type: SQL Query
     sql-query: |
-      SELECT
+      SELECT DISTINCT
         UHPO.ID,
         UHPO.STAY_DATE,
         UHPO.HOTEL_ID,
-        H.HOTEL_NAME,  
+        H.HOTEL_NAME,
         UHPO.TYPE,
         UHPO.PRICE,
         UHPO.REASON,
@@ -64,16 +64,14 @@ regions:
         CASE UHPO.status 
               WHEN 'A' THEN 'Active'
               WHEN 'I' THEN 'Inactive'
-          END AS status_display
+        END AS status_display
       FROM UR_HOTEL_PRICE_OVERRIDE UHPO
       LEFT JOIN UR_HOTELS H ON UHPO.HOTEL_ID = H.ID
-      --WHERE (:P1075_HOTEL_LIST = 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF' OR RAWTOHEX(UHPO.HOTEL_ID) = :P1075_HOTEL_LIST)
       WHERE (
         :G_HOTEL_ID IS NULL
         OR :G_HOTEL_ID = 'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
         OR HOTEL_ID = HEXTORAW(:G_HOTEL_ID)
       )
-      
       
     page-items-to-submit: 
     - P0_HOTEL_ID

@@ -5,7 +5,7 @@
     name: Navigation Menu
 
   subscription: 
-    version-number: 45851770718626
+    version-number: 45852083489784
 
   source: 
     type: Static Values
@@ -579,6 +579,34 @@
       target: 
         url: 'f?p=&APP_ID.:1002:&SESSION.::&DEBUG.::::'
         page: 1002 # Templates v2
+
+    click-counting: 
+      count-clicks: false
+
+    user-defined-attributes: 
+      translatable: false
+
+  - # ====== Entry: Manage Templates v2 ==========================
+    id: 32325342725078575
+    label: 
+      label: Manage Templates v2
+
+    icon: 
+      image/icon-css-classes: fa-pencil
+
+    layout: 
+      sequence: 25
+      parent-entry: Hotel Data # 15689157068470336
+
+    is-current: 
+      type: Pages
+      pages: 
+      - 32
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:32:&SESSION.::&DEBUG.::::'
+        page: 32 # Template Update Interface v2
 
     click-counting: 
       count-clicks: false

@@ -2458,7 +2458,7 @@ dynamic-actions:
       language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
       pl/sql-code: |
         DECLARE
-            l_status   VARCHAR2(10);
+            l_status   VARCHAR2(1000);
             l_message  VARCHAR2(4000);
             v_alerts   CLOB := NULL;
         BEGIN
@@ -2832,7 +2832,7 @@ dynamic-actions:
           UR_UTILS.FETCH_TEMPLATES(
             p_file_id    => :P1010_P1_FILE_ID,
             p_hotel_id   => :P0_HOTEL_ID,
-            p_min_score  => 100,
+            p_min_score  => 50,
             p_debug_flag => 'N',
             p_output_json => v_output,
             p_match_datatype =>'N',

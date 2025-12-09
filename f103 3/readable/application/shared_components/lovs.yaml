@@ -321,7 +321,7 @@
     name: UR ATTRIBUTE QUALIFIERS
 
   subscription: 
-    version-number: 45828717594919
+    version-number: 45852034730720
 
   source: 
     location: Static Values
@@ -351,210 +351,203 @@
   - # ====== Entry: Own Property =================================
     id: 14141713501941682
     entry: 
-      sequence: 14
+      sequence: 7
       display: Own Property
       return: OWN_PROPERTY
 
   - # ====== Entry: Competitor Property ==========================
     id: 14579344627203815
     entry: 
-      sequence: 24
+      sequence: 8
       display: Competitor Property
       return: COMP_PROPERTY
 
   - # ====== Entry: Market Demand ================================
     id: 15398211188674859
     entry: 
-      sequence: 34
+      sequence: 6
       display: Market Demand
       return: MARKET_DEMAND
 
   - # ====== Entry: Current Rate =================================
     id: 15866568610571526
     entry: 
-      sequence: 44
+      sequence: 1
       display: Current Rate
       return: CURRENT_RATE
-
-  - # ====== Entry: Unique =======================================
-    id: 18863351915383087
-    entry: 
-      sequence: 54
-      display: Unique
-      return: UNIQUE
 
   - # ====== Entry: Manual Price Override ========================
     id: 18863803134388538
     entry: 
-      sequence: 64
+      sequence: 5
       display: Manual Price Override
       return: MANUAL_PRICE_OVERRIDE
 
   - # ====== Entry: Stay Day of week =============================
     id: 27887399380787411
     entry: 
-      sequence: 5
+      sequence: 9
       display: Stay Day of week
       return: STAY_DAY_OF_WEEK
 
   - # ====== Entry: Revenue ======================================
     id: 27887603687787413
     entry: 
-      sequence: 6
+      sequence: 11
       display: Revenue
       return: REVENUE
 
   - # ====== Entry: Room nights ==================================
     id: 27888017470787414
     entry: 
-      sequence: 7
+      sequence: 10
       display: Room nights
       return: ROOM_NIGHTS
 
   - # ====== Entry: Revenue STLY =================================
     id: 27888401241787415
     entry: 
-      sequence: 8
+      sequence: 13
       display: Revenue STLY
       return: REVENUE_STLY
 
   - # ====== Entry: Groups RNTs ==================================
     id: 27888864233787416
     entry: 
-      sequence: 9
+      sequence: 14
       display: Groups RNTs
       return: GROUPS_RNTS
 
   - # ====== Entry: Groups RNTs STLY =============================
     id: 27889255835787418
     entry: 
-      sequence: 10
+      sequence: 15
       display: Groups RNTs STLY
       return: GROUPS_RNTS_STLY
 
   - # ====== Entry: LY RNTs ======================================
     id: 27889758846809966
     entry: 
-      sequence: 11
+      sequence: 16
       display: LY RNTs
       return: LY_RNTS
 
   - # ====== Entry: LY Occupancy =================================
     id: 27890068393809968
     entry: 
-      sequence: 12
+      sequence: 17
       display: LY Occupancy
       return: LY_OCCUPANCY
 
   - # ====== Entry: LY ADR =======================================
     id: 27890475069809969
     entry: 
-      sequence: 13
+      sequence: 18
       display: LY ADR
       return: LY_ADR
 
   - # ====== Entry: Comp Set LY Occupancy ========================
     id: 27890834197829868
     entry: 
-      sequence: 15
+      sequence: 19
       display: Comp Set LY Occupancy
       return: COMP_SET_LY_OCCUPANCY
 
   - # ====== Entry: Comp Set LY ADR ==============================
     id: 27891187649829869
     entry: 
-      sequence: 16
+      sequence: 20
       display: Comp Set LY ADR
       return: COMP_SET_LY_ADR
 
   - # ====== Entry: Out Of Order Rooms ===========================
     id: 27891557732829870
     entry: 
-      sequence: 17
+      sequence: 21
       display: Out Of Order Rooms
       return: OUT_OF_ORDER_ROOMS
 
   - # ====== Entry: Rewards Redemption ===========================
     id: 27891983536829872
     entry: 
-      sequence: 18
+      sequence: 22
       display: Rewards Redemption
       return: REWARDS_REDEMPTION
 
   - # ====== Entry: Rewards Redemption LY ========================
     id: 27892385374829873
     entry: 
-      sequence: 19
+      sequence: 23
       display: Rewards Redemption LY
       return: REWARDS_REDEMPTION_LY
 
   - # ====== Entry: RMS rate =====================================
     id: 27892771370829874
     entry: 
-      sequence: 20
+      sequence: 24
       display: RMS rate
       return: RMS_RATE
 
   - # ====== Entry: Pick up Room nights -1 DAY ===================
     id: 27893390752891845
     entry: 
-      sequence: 65
+      sequence: 61
       display: Pick up Room nights -1 DAY
       return: PICK_UP_ROOM_NIGHTS_1_DAY
 
   - # ====== Entry: Pick up Revenue -1 DAY =======================
     id: 27893640042891846
     entry: 
-      sequence: 66
+      sequence: 70
       display: Pick up Revenue -1 DAY
       return: PICK_UP_REVENUE_1_DAY
 
   - # ====== Entry: Pick up Room nights -3 DAY ===================
     id: 27894092494891847
     entry: 
-      sequence: 67
+      sequence: 62
       display: Pick up Room nights -3 DAY
       return: PICK_UP_ROOM_NIGHTS_3_DAY
 
   - # ====== Entry: Pick up Revenue -3 DAY =======================
     id: 27894409562891849
     entry: 
-      sequence: 68
+      sequence: 71
       display: Pick up Revenue -3 DAY
       return: PICK_UP_REVENUE_3_DAY
 
   - # ====== Entry: Pick up Room nights -7 DAY ===================
     id: 27894837985891850
     entry: 
-      sequence: 69
+      sequence: 63
       display: Pick up Room nights -7 DAY
       return: PICK_UP_ROOM_NIGHTS_7_DAY
 
   - # ====== Entry: Pick up Revenue -7 DAY =======================
     id: 27895898498945081
     entry: 
-      sequence: 70
+      sequence: 72
       display: Pick up Revenue -7 DAY
       return: PICK_UP_REVENUE_7_DAY
 
   - # ====== Entry: Pick up Room nights -14 DAY ==================
     id: 27896198308945083
     entry: 
-      sequence: 71
+      sequence: 64
       display: Pick up Room nights -14 DAY
       return: PICK_UP_ROOM_NIGHTS_-4_DAY
 
   - # ====== Entry: Pick up Revenue -14 DAY ======================
     id: 27896552840945084
     entry: 
-      sequence: 72
+      sequence: 73
       display: Pick up Revenue -14 DAY
       return: PICK_UP_REVENUE_14_DAY
 
   - # ====== Entry: Pick up Room nights -28 DAY ==================
     id: 27896992155945085
     entry: 
-      sequence: 73
+      sequence: 65
       display: Pick up Room nights -28 DAY
       return: PICK_UP_ROOM_NIGHTS_28_DAY
 
@@ -568,14 +561,14 @@
   - # ====== Entry: Pick up Room nights STLY-1 DAY ===============
     id: 27897702381959767
     entry: 
-      sequence: 75
+      sequence: 76
       display: Pick up Room nights STLY-1 DAY
       return: PICK_UP_ROOM_NIGHTS_STLY_1_DAY
 
   - # ====== Entry: Pick up Revenue STLY -1 DAY ==================
     id: 27898066438959769
     entry: 
-      sequence: 76
+      sequence: 91
       display: Pick up Revenue STLY -1 DAY
       return: PICK_UP_REVENUE_STLY_1_DAY
 
@@ -589,84 +582,84 @@
   - # ====== Entry: Pick up Revenue STLY -3 DAY ==================
     id: 27898809508959771
     entry: 
-      sequence: 78
+      sequence: 92
       display: Pick up Revenue STLY -3 DAY
       return: PICK_UP_REVENUE_STLY_3_DAY
 
   - # ====== Entry: Pick up Room nights STLY-7 DAY ===============
     id: 27899253741959773
     entry: 
-      sequence: 79
+      sequence: 78
       display: Pick up Room nights STLY-7 DAY
       return: PICK_UP_ROOM_NIGHTS_STLY_7_DAY
 
   - # ====== Entry: Pick up Revenue STLY-7 DAY ===================
     id: 27899604562991172
     entry: 
-      sequence: 80
+      sequence: 93
       display: Pick up Revenue STLY-7 DAY
       return: PICK_UP_REVENUE_STLY_7_DAY
 
   - # ====== Entry: Pick up Room nights STLY-14 DAY ==============
     id: 27899918975991174
     entry: 
-      sequence: 81
+      sequence: 79
       display: Pick up Room nights STLY-14 DAY
       return: PICK_UP_ROOM_NIGHTS_STLY_14_DAY
 
   - # ====== Entry: Pick up Revenue STLY-14 DAY ==================
     id: 27900367887991175
     entry: 
-      sequence: 82
+      sequence: 94
       display: Pick up Revenue STLY-14 DAY
       return: PICK_UP_REVENUE_STLY_14_DAY
 
   - # ====== Entry: Pick up Room nights STLY-28 DAY ==============
     id: 27900761389991176
     entry: 
-      sequence: 83
+      sequence: 80
       display: Pick up Room nights STLY-28 DAY
       return: PICK_UP_ROOM_NIGHTS_STLY_28_DAY
 
   - # ====== Entry: Pick up Revenue STLY-28 DAY ==================
     id: 27901169379991177
     entry: 
-      sequence: 84
+      sequence: 95
       display: Pick up Revenue STLY-28 DAY
       return: PICK_UP_REVENUE_STLY_28_DAY
 
   - # ====== Entry: Pick up Groups RNTs – 1 DAY ==================
     id: 27901746633998936
     entry: 
-      sequence: 85
+      sequence: 100
       display: Pick up Groups RNTs – 1 DAY
       return: PICK_UP_GROUPS_RNTS_1_DAY
 
   - # ====== Entry: Pick up Groups RNTs – 7 DAY ==================
     id: 27902010199998938
     entry: 
-      sequence: 86
+      sequence: 101
       display: Pick up Groups RNTs – 7 DAY
       return: PICK_UP_GROUPS_RNTS_7_DAY
 
   - # ====== Entry: Pick up Groups RNTs STLY – 1 DAY =============
     id: 27902423032998939
     entry: 
-      sequence: 87
+      sequence: 106
       display: Pick up Groups RNTs STLY – 1 DAY
       return: PICK_UP_GROUPS_RNTS_STLY_1_DAY
 
   - # ====== Entry: Pick up Groups RNTs STLY– 7 DAY ==============
     id: 27902828751998940
     entry: 
-      sequence: 88
+      sequence: 107
       display: Pick up Groups RNTs STLY– 7 DAY
       return: PICK_UP_GROUPS_RNTS_STLY_7_DAY
 
   - # ====== Entry: Room nights STLY =============================
     id: 27943457460583408
     entry: 
-      sequence: 25
+      sequence: 12
       display: Room nights STLY
       return: ROOM_NIGHTS_STLY
 
@@ -1756,7 +1749,7 @@
     name: UR HOTEL PRICE OVERRIDE REASON
 
   subscription: 
-    version-number: 45828713777832
+    version-number: 45852237284616
 
   source: 
     location: Static Values
@@ -1807,14 +1800,14 @@
   - # ====== Entry: Incorrect Rate Loaded in System ==============
     id: 17932376180098306
     entry: 
-      sequence: 7
+      sequence: 8
       display: Incorrect Rate Loaded in System
-      return: INCORRECT_RATE_LOADED
+      return: INCORRECT_RATE_LOADED_IN_SYSTEM
 
   - # ====== Entry: Rate Parity Adjustment =======================
     id: 17932788936098307
     entry: 
-      sequence: 8
+      sequence: 7
       display: Rate Parity Adjustment
       return: RATE_PARITY_ADJUSTMENT
 
@@ -1824,27 +1817,6 @@
       sequence: 10
       display: Package Inclusion Adjustment
       return: PACKAGE_INCLUSION_ADJUSTMENT
-
-  - # ====== Entry: Rate Parity Adjustment =======================
-    id: 27885590992667464
-    entry: 
-      sequence: 11
-      display: Rate Parity Adjustment
-      return: PACKAGE_INCLUSION_ADJUSTMENT
-
-  - # ====== Entry: Incorrect rate loaded in the system ==========
-    id: 27885823382667466
-    entry: 
-      sequence: 12
-      display: Incorrect rate loaded in the system
-      return: INCORRECT_RATE_LOADED_IN_THE_SYSTEM
-
-  - # ====== Entry: Package inclusion adjustment =================
-    id: 27886256381667467
-    entry: 
-      sequence: 13
-      display: Package inclusion adjustment
-      return: RATE_PARITY_ADJUSTMENT
 
 - # ====== List of Values: UR HOTEL PRICE OVERRIDE TYPE ========
   id: 17934818910111446

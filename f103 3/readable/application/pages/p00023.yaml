@@ -1099,14 +1099,14 @@ page-items:
     store-value-encrypted-in-session-state: true
     restricted-characters: All characters can be saved.
 
-- # ====== Page Item: P23_OCCUPANCY ============================
+- # ====== Page Item: P23_CAPACITY =============================
   id: 27536511178203304
   identification: 
-    name: P23_OCCUPANCY
+    name: P23_CAPACITY
     type: Number Field
 
   label: 
-    label: Total Occupancy
+    label: Total Capacity
     alignment: Left
 
   settings: 
@@ -1140,7 +1140,7 @@ page-items:
 
   source: 
     form-region: New Hotel # 11960354245997033
-    column: OCCUPANCY
+    column: CAPACITY
     data-type: NUMBER
     query-only: false
     primary-key: false
@@ -1367,7 +1367,7 @@ processes:
     show-success-messages: true
 
   execution: 
-    sequence: 50
+    sequence: 30
     point: Processing
     run-process: Once Per Page Visit (default)
 

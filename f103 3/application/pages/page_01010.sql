@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -1506,7 +1506,7 @@ wwv_flow_imp_page.create_page_da_action(
 ,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'DECLARE',
-'    l_status   VARCHAR2(10);',
+'    l_status   VARCHAR2(1000);',
 '    l_message  VARCHAR2(4000);',
 '    v_alerts   CLOB := NULL;',
 'BEGIN',
@@ -1670,7 +1670,7 @@ wwv_flow_imp_page.create_page_da_action(
 '  UR_UTILS.FETCH_TEMPLATES(',
 '    p_file_id    => :P1010_P1_FILE_ID,',
 '    p_hotel_id   => :P0_HOTEL_ID,',
-'    p_min_score  => 100,',
+'    p_min_score  => 50,',
 '    p_debug_flag => ''N'',',
 '    p_output_json => v_output,',
 '    p_match_datatype =>''N'',',

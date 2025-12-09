@@ -155,7 +155,7 @@ page-items:
     type: Expression
     language: PL/SQL
     pl/sql-expression: |
-      INSTR(':1026:17:1023:9:19:1075:1001:1002:29:1010:28:1601:33:1006:24:15:167:', ':'||:APP_PAGE_ID||':') > 0
+      INSTR(':1026:17:1023:9:19:1075:1001:1002:29:1010:28:1601:33:1006:24:15:167:27:32:', ':'||:APP_PAGE_ID||':') > 0
       -- removinge strategy page 1050 from the global hotel
 
   security: 

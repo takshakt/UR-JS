@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -44,7 +44,7 @@ wwv_flow_imp_page.create_page_plug(
 '    h.CURRENCY_CODE,',
 '    h.ASSOCIATION_START_DATE,',
 '    h.ASSOCIATION_END_DATE,',
-'    h.Occupancy,',
+'    h.Capacity,',
 '    a.NAME AS PRIMARY_STRATEGY',
 'FROM UR_HOTELS h',
 'LEFT JOIN UR_HOTEL_GROUPS g ON h.GROUP_ID = g.ID',
@@ -488,14 +488,14 @@ wwv_flow_imp_page.create_region_column(
 ,p_include_in_export=>true
 );
 wwv_flow_imp_page.create_region_column(
- p_id=>wwv_flow_imp.id(27536433542203303)
-,p_name=>'Occupancy'
+ p_id=>wwv_flow_imp.id(31066987809723101)
+,p_name=>'CAPACITY'
 ,p_source_type=>'DB_COLUMN'
-,p_source_expression=>'OCCUPANCY'
+,p_source_expression=>'CAPACITY'
 ,p_data_type=>'NUMBER'
 ,p_is_query_only=>false
 ,p_item_type=>'NATIVE_NUMBER_FIELD'
-,p_heading=>'Total Occupancy'
+,p_heading=>'Total Capacity'
 ,p_heading_alignment=>'CENTER'
 ,p_display_sequence=>170
 ,p_value_alignment=>'CENTER'
@@ -668,10 +668,10 @@ wwv_flow_imp_page.create_ig_report_column(
 ,p_is_frozen=>false
 );
 wwv_flow_imp_page.create_ig_report_column(
- p_id=>wwv_flow_imp.id(27565850626537289)
+ p_id=>wwv_flow_imp.id(31072406637724767)
 ,p_view_id=>wwv_flow_imp.id(13934505759610817)
-,p_display_seq=>8
-,p_column_id=>wwv_flow_imp.id(27536433542203303)
+,p_display_seq=>16
+,p_column_id=>wwv_flow_imp.id(31066987809723101)
 ,p_is_visible=>true
 ,p_is_frozen=>false
 );

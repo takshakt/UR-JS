@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -638,7 +638,7 @@ unistr('    -- CASE 2: Status = A and any key field changed \2192 Versioning'),
 '       AND (',
 '                v_old_price <> :P1071_PRICE ',
 '                or v_type <> :P1071_TYPE',
-'                or v_reason <> :P1071_REASON',
+'                or NVL(v_reason, ''X'') <> NVL(:P1071_REASON, ''X'')',
 '                or v_comments <> :P1071_COMMENTS',
 '           --NVL(v_old_price, -99999) <> NVL(:P1071_PRICE, -99999)',
 '         --OR NVL(:P1071_TYPE, ''X'') <> NVL(:P1071_TYPE, ''X'')',

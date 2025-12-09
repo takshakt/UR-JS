@@ -1043,7 +1043,7 @@ page-items:
     label-column-span: Page Template Default
 
   appearance: 
-    template: Optional - Floating
+    template: Optional - Above
     template-options: 
     - '#DEFAULT#'
     width: 30
@@ -1058,6 +1058,9 @@ page-items:
              id           AS return_value
       FROM ur_templates
       WHERE hotel_id = HEXTORAW(:P0_HOTEL_ID)
+      AND (:P29_STATUS_ON = 'ALL' OR
+          ACTIVE =:P29_STATUS_ON)
+      --AND (:P29_STATUS_ON = 'ALL' OR ACTIVE = :P29_STATUS_ON)
       --WHERE hotel_id = HEXTORAW(:P29_LOCAL_HOTEL_ID)
       
       
@@ -1067,6 +1070,8 @@ page-items:
   cascading-list-of-values: 
     parent-item(s): 
     - P0_HOTEL_ID
+    items-to-submit: 
+    - P29_STATUS_ON
     parent-required: true
 
   advanced: 
@@ -1404,6 +1409,62 @@ page-items:
   security: 
     session-state-protection: Unrestricted
     store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P29_STATUS_ON ============================
+  id: 31226611466554101
+  identification: 
+    name: P29_STATUS_ON
+    type: Radio Group
+
+  label: 
+    label: Status
+    alignment: Left
+
+  settings: 
+    number-of-columns: 3
+    page-action-on-selection: None
+
+  layout: 
+    sequence: 10
+    region: Template List # 16603938316205024
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: 4
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Above
+    template-options: 
+    - '#DEFAULT#'
+
+  validation: 
+    value-required: false
+
+  list-of-values: 
+    type: Static Values
+    static-values: 'STATIC2:ACTIVE;Y,INACTIVE;N,BOTH;ALL'
+    display-extra-values: false
+    display-null-value: false
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    escape-special-characters: true
     restricted-characters: All characters can be saved.
 
 buttons: 
@@ -1811,7 +1872,7 @@ dynamic-actions:
       suppress-change-event: false
 
     execution: 
-      sequence: 120
+      sequence: 130
       event: Create Template button click # 15607142621985543
       fire-when-event-result-is: True
       fire-on-initialization: false
@@ -1856,7 +1917,7 @@ dynamic-actions:
       - P29_TEMPLATE_LIST
 
     execution: 
-      sequence: 130
+      sequence: 140
       event: Create Template button click # 15607142621985543
       fire-when-event-result-is: True
       fire-on-initialization: false
@@ -1887,7 +1948,7 @@ dynamic-actions:
         
 
     execution: 
-      sequence: 140
+      sequence: 150
       event: Create Template button click # 15607142621985543
       fire-when-event-result-is: True
       fire-on-initialization: false
@@ -1929,7 +1990,7 @@ dynamic-actions:
       suppress-change-event: false
 
     execution: 
-      sequence: 90
+      sequence: 100
       event: Create Template button click # 15607142621985543
       fire-when-event-result-is: True
       fire-on-initialization: false
@@ -2024,7 +2085,7 @@ dynamic-actions:
       suppress-change-event: false
 
     execution: 
-      sequence: 110
+      sequence: 120
       event: Create Template button click # 15607142621985543
       fire-when-event-result-is: True
       fire-on-initialization: false
@@ -2061,7 +2122,7 @@ dynamic-actions:
         
 
     execution: 
-      sequence: 100
+      sequence: 110
       event: Create Template button click # 15607142621985543
       fire-when-event-result-is: True
       fire-on-initialization: false
@@ -2087,12 +2148,15 @@ dynamic-actions:
         DECLARE
             v_status  VARCHAR2(4000);
             v_message CLOB;
+            
         BEGIN
+            
+        
             update_template_definition(
                 p_template_id     => :P29_TEMPLATE_LIST,
                 p_collection_name => 'TEMPLATE_DATA',
                 p_template_type   => :P29_TEMPLATE_TYPE,
-                p_is_update       => 'Y',  -- Set 'Y' to recreate DB object
+                p_is_update       => 'Y',
                 p_status          => v_status,
                 p_message         => v_message
             );
@@ -2108,7 +2172,7 @@ dynamic-actions:
       suppress-change-event: false
 
     execution: 
-      sequence: 80
+      sequence: 90
       event: Create Template button click # 15607142621985543
       fire-when-event-result-is: True
       fire-on-initialization: false
@@ -2329,7 +2393,7 @@ dynamic-actions:
       icon: fa-warning
 
     execution: 
-      sequence: 70
+      sequence: 80
       event: Create Template button click # 15607142621985543
       fire-when-event-result-is: True
       fire-on-initialization: false
@@ -2347,7 +2411,7 @@ dynamic-actions:
       region: Template Definition # 15603297361985504
 
     execution: 
-      sequence: 60
+      sequence: 70
       event: Create Template button click # 15607142621985543
       fire-when-event-result-is: True
       fire-on-initialization: false
@@ -2419,6 +2483,51 @@ dynamic-actions:
 
     execution: 
       sequence: 30
+      event: Create Template button click # 15607142621985543
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Execute Server-side Code ====================
+    id: 32991986534781504
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |2
+         DECLARE
+            v_status  VARCHAR2(10);
+            v_message VARCHAR2(4000);
+            begin
+         validate_profile_row(
+                p_name          => :name,
+                p_data_type     => :data_type,
+                p_mapping_type  => :mapping_type,
+                p_default_value => :VALUE,
+                p_collection    => 'TEMPLATE_DATA',
+                o_status        => v_status,
+                o_message       => v_message
+            );
+        IF v_status = 'ERROR' THEN
+        
+        
+                -- Register error so IG stops saving, but without popup
+                apex_error.add_error(
+                    p_message          => V_MESSAGE,
+                    p_display_location => apex_error.c_inline_in_notification
+                );
+        
+                RETURN;
+            END IF;
+            end;
+
+    execution: 
+      sequence: 60
       event: Create Template button click # 15607142621985543
       fire-when-event-result-is: True
       fire-on-initialization: false
@@ -3277,6 +3386,29 @@ dynamic-actions:
       stop-execution-on-error: true
       wait-for-result: true
 
+  - # ====== Action: Set Value ===================================
+    id: 31226972779554104
+    identification: 
+      action: Set Value
+
+    settings: 
+      set-type: Static Assignment
+      value: Y
+      suppress-change-event: false
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P29_STATUS_ON
+
+    execution: 
+      sequence: 40
+      event: Page_load_DA # 23162890681001706
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+      stop-execution-on-error: true
+      wait-for-result: true
+
 - # ====== Dynamic Action: Delete database objects =============
   id: 23163897798001716
   identification: 
@@ -3331,6 +3463,42 @@ dynamic-actions:
 
     configuration: 
       build-option: Commented Out # 8557885664922129
+
+- # ====== Dynamic Action: REFRESH THE TEMPLATE LIST ===========
+  id: 31226789503554102
+  identification: 
+    name: REFRESH THE TEMPLATE LIST
+
+  execution: 
+    sequence: 120
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P29_STATUS_ON
+
+  actions: 
+  - # ====== Action: Refresh =====================================
+    id: 31226858275554103
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P29_TEMPLATE_LIST
+
+    execution: 
+      sequence: 10
+      event: REFRESH THE TEMPLATE LIST # 31226789503554102
+      fire-when-event-result-is: True
+      fire-on-initialization: false
 
 computations: 
 - # ====== Computation: P29_LOCAL_HOTEL_ID =====================
@@ -3435,12 +3603,49 @@ processes:
           l_temp CLOB;
       BEGIN
       
+      
+         CASE :APEX$ROW_STATUS
+          WHEN 'C' THEN
+              :SEQ_ID := apex_collection.add_member(
+                  p_collection_name => 'TEMPLATE_DATA',
+                  p_c001            => :NAME,
+                  p_c002            => :DATA_TYPE,
+                  p_c003            => :QUALIFIER,
+                  p_c004            => :VALUE,
+                  p_c005            => :MAPPING_TYPE,
+                  p_c006            => :ORIGINAL_NAME
+              );
+      
+      
+      
+          WHEN 'U' THEN
+              apex_collection.update_member(
+                  p_collection_name => 'TEMPLATE_DATA',
+                  p_seq             => :SEQ_ID,
+                  p_c001            => :NAME,
+                  p_c002            => :DATA_TYPE,
+                  p_c003            => :QUALIFIER,
+                  p_c004            => :VALUE,
+                  p_c005            => :MAPPING_TYPE,
+                  p_c006            => :ORIGINAL_NAME
+              );
+      
+        
+      
+          WHEN 'D' THEN
+              apex_collection.delete_member(
+                  p_collection_name => 'TEMPLATE_DATA',
+                  p_seq             => :SEQ_ID
+              );
+      
+          
+      END CASE;
       /** added on 26/11  **/
         validate_profile_row(
               p_name          => :name,
               p_data_type     => :data_type,
               p_mapping_type  => :mapping_type,
-              p_default_value => :default_value,
+              p_default_value => :VALUE,
               p_collection    => 'TEMPLATE_DATA',
               o_status        => v_status,
               o_message       => v_message
@@ -3458,46 +3663,6 @@ processes:
               RETURN;
           END IF;
       /**** end of 26/11 added new code ***/
-         CASE :APEX$ROW_STATUS
-          WHEN 'C' THEN
-              :SEQ_ID := apex_collection.add_member(
-                  p_collection_name => 'TEMPLATE_DATA',
-                  p_c001            => :NAME,
-                  p_c002            => :DATA_TYPE,
-                  p_c003            => :QUALIFIER,
-                  p_c004            => :VALUE,
-                  p_c005            => :MAPPING_TYPE,
-                  p_c006            => :ORIGINAL_NAME
-              );
-      
-              INSERT INTO debug_log(message)
-              VALUES('INSERT - SEQ:'||:SEQ_ID||' C006:'||NVL(:ORIGINAL_NAME,'NULL'));
-      
-          WHEN 'U' THEN
-              apex_collection.update_member(
-                  p_collection_name => 'TEMPLATE_DATA',
-                  p_seq             => :SEQ_ID,
-                  p_c001            => :NAME,
-                  p_c002            => :DATA_TYPE,
-                  p_c003            => :QUALIFIER,
-                  p_c004            => :VALUE,
-                  p_c005            => :MAPPING_TYPE,
-                  p_c006            => :ORIGINAL_NAME
-              );
-      
-              INSERT INTO debug_log(message)
-              VALUES('UPDATE - SEQ:'||:SEQ_ID||' C006:'||NVL(:ORIGINAL_NAME,'NULL'));
-      
-          WHEN 'D' THEN
-              apex_collection.delete_member(
-                  p_collection_name => 'TEMPLATE_DATA',
-                  p_seq             => :SEQ_ID
-              );
-      
-              INSERT INTO debug_log(message)
-              VALUES('DELETE - SEQ:'||:SEQ_ID);
-      END CASE;
-      
       END;
       
     prevent-lost-updates: true

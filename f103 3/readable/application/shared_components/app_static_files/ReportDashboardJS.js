@@ -1083,7 +1083,7 @@ function loadReportDataForTab(tabId, reportId) {
         {
             dataType: "json",
             success: function(data) {
-                console.log('Report data received for tab:', tabId, data); 
+             //   console.log('Report data received for tab:', tabId, data); 
                 let reportCol;
                 let db_ob_name;
                 data.forEach(function(report) {
@@ -1092,7 +1092,7 @@ function loadReportDataForTab(tabId, reportId) {
                     col_alias = report.COLUMN_ALIAS;
                     expressionJson = report.EXPRESSIONS_CLOB;
                 });
-                console.log('expressionJson:>>>>',expressionJson);
+                //console.log('expressionJson:>>>>',expressionJson);
                 const reportColObj = JSON.parse(reportCol);
 
                 // Generate columns_list from the JSON data
@@ -1102,7 +1102,7 @@ function loadReportDataForTab(tabId, reportId) {
                 }));
 */
 
-console.log('reportColObj:>>>>>>>',reportColObj);
+//console.log('reportColObj:>>>>>>>',reportColObj);
 var columns_list = reportColObj.selectedColumns.map(item => ({
                                 name: `${item.col_name} - ${item.temp_name}`,
                                 type: item.data_type
@@ -1953,6 +1953,7 @@ function initializeTable(tabId = currentTabId, expressionJson = null) {
 // Convert the Map values back to an array
  visibleColumnsFromConfig = Array.from(uniqueColumnsMap.values());
 
+visibleColumnsFromConfig = reorderVisibleColumns(visibleColumnsFromConfig, expressionJson);
  
 visibleColumnsFromConfig.forEach(column => {
     const th = document.createElement('th');
@@ -1999,7 +2000,7 @@ visibleColumnsFromConfig.forEach((col, index) => {
     tab.tableData = groupAndAggregateTableData(tab.tableData, formula_filterJSON, aliasToOriginalMap);
     console.log('tab.tableData:>>>>',tab.tableData);
     processAndPopulateTable(tabId, tab.tableData, formula_filterJSON, visibleColumnsFromConfig, aliasToOriginalMap);
-
+console.log('processAndPopulateTable   tab.tableData:>>>>',tab.tableData);
     
     const tableElement = tabElement.querySelector('table');
     const columnCount = visibleColumnsFromConfig.length;
@@ -2283,39 +2284,39 @@ function processAndPopulateTable(tabId, tableData, config, visibleColumns, alias
                 dataType: 'string' // Default type
             }));
             
-            //console.log('Auto-detected columns from all data:', dataColumns);
+            console.log('Auto-detected columns from all data:', dataColumns);
             
             // Populate table directly with original data
             populateTableDataDirect(tableBody, processedData, dataColumns, {}, {});
             return;
         }
     
-   // console.log('processedData:>>>>>>>>>>>',processedData);
+    console.log('processedData:>>>>>>>>>>>',processedData);
     //console.log('visibleColumns:>>>>>>>>>>>',visibleColumns);
     // Step 1: Normalize data - create a version with original column names for processing
 
 
-    const cleanRowKeys = (row) => {
-    const cleanedRow = {};
-    for (const key in row) {
-        if (Object.prototype.hasOwnProperty.call(row, key)) {
-            // Find the index of the first hyphen
-            const hyphenIndex = key.indexOf('-');
-            
-            // Extract the part of the key before the hyphen, trimming any trailing space.
-            // If no hyphen is found, use the original key.
-            const newKey = hyphenIndex !== -1 
-                ? key.substring(0, hyphenIndex).trim() 
-                : key;
-            
-            cleanedRow[newKey] = row[key];
-        }
-    }
-    return cleanedRow;
-};
+        const cleanRowKeys = (row) => {
+        const cleanedRow = {};
+        for (const key in row) {
+            if (Object.prototype.hasOwnProperty.call(row, key)) {
+                // Find the index of the first hyphen
+                const hyphenIndex = key.indexOf('-');
+                
+                // Extract the part of the key before the hyphen, trimming any trailing space.
+                // If no hyphen is found, use the original key.
+                const newKey = hyphenIndex !== -1 
+                    ? key.substring(0, hyphenIndex).trim() 
+                    : key;
+                    
+                    cleanedRow[newKey] = row[key];
+                }
+            }
+            return cleanedRow;
+        };
 
 const cleanedData = processedData.map(cleanRowKeys);
-
+console.log('cleanedData:>>>>',cleanedData);
 // Step 2: Normalize data using the now-clean keys
 const normalizedData = cleanedData.map(row => {
     const normalizedRow = {};
@@ -2335,7 +2336,7 @@ const normalizedData = cleanedData.map(row => {
     return normalizedRow;
 });
     
-   // console.log('Normalized data:', normalizedData);
+    console.log('normalizedData data:', normalizedData);
     
     // Step 2: Apply filters
     let filteredData = normalizedData;
@@ -2347,11 +2348,12 @@ const normalizedData = cleanedData.map(row => {
     // Step 3: Apply formulas - pass the config parameter
     let dataWithFormulas = filteredData;
     if (config.formulas && Object.keys(config.formulas).length > 0) {
-        dataWithFormulas = applyFormulas(filteredData, config.formulas, aliasToOriginalMap, config);
-       // console.log('Data after formulas:', dataWithFormulas);
+        dataWithFormulas = applyFormulas(filteredData, config.formulas, aliasToOriginalMap, config); 
+        console.log('Data after formulas:', dataWithFormulas);
     }
     
     // Step 4: Convert back to display names for rendering
+    //console.log('dataWithFormulas:>>>>>>>>>>>>>>>',dataWithFormulas);
     const displayData = dataWithFormulas.map(row => {
         const displayRow = {};
         visibleColumns.forEach(col => {
@@ -2365,12 +2367,56 @@ const normalizedData = cleanedData.map(row => {
         });
         return displayRow;
     });
-    
-    console.log('Final display data:', displayData);
-    
+    //console.log('displayData:>>>>>>>>>>>>>>>',displayData);
+  
+    visibleColumns = reorderVisibleColumns(visibleColumns, expressionJson);
+ 
     // Step 5: Populate table
     populateTableData(tableBody, displayData, visibleColumns, config.conditionalFormatting, aliasToOriginalMap, config);
 }
+
+
+
+
+function reorderVisibleColumns(visibleColumns, expressionJson) {
+     expressionJson = JSON.parse(expressionJson);
+    const positions = expressionJson?.columnposition;
+   
+    if (!Array.isArray(positions)) {
+        console.warn("No columnposition array found. Skipping reorder.");
+        return visibleColumns;
+    }
+
+    // Build a map: baseColumnName → position
+    const posMap = {};
+    positions.forEach(p => {
+        if (p.baseColumnName != null && typeof p.position === "number") {
+            posMap[p.baseColumnName] = p.position;
+        }
+    });
+
+    // Sort using the map, and keep items without position at the end
+    const reordered = [...visibleColumns].sort((a, b) => {
+        const posA = posMap[a.originalName];
+        const posB = posMap[b.originalName];
+
+        // If both don't exist, keep original order
+        if (posA == null && posB == null) return 0;
+
+        // Only A missing → A goes after B
+        if (posA == null) return 1;
+
+        // Only B missing → B goes after A
+        if (posB == null) return -1;
+
+        return posA - posB;
+    });
+
+    return reordered;
+}
+
+
+
 
 function populateTableDataDirect(tableBody, data, visibleColumns, conditionalFormatting, aliasToOriginalMap) {
     if (data.length === 0) {
@@ -2410,13 +2456,14 @@ function showNoDataMessage(tableBody, columnCount) {
     tableBody.appendChild(tr);
 }
 
+
 function applyFilters(data, filters, config) {
     const filterConditions = Object.values(filters);
-    
     if (filterConditions.length === 0) return data;
-    
-    // Create template suffix map
+
+    // Build templateSuffixMap (same as before) and aliasToOriginalMap (like your other function)
     const templateSuffixMap = {};
+    const aliasToOriginalMap = {}; // alias -> original
     if (config.columnConfiguration && config.columnConfiguration.selectedColumns) {
         config.columnConfiguration.selectedColumns.forEach(col => {
             if (col.temp_name) {
@@ -2425,69 +2472,86 @@ function applyFilters(data, filters, config) {
                     templateSuffixMap[col.alias_name] = ` - ${col.temp_name}`;
                 }
             }
+            if (col.alias_name) {
+                aliasToOriginalMap[col.alias_name] = col.col_name;
+            }
         });
     }
-    
+
     return data.filter(row => {
         return filterConditions.every(filterCondition => {
             try {
                 let condition = filterCondition;
-                
+
+                // Find all [something] occurrences
                 const columnMatches = condition.match(/\[(.*?)\]/g);
-                
+
                 if (columnMatches) {
                     columnMatches.forEach(match => {
-                        const columnNameInCondition = match.replace(/[\[\]]/g, '');
-                        
-                        // Handle dynamic template suffixes
-                        let actualColumnName = columnNameInCondition;
+                        const colNameInCondition = match.replace(/[\[\]]/g, '');
+
+                        // Robustly strip any " - ..." suffix by taking the leftmost part before " - "
+                        // This handles "MY_OTB - My Hotel - Strat C" => "MY_OTB"
+                        let actualColumnName = colNameInCondition.split(' - ')[0].trim();
+
+                        // Also try to remove any known templateSuffix (fallback)
                         Object.keys(templateSuffixMap).forEach(colKey => {
                             const suffix = templateSuffixMap[colKey];
-                            if (columnNameInCondition.endsWith(suffix)) {
-                                actualColumnName = columnNameInCondition.replace(suffix, '');
+                            if (actualColumnName.endsWith(suffix)) {
+                                actualColumnName = actualColumnName.replace(suffix, '').trim();
                             }
                         });
-                        
-                        let value = row[actualColumnName];
-                        
-                        // Convert to number if possible for comparison
+
+                        // Map alias -> original if present
+                        const originalColName = aliasToOriginalMap[actualColumnName] || actualColumnName;
+
+                        // Find a column name that exists in the row: prefer display/alias then original
+                        // (here display/alias means keys in aliasToOriginalMap)
+                        const displayColName = Object.keys(aliasToOriginalMap).find(alias => aliasToOriginalMap[alias] === originalColName) || originalColName;
+
+                        // Read the value from row using both candidates
+                        let value = row[displayColName];
+                        if (value === undefined) value = row[originalColName];
+
+                        // Normalize the value for use inside the condition string
                         if (value !== null && value !== undefined && value !== '') {
                             if (!isNaN(value) && value !== 'Sold out') {
                                 value = parseFloat(value);
                             } else if (value === 'Sold out') {
-                                value = 0; // Treat "Sold out" as 0 for numeric comparisons
-                            }
-                            // For string values, wrap in quotes for the expression
-                            else if (typeof value === 'string') {
-                                value = `"${value}"`;
+                                value = 0;
+                            } else if (typeof value === 'string') {
+                                // escape internal quotes
+                                value = `"${value.replace(/"/g, '\\"')}"`;
                             }
                         } else {
                             value = 0;
                         }
-                        
+
+                        // Replace the [..] token with the normalized value
                         condition = condition.replace(match, value);
                     });
                 }
-                
-                // Remove any remaining template suffixes
-                Object.values(templateSuffixMap).forEach(suffix => {
-                    condition = condition.replace(new RegExp(suffix, 'g'), '');
-                });
-                
-                
-                // Direct evaluation (no safeCondition wrapper needed since we've replaced all variables)
-                const result = eval(condition);
-                return result;
-                
+
+                // Remove any remaining template suffix fragments like " - something" that might remain
+                // but avoid removing " - 50" (numbers) or comparison operators; limit to characters until ']' or whitespace or comparison chars
+                // Simpler safe cleanup: remove " - <words>" sequences (non-greedy)
+                condition = condition.replace(/\s-\s[^>\]<]+/g, '');
+
+                // Evaluate
+                return !!eval(condition);
             } catch (error) {
-                return true; // If filter fails, include the row
+                // If something fails for a particular filter, don't exclude the row
+                return true;
             }
         });
     });
 }
 
+
+
 function applyConditionalFormattingToCell(td, row, column, conditionalFormatting, aliasToOriginalMap, config) {
     if (!conditionalFormatting) return;
+    
     
     // Create template suffix map
     const templateSuffixMap = {};
@@ -2518,6 +2582,8 @@ function applyConditionalFormattingToCell(td, row, column, conditionalFormatting
         });
     }
     
+    //console.log('columnRules:>>>',columnRules);
+
     if (!columnRules) return;
     
     columnRules.forEach(rule => {
@@ -2559,7 +2625,7 @@ function applyConditionalFormattingToCell(td, row, column, conditionalFormatting
             Object.values(templateSuffixMap).forEach(suffix => {
                 expression = expression.replace(new RegExp(suffix, 'g'), '');
             });
-            
+            //console.log('expression:>>>>',expression);
             // Evaluate the condition
             if (eval(expression)) {
                 td.style.backgroundColor = rule.color;
@@ -2574,109 +2640,353 @@ function applyConditionalFormattingToCell(td, row, column, conditionalFormatting
 
 
 
+/**
+ * Evaluates a numeric or date function/column reference for a given row.
+ * Handles template suffix removal and value substitution.
+ * * NOTE: This is a new helper function required for filter evaluation.
+ * You should place this outside the main functions or define it globally.
+ */
+
+function evaluateExpression(expression, row, aliasToOriginalMap, config) {
+
+    let currentExpression = expression;
+
+    // 4. Find all column references (e.g., from "[MOXY] > 150" get 'MOXY')
+    // Get all bracketed and unbracketed column names
+    const columnMatches = currentExpression.match(/\[(.*?)\]/g) || [];
+    const simpleColumnMatches = currentExpression.match(/\b[A-Z_][A-Z0-9_]*\b/gi) || [];
+
+    const allColumnNames = [
+        ...columnMatches.map(match => match.replace(/[\[\]]/g, '')), // Strip brackets here
+        ...simpleColumnMatches.filter(word => !['AND', 'OR', 'NOT', 'Day', 'Date', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].includes(word))
+    ];
+    // This gives us: ['MOXY']
+    const uniqueColumnNames = [...new Set(allColumnNames)];
 
 
-function applyFormulas(data, formulas, aliasToOriginalMap, config) {
-    const formulaEntries = Object.entries(formulas);
-    
-    if (formulaEntries.length === 0) return data;
-    
-    // Create a map of column data types from selectedColumns
-    const columnDataTypes = {};
-    if (config.columnConfiguration && config.columnConfiguration.selectedColumns) {
-        config.columnConfiguration.selectedColumns.forEach(col => {
-            columnDataTypes[col.col_name] = col.data_type;
-            if (col.alias_name) {
-                columnDataTypes[col.alias_name] = col.data_type;
-            }
-        });
+    // 5. Safe replacements for numeric values
+    uniqueColumnNames.forEach(col => {
+        // 'col' is the ALIAS (e.g., 'MOXY'), which is the row key.
+        let value = row[col]; // Direct lookup: row['MOXY'] -> "159"
+
+        // Safely parse the value
+        if (!isNaN(value) && value !== '' && value !== null && value !== undefined) {
+            value = parseFloat(value);
+        } else {
+            value = 0; // The issue is here if it defaults to 0
+        }
+        
+        // Convert value to string for replacement, essential for expressions like "159 > 150"
+        const replacementValue = String(value);
+
+ 
+        currentExpression = currentExpression.replace(new RegExp(`\\[${col}\\]`, 'g'), replacementValue);
+        
+         currentExpression = currentExpression.replace(new RegExp(`\\b${col}\\b`, 'g'), replacementValue);
+    });
+
+    // 6. Evaluate (The expression should be "159 > 150")
+    try {
+        // Run final evaluation. The comparison logic should now work.
+        const result = eval(currentExpression);
+        return result;
+    } catch (e) {
+        console.error("Evaluation Error in expression:", currentExpression, e);
+        return null; 
+    }
+}
+
+/**
+ * Evaluates a filter string for a given row.
+ * Returns true if the row passes the filter, false otherwise.
+ * * NOTE: This is a new helper function required for filter evaluation.
+ * You should place this outside the main functions or define it globally.
+ */
+
+/**
+ * Evaluates a filter string for a given row.
+ * Returns true if the row passes the filter, false otherwise.
+ */
+
+function evaluateFilter(filter, row, aliasToOriginalMap, config) {
+    if (!filter) return true; // No filter means it passes
+
+    // Assuming getDayNameFromDate and date parsing helpers are available and working (as they are for for6/7/8)
+
+    // --- 1. Handling DAY_OF_WEEK Date Filters ---
+    const dayOfWeekMatch = filter.match(/\[(.*?)\]\s*DAY_OF_WEEK\s*\((.*?)\)/i);
+    if (dayOfWeekMatch) {
+        const fullColumn = dayOfWeekMatch[1].trim();
+        // ... (rest of DAY_OF_WEEK logic remains unchanged and is assumed correct) ...
+        const daysString = dayOfWeekMatch[2];
+        const allowedDays = daysString.split(',').map(d => d.trim().toUpperCase());
+        
+        // Find the original column name without the template suffix for the date value
+        const colMatch = fullColumn.match(/(.*)\s*-\s*(.*)/);
+        const colName = colMatch ? colMatch[1].trim() : fullColumn;
+        const originalColName = aliasToOriginalMap[colName] || colName;
+        const dateString = row[originalColName];
+        
+        if (!dateString) return false;
+
+        const shortDayName = getDayNameFromDate(dateString).toUpperCase();
+        
+        if (shortDayName === 'UNKNOWN' || shortDayName === 'INVALID DATE' || shortDayName === 'ERROR') {
+            return false;
+        }
+
+        return allowedDays.includes(shortDayName);
     }
     
-    
-    formulaEntries.forEach(([formulaName, formulaExpression]) => {
-        
-        // Check if it's a complex formula object or a simple string
-        let expression = typeof formulaExpression === 'object' ? formulaExpression.formula : formulaExpression;
-        let formulaType = typeof formulaExpression === 'object' ? formulaExpression.type : 'number';
-        
-        
-        data.forEach(row => {
-    try {
-        let currentExpression = expression;
+    // --- 2. Handling DATE_RANGE / BETWEEN Date Filters ---
+    // ... (rest of DATE_RANGE/BETWEEN logic remains unchanged and is assumed correct) ...
+    const dateRangeMatch = filter.match(/\[(.*?)\]\s*DATE_RANGE\s*\((.*?)\)/i);
+    const betweenMatch = filter.match(/\[(.*?)\]\s*between\s*(.*?)\s*and\s*(.*?)$/i);
 
-        // Remove template suffixes like " - York_temp14"
+    if (dateRangeMatch || betweenMatch) {
+        let fullColumn, startStr, endStr;
+
+        if (dateRangeMatch) {
+            fullColumn = dateRangeMatch[1].trim();
+            const rangeStr = dateRangeMatch[2]; 
+            [startStr, endStr] = rangeStr.split(',').map(s => s.trim());
+        } else if (betweenMatch) {
+            fullColumn = betweenMatch[1].trim();
+            startStr = betweenMatch[2].trim();
+            endStr = betweenMatch[3].trim();
+        }
+
+        if (!startStr || !endStr) return false;
+
+        const colMatch = fullColumn.match(/(.*)\s*-\s*(.*)/);
+        const colName = colMatch ? colMatch[1].trim() : fullColumn;
+        const originalColName = aliasToOriginalMap[colName] || colName;
+        const dateString = row[originalColName];
+
+        if (!dateString) return false;
+
+        const date = new Date(dateString);
+        const start = new Date(startStr);
+        const end = new Date(endStr);
+        
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999); 
+
+        if (isNaN(date.getTime()) || isNaN(start.getTime()) || isNaN(end.getTime())) {
+            return false;
+        }
+
+        return date.getTime() >= start.getTime() && date.getTime() <= end.getTime();
+    }
+
+
+    // --- 3. Handling Standard Numeric/Boolean Filters (Fallback using eval) ---
+    else {
+         // Since this is not a custom date filter, we prepare the filter string
+        // by stripping template suffixes before calling evaluateExpression.
+
+        if (filter.match(/DAY_OF_WEEK|DATE_RANGE|between/i)) {
+            return false;
+        }
+
+        // FIX: STRIPPING LOGIC FOR NUMERIC FILTER (Addresses for5 failure)
+        let cleanedFilter = filter; 
+        
         if (config.columnConfiguration?.selectedColumns) {
             config.columnConfiguration.selectedColumns.forEach(col => {
                 if (col.temp_name) {
-                    const suffix = ` - ${col.temp_name}`;
-                    currentExpression = currentExpression.replace(new RegExp(suffix, 'g'), '');
+                    // Target the full suffix string including surrounding spaces
+                    const fullSuffixPattern = new RegExp(`\\s*-\\s*${col.temp_name}`, 'gi');
+                    
+                    cleanedFilter = cleanedFilter.replace(fullSuffixPattern, '');
                 }
             });
         }
-
-        // Handle date functions
-        currentExpression = evaluateDateFunctions(currentExpression, row, aliasToOriginalMap, columnDataTypes);
-
-        // Find all column references
-        const columnMatches = currentExpression.match(/\[(.*?)\]/g) || [];
-        //const simpleColumnMatches = currentExpression.match(/\b([A-Z_]+)\b/g) || [];
-        const simpleColumnMatches = currentExpression.match(/\b[A-Z_][A-Z0-9_]*\b/gi) || [];
-
-        const allColumnNames = [
-            ...columnMatches.map(match => match.replace(/[\[\]]/g, '')), 
-            ...simpleColumnMatches.filter(word => !['AND', 'OR', 'NOT', 'Day', 'Date', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].includes(word))
-        ];
-        const uniqueColumnNames = [...new Set(allColumnNames)];
-
-        // -------------------------
-        // PRE-CHECK: if any value is a non-numeric string, skip formula
-        // -------------------------
-        let stringValue = false;
-        for (const col of uniqueColumnNames) {
-            const originalColName = aliasToOriginalMap[col] || col;
-            const val = row[originalColName];
-
-            if (val !== null && val !== '' && isNaN(val) && typeof val === 'string') {
-                stringValue = val;
-                break; // stop on first string found
-            }
+        
+        // CRITICAL CLEANUP: Ensure spaces are normalized (e.g., "[MOXY] > 150")
+        cleanedFilter = cleanedFilter.replace(/\s+/g, ' ').trim();
+         // evaluateExpression handles replacing columns with numbers and running eval().
+        // It should receive a clean expression like "[MOXY] > 150"
+        const result = evaluateExpression(cleanedFilter, row, aliasToOriginalMap, config);
+         if (result === null) {
+            return false;
         }
 
-        if (stringValue !== false) {
-            row[formulaName] = stringValue;
-            return; // skip formula entirely
+        return !!result; // Coerce result to boolean
+    }
+}
+
+
+
+function applyFormulas(data, formulas, aliasToOriginalMap, config) {
+
+    const formulaEntries = Object.entries(formulas);
+
+    if (formulaEntries.length === 0) return data;
+
+
+    // --- NEW STEP 1: RENAME FORMULA DB COLUMNS TO ALIASES ---
+    const dbToAliasMap = {};
+    if (config.columnConfiguration && config.columnConfiguration.selectedColumns) {
+        config.columnConfiguration.selectedColumns.forEach(col => {
+            // Only map if col_name and alias_name are different.
+            if (col.col_name !== col.alias_name) {
+                dbToAliasMap[col.col_name] = col.alias_name;
+            }
+        });
+    }
+
+    // Process all formulas to replace 'col_name' with 'alias_name'
+    const processedFormulas = {};
+    for (const [formulaName, formulaObj] of formulaEntries) {
+        // Handle both string and object formats
+        let expression = typeof formulaObj === 'object' ? formulaObj.formula : formulaObj;
+        
+        // FIX for TypeError: Ensure filter is a string (formulaObj.filter || '')
+        let filter = typeof formulaObj === 'object' ? (formulaObj.filter || '') : ''; 
+        
+        let formulaType = typeof formulaObj === 'object' ? formulaObj.type : 'number';
+
+        // 1. Rename column names (e.g., MOXY_YORK -> MOXY) in both formula and filter
+        for (const [dbName, aliasName] of Object.entries(dbToAliasMap)) {
+            
+            // FIX: Match bracketed or unbracketed column names
+            const dbNameRegex = new RegExp(`(\\[|\\b)${dbName}(\\]|\\b)`, 'g');
+            
+            // Replacement function preserves the surrounding bracket/boundary.
+            const replacementFn = (match, prefix, suffix) => {
+                return prefix + aliasName + suffix;
+            };
+
+            expression = expression.replace(dbNameRegex, replacementFn);
+            filter = filter.replace(dbNameRegex, replacementFn);
         }
 
-        // -------------------------
-        // Safe replacements for numeric values
-        // -------------------------
-        uniqueColumnNames.forEach(col => {
-            const originalColName = aliasToOriginalMap[col] || col;
-            let value = row[originalColName];
+        // Store the newly renamed formula object
+        processedFormulas[formulaName] = { 
+            formula: expression, 
+            filter: filter, 
+            type: formulaType 
+        };
+    }
+    // Formula processing will now use processedFormulas instead of 'formulas'
+    const finalFormulaEntries = Object.entries(processedFormulas);
+    // --- END NEW STEP 1 ---
 
-            if (!isNaN(value) && value !== '' && value !== null) {
-                value = parseFloat(value);
-            } else {
-                value = 0; // safe fallback for empty / null
+
+    // Create a map of column data types (Optional, but good practice)
+    const columnDataTypes = {};
+    if (config.columnConfiguration && config.columnConfiguration.selectedColumns) {
+        config.columnConfiguration.selectedColumns.forEach(col => {
+            columnDataTypes[col.alias_name || col.col_name] = col.data_type;
+        });
+    }
+
+
+    finalFormulaEntries.forEach(([formulaName, formulaObj]) => { // Use finalFormulaEntries
+
+        let expression = formulaObj.formula;
+        let filter = formulaObj.filter;
+        let formulaType = formulaObj.type;
+
+        data.forEach(row => {
+            try {
+                // -------------------------
+                // 2. APPLY FILTER LOGIC
+                // -------------------------
+                // Assumes evaluateFilter is working with the now-aliased names
+                if (filter && !evaluateFilter(filter, row, aliasToOriginalMap, config)) {
+                    // Filter failed, set result to null and skip calculation
+                    row[formulaName] = null;
+                    return;
+                }
+
+                // If filter passes (or no filter exists), proceed with calculation
+                let currentExpression = expression;
+
+                // -------------------------
+                // 3. REMOVE TEMPLATE SUFFIXES (Must happen AFTER renaming, BEFORE evaluation)
+                // -------------------------
+                if (config.columnConfiguration?.selectedColumns) {
+                    config.columnConfiguration.selectedColumns.forEach(col => {
+                        if (col.temp_name) {
+                            // Target the full suffix string and the optional following operator.
+                            const suffixPattern = new RegExp(`\\s*-\\s*${col.temp_name}\\s*(\\+|\\-|\\*|\\/)?`, 'gi');
+                            
+                            // Replace the entire pattern with just the operator (or nothing).
+                            currentExpression = currentExpression.replace(suffixPattern, (match, operator) => {
+                                return operator || '';
+                            });
+                        }
+                    });
+                }
+                
+                // CRITICAL CLEANUP: Ensure spaces are normalized
+                currentExpression = currentExpression.replace(/\s+/g, ' ').trim();
+
+         
+
+                // 4. Find all column references (should now only be alias names like 'MOXY')
+                const columnMatches = currentExpression.match(/\[(.*?)\]/g) || [];
+                const simpleColumnMatches = currentExpression.match(/\b[A-Z_][A-Z0-9_]*\b/gi) || [];
+
+                const allColumnNames = [
+                    ...columnMatches.map(match => match.replace(/[\[\]]/g, '')),
+                    ...simpleColumnMatches.filter(word => !['AND', 'OR', 'NOT', 'Day', 'Date', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].includes(word))
+                ];
+                const uniqueColumnNames = [...new Set(allColumnNames)];
+
+                // -------------------------
+                // 5. Safe replacements for numeric values
+                // -------------------------
+                uniqueColumnNames.forEach(col => {
+                    // 'col' is the ALIAS (e.g., 'MOXY'), which is the row key.
+                    let value = row[col]; // Direct lookup by alias/row key
+
+                    if (columnDataTypes[col] === 'date' && value != null && value !== '') {
+                        value = `"${value}"`; // keep quotes for JS eval
+                    } else if (!isNaN(value) && value !== '' && value !== null) {
+                        value = parseFloat(value);
+                    } else {
+                        value = `"${value}"`; // fallback as string
+                    }
+
+                    // Replace both bracketed and unbracketed versions
+                    currentExpression = currentExpression.replace(new RegExp(`\\[${col}\\]`, 'g'), value);
+                    currentExpression = currentExpression.replace(new RegExp(`\\b${col}\\b`, 'g'), value);
+                   
+                });
+
+                // 6. Evaluate
+                
+                //console.log('currentExpression:>>>>>>>>>>>>>>>',currentExpression);
+                currentExpression = replaceDayNameFunction(currentExpression);
+
+                const result = eval(currentExpression);
+                if (typeof result === 'number' && isNaN(result)) {
+                    row[formulaName] = null;
+                } else {
+                    row[formulaName] = result;
+                }
+
+            } catch (error) {
+                console.error(`Error processing formula ${formulaName}: ${error.message}`);
+                row[formulaName] = 'Error';
             }
-
-            // Replace both bracketed and unbracketed versions
-            currentExpression = currentExpression.replace(new RegExp(`\\[${col}\\]`, 'g'), value);
-            currentExpression = currentExpression.replace(new RegExp(`\\b${col}\\b`, 'g'), value);
         });
 
-        // Evaluate
-        const result = eval(currentExpression);
-        row[formulaName] = result;
-
-    } catch (error) {
-        row[formulaName] = 'Error';
-    }
-});
-
     });
-    
+
     return data;
+}
+
+function replaceDayNameFunction(expr) {
+    if (!expr || typeof expr !== "string") return expr;
+
+    return expr.replace(/Day\s*\(\s*([^)]+?)\s*\)/gi,
+    "(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date($1).getDay() ])"
+);
+
 }
 
 
@@ -2793,20 +3103,30 @@ function isDateColumn(columnName, config) {
 }
 
 
+function populateTableHeader(tableHead, visibleColumns) {
+    tableHead.innerHTML = "";
+
+    const tr = document.createElement('tr');
+
+    visibleColumns.forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = column.displayName;
+        tr.appendChild(th);
+    });
+
+    tableHead.appendChild(tr);
+}
+
+
 function populateTableData(tableBody, data, visibleColumns, conditionalFormatting, aliasToOriginalMap, config) {
     if (data.length === 0) {
         console.log('No data to display after processing');
-        const tr = document.createElement('tr');
-        const td = document.createElement('td');
-        td.colSpan = visibleColumns.length;
-        td.textContent = 'No data available';
-        td.style.textAlign = 'center';
-        td.style.padding = '20px';
-        tr.appendChild(td);
-        tableBody.appendChild(tr);
+       //  populateTableHeader(tableBody, visibleColumns);
         return;
     }
-    
+   console.log('data:>>>',data);
+  //  populateTableHeader(tableBody, visibleColumns);
+
     data.forEach((row, rowIndex) => {
         const tr = document.createElement('tr');
         
@@ -2815,12 +3135,13 @@ function populateTableData(tableBody, data, visibleColumns, conditionalFormattin
             const value = row[column.displayName] !== undefined ? row[column.displayName] : '';
             
             // Format formula values to 2 decimal places if they're numbers
-            if (column.isFormula && !isNaN(value) && value !== '') {
+            if (column.isFormula && value !== null && !isNaN(value) && value !== '') {
                 td.textContent = parseFloat(value).toFixed(2);
             } else {
-                td.textContent = value;
+                // Optional: Ensure null/undefined shows as empty string, not "null" text
+                td.textContent = (value === null || value === undefined || (typeof value === 'number' && isNaN(value))) ? '' : value;
             }
-            
+                        
             td.setAttribute('data-column', column.originalName);
             
             if (column.isFormula) {
@@ -2836,7 +3157,7 @@ function populateTableData(tableBody, data, visibleColumns, conditionalFormattin
         tableBody.appendChild(tr);
     });
     
-    console.log(`Populated ${data.length} rows in table`);
+    console.log(`  Populated ${data.length} rows in table.... `);
 }
 
 

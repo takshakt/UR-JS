@@ -1454,7 +1454,7 @@ processes:
              AND (
                       v_old_price <> :P1071_PRICE 
                       or v_type <> :P1071_TYPE
-                      or v_reason <> :P1071_REASON
+                      or NVL(v_reason, 'X') <> NVL(:P1071_REASON, 'X')
                       or v_comments <> :P1071_COMMENTS
                  --NVL(v_old_price, -99999) <> NVL(:P1071_PRICE, -99999)
                --OR NVL(:P1071_TYPE, 'X') <> NVL(:P1071_TYPE, 'X')

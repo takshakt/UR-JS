@@ -67,12 +67,12 @@ regions:
           r.RES_NUMBER,
           r.HOTEL_ID,
           h.HOTEL_NAME,
-          TO_CHAR(r.ARRIVAL_DATE, 'MM/DD/YYYY') AS ARRIVAL_DATE,
+          r.ARRIVAL_DATE,
           r.NUMBER_OF_NIGHTS,
           r.ROOMS_BOOKED,
           r.TOTAL_BOOKING_VALUE,
           r.CHARGED_FLAG,
-          TO_CHAR(r.EXCEPTION_DATE, 'MM/DD/YYYY') AS EXCEPTION_DATE,
+          r.EXCEPTION_DATE,
           r.RESERVATION_EXCEPTION_TYPE,
           r.EXCEPTION_REASON,
           r.EXCEPTION_AMOUNT,
@@ -397,13 +397,16 @@ regions:
     accessibility: 
       value-identifies-row: false
 
+    appearance: 
+      format-mask: DD-MON-YYYY
+
     validation: 
       value-required: true
 
     source: 
       type: Database Column
       database-column: ARRIVAL_DATE
-      data-type: VARCHAR2
+      data-type: DATE
       query-only: false
       primary-key: false
 
@@ -412,14 +415,8 @@ regions:
 
     column-filter: 
       enabled: true
-      performance-impacting-operators: 
-      - Contains
-      - Starts With
-      - Case Insensitive
-      - Regular Expression
-      text-case: Mixed
       lov-type: Distinct Column
-      exact-match: true
+      date-ranges: All
 
     export-/-printing: 
       include-in-export-/-print: true
@@ -764,13 +761,16 @@ regions:
     accessibility: 
       value-identifies-row: false
 
+    appearance: 
+      format-mask: DD-MON-YYYY
+
     validation: 
       value-required: false
 
     source: 
       type: Database Column
       database-column: EXCEPTION_DATE
-      data-type: VARCHAR2
+      data-type: DATE
       query-only: false
       primary-key: false
 
@@ -779,14 +779,8 @@ regions:
 
     column-filter: 
       enabled: true
-      performance-impacting-operators: 
-      - Contains
-      - Starts With
-      - Case Insensitive
-      - Regular Expression
-      text-case: Mixed
       lov-type: Distinct Column
-      exact-match: true
+      date-ranges: All
 
     export-/-printing: 
       include-in-export-/-print: true

@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -17,6 +17,26 @@ wwv_flow_imp_page.create_page(
 ,p_alias=>'HOTEL-EVENTS1'
 ,p_step_title=>'Hotel Events'
 ,p_autocomplete_on_off=>'OFF'
+,p_inline_css=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'.download-upload-wrapper {',
+'    display: flex;',
+'    justify-content: flex-end;',
+'    flex-wrap: wrap;',
+'    gap: 8px;',
+'}',
+'',
+'',
+'#download_upload_region .t-Region-body {',
+'    padding: 0;',
+'}',
+'',
+'#download_upload_region {',
+'    display: flex;',
+'    justify-content: flex-end;',
+'    flex-wrap: wrap;',
+'    gap: 10px;',
+'}',
+''))
 ,p_page_template_options=>'#DEFAULT#'
 ,p_protection_level=>'C'
 ,p_page_component_map=>'21'
@@ -676,6 +696,265 @@ wwv_flow_imp_page.create_ig_report_column(
 ,p_is_visible=>true
 ,p_is_frozen=>false
 );
+wwv_flow_imp_page.create_ig_report(
+ p_id=>wwv_flow_imp.id(32612952570910455)
+,p_interactive_grid_id=>wwv_flow_imp.id(12358305262267934)
+,p_name=>'APS Event Management View'
+,p_type=>'PRIVATE'
+,p_default_view=>'GRID'
+,p_application_user=>'APSTANLEY'
+,p_show_row_number=>false
+,p_settings_area_expanded=>true
+);
+wwv_flow_imp_page.create_ig_report_view(
+ p_id=>wwv_flow_imp.id(32613225437910456)
+,p_report_id=>wwv_flow_imp.id(32612952570910455)
+,p_view_type=>'GRID'
+,p_srv_exclude_null_values=>false
+,p_srv_only_display_columns=>true
+,p_edit_mode=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(32613679584910464)
+,p_view_id=>wwv_flow_imp.id(32613225437910456)
+,p_display_seq=>1
+,p_column_id=>wwv_flow_imp.id(12358448159267935)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(32615459633910473)
+,p_view_id=>wwv_flow_imp.id(32613225437910456)
+,p_display_seq=>3
+,p_column_id=>wwv_flow_imp.id(12358636732267937)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(32616414108910478)
+,p_view_id=>wwv_flow_imp.id(32613225437910456)
+,p_display_seq=>4
+,p_column_id=>wwv_flow_imp.id(12358787340267938)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(32617205551910482)
+,p_view_id=>wwv_flow_imp.id(32613225437910456)
+,p_display_seq=>5
+,p_column_id=>wwv_flow_imp.id(12358876402267939)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(32618126776910486)
+,p_view_id=>wwv_flow_imp.id(32613225437910456)
+,p_display_seq=>6
+,p_column_id=>wwv_flow_imp.id(12358979405267940)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(32619833058910494)
+,p_view_id=>wwv_flow_imp.id(32613225437910456)
+,p_display_seq=>8
+,p_column_id=>wwv_flow_imp.id(12359148948267942)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(32620823919910498)
+,p_view_id=>wwv_flow_imp.id(32613225437910456)
+,p_display_seq=>9
+,p_column_id=>wwv_flow_imp.id(12359232946267943)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(32621651957910503)
+,p_view_id=>wwv_flow_imp.id(32613225437910456)
+,p_display_seq=>10
+,p_column_id=>wwv_flow_imp.id(12359357533267944)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(32622600178910507)
+,p_view_id=>wwv_flow_imp.id(32613225437910456)
+,p_display_seq=>11
+,p_column_id=>wwv_flow_imp.id(12359418132267945)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(33157855055247064)
+,p_view_id=>wwv_flow_imp.id(32613225437910456)
+,p_display_seq=>12
+,p_column_id=>wwv_flow_imp.id(12894429645500141)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(33420055313833759)
+,p_view_id=>wwv_flow_imp.id(32613225437910456)
+,p_display_seq=>13
+,p_column_id=>wwv_flow_imp.id(13479239909370114)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(38316505988836757)
+,p_view_id=>wwv_flow_imp.id(32613225437910456)
+,p_display_seq=>14
+,p_column_id=>wwv_flow_imp.id(18542614313841140)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report(
+ p_id=>wwv_flow_imp.id(52329190470329519)
+,p_interactive_grid_id=>wwv_flow_imp.id(12358305262267934)
+,p_name=>'adam with highlight'
+,p_type=>'PRIVATE'
+,p_default_view=>'GRID'
+,p_application_user=>'APSTANLEY'
+,p_show_row_number=>false
+,p_settings_area_expanded=>true
+);
+wwv_flow_imp_page.create_ig_report_view(
+ p_id=>wwv_flow_imp.id(52329463337329520)
+,p_report_id=>wwv_flow_imp.id(52329190470329519)
+,p_view_type=>'GRID'
+,p_stretch_columns=>true
+,p_srv_exclude_null_values=>false
+,p_srv_only_display_columns=>true
+,p_edit_mode=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(52329917484329528)
+,p_view_id=>wwv_flow_imp.id(52329463337329520)
+,p_display_seq=>1
+,p_column_id=>wwv_flow_imp.id(12358448159267935)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(52331697533329537)
+,p_view_id=>wwv_flow_imp.id(52329463337329520)
+,p_display_seq=>3
+,p_column_id=>wwv_flow_imp.id(12358636732267937)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(52332652008329542)
+,p_view_id=>wwv_flow_imp.id(52329463337329520)
+,p_display_seq=>4
+,p_column_id=>wwv_flow_imp.id(12358787340267938)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(52333443451329546)
+,p_view_id=>wwv_flow_imp.id(52329463337329520)
+,p_display_seq=>5
+,p_column_id=>wwv_flow_imp.id(12358876402267939)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(52334364676329550)
+,p_view_id=>wwv_flow_imp.id(52329463337329520)
+,p_display_seq=>6
+,p_column_id=>wwv_flow_imp.id(12358979405267940)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(52336070958329558)
+,p_view_id=>wwv_flow_imp.id(52329463337329520)
+,p_display_seq=>7
+,p_column_id=>wwv_flow_imp.id(12359148948267942)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(52337061819329562)
+,p_view_id=>wwv_flow_imp.id(52329463337329520)
+,p_display_seq=>8
+,p_column_id=>wwv_flow_imp.id(12359232946267943)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(52337889857329567)
+,p_view_id=>wwv_flow_imp.id(52329463337329520)
+,p_display_seq=>9
+,p_column_id=>wwv_flow_imp.id(12359357533267944)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(52338838078329571)
+,p_view_id=>wwv_flow_imp.id(52329463337329520)
+,p_display_seq=>10
+,p_column_id=>wwv_flow_imp.id(12359418132267945)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(52874092954666128)
+,p_view_id=>wwv_flow_imp.id(52329463337329520)
+,p_display_seq=>11
+,p_column_id=>wwv_flow_imp.id(12894429645500141)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(53136293213252823)
+,p_view_id=>wwv_flow_imp.id(52329463337329520)
+,p_display_seq=>12
+,p_column_id=>wwv_flow_imp.id(13479239909370114)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(58032743888255821)
+,p_view_id=>wwv_flow_imp.id(52329463337329520)
+,p_display_seq=>13
+,p_column_id=>wwv_flow_imp.id(18542614313841140)
+,p_is_visible=>true
+,p_is_frozen=>false
+);
+wwv_flow_imp_page.create_ig_report_highlight(
+ p_id=>wwv_flow_imp.id(19716366140419065)
+,p_view_id=>wwv_flow_imp.id(52329463337329520)
+,p_execution_seq=>5
+,p_name=>'Mark Event Type'
+,p_column_id=>wwv_flow_imp.id(12358787340267938)
+,p_background_color=>'#fff5ce'
+,p_text_color=>'#000000'
+,p_condition_type=>'COLUMN'
+,p_condition_column_id=>wwv_flow_imp.id(12358787340267938)
+,p_condition_operator=>'C'
+,p_condition_is_case_sensitive=>false
+,p_condition_expression=>'Events'
+,p_is_enabled=>true
+);
+wwv_flow_imp_page.create_page_plug(
+ p_id=>wwv_flow_imp.id(31803252047175001)
+,p_plug_name=>'New'
+,p_region_name=>'download_upload_region'
+,p_parent_plug_id=>wwv_flow_imp.id(12202741465869080)
+,p_region_template_options=>'#DEFAULT#:t-BreadcrumbRegion--useBreadcrumbTitle:t-Form--stretchInputs'
+,p_plug_template=>2531463326621247859
+,p_plug_display_sequence=>20
+,p_plug_new_grid_row=>false
+,p_plug_grid_column_span=>4
+,p_location=>null
+,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
+  'expand_shortcuts', 'N',
+  'output_as', 'HTML')).to_clob
+);
 wwv_flow_imp_page.create_page_plug(
  p_id=>wwv_flow_imp.id(12213514696869128)
 ,p_plug_name=>'Buttons'
@@ -707,41 +986,39 @@ wwv_flow_imp_page.create_page_button(
 ,p_button_plug_id=>wwv_flow_imp.id(12202741465869080)
 ,p_button_name=>'Add_New_Event'
 ,p_button_action=>'REDIRECT_PAGE'
-,p_button_template_options=>'#DEFAULT#:t-Button--success:t-Button--padTop:t-Button--padBottom'
+,p_button_template_options=>'#DEFAULT#:t-Button--success:t-Button--gapTop'
 ,p_button_template_id=>4072362960822175091
 ,p_button_image_alt=>'Add New Event'
 ,p_button_redirect_url=>'f?p=&APP_ID.:20:&SESSION.::&DEBUG.:20:P20_HOTEL_ID:&P0_HOTEL_ID.'
 ,p_grid_new_row=>'Y'
-,p_grid_column_span=>10
 );
 wwv_flow_imp_page.create_page_button(
  p_id=>wwv_flow_imp.id(27788423350806812)
-,p_button_sequence=>20
-,p_button_plug_id=>wwv_flow_imp.id(12202741465869080)
+,p_button_sequence=>10
+,p_button_plug_id=>wwv_flow_imp.id(31803252047175001)
 ,p_button_name=>'DOWNLOAD'
 ,p_button_action=>'DEFINED_BY_DA'
-,p_button_template_options=>'#DEFAULT#'
+,p_button_template_options=>'#DEFAULT#:t-Button--stretch'
 ,p_button_template_id=>4072362960822175091
 ,p_button_image_alt=>'Download Template'
 ,p_warn_on_unsaved_changes=>null
 ,p_grid_new_row=>'N'
 ,p_grid_new_column=>'Y'
-,p_grid_column_span=>1
+,p_grid_column_span=>7
 );
 wwv_flow_imp_page.create_page_button(
  p_id=>wwv_flow_imp.id(27788309087806811)
-,p_button_sequence=>30
-,p_button_plug_id=>wwv_flow_imp.id(12202741465869080)
+,p_button_sequence=>20
+,p_button_plug_id=>wwv_flow_imp.id(31803252047175001)
 ,p_button_name=>'BULK_UPLOAD'
 ,p_button_action=>'REDIRECT_PAGE'
-,p_button_template_options=>'#DEFAULT#:t-Button--primary:t-Button--padLeft'
+,p_button_template_options=>'#DEFAULT#:t-Button--primary:t-Button--stretch:t-Button--padLeft'
 ,p_button_template_id=>4072362960822175091
 ,p_button_is_hot=>'Y'
 ,p_button_image_alt=>'Upload Data'
-,p_button_redirect_url=>'f?p=&APP_ID.:27:&SESSION.::&DEBUG.:::'
+,p_button_redirect_url=>'f?p=&APP_ID.:27:&SESSION.::&DEBUG.:CR,27:P27_HOTEL_ID:&P0_HOTEL_ID.'
 ,p_grid_new_row=>'N'
 ,p_grid_new_column=>'Y'
-,p_grid_column_span=>1
 );
 wwv_flow_imp_page.create_page_button(
  p_id=>wwv_flow_imp.id(12355598852267906)
@@ -762,7 +1039,7 @@ wwv_flow_imp_page.create_page_button(
 wwv_flow_imp_page.create_page_item(
  p_id=>wwv_flow_imp.id(12890620865500103)
 ,p_name=>'P9_HOTEL_LIST'
-,p_item_sequence=>30
+,p_item_sequence=>40
 ,p_item_default=>'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
 ,p_prompt=>'Hotel Name'
 ,p_display_as=>'NATIVE_SELECT_LIST'
@@ -999,30 +1276,25 @@ wwv_flow_imp_page.create_page_process(
 ,p_process_name=>'DOWNLOAD_SAMPLE'
 ,p_process_sql_clob=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'DECLARE',
-'    l_blob    BLOB;',
-'    l_clob    CLOB;',
+'    l_blob   BLOB;',
+'    l_mime   VARCHAR2(200);',
+'    l_b64    CLOB;',
 'BEGIN',
-'    -- Read static file',
-'    SELECT file_content',
-'    INTO l_blob',
-'    FROM apex_application_static_files',
-'    WHERE application_id = :APP_ID',
-'      AND file_name = ''sample events.txt'';',
+'    SELECT file_content, mime_type',
+'    INTO   l_blob, l_mime',
+'    FROM   apex_application_static_files',
+'    WHERE  application_id = :APP_ID',
+'    AND    file_name = ''Sample Load Data Template.xlsx'';',
 '',
-unistr('    -- Convert blob \2192 base64'),
-'    l_clob := apex_web_service.blob2clobbase64(l_blob);',
+unistr('    -- Convert BLOB \2192 Base64'),
+'    l_b64 := apex_web_service.blob2clobbase64(l_blob);',
 '',
+'    -- Return JSON',
 '    apex_json.open_object;',
-'    apex_json.write(''filename'', ''sample events.txt'');',
-'    apex_json.write(''mime'', ''text/plain'');',
-'    apex_json.write(''content'', l_clob);',
+'    apex_json.write(''content'', l_b64);',
+'    apex_json.write(''mime'', l_mime);',
+'    apex_json.write(''filename'', ''Sample Load Data Template.xlsx'');',
 '    apex_json.close_object;',
-'',
-'EXCEPTION',
-'    WHEN OTHERS THEN',
-'        apex_json.open_object;',
-'        apex_json.write(''error'', SQLERRM);',
-'        apex_json.close_object;',
 'END;',
 ''))
 ,p_process_clob_language=>'PLSQL'

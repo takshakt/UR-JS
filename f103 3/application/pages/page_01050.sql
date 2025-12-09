@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -3321,15 +3321,12 @@ wwv_flow_imp_page.create_page_process(
 '        -- MODIFICATION: Select the ID from the attributes table',
 '        SELECT',
 '            a.id,',
-'            a.name || '' ('' || t.name || '')'' AS name',
+'            a.name',
 '        FROM',
-'            ur_algo_attributes a,',
-'            ur_templates t',
+'            ur_algo_attributes a',
 '        WHERE',
-'            a.template_id = t.id',
-'            AND a.hotel_id = l_hotel_id',
-'            AND a.attribute_qualifier = ''OCCUPANCY''',
-'            and t.active = ''Y''',
+'            a.hotel_id = l_hotel_id',
+'            AND a.attribute_qualifier = ''CALCULATED_OCCUPANCY''',
 '        ORDER BY',
 '            name',
 '    ) LOOP',

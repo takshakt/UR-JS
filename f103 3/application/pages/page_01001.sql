@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -302,18 +302,14 @@ wwv_flow_imp_page.create_region_column(
 ,p_data_type=>'VARCHAR2'
 ,p_session_state_data_type=>'VARCHAR2'
 ,p_is_query_only=>false
-,p_item_type=>'NATIVE_TEXTAREA'
+,p_item_type=>'NATIVE_DISPLAY_ONLY'
 ,p_heading=>'Name'
 ,p_heading_alignment=>'LEFT'
 ,p_display_sequence=>40
 ,p_value_alignment=>'LEFT'
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
-  'auto_height', 'N',
-  'character_counter', 'N',
-  'resizable', 'Y',
-  'trim_spaces', 'BOTH')).to_clob
-,p_is_required=>false
-,p_max_length=>32767
+  'based_on', 'VALUE',
+  'format', 'PLAIN')).to_clob
 ,p_enable_filter=>true
 ,p_filter_operators=>'C:S:CASE_INSENSITIVE:REGEXP'
 ,p_filter_is_required=>false
@@ -1060,7 +1056,26 @@ wwv_flow_imp_page.create_page_da_action(
 '  v_exists NUMBER; v_def_ok BOOLEAN; v_def_msg VARCHAR2(4000);',
 '  v_view_ok BOOLEAN; v_view_msg VARCHAR2(4000);',
 '  v_algo_ok BOOLEAN; v_algo_msg VARCHAR2(4000);',
+'   v_base_key VARCHAR2(4000); v_suffix NUMBER := 1;',
 'BEGIN',
+'',
+'--------------------------------------------------------------------------------',
+unistr('  -- \D83D\DD25 1. FIRST CHECK: Template name exists for same hotel?'),
+'  --------------------------------------------------------------------------------',
+'  SELECT COUNT(*)',
+'  INTO v_exists',
+'  FROM UR_TEMPLATES',
+'  WHERE HOTEL_ID = :P0_HOTEL_ID',
+'    AND UPPER(NAME) = UPPER(:P1001_TEMPLATE_NAME);',
+'',
+'  IF v_exists > 0 THEN',
+'    ur_utils.add_alert(v_alerts,',
+'      ''Template name "'' || :P1001_TEMPLATE_NAME || ''" already exists for this hotel.'',',
+'      ''error'', NULL, NULL, v_alerts);',
+'    :P0_ALERT_MESSAGE := v_alerts;',
+'    RETURN;',
+'  END IF;',
+'  ',
 '  ur_utils.get_collection_json(''UR_FILE_DATA_PROFILES'', v_json, v_ok, v_msg);',
 '  IF v_ok = ''E'' THEN',
 '    ur_utils.add_alert(v_alerts, v_msg, ''error'', NULL, NULL, v_alerts);',
@@ -1077,14 +1092,21 @@ wwv_flow_imp_page.create_page_da_action(
 '  ELSIF v_san_status IN (''S'',''W'') AND INSTR(v_san_msg, ''Sanitized 0'') = 0 THEN',
 '    ur_utils.add_alert(v_alerts, v_san_msg, ''success'', NULL, NULL, v_alerts);',
 '  END IF;',
+' ',
+'  ',
 '',
-'  v_key := ur_utils.Clean_TEXT(:P1001_TEMPLATE_NAME);',
-'  SELECT COUNT(*) INTO v_exists FROM UR_TEMPLATES WHERE KEY = v_key;',
-'  IF v_exists > 0 THEN',
-'    ur_utils.add_alert(v_alerts, ''Template key "'' || v_key || ''" already exists.'', ''warning'', NULL, NULL, v_alerts);',
-'    :P0_ALERT_MESSAGE := v_alerts; RETURN;',
-'  END IF;',
-'',
+unistr('-- \D83D\DD25 2. KEY CHECK: Generate base key, ensure uniqueness by adding _1, _2, ... -------------------------------------------------------------------------------- '),
+'v_base_key := ur_utils.Clean_TEXT(:P1001_TEMPLATE_NAME); ',
+'v_key := v_base_key; ',
+'LOOP ',
+'SELECT COUNT(*) INTO v_exists ',
+'FROM UR_TEMPLATES ',
+'WHERE KEY = v_key; ',
+'EXIT WHEN v_exists = 0; ',
+'v_key := v_base_key || ''_'' || v_suffix;',
+' v_suffix := v_suffix + 1; ',
+' END LOOP; ',
+' --------------------------------------------------------------------------------',
 '  INSERT INTO UR_TEMPLATES (KEY, NAME, Hotel_ID, TYPE, ACTIVE, DEFINITION)',
 '  VALUES (v_key, :P1001_TEMPLATE_NAME, :P0_HOTEL_ID, :P1001_TEMPLATE_TYPE, ''Y'', v_sanitized_json);',
 '  COMMIT;',
@@ -1402,6 +1424,7 @@ wwv_flow_imp_page.create_page_da_action(
 '//     unsafe: false',
 '// }]);',
 ''))
+,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
 );
 wwv_flow_imp_page.create_page_da_event(
  p_id=>wwv_flow_imp.id(27351085082600611)
@@ -1470,27 +1493,7 @@ unistr('  -- \D83D\DD25 Apply default if user did not change mapping_type'),
 '        :mapping_type := ''Maps To'';',
 '    END IF;',
 '',
-'   validate_profile_row(',
-'        p_name          => :name,',
-'        p_data_type     => :data_type,',
-'        p_mapping_type  => :mapping_type,',
-'        p_default_value => :default_value,',
-'        p_collection    => ''UR_FILE_DATA_PROFILES'',',
-'        o_status        => v_status,',
-'        o_message       => v_message',
-'    );',
 '',
-'     IF v_status = ''ERROR'' THEN',
-'',
-'',
-'        -- Register error so IG stops saving, but without popup',
-'        apex_error.add_error(',
-'            p_message          => V_MESSAGE,',
-'            p_display_location => apex_error.c_inline_in_notification',
-'        );',
-'',
-'        RETURN;',
-'    END IF;',
 '',
 '',
 '    case :APEX$ROW_STATUS',
@@ -1517,6 +1520,28 @@ unistr('  -- \D83D\DD25 Apply default if user did not change mapping_type'),
 '        p_collection_name => ''UR_FILE_DATA_PROFILES'',',
 '        p_seq             => :SEQ_ID);',
 '    end case;',
+'',
+'       validate_profile_row(',
+'        p_name          => :name,',
+'        p_data_type     => :data_type,',
+'        p_mapping_type  => :mapping_type,',
+'        p_default_value => :default_value,',
+'        p_collection    => ''UR_FILE_DATA_PROFILES'',',
+'        o_status        => v_status,',
+'        o_message       => v_message',
+'    );',
+'',
+'     IF v_status = ''ERROR'' THEN',
+'',
+'',
+'        -- Register error so IG stops saving, but without popup',
+'        apex_error.add_error(',
+'            p_message          => V_MESSAGE,',
+'            p_display_location => apex_error.c_inline_in_notification',
+'        );',
+'',
+'        RETURN;',
+'    END IF;',
 'end;',
 '',
 ''))

@@ -221,18 +221,44 @@ regions:
     sql-query: |
       SELECT
         p.line_number,
-        NVL(p.col008, HEXTORAW(:P0_HOTEL_ID)) AS HOTEL_ID,
-             p.col001, p.col002, p.col003, p.col004, p.col005, p.col006, p.col007, p.col008, p.col009, p.col010
+        p.col001 AS EVENT_NAME,
+        p.col002 AS EVENT_TYPE,
+        p.col003 AS EVENT_START_DATE,
+        p.col004 AS EVENT_END_DATE,
+        p.col005 AS ESTIMATED_ATTENDANCE,
+      
+        CASE LOWER(p.col006)
+            WHEN 'high'   THEN 3
+            WHEN 'medium' THEN 2
+            WHEN 'low'    THEN 1
+            ELSE NULL
+        END AS IMPACT_LEVEL,
+      
+        p.col007 AS DESCRIPTION,
+        p.col008 AS CITY,
+        p.col009 AS POSTCODE,
+        p.col010 AS COUNTRY,
+        p.col011 AS EVENT_FREQUENCY,
+      
+        CASE LOWER(p.col012)
+            WHEN 'positive' THEN '+1'
+            WHEN 'negative' THEN '-1'
+            ELSE NULL
+        END AS IMPACT_TYPE
+      
       FROM apex_application_temp_files f,
-           TABLE(apex_data_parser.parse(
-             p_content       => f.blob_content,
-             p_file_name     => f.filename,
-             p_file_profile  => apex_data_loading.get_file_profile(p_static_id => 'ur_data_load'),
-             p_max_rows      => 100
-           )) p
-      WHERE f.name = :P27_FILE
+           TABLE(
+             apex_data_parser.parse(
+               p_content   => f.blob_content,
+               p_file_name => f.filename,
+               p_max_rows  => 100
+             )
+           ) p
+      WHERE f.name = :P27_FILE;
+      
     page-items-to-submit: 
     - P0_HOTEL_ID
+    - P27_HOTEL_ID
 
   order-by: 
     type: None
@@ -252,6 +278,8 @@ regions:
     template-options: 
     - '#DEFAULT#'
     - t-Region--noPadding
+    - t-Region--scrollBody
+    - t-Form--stretchInputs
     render-components: Above Content
 
   accessibility: 
@@ -349,27 +377,25 @@ regions:
     security: 
       escape-special-characters: true
 
-  - # ====== Column: COL001 ======================================
-    id: 27858523310985259
+  - # ====== Column: EVENT_NAME ==================================
+    id: 28775446491726019
     identification: 
-      column-name: COL001
+      column-name: EVENT_NAME
       type: Plain Text
 
     heading: 
-      heading: Col001
+      heading: Event Name
       alignment: start
 
     layout: 
-      sequence: 2
+      sequence: 31
       column-alignment: start
 
     accessibility: 
       value-identifies-row: false
 
     sorting: 
-      default-sequence: 1
-      direction: Ascending
-      sortable: false
+      sortable: true
 
     export-/-printing: 
       include-in-export-/-print: true
@@ -383,27 +409,25 @@ regions:
     security: 
       escape-special-characters: true
 
-  - # ====== Column: COL002 ======================================
-    id: 27858944961985260
+  - # ====== Column: EVENT_TYPE ==================================
+    id: 28775595319726020
     identification: 
-      column-name: COL002
+      column-name: EVENT_TYPE
       type: Plain Text
 
     heading: 
-      heading: Col002
+      heading: Event Type
       alignment: start
 
     layout: 
-      sequence: 3
+      sequence: 41
       column-alignment: start
 
     accessibility: 
       value-identifies-row: false
 
     sorting: 
-      default-sequence: 1
-      direction: Ascending
-      sortable: false
+      sortable: true
 
     export-/-printing: 
       include-in-export-/-print: true
@@ -417,27 +441,25 @@ regions:
     security: 
       escape-special-characters: true
 
-  - # ====== Column: COL003 ======================================
-    id: 27859388368985261
+  - # ====== Column: EVENT_START_DATE ============================
+    id: 28775689932726021
     identification: 
-      column-name: COL003
+      column-name: EVENT_START_DATE
       type: Plain Text
 
     heading: 
-      heading: Col003
+      heading: Event Start Date
       alignment: start
 
     layout: 
-      sequence: 4
+      sequence: 51
       column-alignment: start
 
     accessibility: 
       value-identifies-row: false
 
     sorting: 
-      default-sequence: 1
-      direction: Ascending
-      sortable: false
+      sortable: true
 
     export-/-printing: 
       include-in-export-/-print: true
@@ -451,27 +473,25 @@ regions:
     security: 
       escape-special-characters: true
 
-  - # ====== Column: COL004 ======================================
-    id: 27859765888985262
+  - # ====== Column: EVENT_END_DATE ==============================
+    id: 28775710282726022
     identification: 
-      column-name: COL004
+      column-name: EVENT_END_DATE
       type: Plain Text
 
     heading: 
-      heading: Col004
+      heading: Event End Date
       alignment: start
 
     layout: 
-      sequence: 5
+      sequence: 61
       column-alignment: start
 
     accessibility: 
       value-identifies-row: false
 
     sorting: 
-      default-sequence: 1
-      direction: Ascending
-      sortable: false
+      sortable: true
 
     export-/-printing: 
       include-in-export-/-print: true
@@ -485,27 +505,25 @@ regions:
     security: 
       escape-special-characters: true
 
-  - # ====== Column: COL005 ======================================
-    id: 27860161720985264
+  - # ====== Column: ESTIMATED_ATTENDANCE ========================
+    id: 28775849477726023
     identification: 
-      column-name: COL005
+      column-name: ESTIMATED_ATTENDANCE
       type: Plain Text
 
     heading: 
-      heading: Col005
+      heading: Estimated Attendance
       alignment: start
 
     layout: 
-      sequence: 6
+      sequence: 71
       column-alignment: start
 
     accessibility: 
       value-identifies-row: false
 
     sorting: 
-      default-sequence: 1
-      direction: Ascending
-      sortable: false
+      sortable: true
 
     export-/-printing: 
       include-in-export-/-print: true
@@ -519,27 +537,25 @@ regions:
     security: 
       escape-special-characters: true
 
-  - # ====== Column: COL006 ======================================
-    id: 27860573283985265
+  - # ====== Column: IMPACT_LEVEL ================================
+    id: 28775990710726024
     identification: 
-      column-name: COL006
+      column-name: IMPACT_LEVEL
       type: Plain Text
 
     heading: 
-      heading: Col006
+      heading: Impact Level
       alignment: start
 
     layout: 
-      sequence: 7
+      sequence: 81
       column-alignment: start
 
     accessibility: 
       value-identifies-row: false
 
     sorting: 
-      default-sequence: 1
-      direction: Ascending
-      sortable: false
+      sortable: true
 
     export-/-printing: 
       include-in-export-/-print: true
@@ -553,27 +569,25 @@ regions:
     security: 
       escape-special-characters: true
 
-  - # ====== Column: COL007 ======================================
-    id: 27860873968985266
+  - # ====== Column: DESCRIPTION =================================
+    id: 28776019053726025
     identification: 
-      column-name: COL007
+      column-name: DESCRIPTION
       type: Plain Text
 
     heading: 
-      heading: Col007
+      heading: Description
       alignment: start
 
     layout: 
-      sequence: 8
+      sequence: 91
       column-alignment: start
 
     accessibility: 
       value-identifies-row: false
 
     sorting: 
-      default-sequence: 1
-      direction: Ascending
-      sortable: false
+      sortable: true
 
     export-/-printing: 
       include-in-export-/-print: true
@@ -587,27 +601,25 @@ regions:
     security: 
       escape-special-characters: true
 
-  - # ====== Column: COL008 ======================================
-    id: 27861267931985267
+  - # ====== Column: CITY ========================================
+    id: 28776157905726026
     identification: 
-      column-name: COL008
+      column-name: CITY
       type: Plain Text
 
     heading: 
-      heading: Col008
+      heading: City
       alignment: start
 
     layout: 
-      sequence: 9
+      sequence: 101
       column-alignment: start
 
     accessibility: 
       value-identifies-row: false
 
     sorting: 
-      default-sequence: 1
-      direction: Ascending
-      sortable: false
+      sortable: true
 
     export-/-printing: 
       include-in-export-/-print: true
@@ -621,27 +633,25 @@ regions:
     security: 
       escape-special-characters: true
 
-  - # ====== Column: COL009 ======================================
-    id: 27861605374985269
+  - # ====== Column: POSTCODE ====================================
+    id: 28776284010726027
     identification: 
-      column-name: COL009
+      column-name: POSTCODE
       type: Plain Text
 
     heading: 
-      heading: Col009
+      heading: Postcode
       alignment: start
 
     layout: 
-      sequence: 10
+      sequence: 111
       column-alignment: start
 
     accessibility: 
       value-identifies-row: false
 
     sorting: 
-      default-sequence: 1
-      direction: Ascending
-      sortable: false
+      sortable: true
 
     export-/-printing: 
       include-in-export-/-print: true
@@ -655,27 +665,25 @@ regions:
     security: 
       escape-special-characters: true
 
-  - # ====== Column: COL010 ======================================
-    id: 27862026727985270
+  - # ====== Column: COUNTRY =====================================
+    id: 28776351202726028
     identification: 
-      column-name: COL010
+      column-name: COUNTRY
       type: Plain Text
 
     heading: 
-      heading: Col010
+      heading: Country
       alignment: start
 
     layout: 
-      sequence: 11
+      sequence: 121
       column-alignment: start
 
     accessibility: 
       value-identifies-row: false
 
     sorting: 
-      default-sequence: 1
-      direction: Ascending
-      sortable: false
+      sortable: true
 
     export-/-printing: 
       include-in-export-/-print: true
@@ -689,18 +697,50 @@ regions:
     security: 
       escape-special-characters: true
 
-  - # ====== Column: HOTEL_ID ====================================
-    id: 28702264223461801
+  - # ====== Column: EVENT_FREQUENCY =============================
+    id: 31803600613175005
     identification: 
-      column-name: HOTEL_ID
+      column-name: EVENT_FREQUENCY
       type: Plain Text
 
     heading: 
-      heading: Hotel Id
+      heading: Event Frequency
       alignment: start
 
     layout: 
-      sequence: 21
+      sequence: 131
+      column-alignment: start
+
+    accessibility: 
+      value-identifies-row: false
+
+    sorting: 
+      sortable: true
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    advanced: 
+      compute-sum: false
+
+    ui-defaults-reference: 
+      table-owner: Parsing Schema
+
+    security: 
+      escape-special-characters: true
+
+  - # ====== Column: IMPACT_TYPE =================================
+    id: 31803792935175006
+    identification: 
+      column-name: IMPACT_TYPE
+      type: Plain Text
+
+    heading: 
+      heading: Impact Type
+      alignment: start
+
+    layout: 
+      sequence: 141
       column-alignment: start
 
     accessibility: 
@@ -734,7 +774,7 @@ page-items:
 
   display: 
     display-as: Block Dropzone
-    dropzone-description: Supported formats CSV, TXT
+    dropzone-description: Supported formats EXCEL
     capture-using: NONE
 
   storage:: 
@@ -891,6 +931,36 @@ page-items:
     store-value-encrypted-in-session-state: true
     restricted-characters: All characters can be saved.
 
+- # ====== Page Item: P27_HOTEL_ID =============================
+  id: 28775252204726017
+  identification: 
+    name: P27_HOTEL_ID
+    type: Hidden
+
+  settings: 
+    value-protected: false
+
+  layout: 
+    sequence: 50
+    region: Upload a File # 27854002312985228
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
 buttons: 
 - # ====== Button: CLEAR =======================================
   id: 27852135337985219
@@ -944,9 +1014,10 @@ buttons:
 
   behavior: 
     action: Submit Page
-    execute-validations: true
+    execute-validations: false
     show-processing: false
     warn-on-unsaved-changes: Do Not Check
+    database-action: SQL INSERT action
 
 dynamic-actions: 
 - # ====== Dynamic Action: Upload a File =======================
@@ -998,8 +1069,12 @@ validations:
     language: PL/SQL
     pl/sql-function-body: |
       IF apex_data_parser.assert_file_type(
-             p_file_name => :P27_FILE, 
+             p_file_name => :P27_FILE,
              p_file_type => apex_data_parser.c_file_type_csv )
+         OR
+         apex_data_parser.assert_file_type(
+             p_file_name => :P27_FILE,
+             p_file_type => apex_data_parser.c_file_type_xlsx )
       THEN
           RETURN TRUE;
       ELSE
@@ -1008,9 +1083,31 @@ validations:
     always-execute: false
 
   error: 
-    error-message: Invalid file type. Supported file types CSV, TXT.
+    error-message: Invalid file type. Supported file types EXCEL.
     display-location: Inline with Field and in Notification
     associated-item: P27_FILE # 27854489745985230
+
+- # ====== Validation: Warning   ===============================
+  id: 28775321801726018
+  identification: 
+    name: 'Warning  '
+
+  execution: 
+    sequence: 20
+
+  validation: 
+    type: Function Body (returning Boolean)
+    language: PL/SQL
+    pl/sql-function-body: 'RETURN :P0_HOTEL_ID IS NOT NULL;'
+    always-execute: false
+
+  error: 
+    error-message: '"Please select hotel before uploading a file."'
+    display-location: Inline with Field and in Notification
+    associated-item: P27_HOTEL_ID # 28775252204726017
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
 
 computations: 
 - # ====== Computation: P27_FILE_NAME ==========================
@@ -1055,13 +1152,13 @@ processes:
     execution-chain: None
 
   settings: 
-    data-load-definition: UR Data Load # 27851257527981505
+    data-load-definition: UR_LOAD_DATA_EXCEL # 31293373313321789
     source-data-type: File Browse Item
     file-browse-item: P27_FILE
     error-row-count-item: P27_ERROR_ROW_COUNT
 
   execution: 
-    sequence: 10
+    sequence: 20
     point: Processing
     run-process: Once Per Page Visit (default)
 
@@ -1070,6 +1167,9 @@ processes:
 
   server-side-condition: 
     when-button-pressed: LOAD # 27852495725985220
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
 
 - # ====== Process: Clear Cache ================================
   id: 27853386567985224
@@ -1082,7 +1182,7 @@ processes:
     type: Clear all Items on the Current Page
 
   execution: 
-    sequence: 20
+    sequence: 30
     point: Processing
     run-process: Once Per Page Visit (default)
 
@@ -1121,6 +1221,319 @@ processes:
     sequence: 30
     point: After Submit
     run-process: Once Per Page Visit (default)
+
+  error: 
+    display-location: Inline in Notification
+
+  server-side-condition: 
+    when-button-pressed: LOAD # 27852495725985220
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+- # ====== Process: TEST LOAD FILE =============================
+  id: 28776482830726029
+  identification: 
+    name: TEST LOAD FILE
+    type: Execute Code
+    execution-chain: None
+
+  source: 
+    location: Local Database
+    language: PL/SQL
+    pl/sql-code: |
+      DECLARE
+        l_cnt          PLS_INTEGER := 0;
+        l_line_number  PLS_INTEGER;
+      
+        -- File values (after ID,HOTEL_ID)
+        l_id_file         VARCHAR2(4000);
+        l_hotel_file      VARCHAR2(4000);
+        l_event_name      VARCHAR2(4000);
+        l_event_type      VARCHAR2(4000);
+        l_event_start_raw VARCHAR2(4000);
+        l_event_end_raw   VARCHAR2(4000);
+        l_est_raw         VARCHAR2(4000);
+        l_impact_level    VARCHAR2(4000);
+        l_description     CLOB;
+      
+        l_start_date DATE;
+        l_end_date   DATE;
+        l_est_num    NUMBER;
+      
+        l_file_count PLS_INTEGER;
+        l_hotel_id_raw RAW(16);  -- PL/SQL variable for HOTEL_ID
+      
+      BEGIN
+        -- Must have hotel id selected
+        IF :P27_HOTEL_ID IS NULL THEN
+          raise_application_error(-20001, 'Hotel is not selected. Please select hotel before loading.');
+        END IF;
+      
+        -- Strict validation: must be 32-character hex
+        IF NOT REGEXP_LIKE(:P27_HOTEL_ID, '^[0-9A-Fa-f]{32}$') THEN
+          raise_application_error(-20002, 'Invalid HOTEL_ID format. Must be a 32-character hex string.');
+        END IF;
+      
+        -- Convert to RAW safely
+        l_hotel_id_raw := HEXTORAW(:P27_HOTEL_ID);
+      
+        -- Must have file uploaded
+        IF :P27_FILE IS NULL THEN
+          raise_application_error(-20003, 'No file uploaded.');
+        END IF;
+      
+        SELECT COUNT(*) INTO l_file_count
+        FROM apex_application_temp_files
+        WHERE name = :P27_FILE;
+      
+        IF l_file_count = 0 THEN
+          raise_application_error(-20004, 'File not found in temp table.');
+        END IF;
+      
+        FOR r IN (
+          SELECT p.*
+          FROM apex_application_temp_files f,
+               TABLE(
+                 apex_data_parser.parse(
+                   p_content      => f.blob_content,
+                   p_file_name    => f.filename,
+                   p_max_rows     => NULL
+                 )
+               ) p
+          WHERE f.name = :P27_FILE
+          ORDER BY p.line_number
+        ) LOOP
+      
+          l_line_number := r.line_number;
+      
+          -- File column mapping EXACTLY matches your XLSX:
+          l_id_file         := r.col001;  -- ID (ignored)
+          l_hotel_file      := r.col002;  -- HOTEL_ID (ignored)
+          l_event_name      := r.col003;
+          l_event_type      := r.col004;
+          l_event_start_raw := r.col005;
+          l_event_end_raw   := r.col006;
+          l_est_raw         := r.col007;
+          l_impact_level    := r.col008;
+          l_description     := r.col009;
+      
+          -- Convert estimated attendance to number
+          BEGIN
+            l_est_num := TO_NUMBER(l_est_raw);
+          EXCEPTION
+            WHEN OTHERS THEN l_est_num := NULL;
+          END;
+      
+          -- Convert start and end dates
+          BEGIN
+            l_start_date := TO_DATE(l_event_start_raw, 'YYYY-MM-DD');
+            l_end_date   := TO_DATE(l_event_end_raw,   'YYYY-MM-DD');
+          EXCEPTION
+            WHEN OTHERS THEN
+              l_start_date := NULL;
+              l_end_date := NULL;
+          END;
+      
+          -- Insert into UR_EVENTS using safe RAW variable
+          INSERT INTO UR_EVENTS (
+            ID,
+            HOTEL_ID,
+            EVENT_NAME,
+            EVENT_TYPE,
+            EVENT_START_DATE,
+            EVENT_END_DATE,
+            ESTIMATED_ATTENDANCE,
+            IMPACT_LEVEL,
+            DESCRIPTION,
+            CREATED_ON,
+            CREATED_BY
+          )
+          VALUES (
+            SYS_GUID(),
+            l_hotel_id_raw,
+            l_event_name,
+            l_event_type,
+            l_start_date,
+            l_end_date,
+            l_est_num,
+            l_impact_level,
+            l_description,
+            SYSDATE,
+            :APP_USER
+          );
+      
+          l_cnt := l_cnt + 1;
+      
+        END LOOP;
+      
+        -- Clean up temp file
+        DELETE FROM apex_application_temp_files WHERE name = :P27_FILE;
+      
+        COMMIT;
+      
+        apex_application.g_print_success_message :=
+          'Upload complete. Rows loaded: ' || l_cnt;
+      
+      EXCEPTION
+        WHEN OTHERS THEN
+          ROLLBACK;
+          raise_application_error(
+            -20010,
+            'Data Load failed on line ' || NVL(l_line_number,1) ||
+            ' - Error: ' || SQLERRM
+          );
+      END;
+      
+
+  execution: 
+    sequence: 40
+    point: Processing
+    run-process: Once Per Page Visit (default)
+
+  error: 
+    display-location: Inline in Notification
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+- # ====== Process: Custom Data Load ===========================
+  id: 31583964737340201
+  identification: 
+    name: Custom Data Load
+    type: Execute Code
+    execution-chain: None
+
+  source: 
+    location: Local Database
+    language: PL/SQL
+    pl/sql-code: |
+      DECLARE
+          l_blob BLOB;
+          l_counter PLS_INTEGER := 0;
+          l_start_date DATE;
+          l_end_date   DATE;
+          l_impact_level NUMBER;
+          l_impact_type  NUMBER;
+      BEGIN
+          SELECT blob_content
+            INTO l_blob
+            FROM apex_application_temp_files
+           WHERE name = :P27_FILE;
+      
+          FOR rec IN (
+              SELECT *
+                FROM TABLE(
+                       apex_data_parser.parse(
+                           p_content   => l_blob,
+                           p_file_name => :P27_FILE
+                       )
+                     )
+          )
+          LOOP
+              l_counter := l_counter + 1;
+      
+              IF l_counter = 1 THEN
+                  CONTINUE; -- skip header row
+              END IF;
+      
+              BEGIN
+                  l_start_date :=
+                      CASE WHEN rec.col003 IS NOT NULL THEN TO_DATE(rec.col003,'YYYY-MM-DD') END;
+              EXCEPTION
+                  WHEN OTHERS THEN
+                      l_start_date := NULL;
+                      DBMS_OUTPUT.PUT_LINE('Invalid Start Date at row ' || l_counter || ': ' || rec.col003);
+              END;
+      
+              BEGIN
+                  l_end_date :=
+                      CASE WHEN rec.col004 IS NOT NULL THEN TO_DATE(rec.col004,'YYYY-MM-DD') END;
+              EXCEPTION
+                  WHEN OTHERS THEN
+                      l_end_date := NULL;
+                      DBMS_OUTPUT.PUT_LINE('Invalid End Date at row ' || l_counter || ': ' || rec.col004);
+              END;
+      
+              l_impact_level :=
+                  CASE LOWER(rec.col006)
+                      WHEN 'high'   THEN 3
+                      WHEN 'medium' THEN 2
+                      WHEN 'low'    THEN 1
+                      ELSE NULL
+                  END;
+      
+              l_impact_type :=
+                  CASE LOWER(rec.col012)
+                      WHEN 'positive' THEN '+1'
+                      WHEN 'negative' THEN '-1'
+                      ELSE NULL
+                  END;
+      
+              INSERT INTO ur_events (
+                  hotel_id,
+                  event_name,
+                  event_type,
+                  event_start_date,
+                  event_end_date,
+                  estimated_attendance,
+                  impact_level,
+                  description,
+                  city,
+                  postcode,
+                  country,
+                  event_frequency,
+                  impact_type
+              ) VALUES (
+                  :P0_HOTEL_ID,
+                  rec.col001,
+                  rec.col002,
+                  l_start_date,
+                  l_end_date,
+                  CASE WHEN rec.col005 IS NOT NULL THEN TO_NUMBER(rec.col005) END,
+                  l_impact_level,
+                  rec.col007,
+                  rec.col008,
+                  rec.col009,
+                  rec.col010,
+                  rec.col011,
+                  l_impact_type
+              );
+      
+          END LOOP;
+      
+          COMMIT;
+      END;
+      
+
+  execution: 
+    sequence: 10
+    point: After Submit
+    run-process: Once Per Page Visit (default)
+
+  error: 
+    display-location: Inline in Notification
+
+  server-side-condition: 
+    when-button-pressed: LOAD # 27852495725985220
+
+- # ====== Process: close dialog ===============================
+  id: 31803570885175004
+  identification: 
+    name: close dialog
+    type: Close Dialog
+    execution-chain: None
+
+  settings: 
+    show-success-messages: true
+
+  execution: 
+    sequence: 40
+    point: After Submit
+    run-process: Once Per Page Visit (default)
+
+  success-message: 
+    success-message: Data Updated!
 
   error: 
     display-location: Inline in Notification

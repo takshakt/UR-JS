@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -222,13 +222,14 @@ wwv_flow_imp_shared.create_load_table(
 ,p_name=>'UR Data Load'
 ,p_static_id=>'ur_data_load'
 ,p_target_type=>'TABLE'
+,p_owner=>'WKSP_DEV'
 ,p_table_name=>'UR_EVENTS'
 ,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
 ,p_loading_method=>'MERGE'
 ,p_commit_interval=>200
 ,p_error_handling=>'ABORT'
 ,p_skip_validation=>'N'
-,p_version_scn=>45828710801289
+,p_version_scn=>45851914110039
 );
 wwv_flow_imp.component_end;
 end;

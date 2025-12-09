@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -15,7 +15,7 @@ wwv_flow_imp_shared.create_list(
  p_id=>wwv_flow_imp.id(8558978835922138)
 ,p_name=>'Navigation Menu'
 ,p_list_status=>'PUBLIC'
-,p_version_scn=>45851770718626
+,p_version_scn=>45852083489784
 );
 wwv_flow_imp_shared.create_list_item(
  p_id=>wwv_flow_imp.id(10490026312115713)
@@ -117,6 +117,16 @@ wwv_flow_imp_shared.create_list_item(
 ,p_parent_list_item_id=>wwv_flow_imp.id(15689157068470336)
 ,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
 ,p_list_item_current_for_pages=>'29'
+);
+wwv_flow_imp_shared.create_list_item(
+ p_id=>wwv_flow_imp.id(32325342725078575)
+,p_list_item_display_sequence=>25
+,p_list_item_link_text=>'Manage Templates v2'
+,p_list_item_link_target=>'f?p=&APP_ID.:32:&SESSION.::&DEBUG.::::'
+,p_list_item_icon=>'fa-pencil'
+,p_parent_list_item_id=>wwv_flow_imp.id(15689157068470336)
+,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
+,p_list_item_current_for_pages=>'32'
 );
 wwv_flow_imp_shared.create_list_item(
  p_id=>wwv_flow_imp.id(9869761620619585)

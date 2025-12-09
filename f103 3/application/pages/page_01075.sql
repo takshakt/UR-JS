@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -30,11 +30,11 @@ wwv_flow_imp_page.create_page_plug(
 ,p_plug_display_sequence=>30
 ,p_query_type=>'SQL'
 ,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'SELECT',
+'SELECT DISTINCT',
 '  UHPO.ID,',
 '  UHPO.STAY_DATE,',
 '  UHPO.HOTEL_ID,',
-'  H.HOTEL_NAME,  ',
+'  H.HOTEL_NAME,',
 '  UHPO.TYPE,',
 '  UHPO.PRICE,',
 '  UHPO.REASON,',
@@ -47,16 +47,14 @@ wwv_flow_imp_page.create_page_plug(
 '  CASE UHPO.status ',
 '        WHEN ''A'' THEN ''Active''',
 '        WHEN ''I'' THEN ''Inactive''',
-'    END AS status_display',
+'  END AS status_display',
 'FROM UR_HOTEL_PRICE_OVERRIDE UHPO',
 'LEFT JOIN UR_HOTELS H ON UHPO.HOTEL_ID = H.ID',
-'--WHERE (:P1075_HOTEL_LIST = ''FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'' OR RAWTOHEX(UHPO.HOTEL_ID) = :P1075_HOTEL_LIST)',
 'WHERE (',
 '  :G_HOTEL_ID IS NULL',
 '  OR :G_HOTEL_ID = ''FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF''',
 '  OR HOTEL_ID = HEXTORAW(:G_HOTEL_ID)',
 ')',
-'',
 ''))
 ,p_plug_source_type=>'NATIVE_IG'
 ,p_ajax_items_to_submit=>'P0_HOTEL_ID'

@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -658,16 +658,20 @@ wwv_flow_imp_page.create_page_item(
 '       id           AS return_value',
 'FROM ur_templates',
 'WHERE hotel_id = HEXTORAW(:P0_HOTEL_ID)',
+'AND (:P29_STATUS_ON = ''ALL'' OR',
+'    ACTIVE =:P29_STATUS_ON)',
+'--AND (:P29_STATUS_ON = ''ALL'' OR ACTIVE = :P29_STATUS_ON)',
 '--WHERE hotel_id = HEXTORAW(:P29_LOCAL_HOTEL_ID)',
 '',
 ''))
 ,p_lov_display_null=>'YES'
 ,p_lov_cascade_parent_items=>'P0_HOTEL_ID'
+,p_ajax_items_to_submit=>'P29_STATUS_ON'
 ,p_ajax_optimize_refresh=>'Y'
 ,p_cSize=>30
 ,p_begin_on_new_line=>'N'
 ,p_colspan=>4
-,p_field_template=>1609121967514267634
+,p_field_template=>3031561666792084173
 ,p_item_template_options=>'#DEFAULT#'
 ,p_lov_display_extra=>'YES'
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
@@ -775,6 +779,22 @@ wwv_flow_imp_page.create_page_item(
 ,p_display_as=>'NATIVE_HIDDEN'
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
   'value_protected', 'N')).to_clob
+);
+wwv_flow_imp_page.create_page_item(
+ p_id=>wwv_flow_imp.id(31226611466554101)
+,p_name=>'P29_STATUS_ON'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_imp.id(16603938316205024)
+,p_prompt=>'Status'
+,p_display_as=>'NATIVE_RADIOGROUP'
+,p_lov=>'STATIC2:ACTIVE;Y,INACTIVE;N,BOTH;ALL'
+,p_colspan=>4
+,p_field_template=>3031561666792084173
+,p_item_template_options=>'#DEFAULT#'
+,p_lov_display_extra=>'NO'
+,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
+  'number_of_columns', '3',
+  'page_action_on_selection', 'NONE')).to_clob
 );
 wwv_flow_imp_page.create_page_computation(
  p_id=>wwv_flow_imp.id(27211386141671704)
@@ -1009,6 +1029,20 @@ wwv_flow_imp_page.create_page_da_action(
 ,p_affected_elements=>'P29_TEMPLATE_LIST,P29_TEMPLATE_NAME,P0_HOTEL_ID'
 ,p_attribute_01=>'STATIC_ASSIGNMENT'
 ,p_attribute_09=>'Y'
+,p_wait_for_result=>'Y'
+);
+wwv_flow_imp_page.create_page_da_action(
+ p_id=>wwv_flow_imp.id(31226972779554104)
+,p_event_id=>wwv_flow_imp.id(23162890681001706)
+,p_event_result=>'TRUE'
+,p_action_sequence=>40
+,p_execute_on_page_init=>'Y'
+,p_action=>'NATIVE_SET_VALUE'
+,p_affected_elements_type=>'ITEM'
+,p_affected_elements=>'P29_STATUS_ON'
+,p_attribute_01=>'STATIC_ASSIGNMENT'
+,p_attribute_02=>'Y'
+,p_attribute_09=>'N'
 ,p_wait_for_result=>'Y'
 );
 wwv_flow_imp_page.create_page_da_event(
@@ -1251,10 +1285,47 @@ wwv_flow_imp_page.create_page_da_action(
 ''))
 );
 wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(24636688673707606)
+ p_id=>wwv_flow_imp.id(32991986534781504)
 ,p_event_id=>wwv_flow_imp.id(15607142621985543)
 ,p_event_result=>'TRUE'
 ,p_action_sequence=>60
+,p_execute_on_page_init=>'N'
+,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
+,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
+' DECLARE',
+'    v_status  VARCHAR2(10);',
+'    v_message VARCHAR2(4000);',
+'    begin',
+' validate_profile_row(',
+'        p_name          => :name,',
+'        p_data_type     => :data_type,',
+'        p_mapping_type  => :mapping_type,',
+'        p_default_value => :VALUE,',
+'        p_collection    => ''TEMPLATE_DATA'',',
+'        o_status        => v_status,',
+'        o_message       => v_message',
+'    );',
+'IF v_status = ''ERROR'' THEN',
+'',
+'',
+'        -- Register error so IG stops saving, but without popup',
+'        apex_error.add_error(',
+'            p_message          => V_MESSAGE,',
+'            p_display_location => apex_error.c_inline_in_notification',
+'        );',
+'',
+'        RETURN;',
+'    END IF;',
+'    end;'))
+,p_attribute_05=>'PLSQL'
+,p_wait_for_result=>'Y'
+,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
+);
+wwv_flow_imp_page.create_page_da_action(
+ p_id=>wwv_flow_imp.id(24636688673707606)
+,p_event_id=>wwv_flow_imp.id(15607142621985543)
+,p_event_result=>'TRUE'
+,p_action_sequence=>70
 ,p_execute_on_page_init=>'N'
 ,p_action=>'NATIVE_REFRESH'
 ,p_affected_elements_type=>'REGION'
@@ -1265,7 +1336,7 @@ wwv_flow_imp_page.create_page_da_action(
  p_id=>wwv_flow_imp.id(24636599117707605)
 ,p_event_id=>wwv_flow_imp.id(15607142621985543)
 ,p_event_result=>'TRUE'
-,p_action_sequence=>70
+,p_action_sequence=>80
 ,p_execute_on_page_init=>'N'
 ,p_action=>'NATIVE_CONFIRM'
 ,p_attribute_01=>'Are you sure you want to update the definition?'
@@ -1276,7 +1347,7 @@ wwv_flow_imp_page.create_page_da_action(
  p_id=>wwv_flow_imp.id(16726455237204028)
 ,p_event_id=>wwv_flow_imp.id(15607142621985543)
 ,p_event_result=>'TRUE'
-,p_action_sequence=>80
+,p_action_sequence=>90
 ,p_execute_on_page_init=>'N'
 ,p_name=>'13/10_saves new_definition'
 ,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
@@ -1284,12 +1355,15 @@ wwv_flow_imp_page.create_page_da_action(
 'DECLARE',
 '    v_status  VARCHAR2(4000);',
 '    v_message CLOB;',
+'    ',
 'BEGIN',
+'    ',
+'',
 '    update_template_definition(',
 '        p_template_id     => :P29_TEMPLATE_LIST,',
 '        p_collection_name => ''TEMPLATE_DATA'',',
 '        p_template_type   => :P29_TEMPLATE_TYPE,',
-'        p_is_update       => ''Y'',  -- Set ''Y'' to recreate DB object',
+'        p_is_update       => ''Y'',',
 '        p_status          => v_status,',
 '        p_message         => v_message',
 '    );',
@@ -1307,7 +1381,7 @@ wwv_flow_imp_page.create_page_da_action(
  p_id=>wwv_flow_imp.id(16724798557204011)
 ,p_event_id=>wwv_flow_imp.id(15607142621985543)
 ,p_event_result=>'TRUE'
-,p_action_sequence=>90
+,p_action_sequence=>100
 ,p_execute_on_page_init=>'N'
 ,p_name=>'Validation1'
 ,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
@@ -1341,7 +1415,7 @@ wwv_flow_imp_page.create_page_da_action(
  p_id=>wwv_flow_imp.id(16724976323204013)
 ,p_event_id=>wwv_flow_imp.id(15607142621985543)
 ,p_event_result=>'TRUE'
-,p_action_sequence=>100
+,p_action_sequence=>110
 ,p_execute_on_page_init=>'N'
 ,p_name=>'1'
 ,p_action=>'NATIVE_JAVASCRIPT_CODE'
@@ -1367,7 +1441,7 @@ wwv_flow_imp_page.create_page_da_action(
  p_id=>wwv_flow_imp.id(16724869631204012)
 ,p_event_id=>wwv_flow_imp.id(15607142621985543)
 ,p_event_result=>'TRUE'
-,p_action_sequence=>110
+,p_action_sequence=>120
 ,p_execute_on_page_init=>'N'
 ,p_name=>'2'
 ,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
@@ -1456,7 +1530,7 @@ wwv_flow_imp_page.create_page_da_action(
  p_id=>wwv_flow_imp.id(16606235470205047)
 ,p_event_id=>wwv_flow_imp.id(15607142621985543)
 ,p_event_result=>'TRUE'
-,p_action_sequence=>120
+,p_action_sequence=>130
 ,p_execute_on_page_init=>'N'
 ,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -1493,7 +1567,7 @@ wwv_flow_imp_page.create_page_da_action(
  p_id=>wwv_flow_imp.id(16606506659205050)
 ,p_event_id=>wwv_flow_imp.id(15607142621985543)
 ,p_event_result=>'TRUE'
-,p_action_sequence=>130
+,p_action_sequence=>140
 ,p_execute_on_page_init=>'N'
 ,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -1529,7 +1603,7 @@ wwv_flow_imp_page.create_page_da_action(
  p_id=>wwv_flow_imp.id(16723728400204001)
 ,p_event_id=>wwv_flow_imp.id(15607142621985543)
 ,p_event_result=>'TRUE'
-,p_action_sequence=>140
+,p_action_sequence=>150
 ,p_execute_on_page_init=>'N'
 ,p_action=>'NATIVE_JAVASCRIPT_CODE'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -2161,6 +2235,27 @@ wwv_flow_imp_page.create_page_da_action(
 ,p_wait_for_result=>'Y'
 ,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
 );
+wwv_flow_imp_page.create_page_da_event(
+ p_id=>wwv_flow_imp.id(31226789503554102)
+,p_name=>'REFRESH THE TEMPLATE LIST'
+,p_event_sequence=>120
+,p_triggering_element_type=>'ITEM'
+,p_triggering_element=>'P29_STATUS_ON'
+,p_bind_type=>'bind'
+,p_execution_type=>'IMMEDIATE'
+,p_bind_event_type=>'change'
+);
+wwv_flow_imp_page.create_page_da_action(
+ p_id=>wwv_flow_imp.id(31226858275554103)
+,p_event_id=>wwv_flow_imp.id(31226789503554102)
+,p_event_result=>'TRUE'
+,p_action_sequence=>10
+,p_execute_on_page_init=>'N'
+,p_action=>'NATIVE_REFRESH'
+,p_affected_elements_type=>'ITEM'
+,p_affected_elements=>'P29_TEMPLATE_LIST'
+,p_attribute_01=>'N'
+);
 wwv_flow_imp_page.create_page_process(
  p_id=>wwv_flow_imp.id(16725707357204021)
 ,p_process_sequence=>20
@@ -2226,12 +2321,49 @@ wwv_flow_imp_page.create_page_process(
 '    l_temp CLOB;',
 'BEGIN',
 '',
+'',
+'   CASE :APEX$ROW_STATUS',
+'    WHEN ''C'' THEN',
+'        :SEQ_ID := apex_collection.add_member(',
+'            p_collection_name => ''TEMPLATE_DATA'',',
+'            p_c001            => :NAME,',
+'            p_c002            => :DATA_TYPE,',
+'            p_c003            => :QUALIFIER,',
+'            p_c004            => :VALUE,',
+'            p_c005            => :MAPPING_TYPE,',
+'            p_c006            => :ORIGINAL_NAME',
+'        );',
+'',
+'',
+'',
+'    WHEN ''U'' THEN',
+'        apex_collection.update_member(',
+'            p_collection_name => ''TEMPLATE_DATA'',',
+'            p_seq             => :SEQ_ID,',
+'            p_c001            => :NAME,',
+'            p_c002            => :DATA_TYPE,',
+'            p_c003            => :QUALIFIER,',
+'            p_c004            => :VALUE,',
+'            p_c005            => :MAPPING_TYPE,',
+'            p_c006            => :ORIGINAL_NAME',
+'        );',
+'',
+'  ',
+'',
+'    WHEN ''D'' THEN',
+'        apex_collection.delete_member(',
+'            p_collection_name => ''TEMPLATE_DATA'',',
+'            p_seq             => :SEQ_ID',
+'        );',
+'',
+'    ',
+'END CASE;',
 '/** added on 26/11  **/',
 '  validate_profile_row(',
 '        p_name          => :name,',
 '        p_data_type     => :data_type,',
 '        p_mapping_type  => :mapping_type,',
-'        p_default_value => :default_value,',
+'        p_default_value => :VALUE,',
 '        p_collection    => ''TEMPLATE_DATA'',',
 '        o_status        => v_status,',
 '        o_message       => v_message',
@@ -2249,46 +2381,6 @@ wwv_flow_imp_page.create_page_process(
 '        RETURN;',
 '    END IF;',
 '/**** end of 26/11 added new code ***/',
-'   CASE :APEX$ROW_STATUS',
-'    WHEN ''C'' THEN',
-'        :SEQ_ID := apex_collection.add_member(',
-'            p_collection_name => ''TEMPLATE_DATA'',',
-'            p_c001            => :NAME,',
-'            p_c002            => :DATA_TYPE,',
-'            p_c003            => :QUALIFIER,',
-'            p_c004            => :VALUE,',
-'            p_c005            => :MAPPING_TYPE,',
-'            p_c006            => :ORIGINAL_NAME',
-'        );',
-'',
-'        INSERT INTO debug_log(message)',
-'        VALUES(''INSERT - SEQ:''||:SEQ_ID||'' C006:''||NVL(:ORIGINAL_NAME,''NULL''));',
-'',
-'    WHEN ''U'' THEN',
-'        apex_collection.update_member(',
-'            p_collection_name => ''TEMPLATE_DATA'',',
-'            p_seq             => :SEQ_ID,',
-'            p_c001            => :NAME,',
-'            p_c002            => :DATA_TYPE,',
-'            p_c003            => :QUALIFIER,',
-'            p_c004            => :VALUE,',
-'            p_c005            => :MAPPING_TYPE,',
-'            p_c006            => :ORIGINAL_NAME',
-'        );',
-'',
-'        INSERT INTO debug_log(message)',
-'        VALUES(''UPDATE - SEQ:''||:SEQ_ID||'' C006:''||NVL(:ORIGINAL_NAME,''NULL''));',
-'',
-'    WHEN ''D'' THEN',
-'        apex_collection.delete_member(',
-'            p_collection_name => ''TEMPLATE_DATA'',',
-'            p_seq             => :SEQ_ID',
-'        );',
-'',
-'        INSERT INTO debug_log(message)',
-'        VALUES(''DELETE - SEQ:''||:SEQ_ID);',
-'END CASE;',
-'',
 'END;',
 ''))
 ,p_attribute_05=>'Y'

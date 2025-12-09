@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -503,13 +503,13 @@ wwv_flow_imp_page.create_page_item(
 );
 wwv_flow_imp_page.create_page_item(
  p_id=>wwv_flow_imp.id(27536511178203304)
-,p_name=>'P23_OCCUPANCY'
+,p_name=>'P23_CAPACITY'
 ,p_source_data_type=>'NUMBER'
 ,p_item_sequence=>80
 ,p_item_plug_id=>wwv_flow_imp.id(11960354245997033)
 ,p_item_source_plug_id=>wwv_flow_imp.id(11960354245997033)
-,p_prompt=>'Total Occupancy'
-,p_source=>'OCCUPANCY'
+,p_prompt=>'Total Capacity'
+,p_source=>'CAPACITY'
 ,p_source_type=>'REGION_SOURCE_COLUMN'
 ,p_display_as=>'NATIVE_NUMBER_FIELD'
 ,p_cSize=>30
@@ -558,7 +558,7 @@ wwv_flow_imp_page.create_page_process(
 );
 wwv_flow_imp_page.create_page_process(
  p_id=>wwv_flow_imp.id(11977724501997096)
-,p_process_sequence=>50
+,p_process_sequence=>30
 ,p_process_point=>'AFTER_SUBMIT'
 ,p_process_type=>'NATIVE_CLOSE_WINDOW'
 ,p_process_name=>'Close Dialog'

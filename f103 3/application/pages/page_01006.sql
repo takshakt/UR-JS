@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -1527,6 +1527,29 @@ wwv_flow_imp_page.create_page_plug(
 '                    <label for="formula-preview">Formula Preview:</label>',
 '                    <textarea id="formula-preview" class="formula-preview" rows="3" placeholder="Click ''Add'' or type your formula here..."></textarea>',
 '                </div>',
+'',
+'<label for="formula-preview">Where:</label>',
+'                <div class="formula-builder">',
+'                    <select id="column-lovfilter"><option value="">Select Column</option></select>',
+'                    <select id="operator-lovfilter">',
+'                    <option value="">Select Operator</option>',
+'                   <option value="===">Equals (=)</option>',
+'                    <option value="!==">Not Equals (!=)</option>',
+'                    <option value=">">Greater Than (>)</option>',
+'                    <option value="<">Less Than (<)</option>',
+'                    <option value=">=">Greater Than or Equal (>=)</option>',
+'                    <option value="<=">Less Than or Equal (<=)</option>',
+'                    <option value="&&">AND (&&)</option>',
+'                    <option value="||">OR (||)</option> ',
+'                    </select>',
+'                    <div id="add-to-formulafilter" class="action-btn" role="button">Add</div>',
+'                </div>',
+'                <div class="form-group">',
+'                    <label for="formula-preview">Where Preview:</label>',
+'                    <textarea id="formulafilter-preview" class="formula-preview" rows="3" placeholder="Click ''Add'' or type your filter here..."></textarea>',
+'                </div>',
+'',
+'',
 '                <div class="formula-actions">',
 '                    <div id="add-calculation" class="action-btn btn-info" role="button">Add Calculation</div>',
 '                    <div id="update-calculation" class="action-btn btn-info" role="button" aria-disabled="true">Update Calculation</div>',
@@ -1687,10 +1710,7 @@ wwv_flow_imp_page.create_page_plug(
 ' </div>',
 '',
 '',
-'',
-'',
-'<div class="notification" id="notification">JSON generated successfully!</div>',
-'<div class="notification" id="notification">JSON generated successfully!</div>'))
+' '))
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
   'expand_shortcuts', 'N',
   'output_as', 'HTML')).to_clob

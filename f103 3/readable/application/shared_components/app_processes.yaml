@@ -105,8 +105,12 @@
     location: Local Database
     language: PL/SQL
     pl/sql-code: |
+      DECLARE
+        l_clob CLOB;
       BEGIN
+        APEX_JSON.INITIALIZE_CLOB_OUTPUT;
         APEX_JSON.OPEN_ARRAY;
+      
         IF apex_application.g_x01 = 'HOTEL' THEN
             FOR rec IN (SELECT ID, HOTEL_NAME FROM UR_HOTELS order by upper(hotel_name)) LOOP
               APEX_JSON.OPEN_OBJECT;
@@ -114,10 +118,11 @@
               APEX_JSON.WRITE('HOTEL_NAME', rec.HOTEL_NAME);
               APEX_JSON.CLOSE_OBJECT;
             END LOOP;
-        ELSIF  apex_application.g_x01 = 'REPORT_DETAIL' THEN
-           FOR rec IN (SELECT ID, NAME, DEFINITION,DEFINITION_JSON,DB_OBJECT_NAME, COLUMN_ALIAS,EXPRESSIONS_CLOB FROM TEMP_UR_REPORTS 
-          WHERE ID = apex_application.g_x02
-          ) LOOP
+      
+        ELSIF apex_application.g_x01 = 'REPORT_DETAIL' THEN
+           FOR rec IN (SELECT ID, NAME, DEFINITION, DEFINITION_JSON, DB_OBJECT_NAME, COLUMN_ALIAS, EXPRESSIONS_CLOB
+                       FROM TEMP_UR_REPORTS
+                       WHERE ID = apex_application.g_x02) LOOP
               APEX_JSON.OPEN_OBJECT;
               APEX_JSON.WRITE('ID', rec.ID);
               APEX_JSON.WRITE('REPORT_NAME', rec.NAME);
@@ -127,19 +132,38 @@
               APEX_JSON.WRITE('COLUMN_ALIAS', rec.COLUMN_ALIAS);
               APEX_JSON.WRITE('EXPRESSIONS_CLOB', rec.EXPRESSIONS_CLOB);
               APEX_JSON.CLOSE_OBJECT;
-              END LOOP;
+           END LOOP; 
+      
         ELSE
-          FOR rec IN (SELECT ID, NAME, DEFINITION FROM TEMP_UR_REPORTS 
-          WHERE HOTEL_ID = apex_application.g_x02
-          ) LOOP
+          FOR rec IN (SELECT ID, NAME, DEFINITION FROM TEMP_UR_REPORTS
+                      WHERE HOTEL_ID = apex_application.g_x02) LOOP
               APEX_JSON.OPEN_OBJECT;
               APEX_JSON.WRITE('ID', rec.ID);
               APEX_JSON.WRITE('REPORT_NAME', rec.NAME);
-              APEX_JSON.WRITE('DEFINITION', rec.DEFINITION); 
+              APEX_JSON.WRITE('DEFINITION', rec.DEFINITION);
               APEX_JSON.CLOSE_OBJECT;
-              END LOOP;
+          END LOOP;
         END IF;
+      
         APEX_JSON.CLOSE_ARRAY;
+      
+        l_clob := APEX_JSON.GET_CLOB_OUTPUT;
+        APEX_JSON.FREE_OUTPUT;
+      
+        HTP.P(l_clob);
+      
+      EXCEPTION
+        WHEN OTHERS THEN
+          APEX_JSON.FREE_OUTPUT;
+          APEX_JSON.INITIALIZE_CLOB_OUTPUT;
+          APEX_JSON.OPEN_ARRAY;
+          APEX_JSON.OPEN_OBJECT;
+          APEX_JSON.WRITE('STATUS', 'ERROR');
+          APEX_JSON.WRITE('error', SQLERRM);
+          APEX_JSON.CLOSE_OBJECT;
+          APEX_JSON.CLOSE_ARRAY;
+          HTP.P(APEX_JSON.GET_CLOB_OUTPUT);
+          APEX_JSON.FREE_OUTPUT;
       END;
 
   execution: 
@@ -150,7 +174,7 @@
     authorization-scheme: Must Not Be Public User
 
   subscription: 
-    version-number: 45693613916325
+    version-number: 45852197731460
 
 - # ====== Application Process: AJX_GET_HOTEL_TEMPLATES ========
   id: 12856996721950922
@@ -184,28 +208,56 @@
               -- templates object
               APEX_JSON.OPEN_OBJECT('templates');
       
-              -- write each template array
-              FOR rec_tpl IN (
-                  SELECT UT.ID, UT.DEFINITION, UT.NAME
-                    FROM UR_TEMPLATES UT
-                   WHERE UT.HOTEL_ID = rec_hotel.ID
-                   and UT.active = 'Y'
-                   and UT.ID in (select TEMPLATE_ID FROM UR_ALGO_ATTRIBUTES where ATTRIBUTE_QUALIFIER = 'STAY_DATE' and HOTEL_ID = rec_hotel.ID )
-                     --AND UPPER(UT.DEFINITION) LIKE '%'||(select NAME FROM UR_ALGO_ATTRIBUTES where ATTRIBUTE_QUALIFIER = 'STAY_DATE' and TEMPLATE_ID  = UT.ID)||'%'
+                      -- write each template array
+                      FOR rec_tpl IN (
+                          SELECT UT.ID, UT.DEFINITION, UT.NAME
+                            FROM UR_TEMPLATES UT
+                           WHERE UT.HOTEL_ID = rec_hotel.ID
+                           and UT.active = 'Y'
+                           and UT.ID in (select TEMPLATE_ID FROM UR_ALGO_ATTRIBUTES where ATTRIBUTE_QUALIFIER = 'STAY_DATE' and HOTEL_ID = rec_hotel.ID )
+                             --AND UPPER(UT.DEFINITION) LIKE '%'||(select NAME FROM UR_ALGO_ATTRIBUTES where ATTRIBUTE_QUALIFIER = 'STAY_DATE' and TEMPLATE_ID  = UT.ID)||'%'
+                      ) LOOP
+                         APEX_JSON.OPEN_ARRAY(rec_tpl.NAME);
+      
+                                  FOR rec_col IN (
+                                      SELECT jt."name" AS col_name
+                                        FROM JSON_TABLE(rec_tpl.DEFINITION, '$[*]'
+                                              COLUMNS ("name" VARCHAR2(200) PATH '$.name')) jt
+                                  ) LOOP
+                                      APEX_JSON.WRITE(rec_col.col_name);
+                                  END LOOP;
+                          APEX_JSON.CLOSE_ARRAY;
+                       END LOOP; 
+      
+      
+              APEX_JSON.OPEN_ARRAY('Global_Attributes');
+              FOR rec_attr IN (
+                  SELECT id, name
+                    FROM ur_algo_attributes
+                   WHERE hotel_id = rec_hotel.id
+                     AND type = 'C'
+                   ORDER BY id DESC
               ) LOOP
-                 APEX_JSON.OPEN_ARRAY(rec_tpl.NAME);
-      
-                  FOR rec_col IN (
-                      SELECT jt."name" AS col_name
-                        FROM JSON_TABLE(rec_tpl.DEFINITION, '$[*]'
-                              COLUMNS ("name" VARCHAR2(200) PATH '$.name')) jt
-                  ) LOOP
-                      APEX_JSON.WRITE(rec_col.col_name);
-                  END LOOP;
-                  APEX_JSON.CLOSE_ARRAY;
+                  APEX_JSON.OPEN_OBJECT;
+                  APEX_JSON.WRITE('id', rec_attr.id);
+                  APEX_JSON.WRITE('name', rec_attr.name);
+                  APEX_JSON.CLOSE_OBJECT;
               END LOOP;
+              APEX_JSON.CLOSE_ARRAY; -- Global_Attributes
+            
+              --  APEX_JSON.OPEN_ARRAY('Global_Attributes');
+              -- FOR rec_algo IN (
       
+              --               SELECT   name AS Global_Attributes
+              --       FROM ur_algo_attributes
+              --      WHERE hotel_id = rec_hotel.id
+              --        AND type = 'C'  
+              -- ) LOOP
+              --     APEX_JSON.WRITE(rec_algo.Global_Attributes);
+              -- END LOOP;
+              -- APEX_JSON.CLOSE_ARRAY; -- Global_Attributes
       
+      /*
               APEX_JSON.OPEN_ARRAY('Strategies');
               FOR rec_algo IN (
                   SELECT DISTINCT REPLACE(a.name, ' ', '_') || '(Strategy_Column)' AS EVALUATED_PRICE
@@ -219,7 +271,22 @@
               ) LOOP
                   APEX_JSON.WRITE(rec_algo.EVALUATED_PRICE);
               END LOOP;
-              APEX_JSON.CLOSE_ARRAY; -- Strategies 
+              APEX_JSON.CLOSE_ARRAY; -- Strategies
+      
+              APEX_JSON.OPEN_ARRAY('Global_Attributes');
+              FOR rec_attr IN (
+                  SELECT id, name
+                    FROM ur_algo_attributes
+                   WHERE hotel_id = rec_hotel.id
+                     AND type = 'C'
+                   ORDER BY id DESC
+              ) LOOP
+                  APEX_JSON.OPEN_OBJECT;
+                  APEX_JSON.WRITE('id', rec_attr.id);
+                  APEX_JSON.WRITE('name', rec_attr.name);
+                  APEX_JSON.CLOSE_OBJECT;
+              END LOOP;
+              APEX_JSON.CLOSE_ARRAY; -- Global_Attributes
       
               -- APEX_JSON.OPEN_ARRAY('OCCUPANCY');
               -- FOR rec_algo IN (
@@ -249,7 +316,7 @@
               APEX_JSON.OPEN_ARRAY('Hotel_Occupancy');
               APEX_JSON.WRITE('OCCUPANCY');
               APEX_JSON.CLOSE_ARRAY; -- Hotel_Occupancy
-      
+      */
       
               APEX_JSON.CLOSE_OBJECT; -- templates 
       
@@ -282,7 +349,7 @@
     authorization-scheme: Must Not Be Public User
 
   subscription: 
-    version-number: 45851681016562
+    version-number: 45852199442732
 
 - # ====== Application Process: AJX_GET_HOTEL_TEMP_ALL =========
   id: 12953111970538217
@@ -314,6 +381,7 @@
            --AND UPPER(UT.DEFINITION) like '%STAY_DATE%'
            -- and UT.ID in (select TEMPLATE_ID FROM UR_ALGO_ATTRIBUTES where ATTRIBUTE_QUALIFIER = 'STAY_DATE' and HOTEL_ID = rec_hotel.ID )
              AND UPPER(UT.DEFINITION) LIKE '%'||(select NAME FROM UR_ALGO_ATTRIBUTES where ATTRIBUTE_QUALIFIER = 'STAY_DATE' and TEMPLATE_ID  = UT.ID)||'%'
+             and UT.ACTIVE = 'Y'
         ) LOOP
           APEX_JSON.OPEN_OBJECT;
           APEX_JSON.WRITE('id', rec.id);
@@ -360,7 +428,7 @@
     authorization-scheme: Must Not Be Public User
 
   subscription: 
-    version-number: 45851681196202
+    version-number: 45851953359048
 
 - # ====== Application Process: AJX_MANAGE_REPORT_VIEW =========
   id: 13074446782408611
@@ -481,7 +549,7 @@
     authorization-scheme: Must Not Be Public User
 
   subscription: 
-    version-number: 45648374462989
+    version-number: 45852197850733
 
 - # ====== Application Process: AJX_GET_TEMP_COL_DETAILS =======
   id: 13474710824262164
@@ -736,7 +804,7 @@
     authorization-scheme: Must Not Be Public User
 
   subscription: 
-    version-number: 45693609159575
+    version-number: 45851788123832
 
 - # ====== Application Process: AJX_MANAGE_REPORT_DASHBOARD ====
   id: 13749013797549241

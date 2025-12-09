@@ -19,6 +19,28 @@ navigation:
   cursor-focus: Do not focus cursor
   warn-on-unsaved-changes: true
 
+css: 
+  inline: |
+    .download-upload-wrapper {
+        display: flex;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    
+    #download_upload_region .t-Region-body {
+        padding: 0;
+    }
+    
+    #download_upload_region {
+        display: flex;
+        justify-content: flex-end;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+
 security: 
   authentication: Page Requires Authentication
   deep-linking: Application Default
@@ -1072,6 +1094,47 @@ regions:
       template-options: 
       - '#DEFAULT#'
 
+- # ====== Region: New =========================================
+  id: 31803252047175001
+  identification: 
+    name: New
+    type: Static Content
+
+  layout: 
+    sequence: 20
+    parent-region: Hotel Events # 12202741465869080
+    slot: BODY
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: true
+    column-span: 4
+
+  appearance: 
+    template: Title Bar
+    template-options: 
+    - '#DEFAULT#'
+    - t-BreadcrumbRegion--useBreadcrumbTitle
+    - t-Form--stretchInputs
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    static-id: download_upload_region
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
 page-items: 
 - # ====== Page Item: P9_HOTEL_LIST ============================
   id: 12890620865500103
@@ -1090,7 +1153,7 @@ page-items:
     type: No
 
   layout: 
-    sequence: 30
+    sequence: 40
     region: No Parent
     slot: BODY
     alignment: Left
@@ -1206,7 +1269,7 @@ buttons:
     start-new-row: true
     column: Automatic
     new-column: true
-    column-span: 10
+    column-span: Automatic
     alignment: Left center
 
   appearance: 
@@ -1215,8 +1278,7 @@ buttons:
     template-options: 
     - '#DEFAULT#'
     - t-Button--success
-    - t-Button--padTop
-    - t-Button--padBottom
+    - t-Button--gapTop
 
   behavior: 
     action: Redirect to Page in this Application
@@ -1236,14 +1298,14 @@ buttons:
     label: Upload Data
 
   layout: 
-    sequence: 30
-    region: Hotel Events # 12202741465869080
+    sequence: 20
+    region: New # 31803252047175001
     slot: BODY
     start-new-layout: false
     start-new-row: false
     column: Automatic
     new-column: true
-    column-span: 1
+    column-span: Automatic
     alignment: Left center
 
   appearance: 
@@ -1252,13 +1314,17 @@ buttons:
     template-options: 
     - '#DEFAULT#'
     - t-Button--primary
+    - t-Button--stretch
     - t-Button--padLeft
 
   behavior: 
     action: Redirect to Page in this Application
     target: 
-      url: 'f?p=&APP_ID.:27:&SESSION.::&DEBUG.:::'
+      url: 'f?p=&APP_ID.:27:&SESSION.::&DEBUG.:CR,27:P27_HOTEL_ID:&P0_HOTEL_ID.'
       page: 27 # Events Data Load
+      clear-cache: CR,27
+      values: 
+        p27_hotel_id: '&P0_HOTEL_ID.'
 
     warn-on-unsaved-changes: Do Not Check
 
@@ -1269,14 +1335,14 @@ buttons:
     label: Download Template
 
   layout: 
-    sequence: 20
-    region: Hotel Events # 12202741465869080
+    sequence: 10
+    region: New # 31803252047175001
     slot: BODY
     start-new-layout: false
     start-new-row: false
     column: Automatic
     new-column: true
-    column-span: 1
+    column-span: 7
     alignment: Left center
 
   appearance: 
@@ -1284,6 +1350,7 @@ buttons:
     hot: false
     template-options: 
     - '#DEFAULT#'
+    - t-Button--stretch
 
   behavior: 
     action: Defined by Dynamic Action
@@ -1606,30 +1673,25 @@ processes:
     language: PL/SQL
     pl/sql-code: |
       DECLARE
-          l_blob    BLOB;
-          l_clob    CLOB;
+          l_blob   BLOB;
+          l_mime   VARCHAR2(200);
+          l_b64    CLOB;
       BEGIN
-          -- Read static file
-          SELECT file_content
-          INTO l_blob
-          FROM apex_application_static_files
-          WHERE application_id = :APP_ID
-            AND file_name = 'sample events.txt';
+          SELECT file_content, mime_type
+          INTO   l_blob, l_mime
+          FROM   apex_application_static_files
+          WHERE  application_id = :APP_ID
+          AND    file_name = 'Sample Load Data Template.xlsx';
       
-          -- Convert blob → base64
-          l_clob := apex_web_service.blob2clobbase64(l_blob);
+          -- Convert BLOB → Base64
+          l_b64 := apex_web_service.blob2clobbase64(l_blob);
       
+          -- Return JSON
           apex_json.open_object;
-          apex_json.write('filename', 'sample events.txt');
-          apex_json.write('mime', 'text/plain');
-          apex_json.write('content', l_clob);
+          apex_json.write('content', l_b64);
+          apex_json.write('mime', l_mime);
+          apex_json.write('filename', 'Sample Load Data Template.xlsx');
           apex_json.close_object;
-      
-      EXCEPTION
-          WHEN OTHERS THEN
-              apex_json.open_object;
-              apex_json.write('error', SQLERRM);
-              apex_json.close_object;
       END;
       
 

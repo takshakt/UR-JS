@@ -693,8 +693,8 @@ css:
       margin-bottom: 30px;
       border: 1px solid #333;
       overflow: auto; /* enables both horizontal and vertical scroll */
-      /* max-height: 500px; ~10 rows */
-      max-width: 100%;
+       max-height: 500px; /*~10 rows */
+      max-width: auto;
     }
     
     table {
@@ -702,7 +702,7 @@ css:
       border-collapse: collapse;
       border-spacing: 0;
       color: #ddd;
-      table-layout: fixed; /* important: makes column widths fixed and evenly distributed */
+      table-layout: auto; /* important: makes column widths fixed and evenly distributed */
       word-wrap: break-word; /* wraps long words inside cells */
     }
     

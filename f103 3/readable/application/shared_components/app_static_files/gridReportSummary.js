@@ -172,6 +172,57 @@ apex.server.process(
 }
 
 let tabledata_val =[];
+ 
+ 
+ function applyAliasToTableDataArray(tableDataArray) {
+
+    tableDataArray.forEach((tableData, idx) => {
+
+        // Skip if element is null or not an object
+        if (!tableData || typeof tableData !== "object") {
+            console.warn(`Skipping index ${idx}: not valid tableData`, tableData);
+            return;
+        }
+
+        const exp = tableData.expressionJson;
+        if (!exp || !exp.columnConfiguration || !exp.columnConfiguration.selectedColumns) {
+            console.warn(`Skipping index ${idx}: missing expressionJson`, tableData);
+            return;
+        }
+
+        const selectedCols = exp.columnConfiguration.selectedColumns;
+
+        // Build alias map "RN6 - Taj Test 1" → "RN6"
+        const aliasMap = {};
+        selectedCols.forEach(col => {
+            const fullName = `${col.col_name} - ${col.temp_name}`;
+            aliasMap[fullName] = col.alias_name;
+        });
+
+        console.log(`aliasMap for index ${idx}:`, aliasMap);
+
+        // Validate rows structure
+        if (!tableData.rows || !tableData.rows.rows || !Array.isArray(tableData.rows.rows)) {
+            console.warn(`Skipping index ${idx}: invalid rows structure`, tableData);
+            return;
+        }
+
+        // Replace keys inside the rows
+        tableData.rows.rows = tableData.rows.rows.map(row => {
+            const newRow = {};
+
+            Object.keys(row).forEach(key => {
+                const newKey = aliasMap[key] || key;
+                newRow[newKey] = row[key];
+            });
+
+            return newRow;
+        });
+
+    }); // end forEach
+}
+
+
 
 function loadReportDataForCanvas(reportId, position_temp, reportName_temp) {
     console.log('Loading report data for reportId:', reportId);
@@ -217,9 +268,7 @@ function loadReportDataForCanvas(reportId, position_temp, reportName_temp) {
                     });
                 });
                  
-                   console.log('columns_list:>>>>>===========>>',columns_list);
-                   console.log('col_alias:>>>>>===========>>',col_alias);
-                 console.log('expressionJson:>>>>>===========>>',expressionJson);
+                  
 
                 apex.server.process(
                     "AJX_GET_REPORT_DATA",
@@ -246,6 +295,13 @@ function loadReportDataForCanvas(reportId, position_temp, reportName_temp) {
                                                 rows: pData,
                                                 expressionJson: JSON.parse(expressionJson)
                                             };
+
+                                console.log('before renderGrid:>>>>tableData :> ',tableData);
+                                
+                               applyAliasToTableDataArray(tableData);
+
+                            console.log("after alias replace >>>", tableData);
+
                                 renderGrid(expressionJson,position_temp); 
                               
                                     // ✅ Always use the name the user entered in the modal
@@ -395,28 +451,38 @@ function loadReportDataForCanvas(reportId, position_temp, reportName_temp) {
 
        
    
+function replaceDayNameFunction(expr) {
+    if (!expr || typeof expr !== "string") return expr;
 
+    return expr.replace(/Day\s*\(\s*([^)]+?)\s*\)/gi,
+        "(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date($1).getDay() ])"
+    );
+}
 
 
 
 
 
 function createCard(index, data) {
-    console.log('data:>>>>',data);
-    let expressionJson = data?.expressionJson; 
+    // console.log('data:>>>>',data);
+    let expressionJson = data?.expressionJson;
     const card = document.createElement('div');
 
     // 1. Initialize Data
     let rowsArray = data?.rows?.rows ? JSON.parse(JSON.stringify(data.rows.rows)) : (data?.rows || []);
     let columns = data ? JSON.parse(JSON.stringify(data.columns)) : [];
-    
+
     // Initialize Expression JSON
     if (typeof expressionJson === "string") {
-        try { expressionJson = JSON.parse(expressionJson); } 
-        catch (err) { console.warn("Invalid expressionJson", err); expressionJson = {}; }
+        try {
+            expressionJson = JSON.parse(expressionJson);
+        } catch (err) {
+            console.warn("Invalid expressionJson", err);
+            expressionJson = {};
+        }
     }
     expressionJson = expressionJson || {};
-
+    console.log('createCard data:>>>>>>>>>>>',data);
     // 2. Map "Col Names" and "Long Names" to "Alias"
     const nameToAliasMap = {};
     const selectedColumns = expressionJson?.columnConfiguration?.selectedColumns || [];
@@ -432,90 +498,234 @@ function createCard(index, data) {
     const aggregationMap = {};
     const visibilityMap = {};
     const tempNameMap = {}; // Track temp_name for each column
-    
-   // Build maps
-        selectedColumns.forEach(col => {
-            dataTypeMap[col.alias_name] = col.data_type;
-            aggregationMap[col.alias_name] = col.aggregation;
 
-            // Default visibility: show
-            visibilityMap[col.alias_name] = col.visibility ?? 'show';
+    // Build maps
+    selectedColumns.forEach(col => {
+        dataTypeMap[col.alias_name] = col.data_type;
+        aggregationMap[col.alias_name] = col.aggregation;
 
-            tempNameMap[col.alias_name] = col.temp_name;
-        });
+        // Default visibility: show
+        visibilityMap[col.alias_name] = col.visibility ?? 'show';
 
-        // Filter columns (hide only when explicitly hidden)
-        columns = columns.filter(col => {
-            const dbName = col.name || col.key;
-            const alias = nameToAliasMap[dbName] || dbName;
-            return visibilityMap[alias] !== 'hide';
-        });
+        tempNameMap[col.alias_name] = col.temp_name;
+    });
+
+    // Filter columns (hide only when explicitly hidden)
+    columns = columns.filter(col => {
+        const dbName = col.name || col.key;
+        const alias = nameToAliasMap[dbName] || dbName;
+        return visibilityMap[alias] !== 'hide';
+    });
 
 
+    // ==========================================================================================
+    // 5. Process Formulas (Calculate values BEFORE filtering and grouping) - MODIFIED SECTION
+    // ==========================================================================================
+    // ==========================================================================================
     // 5. Process Formulas (Calculate values BEFORE filtering and grouping)
+    // ==========================================================================================
     const formulas = expressionJson?.formulas || {};
     const formulaKeys = Object.keys(formulas);
 
     if (formulaKeys.length > 0) {
-    const tokensToReplace = Object.keys(nameToAliasMap).sort((a, b) => b.length - a.length);
+        // Sort tokens by length (longest first) to avoid partial replacements
+        const tokensToReplace = Object.keys(nameToAliasMap).sort((a, b) => b.length - a.length);
 
-    rowsArray.forEach(row => {
-        formulaKeys.forEach(fColKey => {
-            const formulaObj = formulas[fColKey];
-            let expr = typeof formulaObj === 'object' ? formulaObj.formula : formulaObj;
-            if (!expr) return;
+        rowsArray.forEach(row => {
+            formulaKeys.forEach(fColKey => {
+                const formulaObj = formulas[fColKey];
+                
+                // Get Formula & Filter Strings
+                let expr = typeof formulaObj === 'object' ? formulaObj.formula : formulaObj;
+                let filterExpr = typeof formulaObj === 'object' ? formulaObj.filter : null;
 
-            
-tokensToReplace.forEach(token => { 
-    // Skip if formula already marked to skip
-    if (expr === null) return;
+                if (!expr) return;
 
-    if (expr.includes(token)) {
-        const alias = nameToAliasMap[token];
-        let val = row[alias];
-        let tempval = val;
-        // Trim strings first
-        if (typeof val === 'string') val = val.trim();
+                // ---------------------------------------------------------
+                // STEP A: EVALUATE FILTER (Date Logic vs Numeric Logic)
+                // ---------------------------------------------------------
+                let filterPassed = true; // Default to true if no filter exists
 
-        // If val is a non-empty, non-numeric string → skip formula and assign directly
-        if (typeof val === 'string' && val !== '' && isNaN(val)) {
-            row[fColKey] = tempval; // assign actual string value like "Sold Out"
-            expr = tempval;         // skip formula evaluation
-            return;
-        }
+                if (filterExpr) {
+                    
+                    // --- Pattern 1: DAY_OF_WEEK Filter ---
+                    // Syntax: [Column Name] DAY_OF_WEEK ( Mon,Tue,Wed )
+                    const dayOfWeekMatch = filterExpr.match(/\[(.*?)\]\s*DAY_OF_WEEK\s*\((.*?)\)/i);
+                    
+                    // --- Pattern 2a: DATE_RANGE Filter ---
+                    // Syntax: [Column Name] DATE_RANGE ( 2023-01-01, 2023-01-31 )
+                    const dateRangeMatch = filterExpr.match(/\[(.*?)\]\s*DATE_RANGE\s*\((.*?)\)/i);
 
-        // Null/undefined/empty → treat as 0
-        if (val === undefined || val === null || val === '') val = 0;
+                    // --- Pattern 2b: BETWEEN Filter ---
+                    // Syntax: [Column Name] between 2025-10-01 and 2025-10-11
+                    const betweenMatch = filterExpr.match(/\[(.*?)\]\s*between\s*(.*?)\s*and\s*(.*?)$/i);
 
-        // Numeric string → convert
-        else if (typeof val === 'string') {
-            const num = parseFloat(val.replace(/,/g, ''));
-            val = isNaN(num) ? 0 : num;
-        }
+                    // --------------------------------------------------------------------------------
+                    // 1. DAY_OF_WEEK Logic
+                    // --------------------------------------------------------------------------------
+                    if (dayOfWeekMatch) {
+                        const colLongName = dayOfWeekMatch[1].trim();
+                        const allowedDaysStr = dayOfWeekMatch[2]; // "Mon,Thu,Fri"
+                        
+                        // Map Day Abbreviations to Index (0=Sun, 1=Mon, etc.)
+                        const dayMap = { 'sun': 0, 'mon': 1, 'tue': 2, 'wed': 3, 'thu': 4, 'fri': 5, 'sat': 6 };
+                        const allowedIndices = allowedDaysStr.split(',')
+                            .map(d => dayMap[d.trim().toLowerCase().substring(0, 3)])
+                            .filter(d => d !== undefined);
 
-        // Replace token with value
-        if (expr !== null) expr = expr.split(token).join(val);
-    }
-});
+                        const alias = nameToAliasMap[colLongName] || colLongName;
+                        const dateVal = row[alias];
 
+                        if (!dateVal) {
+                            filterPassed = false;
+                        } else {
+                            const d = new Date(dateVal);
+                            if (isNaN(d.getTime())) {
+                                filterPassed = false; 
+                            } else {
+                                const currentDayIndex = d.getDay(); // 0-6
+                                filterPassed = allowedIndices.includes(currentDayIndex);
+                            }
+                        }
+                    } 
+                    // --------------------------------------------------------------------------------
+                    // 2. DATE_RANGE / BETWEEN Logic (Combined)
+                    // --------------------------------------------------------------------------------
+                    else if (dateRangeMatch || betweenMatch) {
+                        let colLongName, startStr, endStr;
 
+                        if (dateRangeMatch) {
+                            // Logic for DATE_RANGE (Pattern 2a)
+                            colLongName = dateRangeMatch[1].trim();
+                            const rangeStr = dateRangeMatch[2]; 
+                            [startStr, endStr] = rangeStr.split(',').map(s => s.trim());
+                        } else if (betweenMatch) {
+                            // Logic for BETWEEN (Pattern 2b)
+                            colLongName = betweenMatch[1].trim();
+                            startStr = betweenMatch[2].trim();
+                            endStr = betweenMatch[3].trim();
+                        }
+                        
+                        // Get Row Value
+                        const alias = nameToAliasMap[colLongName] || colLongName;
+                        const dateVal = row[alias];
 
+                        // Validate input dates
+                        if (!dateVal || !startStr || !endStr) {
+                            filterPassed = false;
+                        } else {
+                            const d = new Date(dateVal);
+                            const start = new Date(startStr);
+                            const end = new Date(endStr);
+                            
+                            // Set time boundaries for inclusive comparison
+                            start.setHours(0, 0, 0, 0);
+                            end.setHours(23, 59, 59, 999); 
 
-            // ----------------------------
-            // Evaluate expression safely
-            // ----------------------------
-            try {
-                //console.log('expr:>>>>',expr);
-                let result = eval(expr);
-                if (typeof result === 'number' && !Number.isInteger(result)) {
-                    result = parseFloat(result.toFixed(2));
+                            if (isNaN(d.getTime()) || isNaN(start.getTime()) || isNaN(end.getTime())) {
+                                filterPassed = false;
+                            } else {
+                                // Check range (Inclusive)
+                                filterPassed = d.getTime() >= start.getTime() && d.getTime() <= end.getTime();
+                            }
+                        }
+                    }
+                    // --------------------------------------------------------------------------------
+                    // 3. Standard Numeric Filter (Fallback using eval)
+                    // --------------------------------------------------------------------------------
+                    else {
+                        let evalFilterExpr = filterExpr;
+                        
+                        // Replace tokens ONLY for the standard filter evaluation
+                        tokensToReplace.forEach(token => {
+                            if (evalFilterExpr.includes(token)) {
+                                const alias = nameToAliasMap[token];
+                                let val = row[alias];
+
+                                // Handle numeric conversion
+                                if (val === undefined || val === null || val === '') val = 0;
+                                else if (typeof val === 'string') {
+                                    const num = parseFloat(val.replace(/,/g, ''));
+                                    val = isNaN(num) ? 0 : num;
+                                }
+                                // Ensure replacement works even if token has special regex chars (though unlikely here)
+                                evalFilterExpr = evalFilterExpr.split(token).join(val);
+                            }
+                        });
+
+                        try {
+                            // Only eval if it doesn't look like a failed Date command
+                            if(!evalFilterExpr.includes("DAY_OF_WEEK") && !evalFilterExpr.includes("DATE_RANGE") && !evalFilterExpr.includes("between")) {
+                                filterPassed = eval(evalFilterExpr);
+                            } else {
+                                // Filter expression contained date keywords but failed regex match (e.g., malformed syntax)
+                                filterPassed = false; 
+                            }
+                        } catch (err) {
+                            console.warn("Numeric Filter Eval Error:", err.message, "Expression:", evalFilterExpr);
+                            filterPassed = false;
+                        }
+                    }
                 }
-                row[fColKey] = result;
-            } catch (err) {
-                row[fColKey] = expr; // fallback if formula fails
-            }
+                
+                // If Filter Failed -> Set NULL (or empty string) and STOP processing this row's formula
+                if (!filterPassed) {
+                    row[fColKey] = null; // Use null to trigger the empty string rendering fix
+                    return; 
+                }
+
+                // ---------------------------------------------------------
+                // STEP B: CALCULATE FORMULA (Only if Filter Passed)
+                // ---------------------------------------------------------
+                
+                // Replace tokens in the calculation expression
+                tokensToReplace.forEach(token => {
+                    if (expr.includes(token)) {
+                        const alias = nameToAliasMap[token];
+                        let val = row[alias];
+
+                        if (val === undefined || val === null || val === '') {
+                            val = 0; // numeric fallback
+                        } else if (!isNaN(val)) {
+                            // Numeric strings or numbers → convert to number
+                            val = parseFloat(val);
+                        } else if (!isNaN(Date.parse(val))) {
+                            // Date strings → keep in quotes for DayName
+                            val = `"${val}"`;
+                        } else {
+                            // Text strings → keep exactly as-is
+                            val = `"${val}"`;
+                        }
+
+                        // Replace token in expr
+                        expr = expr.split(token).join(val);
+                    }
+                });
+
+                    console.log('expr:>>>>>>>>',expr);
+                    expr = replaceDayNameFunction(expr);
+
+                try {
+                    let result = eval(expr);
+                    
+                    // NAN CHECK: Force NaN to null
+                    if (typeof result === 'number' && isNaN(result)) {
+                        row[fColKey] = null;
+                    } else {
+                        // Round decimals
+                        if (typeof result === 'number' && !Number.isInteger(result)) {
+                            result = parseFloat(result.toFixed(2));
+                        }
+                        row[fColKey] = result;
+                    }
+
+                } catch (err) {
+                    row[fColKey] = expr; // fallback
+                }
+            });
         });
-    });
+    }
+    // ==========================================================================================
 
     // Add Formula Columns to Header if missing
     formulaKeys.forEach(fColKey => {
@@ -537,7 +747,6 @@ tokensToReplace.forEach(token => {
             }
         }
     });
-}
 
 
     // 6. Process Filters
@@ -555,9 +764,9 @@ tokensToReplace.forEach(token => {
                 matches.forEach(tokenWithBrackets => {
                     const tokenLongName = tokenWithBrackets.replace(/[\[\]]/g, '');
                     const tokenAlias = nameToAliasMap[tokenLongName] || tokenLongName;
-                    
+
                     let val = row[tokenAlias];
-                    
+
                     if (val === undefined || val === null) val = 0;
                     if (typeof val === 'string') val = parseFloat(val.replace(/,/g, '')) || 0;
 
@@ -590,14 +799,14 @@ tokensToReplace.forEach(token => {
     // If we have a group by column, perform grouping
     if (groupByColumn && groupByAlias) {
         const groups = {};
-        
+
         rowsArray.forEach(row => {
             const dateValue = row[groupByAlias];
             if (!dateValue) return;
-            
+
             let groupKey;
             const date = new Date(dateValue);
-            
+
             switch (groupByColumn.aggregation) {
                 case 'week':
                     // Get ISO week - format: '2025-W38'
@@ -625,7 +834,7 @@ tokensToReplace.forEach(token => {
                 default:
                     groupKey = dateValue; // Use original date value
             }
-            
+
             if (!groups[groupKey]) {
                 groups[groupKey] = [];
             }
@@ -635,26 +844,28 @@ tokensToReplace.forEach(token => {
         // Aggregate each group
         groupedData = Object.keys(groups).map(groupKey => {
             const groupRows = groups[groupKey];
-            const aggregatedRow = { [groupByAlias]: groupKey }; // Set the grouped date value
-            
+            const aggregatedRow = {
+                [groupByAlias]: groupKey
+            }; // Set the grouped date value
+
             // For each column, apply aggregation based on data type and aggregation setting
             selectedColumns.forEach(col => {
                 const alias = col.alias_name;
-                
+
                 // Skip the group by column (already set)
                 if (alias === groupByAlias) return;
-                
+
                 // Skip if column is not visible
                 if (col.visibility !== 'show') return;
-                
+
                 const dataType = col.data_type?.toUpperCase();
                 let aggregation = col.aggregation || 'none';
-                
+
                 // AUTO-APPLY SUM AGGREGATION FOR FORMULA COLUMNS (temp_name = 'calc')
                 if (tempNameMap[alias] === 'calc' && aggregation === 'none') {
                     aggregation = 'sum';
                 }
-                
+
                 if ((dataType === 'NUMBER' || tempNameMap[alias] === 'calc') && aggregation !== 'none') {
                     // Get all values for this column in the group
                     const values = groupRows.map(row => {
@@ -665,7 +876,7 @@ tokensToReplace.forEach(token => {
                         }
                         return value;
                     }).filter(val => !isNaN(val));
-                    
+
                     // Apply aggregation function
                     switch (aggregation) {
                         case 'sum':
@@ -686,7 +897,7 @@ tokensToReplace.forEach(token => {
                         default:
                             aggregatedRow[alias] = values[0] || 0; // First value as default
                     }
-                    
+
                     // Format numbers to 2 decimal places if needed
                     if (typeof aggregatedRow[alias] === 'number' && !Number.isInteger(aggregatedRow[alias])) {
                         aggregatedRow[alias] = parseFloat(aggregatedRow[alias].toFixed(2));
@@ -710,20 +921,20 @@ tokensToReplace.forEach(token => {
                         }
                         return value;
                     }).filter(val => !isNaN(val));
-                    
+
                     // Apply sum aggregation for formula columns
                     aggregatedRow[alias] = values.reduce((sum, val) => sum + val, 0);
-                    
+
                     // Format numbers to 2 decimal places if needed
                     if (typeof aggregatedRow[alias] === 'number' && !Number.isInteger(aggregatedRow[alias])) {
                         aggregatedRow[alias] = parseFloat(aggregatedRow[alias].toFixed(2));
                     }
                 }
             });
-            
+
             return aggregatedRow;
         });
-        
+
         // Sort grouped data by the group key (chronological order)
         groupedData.sort((a, b) => {
             return a[groupByAlias].localeCompare(b[groupByAlias]);
@@ -733,36 +944,36 @@ tokensToReplace.forEach(token => {
     // 8. Calculate Column Totals - USING dataTypeMap to skip DATE columns
     const columnTotals = {};
     const columnIsNumeric = {};
-    
+
     columns.forEach(col => {
         const dbName = col.name || col.key;
         const alias = nameToAliasMap[dbName] || dbName;
-        
+
         // Skip DATE columns using dataTypeMap
         if (dataTypeMap[alias]?.toUpperCase() === 'DATE') {
             columnTotals[alias] = null;
             columnIsNumeric[alias] = false;
             return; // Skip this column entirely
         }
-        
+
         let total = 0;
         let hasNumericValues = false;
         let numericCount = 0;
 
         groupedData.forEach(row => {
             let value = row[alias] !== undefined ? row[alias] : (row[col.key] || null);
-            
+
             // Skip null, undefined, empty strings, and non-numeric values
             if (value === null || value === undefined || value === '') {
                 return;
             }
-            
+
             // Convert to number if possible
             if (typeof value === 'string') {
                 // Remove commas and try to parse
                 const cleanValue = value.toString().replace(/,/g, '');
                 const numericValue = parseFloat(cleanValue);
-                
+
                 if (!isNaN(numericValue) && isFinite(numericValue)) {
                     total += numericValue;
                     hasNumericValues = true;
@@ -788,7 +999,7 @@ tokensToReplace.forEach(token => {
 
     // 9. Process Conditional Formatting (skip if grouped data)
     const conditionalRules = expressionJson?.conditionalFormatting || {};
-    const cellStyles = {}; 
+    const cellStyles = {};
 
     // Only apply conditional formatting if we're not showing grouped data
     if (!groupByColumn) {
@@ -798,7 +1009,10 @@ tokensToReplace.forEach(token => {
             const targetAlias = nameToAliasMap[targetLongName] || targetLongName;
 
             rules.forEach(rule => {
-                const { expression, color } = rule;
+                const {
+                    expression,
+                    color
+                } = rule;
                 if (!expression) return;
 
                 groupedData.forEach((row, rowIndex) => {
@@ -818,7 +1032,7 @@ tokensToReplace.forEach(token => {
                         if (eval(exprToEval)) {
                             cellStyles[`${rowIndex}:${targetAlias}`] = `color: ${color}; font-weight: bold;`;
                         }
-                    } catch (err) { }
+                    } catch (err) {}
                 });
             });
         });
@@ -828,31 +1042,34 @@ tokensToReplace.forEach(token => {
     const columnCount = columns.length;
     const widthClass = getCardWidthClass(columnCount);
 
-    
-    if(userType === 'P' ){
-        card.classList.add('table-cardsData', 'p-4', 'rounded-xl', 'flex', 'flex-col', 'transition-all', 'duration-300', 'hover:shadow-lg', 'draggable', 'relative', widthClass);
-    card.setAttribute('data-index', index);
-    card.setAttribute('draggable', true);
-    }
-    else{
 
-        card.classList.add('table-cardsData', 'p-4', 'rounded-xl', 'flex', 'flex-col', 'transition-all', 'duration-300', 'hover:shadow-lg'
-                    , 'relative', widthClass);
-    card.setAttribute('data-index', index);
+    if (userType === 'P') {
+        card.classList.add('table-cardsData', 'p-4', 'rounded-xl', 'flex', 'flex-col', 'transition-all', 'duration-300', 'hover:shadow-lg', 'draggable', 'relative', widthClass);
+        card.setAttribute('data-index', index);
+        card.setAttribute('draggable', true);
+    } else {
+
+        card.classList.add('table-cardsData', 'p-4', 'rounded-xl', 'flex', 'flex-col', 'transition-all', 'duration-300', 'hover:shadow-lg',
+            'relative', widthClass);
+        card.setAttribute('data-index', index);
         card.setAttribute('draggable', false);
     }
-    //console.log('columns:>>>>>>>>>>>>>>>>>>>',columns);
-     //${col.name}
- // <span class="col-count-badge bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-xs">${columnCount} cols</span>
+
+    columns = reorderVisibleColumns(columns, expressionJson);
+    console.log('reorderVisibleColumns :>>> columns',columns ); 
+    console.log('reorderVisibleColumns :>>> data',data );
+     console.log('reorderVisibleColumns :>>> groupedData',groupedData );
+    //${col.name}              ${nameToAliasMap[col.name || col.key]}
+    // <span class="col-count-badge bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-xs">${columnCount} cols</span>
     if (data) {
         const displayTitle = data.title || `Table ${index + 1}`;
         card.classList.remove('justify-center', 'items-center');
-        
+
         card.innerHTML = `
             <div class="card-content h-full flex flex-col">
                 <div class="flex justify-between items-center mb-2">
                     <h3 class="text-lg font-bold truncate text-blue-600 dark:text-blue-400" title="${displayTitle}">${displayTitle}</h3>
-                   
+                    
                 </div>
                 <div class="flex-grow overflow-hidden flex flex-col">
                     <div class="table-container flex-grow overflow-auto custom-scrollbar"> 
@@ -861,8 +1078,9 @@ tokensToReplace.forEach(token => {
                                 <tr>
                                     ${columns.map(col => `
                                         <th class="font-medium border-b dark:border-gray-600 px-4 py-2 whitespace-nowrap">
-                                           
-                                            ${nameToAliasMap[col.name || col.key]}
+                                            
+                                            
+                                            ${nameToAliasMap[col.name || col.key] ? nameToAliasMap[col.name || col.key] : col.name}
                                         </th>
                                     `).join('')}
                                 </tr>
@@ -873,14 +1091,16 @@ tokensToReplace.forEach(token => {
                                         ${columns.map(col => {
                                             const dbName = col.name || col.key;
                                             const alias = nameToAliasMap[dbName] || dbName;
-                                            const cellValue = row[alias] !== undefined ? row[alias] : (row[col.key] || '-');
+                                            
+                                            // MODIFIED LINE: If value is null, return empty string (''), otherwise return value or '-'
+                                            let cellValue = row[alias] !== undefined ? row[alias] : (row[col.key] || '-');
+                                            if (cellValue === null) cellValue = '';
                                             const style = cellStyles[`${rowIndex}:${alias}`] || '';
                                             return `<td class="px-4 py-2 whitespace-nowrap" style="${style}">${cellValue}</td>`;
-                                        }).join('')}
+                                            }).join('')}
                                     </tr>
                                 `).join('')}
                             </tbody>
-                            <!-- STICKY FOOTER WITH TOTALS -->
                             <tfoot class="sticky bottom-0 bg-gray-100 dark:bg-gray-700 z-10">
                                 <tr>
                                     ${columns.map(col => {
@@ -899,8 +1119,7 @@ tokensToReplace.forEach(token => {
                                         } else {
                                             return `
                                                 <th class="font-medium border-t dark:border-gray-600 px-4 py-2 whitespace-nowrap">
-                                                    <!-- Empty for non-numeric and date columns -->
-                                                </th>
+                                                    </th>
                                             `;
                                         }
                                     }).join('')}
@@ -932,6 +1151,54 @@ tokensToReplace.forEach(token => {
 }
 
 
+
+
+
+function reorderVisibleColumns(visibleColumns, expressionJson) {
+    
+    if (typeof expressionJson === "string") {
+        try {
+            expressionJson = JSON.parse(expressionJson);
+        } catch (e) {
+            console.warn("expressionJson string could not be parsed. Using original.", e);
+        }
+    }
+
+    const positions = expressionJson?.columnposition;
+    console.log('expressionJson:>>>>>>>>>>',expressionJson);
+    console.log('positions:>>>>>>>>>>',positions);
+    if (!Array.isArray(positions)) {
+        console.warn("No columnposition array found. Skipping reorder.");
+        return visibleColumns;
+    }
+    console.log('positions after positions');
+    // Build map: baseColumnName → position
+    const posMap = {};
+    positions.forEach(p => {
+        if (p.baseColumnName != null && typeof p.position === "number") {
+            posMap[p.baseColumnName] = p.position;
+        }
+    });
+
+    // Detect key property
+    const keyProp = visibleColumns.length > 0
+        ? visibleColumns[0].originalName != null
+            ? "originalName"
+            : "key"
+        : "key";
+
+    // Sort using the map
+    return [...visibleColumns].sort((a, b) => {
+        const posA = posMap[a[keyProp]];
+        const posB = posMap[b[keyProp]];
+
+        if (posA == null && posB == null) return 0;
+        if (posA == null) return 1;
+        if (posB == null) return -1;
+
+        return posA - posB;
+    });
+}
 
 
      

@@ -6256,15 +6256,12 @@ processes:
               -- MODIFICATION: Select the ID from the attributes table
               SELECT
                   a.id,
-                  a.name || ' (' || t.name || ')' AS name
+                  a.name
               FROM
-                  ur_algo_attributes a,
-                  ur_templates t
+                  ur_algo_attributes a
               WHERE
-                  a.template_id = t.id
-                  AND a.hotel_id = l_hotel_id
-                  AND a.attribute_qualifier = 'OCCUPANCY'
-                  and t.active = 'Y'
+                  a.hotel_id = l_hotel_id
+                  AND a.attribute_qualifier = 'CALCULATED_OCCUPANCY'
               ORDER BY
                   name
           ) LOOP

@@ -43,9 +43,11 @@ prompt --install
 @@application/shared_components/files/reportsummary_min_js.sql
 @@application/shared_components/files/icons_untapped_revenue_branding_2_sq_logo_png.sql
 @@application/shared_components/files/gridreportsummary_js.sql
-@@application/shared_components/files/reportdashboardjs_min_js.sql
-@@application/shared_components/files/algopgjs_min_js.sql
 @@application/shared_components/files/sample_events_txt.sql
+@@application/shared_components/files/sample_load_data_template_old_xlsx.sql
+@@application/shared_components/files/sample_load_data_template_xlsx.sql
+@@application/shared_components/files/algopgjs_min_js.sql
+@@application/shared_components/files/reportdashboardjs_min_js.sql
 @@application/shared_components/files/gridreportsummary_min_js.sql
 @@application/shared_components/files/dynamicreportjs_min_js.sql
 @@application/plugin_settings.sql
@@ -120,6 +122,7 @@ prompt --install
 @@application/shared_components/globalization/dyntranslations.sql
 @@application/shared_components/security/authentications/oracle_apex_accounts.sql
 @@application/shared_components/data_loads/ur_data_load.sql
+@@application/shared_components/data_loads/ur_load_data_excel.sql
 @@application/user_interfaces/combined_files.sql
 @@application/pages/page_00000.sql
 @@application/pages/page_00001.sql
@@ -153,6 +156,7 @@ prompt --install
 @@application/pages/page_00029.sql
 @@application/pages/page_00030.sql
 @@application/pages/page_00031.sql
+@@application/pages/page_00032.sql
 @@application/pages/page_00033.sql
 @@application/pages/page_00067.sql
 @@application/pages/page_00167.sql

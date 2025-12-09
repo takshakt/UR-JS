@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -24,9 +24,10 @@ wwv_imp_workspace.create_flow(
 ,p_flow_language=>'en'
 ,p_flow_language_derived_from=>'FLOW_PRIMARY_LANGUAGE'
 ,p_allow_feedback_yn=>'Y'
-,p_date_format=>'DS'
-,p_timestamp_format=>'DS'
-,p_timestamp_tz_format=>'DS'
+,p_date_format=>'DD-MON-YYYY'
+,p_date_time_format=>'DD-MON-YYYY HH24:MI:SS'
+,p_timestamp_format=>'DD-MON-YYYY HH24:MI:SS'
+,p_timestamp_tz_format=>'DD-MON-YYYY HH24:MI:SS'
 ,p_flow_image_prefix => nvl(wwv_flow_application_install.get_image_prefix,'')
 ,p_authentication_id=>wwv_flow_imp.id(8558171425922130)
 ,p_application_tab_set=>1
@@ -49,8 +50,8 @@ wwv_imp_workspace.create_flow(
 ,p_substitution_string_01=>'APP_NAME'
 ,p_substitution_value_01=>'Untapped Revenue'
 ,p_file_prefix => nvl(wwv_flow_application_install.get_static_app_file_prefix,'')
-,p_files_version=>4493
-,p_version_scn=>45851770718627
+,p_files_version=>5294
+,p_version_scn=>45852239151605
 ,p_print_server_type=>'NATIVE'
 ,p_file_storage=>'DB'
 ,p_is_pwa=>'Y'

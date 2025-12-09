@@ -215,24 +215,6 @@
     mime-type: text/javascript
     file-character-set: Unicode UTF-8
 
-- # ====== Static Application File: ReportDashboardJS.min.js ===
-  id: 28803830626901682
-  identification: 
-    file-name: ReportDashboardJS.min.js
-
-  attributes: 
-    mime-type: text/javascript
-    file-character-set: Unicode UTF-8
-
-- # ====== Static Application File: AlgoPGJS.min.js ============
-  id: 28836889874374787
-  identification: 
-    file-name: AlgoPGJS.min.js
-
-  attributes: 
-    mime-type: text/javascript
-    file-character-set: Unicode UTF-8
-
 - # ====== Static Application File: sample events.txt ==========
   id: 28841928936818229
   identification: 
@@ -242,8 +224,44 @@
     mime-type: text/plain
     file-character-set: Unicode UTF-8
 
+- # ====== Static Application File: Sample Load Data Template ol
+  id: 31280716840126590
+  identification: 
+    file-name: Sample Load Data Template old.xlsx
+
+  attributes: 
+    mime-type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+    file-character-set: Unicode UTF-8
+
+- # ====== Static Application File: Sample Load Data Template.xl
+  id: 31885936823968941
+  identification: 
+    file-name: Sample Load Data Template.xlsx
+
+  attributes: 
+    mime-type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+    file-character-set: Unicode UTF-8
+
+- # ====== Static Application File: AlgoPGJS.min.js ============
+  id: 33061368056874931
+  identification: 
+    file-name: AlgoPGJS.min.js
+
+  attributes: 
+    mime-type: text/javascript
+    file-character-set: Unicode UTF-8
+
+- # ====== Static Application File: ReportDashboardJS.min.js ===
+  id: 33093644494248034
+  identification: 
+    file-name: ReportDashboardJS.min.js
+
+  attributes: 
+    mime-type: text/javascript
+    file-character-set: Unicode UTF-8
+
 - # ====== Static Application File: gridReportSummary.min.js ===
-  id: 29967825928900744
+  id: 33097659413311850
   identification: 
     file-name: gridReportSummary.min.js
 
@@ -252,7 +270,7 @@
     file-character-set: Unicode UTF-8
 
 - # ====== Static Application File: DynamicReportJS.min.js =====
-  id: 30205738519735875
+  id: 33289638153871651
   identification: 
     file-name: DynamicReportJS.min.js
 

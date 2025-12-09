@@ -61,7 +61,7 @@ regions:
           h.CURRENCY_CODE,
           h.ASSOCIATION_START_DATE,
           h.ASSOCIATION_END_DATE,
-          h.Occupancy,
+          h.Capacity,
           a.NAME AS PRIMARY_STRATEGY
       FROM UR_HOTELS h
       LEFT JOIN UR_HOTEL_GROUPS g ON h.GROUP_ID = g.ID
@@ -885,14 +885,14 @@ regions:
       control-break/aggregate: true
       hide: true
 
-  - # ====== Column: Occupancy ===================================
-    id: 27536433542203303
+  - # ====== Column: CAPACITY ====================================
+    id: 31066987809723101
     identification: 
-      column-name: Occupancy
+      column-name: CAPACITY
       type: Number Field
 
     heading: 
-      heading: Total Occupancy
+      heading: Total Capacity
       alignment: center
 
     settings: 
@@ -912,7 +912,7 @@ regions:
 
     source: 
       type: Database Column
-      database-column: OCCUPANCY
+      database-column: CAPACITY
       data-type: NUMBER
       query-only: false
       primary-key: false

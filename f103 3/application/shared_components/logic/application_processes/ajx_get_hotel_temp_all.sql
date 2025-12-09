@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -38,6 +38,7 @@ wwv_flow_imp_shared.create_flow_process(
 '     --AND UPPER(UT.DEFINITION) like ''%STAY_DATE%''',
 '     -- and UT.ID in (select TEMPLATE_ID FROM UR_ALGO_ATTRIBUTES where ATTRIBUTE_QUALIFIER = ''STAY_DATE'' and HOTEL_ID = rec_hotel.ID )',
 '       AND UPPER(UT.DEFINITION) LIKE ''%''||(select NAME FROM UR_ALGO_ATTRIBUTES where ATTRIBUTE_QUALIFIER = ''STAY_DATE'' and TEMPLATE_ID  = UT.ID)||''%''',
+'       and UT.ACTIVE = ''Y''',
 '  ) LOOP',
 '    APEX_JSON.OPEN_OBJECT;',
 '    APEX_JSON.WRITE(''id'', rec.id);',
@@ -77,7 +78,7 @@ wwv_flow_imp_shared.create_flow_process(
 'END;'))
 ,p_process_clob_language=>'PLSQL'
 ,p_security_scheme=>'MUST_NOT_BE_PUBLIC_USER'
-,p_version_scn=>45851681196202
+,p_version_scn=>45851953359048
 );
 wwv_flow_imp.component_end;
 end;

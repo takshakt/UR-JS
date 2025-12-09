@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -16,7 +16,7 @@ wwv_flow_imp_shared.create_list_of_values(
 ,p_lov_name=>'UR HOTEL PRICE OVERRIDE REASON'
 ,p_lov_query=>'.'||wwv_flow_imp.id(17929612222098296)||'.'
 ,p_location=>'STATIC'
-,p_version_scn=>45828713777832
+,p_version_scn=>45852237284616
 );
 wwv_flow_imp_shared.create_static_lov_data(
  p_id=>wwv_flow_imp.id(17929948981098298)
@@ -55,40 +55,22 @@ wwv_flow_imp_shared.create_static_lov_data(
 ,p_lov_return_value=>'LOCAL_EVENT_CANCELLATION'
 );
 wwv_flow_imp_shared.create_static_lov_data(
- p_id=>wwv_flow_imp.id(17932376180098306)
-,p_lov_disp_sequence=>7
-,p_lov_disp_value=>'Incorrect Rate Loaded in System'
-,p_lov_return_value=>'INCORRECT_RATE_LOADED'
-);
-wwv_flow_imp_shared.create_static_lov_data(
  p_id=>wwv_flow_imp.id(17932788936098307)
-,p_lov_disp_sequence=>8
+,p_lov_disp_sequence=>7
 ,p_lov_disp_value=>'Rate Parity Adjustment'
 ,p_lov_return_value=>'RATE_PARITY_ADJUSTMENT'
+);
+wwv_flow_imp_shared.create_static_lov_data(
+ p_id=>wwv_flow_imp.id(17932376180098306)
+,p_lov_disp_sequence=>8
+,p_lov_disp_value=>'Incorrect Rate Loaded in System'
+,p_lov_return_value=>'INCORRECT_RATE_LOADED_IN_SYSTEM'
 );
 wwv_flow_imp_shared.create_static_lov_data(
  p_id=>wwv_flow_imp.id(17933512204098310)
 ,p_lov_disp_sequence=>10
 ,p_lov_disp_value=>'Package Inclusion Adjustment'
 ,p_lov_return_value=>'PACKAGE_INCLUSION_ADJUSTMENT'
-);
-wwv_flow_imp_shared.create_static_lov_data(
- p_id=>wwv_flow_imp.id(27885590992667464)
-,p_lov_disp_sequence=>11
-,p_lov_disp_value=>'Rate Parity Adjustment'
-,p_lov_return_value=>'PACKAGE_INCLUSION_ADJUSTMENT'
-);
-wwv_flow_imp_shared.create_static_lov_data(
- p_id=>wwv_flow_imp.id(27885823382667466)
-,p_lov_disp_sequence=>12
-,p_lov_disp_value=>'Incorrect rate loaded in the system'
-,p_lov_return_value=>'INCORRECT_RATE_LOADED_IN_THE_SYSTEM'
-);
-wwv_flow_imp_shared.create_static_lov_data(
- p_id=>wwv_flow_imp.id(27886256381667467)
-,p_lov_disp_sequence=>13
-,p_lov_disp_value=>'Package inclusion adjustment'
-,p_lov_return_value=>'RATE_PARITY_ADJUSTMENT'
 );
 wwv_flow_imp.component_end;
 end;

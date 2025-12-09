@@ -5,7 +5,7 @@ begin
 --   Manifest End
 wwv_flow_imp.component_begin (
  p_version_yyyy_mm_dd=>'2024.11.30'
-,p_release=>'24.2.10'
+,p_release=>'24.2.11'
 ,p_default_workspace_id=>7945143549875994
 ,p_default_application_id=>103
 ,p_default_id_offset=>0
@@ -960,8 +960,8 @@ unistr('    // \2705 Extract headers and rows directly from HTML'),
 '  margin-bottom: 30px;',
 '  border: 1px solid #333;',
 '  overflow: auto; /* enables both horizontal and vertical scroll */',
-'  /* max-height: 500px; ~10 rows */',
-'  max-width: 100%;',
+'   max-height: 500px; /*~10 rows */',
+'  max-width: auto;',
 '}',
 '',
 'table {',
@@ -969,7 +969,7 @@ unistr('    // \2705 Extract headers and rows directly from HTML'),
 '  border-collapse: collapse;',
 '  border-spacing: 0;',
 '  color: #ddd;',
-'  table-layout: fixed; /* important: makes column widths fixed and evenly distributed */',
+'  table-layout: auto; /* important: makes column widths fixed and evenly distributed */',
 '  word-wrap: break-word; /* wraps long words inside cells */',
 '}',
 '',
