@@ -387,7 +387,8 @@ FUNCTION EVALUATE(
       END;
     END LOOP;
 
-    -- If we found a ranking template, load the VALID_COMP_COUNT attribute
+    -- If we found a ranking template, load VALID_COMP_COUNT and ALL rank attributes
+    -- Loading all rank attributes ensures shifted ranks are available when needed
     IF l_ranking_template_id IS NOT NULL THEN
       log_debug('Ranking template detected: ' || l_ranking_template_id);
       l_valid_comp_count_attr_id := get_valid_comp_count_attr_id(l_ranking_template_id);
@@ -399,6 +400,20 @@ FUNCTION EVALUATE(
       ELSE
         log_debug('WARNING: VALID_COMP_COUNT attribute not found for template: ' || l_ranking_template_id);
       END IF;
+
+      -- Load ALL rank attributes for this template (to support rank shifting)
+      DECLARE
+        l_rank_attr_id VARCHAR2(255);
+      BEGIN
+        FOR i IN 1..20 LOOP  -- Support up to 20 competitors
+          l_rank_attr_id := get_attr_id_for_rank(l_ranking_template_id, i);
+          EXIT WHEN l_rank_attr_id IS NULL;
+          IF NOT l_aliases.EXISTS(l_rank_attr_id) THEN
+            l_aliases(l_rank_attr_id) := l_rank_attr_id;
+          END IF;
+        END LOOP;
+        log_debug('Loaded all rank attributes for template: ' || l_ranking_template_id);
+      END;
     ELSE
       log_debug('No ranking template detected in algorithm');
     END IF;
