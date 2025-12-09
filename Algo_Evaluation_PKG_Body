@@ -100,6 +100,10 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
   -- Applies rank shifting to an expression based on VALID_COMP_COUNT
   -- If expression references R8, R9, R10 but only 6 competitors exist,
   -- shifts to R4, R5, R6 (keeping the relative positions at the end)
+  --
+  -- IMPORTANT: If there aren't enough competitors to satisfy the distinct ranks needed,
+  -- returns NULL to signal that the expression cannot be evaluated.
+  -- Example: AVG(R1, R2, R3) with only 2 competitors cannot be shifted without duplicates.
   FUNCTION apply_rank_shifting(
     p_expression IN VARCHAR2,
     p_valid_comp_count IN NUMBER,
@@ -107,7 +111,9 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
   ) RETURN VARCHAR2 IS
     l_result VARCHAR2(4000) := p_expression;
     l_max_rank NUMBER := 0;
+    l_min_rank NUMBER := 999;
     l_shift_amount NUMBER := 0;
+    l_distinct_rank_count NUMBER := 0;
     l_attr_id VARCHAR2(255);
     l_rank_num NUMBER;
     l_new_rank NUMBER;
@@ -115,14 +121,17 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
     l_pos PLS_INTEGER := 1;
     l_attr_in_expr VARCHAR2(255);
     TYPE t_rank_map IS TABLE OF NUMBER INDEX BY VARCHAR2(255);
+    TYPE t_rank_set IS TABLE OF BOOLEAN INDEX BY PLS_INTEGER;
     l_rank_attrs t_rank_map;
+    l_unique_ranks t_rank_set;
   BEGIN
-    -- If no valid competitors or NULL, return original expression
+    -- If no valid competitors or NULL, return NULL to skip evaluation
     IF p_valid_comp_count IS NULL OR p_valid_comp_count = 0 THEN
-      RETURN p_expression;
+      log_debug('Rank shifting: No valid competitors, returning NULL');
+      RETURN NULL;
     END IF;
 
-    -- Step 1: Find all rank attributes in the expression and determine max rank
+    -- Step 1: Find all rank attributes in the expression, track unique ranks
     LOOP
       l_attr_in_expr := REGEXP_SUBSTR(p_expression, '#[A-F0-9]+#', 1, l_pos);
       EXIT WHEN l_attr_in_expr IS NULL;
@@ -130,31 +139,57 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
       l_rank_num := get_rank_number_from_attr_id(l_attr_id);
       IF l_rank_num IS NOT NULL THEN
         l_rank_attrs(l_attr_id) := l_rank_num;
+        l_unique_ranks(l_rank_num) := TRUE;
         IF l_rank_num > l_max_rank THEN
           l_max_rank := l_rank_num;
+        END IF;
+        IF l_rank_num < l_min_rank THEN
+          l_min_rank := l_rank_num;
         END IF;
       END IF;
       l_pos := l_pos + 1;
     END LOOP;
 
-    -- Step 2: Calculate shift amount if needed
+    -- Count distinct ranks referenced
+    l_distinct_rank_count := l_unique_ranks.COUNT;
+
+    -- Step 2: Check if we have enough competitors for the distinct ranks needed
+    IF l_distinct_rank_count > p_valid_comp_count THEN
+      -- Not enough competitors to satisfy the expression without duplicates
+      -- Example: AVG(R1, R2, R3) with only 2 competitors
+      log_debug('Rank shifting: Not enough competitors. Need ' || l_distinct_rank_count ||
+                ' distinct ranks but only ' || p_valid_comp_count || ' competitors available. Returning NULL.');
+      RETURN NULL;
+    END IF;
+
+    -- Step 3: Calculate shift amount if needed
     IF l_max_rank > p_valid_comp_count THEN
       l_shift_amount := l_max_rank - p_valid_comp_count;
-      log_debug('Rank shifting: max_rank=' || l_max_rank || ', valid_comp=' || p_valid_comp_count || ', shift=' || l_shift_amount);
+      log_debug('Rank shifting: max_rank=' || l_max_rank || ', min_rank=' || l_min_rank ||
+                ', valid_comp=' || p_valid_comp_count || ', shift=' || l_shift_amount);
+
+      -- Verify shifted min rank won't go below 1
+      IF (l_min_rank - l_shift_amount) < 1 THEN
+        log_debug('Rank shifting: Shift would push min rank below 1. Returning NULL.');
+        RETURN NULL;
+      END IF;
     ELSE
       -- No shifting needed
       RETURN p_expression;
     END IF;
 
-    -- Step 3: Replace rank attribute IDs with shifted ones (process in reverse to handle multi-digit ranks)
+    -- Step 4: Replace rank attribute IDs with shifted ones
     l_attr_id := l_rank_attrs.FIRST;
     WHILE l_attr_id IS NOT NULL LOOP
       l_rank_num := l_rank_attrs(l_attr_id);
-      l_new_rank := GREATEST(l_rank_num - l_shift_amount, 1);
+      l_new_rank := l_rank_num - l_shift_amount;
       l_new_attr_id := get_attr_id_for_rank(p_template_id, l_new_rank);
       IF l_new_attr_id IS NOT NULL THEN
         l_result := REPLACE(l_result, '#' || l_attr_id || '#', '#' || l_new_attr_id || '#');
         log_debug('Shifted rank ' || l_rank_num || ' -> ' || l_new_rank || ' (attr: ' || l_attr_id || ' -> ' || l_new_attr_id || ')');
+      ELSE
+        log_debug('Rank shifting: Could not find attribute for rank ' || l_new_rank || '. Returning NULL.');
+        RETURN NULL;
       END IF;
       l_attr_id := l_rank_attrs.NEXT(l_attr_id);
     END LOOP;
@@ -667,6 +702,7 @@ FUNCTION EVALUATE(
                       DECLARE
                         l_valid_comp_count NUMBER := NULL;
                         l_shifted_expr VARCHAR2(4000);
+                        l_skip_due_to_insufficient_comp BOOLEAN := FALSE;
                       BEGIN
                         log_debug('............ Rank shifting check: l_valid_comp_count_attr_id=' || NVL(l_valid_comp_count_attr_id, 'NULL') || ', l_ranking_template_id=' || NVL(l_ranking_template_id, 'NULL'));
                         IF l_valid_comp_count_attr_id IS NOT NULL THEN
@@ -675,7 +711,11 @@ FUNCTION EVALUATE(
                             log_debug('............ VALID_COMP_COUNT for ' || TO_CHAR(v_stay_date, 'YYYY-MM-DD') || ' = ' || NVL(TO_CHAR(l_valid_comp_count), 'NULL'));
                             IF l_valid_comp_count IS NOT NULL THEN
                               l_shifted_expr := apply_rank_shifting(l_raw_expr, l_valid_comp_count, l_ranking_template_id);
-                              IF l_shifted_expr <> l_raw_expr THEN
+                              IF l_shifted_expr IS NULL THEN
+                                -- Not enough competitors to evaluate expression
+                                log_debug('............ Insufficient competitors for expression. Skipping date.');
+                                l_skip_due_to_insufficient_comp := TRUE;
+                              ELSIF l_shifted_expr <> l_raw_expr THEN
                                 log_debug('............ Rank shifting applied. Original: ' || l_raw_expr || ' -> Shifted: ' || l_shifted_expr);
                                 l_raw_expr := l_shifted_expr;
                               ELSE
@@ -687,6 +727,23 @@ FUNCTION EVALUATE(
                           END IF;
                         ELSE
                           log_debug('............ No ranking template detected, skipping rank shifting');
+                        END IF;
+
+                        -- If insufficient competitors, output "Manual Override Required" and skip to next date
+                        IF l_skip_due_to_insufficient_comp THEN
+                          l_applied_rule_json := '{'
+                            || '"region":"' || REPLACE(region_rec.region_name,'"','\"')
+                            || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"')
+                            || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD')
+                            || '", "valid_comp_count":' || NVL(TO_CHAR(l_valid_comp_count), 'null')
+                            || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"')
+                            || '", "result_type":"text"'
+                            || ', "result":"Manual Override Required"'
+                            || ', "note":"insufficient_competitors"'
+                            || '}';
+                          PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), 'Manual Override Required', l_applied_rule_json));
+                          v_any_rule_matched_for_date := TRUE;
+                          GOTO end_date_processing;
                         END IF;
                       END;
                       -- / RANK SHIFTING
