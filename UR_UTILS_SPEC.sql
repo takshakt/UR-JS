@@ -271,5 +271,20 @@ PROCEDURE fetch_templates(
         p_message      OUT VARCHAR2
     );
 
+    -- ============================================================================
+    -- PROCEDURE: refresh_file_profile_and_collection
+    -- ============================================================================
+    -- Purpose: Refresh file profile and populate APEX collection for template creation
+    -- Used by: P1002 (Templates v2) when skip_rows or sheet_name changes
+    -- ============================================================================
+    PROCEDURE refresh_file_profile_and_collection (
+        p_file_name             IN  VARCHAR2,
+        p_skip_rows             IN  NUMBER   DEFAULT 0,
+        p_sheet_name            IN  VARCHAR2 DEFAULT NULL,
+        p_collection_name       IN  VARCHAR2 DEFAULT 'UR_FILE_DATA_PROFILES',
+        p_status                OUT VARCHAR2,
+        p_message               OUT VARCHAR2
+    );
+
 END ur_utils;
 /
