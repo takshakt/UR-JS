@@ -1757,6 +1757,158 @@ END ' || v_trigger_name || ';
         END IF;
 
         ------------------------------------------------------------------------
+        -- Step 0.5: Re-parse file from temp_blob using template metadata
+        ------------------------------------------------------------------------
+        DECLARE
+            v_file_type NUMBER;
+            v_skip_rows NUMBER;
+            v_sheet_file_name VARCHAR2(200);
+            v_sheet_display_name VARCHAR2(200);
+            v_matched_sheet_file_name VARCHAR2(200);
+            v_file_blob BLOB;
+            v_filename VARCHAR2(500);
+            v_profile CLOB;
+            v_columns CLOB;
+        BEGIN
+            -- Get template metadata
+            BEGIN
+                SELECT
+                    JSON_VALUE(metadata, '$.file_type' RETURNING NUMBER),
+                    JSON_VALUE(metadata, '$.skip_rows' RETURNING NUMBER DEFAULT 0 ON ERROR),
+                    JSON_VALUE(metadata, '$.sheet_file_name'),
+                    JSON_VALUE(metadata, '$.sheet_display_name')
+                INTO v_file_type, v_skip_rows, v_sheet_file_name, v_sheet_display_name
+                FROM ur_templates
+                WHERE id = p_template_id;
+            EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                    p_status := 'E';
+                    p_message := 'Template not found for ID: ' || p_template_id;
+                    RETURN;
+            END;
+
+            -- Get file from temp_blob
+            BEGIN
+                SELECT BLOB_CONTENT, FILENAME
+                INTO v_file_blob, v_filename
+                FROM temp_BLOB
+                WHERE ID = p_file_id;
+            EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                    p_status := 'E';
+                    p_message := 'File not found for ID: ' || p_file_id;
+                    RETURN;
+            END;
+
+            -- Re-parse file based on file type
+            BEGIN
+                IF v_file_type = 1 THEN
+                    -- Excel: Match by sheet_display_name to get sheet_file_name
+                    IF v_sheet_display_name IS NOT NULL THEN
+                        BEGIN
+                            -- Find the actual sheet_file_name by matching sheet_display_name
+                            SELECT SHEET_FILE_NAME
+                            INTO v_matched_sheet_file_name
+                            FROM TABLE(
+                                apex_data_parser.get_xlsx_worksheets(
+                                    p_content => v_file_blob
+                                )
+                            )
+                            WHERE SHEET_DISPLAY_NAME = v_sheet_display_name;
+
+                            -- Use the matched sheet_file_name for parsing
+                            v_profile := apex_data_parser.discover(
+                                p_content => v_file_blob,
+                                p_file_name => v_filename,
+                                p_skip_rows => NVL(v_skip_rows, 0),
+                                p_xlsx_sheet_name => v_matched_sheet_file_name,
+                                p_max_rows => NULL
+                            );
+                        EXCEPTION
+                            WHEN NO_DATA_FOUND THEN
+                                -- Fallback: try using sheet_file_name directly if display name doesn't match
+                                v_profile := apex_data_parser.discover(
+                                    p_content => v_file_blob,
+                                    p_file_name => v_filename,
+                                    p_skip_rows => NVL(v_skip_rows, 0),
+                                    p_xlsx_sheet_name => v_sheet_file_name,
+                                    p_max_rows => NULL
+                                );
+                        END;
+                    ELSE
+                        -- No sheet_display_name, use sheet_file_name directly
+                        v_profile := apex_data_parser.discover(
+                            p_content => v_file_blob,
+                            p_file_name => v_filename,
+                            p_skip_rows => NVL(v_skip_rows, 0),
+                            p_xlsx_sheet_name => v_sheet_file_name,
+                            p_max_rows => NULL
+                        );
+                    END IF;
+                ELSIF v_file_type = 2 THEN
+                    -- CSV: Use skip_rows ONLY
+                    v_profile := apex_data_parser.discover(
+                        p_content => v_file_blob,
+                        p_file_name => v_filename,
+                        p_skip_rows => NVL(v_skip_rows, 0),
+                        p_max_rows => NULL
+                    );
+                ELSE
+                    -- JSON/XML or other: Use defaults
+                    v_profile := apex_data_parser.discover(
+                        p_content => v_file_blob,
+                        p_file_name => v_filename,
+                        p_max_rows => NULL
+                    );
+                END IF;
+            EXCEPTION
+                WHEN OTHERS THEN
+                    p_status := 'E';
+                    p_message := 'Error re-parsing file: ' || SQLERRM;
+                    RETURN;
+            END;
+
+            -- Extract columns with correct data types
+            BEGIN
+                SELECT JSON_ARRAYAGG(
+                         JSON_OBJECT(
+                           'name' VALUE jt.name,
+                           'data_type' VALUE CASE jt.data_type
+                                              WHEN 1 THEN 'TEXT'
+                                              WHEN 2 THEN 'NUMBER'
+                                              WHEN 3 THEN 'DATE'
+                                              ELSE 'TEXT'
+                                            END,
+                           'pos' VALUE 'COL' || LPAD(TO_CHAR(jt.ord), 3, '0')
+                         ) RETURNING CLOB
+                       )
+                INTO v_columns
+                FROM JSON_TABLE(
+                       v_profile,
+                       '$."columns"[*]'
+                       COLUMNS (
+                         ord FOR ORDINALITY,
+                         name VARCHAR2(100) PATH '$.name',
+                         data_type NUMBER PATH '$."data-type"'
+                       )
+                     ) jt;
+
+                -- Update temp_blob with correctly parsed columns
+                UPDATE temp_BLOB
+                SET columns = v_columns,
+                    profile = v_profile
+                WHERE ID = p_file_id;
+
+                COMMIT;
+            EXCEPTION
+                WHEN OTHERS THEN
+                    p_status := 'E';
+                    p_message := 'Error extracting columns: ' || SQLERRM;
+                    RETURN;
+            END;
+        END;
+
+        ------------------------------------------------------------------------
         -- Step 1: Create or truncate the APEX collection
         ------------------------------------------------------------------------
         BEGIN
