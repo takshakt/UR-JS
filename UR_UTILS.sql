@@ -6582,6 +6582,7 @@ commit;
                 l_expected_type    VARCHAR2(100);
                 l_is_valid         BOOLEAN;
                 l_warning_detail   VARCHAR2(4000);
+                l_stay_date_invalid BOOLEAN := FALSE;  -- Flag for critical stay_date validation failure
             BEGIN
                 IF NOT l_elem.is_object THEN
                     RAISE_APPLICATION_ERROR(-20002,'Row not a JSON object');
@@ -6651,18 +6652,35 @@ commit;
                                 END IF;
 
                                 IF v_test_date IS NULL THEN
-                                    l_is_valid := FALSE;
-                                    l_warning_detail := 'Column "' || l_col || '": Expected date value, got "' ||
-                                                       SUBSTR(l_val, 1, 50) ||
-                                                       CASE WHEN LENGTH(l_val) > 50 THEN '...' ELSE '' END ||
-                                                       '" - value will be set to NULL';
+                                    -- Check if this is the STAY_DATE column (critical validation)
+                                    IF l_stay_col_name IS NOT NULL AND l_col = UPPER(l_stay_col_name) THEN
+                                        l_stay_date_invalid := TRUE;  -- Set critical error flag
+                                        l_warning_detail := 'CRITICAL: STAY_DATE "' || l_col || '": Invalid date "' ||
+                                                           SUBSTR(l_val, 1, 50) ||
+                                                           CASE WHEN LENGTH(l_val) > 50 THEN '...' ELSE '' END ||
+                                                           '" - row will be rejected';
+                                    ELSE
+                                        -- Regular date column - just warning
+                                        l_is_valid := FALSE;
+                                        l_warning_detail := 'Column "' || l_col || '": Expected date value, got "' ||
+                                                           SUBSTR(l_val, 1, 50) ||
+                                                           CASE WHEN LENGTH(l_val) > 50 THEN '...' ELSE '' END ||
+                                                           '" - value will be set to NULL';
+                                    END IF;
                                 END IF;
                             EXCEPTION
                                 WHEN OTHERS THEN
-                                    -- If validation fails, mark as invalid
-                                    l_is_valid := FALSE;
-                                    l_warning_detail := 'Column "' || l_col || '": Date validation error for "' ||
-                                                       SUBSTR(l_val, 1, 50) || '"';
+                                    -- If this is STAY_DATE column, mark as critical error
+                                    IF l_stay_col_name IS NOT NULL AND l_col = UPPER(l_stay_col_name) THEN
+                                        l_stay_date_invalid := TRUE;
+                                        l_warning_detail := 'CRITICAL: STAY_DATE validation error for "' ||
+                                                           SUBSTR(l_val, 1, 50) || '" - row will be rejected';
+                                    ELSE
+                                        -- If validation fails, mark as invalid
+                                        l_is_valid := FALSE;
+                                        l_warning_detail := 'Column "' || l_col || '": Date validation error for "' ||
+                                                           SUBSTR(l_val, 1, 50) || '"';
+                                    END IF;
                             END;
                         END IF;
 
@@ -6693,8 +6711,16 @@ commit;
                      INSERT INTO debug_log(message) VALUES(l_stay_col_name||'--- check stay_date:>   '||l_col);
                     IF l_stay_col_name IS NOT NULL AND l_col = UPPER(l_stay_col_name) THEN
                         l_stay_val := l_val;
+
+                        -- Validate stay_date is not empty/NULL
+                        IF l_stay_val IS NULL OR LENGTH(TRIM(l_stay_val)) = 0 THEN
+                            l_stay_date_invalid := TRUE;
+                            l_row_warnings := l_row_warnings ||
+                                CASE WHEN l_row_warnings IS NOT NULL THEN '; ' ELSE '' END ||
+                                'CRITICAL: STAY_DATE is empty/NULL - row will be rejected';
+                        END IF;
                     else
-                        l_col_u := l_col_u ||'t.' || l_col ||' = '||'s.'||l_col ||' ,';    
+                        l_col_u := l_col_u ||'t.' || l_col ||' = '||'s.'||l_col ||' ,';
                     END IF;
 
                       
@@ -6724,8 +6750,30 @@ INSERT INTO debug_log(message) VALUES('--- l_val_formatted:>' || l_val_formatted
                     l_col_s := l_col_s ||'s.'||l_col||',';
                     l_vals := NVL(l_vals,'') || l_val_formatted;
                 END LOOP;
+
+                -- ============================================================
+                -- Skip row execution if stay_date is invalid
+                -- ============================================================
+                IF l_stay_date_invalid THEN
+                    -- Log as failed row
+                    l_fail_cnt := l_fail_cnt + 1;
+                    l_error_json := l_error_json ||
+                        '{"row":' || NVL(TO_CHAR(l_total_rows), '0') ||
+                        ',"line":' || NVL(TO_CHAR(v_line_number), 'null') ||
+                        ',"status":"FAILED"' ||
+                        ',"error":"Invalid STAY_DATE value cannot be parsed as date"' ||
+                        CASE WHEN l_row_warnings IS NOT NULL
+                             THEN ',"data_issues":"' || REPLACE(REPLACE(l_row_warnings, '"', ''''), CHR(10), ' ') || '"'
+                             ELSE ''
+                        END || '},';
+
+                    -- Skip to next row (don't execute INSERT/MERGE)
+                    GOTO skip_row_execution;
+                END IF;
+                -- ============================================================
+
                 INSERT INTO debug_log(message) VALUES('--- l_sql_select:> SELECT  '||l_vals_calculation||' FROM ( SELECT ' || rtrim(l_sql_select, ', ')  ||' FROM DUAL)p');
-              
+
          l_sql_main:=    'INSERT INTO '|| l_table_name ||' (HOTEL_ID,'|| l_cols ||',INTERFACE_LOG_ID) '||
         'SELECT '''||p_hotel_id||''' AS HOTEL_ID,'|| l_cols ||','''||l_log_id||''' AS INTERFACE_LOG_ID'||
         '  FROM ( SELECT  '||l_vals_calculation||' FROM ( SELECT ' || rtrim(l_sql_select, ', ')  ||' FROM DUAL)p'||
@@ -6768,7 +6816,11 @@ WHEN NOT MATCHED THEN
         l_stay_val := TO_CHAR(v_stay_date, 'DD/MM/YYYY');
     EXCEPTION
         WHEN OTHERS THEN
-            -- If conversion fails, set to NULL to prevent MERGE errors
+            -- Safety net: mark as invalid instead of allowing NULL
+            l_stay_date_invalid := TRUE;
+            l_row_warnings := l_row_warnings ||
+                CASE WHEN l_row_warnings IS NOT NULL THEN '; ' ELSE '' END ||
+                'CRITICAL: STAY_DATE conversion failed unexpectedly';
             l_stay_val := NULL;
     END;
 
@@ -6796,8 +6848,28 @@ END IF;
 
 
         INSERT INTO debug_log(message) VALUES('--- l_sql_main:>   '||l_sql_main);
-        
-            
+
+                -- ============================================================
+                -- Final check: Skip execution if stay_date became invalid during conversion
+                -- ============================================================
+                IF l_stay_date_invalid THEN
+                    -- Log as failed row
+                    l_fail_cnt := l_fail_cnt + 1;
+                    l_error_json := l_error_json ||
+                        '{"row":' || NVL(TO_CHAR(l_total_rows), '0') ||
+                        ',"line":' || NVL(TO_CHAR(v_line_number), 'null') ||
+                        ',"status":"FAILED"' ||
+                        ',"error":"Invalid STAY_DATE value cannot be parsed as date"' ||
+                        CASE WHEN l_row_warnings IS NOT NULL
+                             THEN ',"data_issues":"' || REPLACE(REPLACE(l_row_warnings, '"', ''''), CHR(10), ' ') || '"'
+                             ELSE ''
+                        END || '},';
+
+                    -- Skip to next row (don't execute INSERT/MERGE)
+                    GOTO skip_row_execution;
+                END IF;
+                -- ============================================================
+
                 EXECUTE IMMEDIATE l_sql_main;
 
                 l_success_cnt := l_success_cnt + 1;
@@ -6830,6 +6902,9 @@ END IF;
                          ELSE ''
                     END || '},';
         END;
+
+        <<skip_row_execution>>
+        NULL;  -- Label target for skipping invalid stay_date rows
     END LOOP;
     CLOSE c;
 
