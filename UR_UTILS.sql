@@ -6111,6 +6111,8 @@ PROCEDURE Load_Data_V2 (
     l_total_rows  NUMBER := 0;
     l_success_cnt NUMBER := 0;
     l_fail_cnt    NUMBER := 0;
+    l_insert_cnt  NUMBER := 0;  -- Track INSERT operations (WHEN NOT MATCHED)
+    l_update_cnt  NUMBER := 0;  -- Track UPDATE operations (WHEN MATCHED)
     l_log_id      RAW(16);
     l_error_json  CLOB := '[';
     l_first_err   BOOLEAN := TRUE;
@@ -6870,6 +6872,28 @@ END IF;
                 END IF;
                 -- ============================================================
 
+                -- Check if this will be INSERT or UPDATE (only for MERGE operations with stay_date)
+                IF l_stay_col_name IS NOT NULL THEN
+                    DECLARE
+                        v_exists NUMBER := 0;
+                    BEGIN
+                        EXECUTE IMMEDIATE
+                            'SELECT COUNT(*) FROM ' || l_table_name ||
+                            ' WHERE HOTEL_ID = :1 AND TO_CHAR(' || l_stay_col_name || ', ''DD/MM/YYYY'') = :2'
+                            INTO v_exists
+                            USING p_hotel_id, l_stay_val;
+
+                        IF v_exists > 0 THEN
+                            l_update_cnt := l_update_cnt + 1;  -- Record exists, will be UPDATE
+                        ELSE
+                            l_insert_cnt := l_insert_cnt + 1;  -- Record doesn't exist, will be INSERT
+                        END IF;
+                    END;
+                ELSE
+                    -- No STAY_DATE qualifier, so it's always INSERT
+                    l_insert_cnt := l_insert_cnt + 1;
+                END IF;
+
                 EXECUTE IMMEDIATE l_sql_main;
 
                 l_success_cnt := l_success_cnt + 1;
@@ -6966,7 +6990,10 @@ END IF;
         CASE
             -- All rows succeeded with no warnings
             WHEN l_total_rows = l_success_cnt AND l_warning_cnt = 0 THEN
-                l_total_rows || ' rows uploaded successfully.'
+                l_total_rows || ' rows uploaded successfully' ||
+                CASE WHEN l_stay_col_name IS NOT NULL THEN
+                    ' (' || l_insert_cnt || ' inserted, ' || l_update_cnt || ' updated)'
+                ELSE '' END || '.'
 
             -- All rows succeeded but some had data quality warnings
             WHEN l_total_rows = l_success_cnt AND l_warning_cnt > 0 THEN
@@ -6978,7 +7005,11 @@ END IF;
                         p_request     => 'MODAL'
                     ) ||
                 '" style="color:#000;text-decoration:underline;" data-dialog="true">' ||
-                l_success_cnt || ' rows uploaded with ' || l_warning_cnt || ' data quality warnings</a>'
+                l_success_cnt || ' rows uploaded' ||
+                CASE WHEN l_stay_col_name IS NOT NULL THEN
+                    ' (' || l_insert_cnt || ' inserted, ' || l_update_cnt || ' updated)'
+                ELSE '' END ||
+                ' with ' || l_warning_cnt || ' data quality warnings</a>'
 
             -- All rows failed
             WHEN l_total_rows = l_fail_cnt THEN
@@ -7002,7 +7033,11 @@ END IF;
                         p_request     => 'MODAL'
                     ) ||
                 '" style="color:#000;text-decoration:underline;" data-dialog="true">' ||
-                l_success_cnt || ' rows uploaded, ' || l_fail_cnt || ' failed' ||
+                l_success_cnt || ' rows uploaded' ||
+                CASE WHEN l_stay_col_name IS NOT NULL THEN
+                    ' (' || l_insert_cnt || ' inserted, ' || l_update_cnt || ' updated)'
+                ELSE '' END ||
+                ', ' || l_fail_cnt || ' failed' ||
                 CASE WHEN l_warning_cnt > 0 THEN ', ' || l_warning_cnt || ' warnings' ELSE '' END ||
                 '</a>'
         END;
