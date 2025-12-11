@@ -1872,7 +1872,7 @@ END ' || v_trigger_name || ';
             BEGIN
                 SELECT JSON_ARRAYAGG(
                          JSON_OBJECT(
-                           'name' VALUE jt.name,
+                           'name' VALUE REGEXP_REPLACE(TRIM(jt.name), '_+$', ''),
                            'data_type' VALUE CASE jt.data_type
                                               WHEN 1 THEN 'TEXT'
                                               WHEN 2 THEN 'NUMBER'
