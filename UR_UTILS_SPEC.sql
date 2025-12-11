@@ -183,6 +183,15 @@ create or replace PACKAGE ur_utils IS
     p_status          OUT boolean,
     p_message         OUT VARCHAR2);
     
+  PROCEDURE Load_Data_v2 (
+    p_file_id         IN  NUMBER,
+    p_template_key    IN  VARCHAR2,
+    p_hotel_id        IN  RAW,
+    p_collection_name IN  VARCHAR2,
+    p_status          OUT VARCHAR2,
+    p_message         OUT VARCHAR2
+);
+
 PROCEDURE fetch_templates(
     p_file_id           IN  NUMBER,
     p_hotel_id          IN  VARCHAR2,
