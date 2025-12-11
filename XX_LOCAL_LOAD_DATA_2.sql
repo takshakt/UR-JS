@@ -151,7 +151,7 @@ BEGIN
     SELECT
         jt.name             AS src_col,
         jt.name             AS tgt_col,
-        REGEXP_REPLACE(TRIM(jt.original_name), '_+$', '') AS orig_col,
+        ur_utils.sanitize_column_name(jt.original_name) AS orig_col,
         CASE 
             WHEN jt.mapping_type = 'Maps To' THEN jt.name
             WHEN jt.mapping_type IN ('Default', 'Calculation') THEN TRIM(jt.value)
@@ -189,7 +189,7 @@ LOOP
     l_mapping(UPPER(TRIM(rec.src_col))).parser_col := TRIM(rec.parser_col);
     l_mapping(UPPER(TRIM(rec.src_col))).data_type  := rec.datatype1;
     l_mapping(UPPER(TRIM(rec.src_col))).map_type   := TRIM(rec.map_type);
-    l_mapping(UPPER(TRIM(rec.src_col))).orig_col   := REGEXP_REPLACE(TRIM(rec.orig_col), '_+$', '');
+    l_mapping(UPPER(TRIM(rec.src_col))).orig_col   := ur_utils.sanitize_column_name(rec.orig_col);
 
     -- Debug logging
     INSERT INTO debug_log(message) VALUES('rec.src_col: ' || rec.src_col);
@@ -511,7 +511,7 @@ commit;
 
                 FOR j IN 1..l_keys.count LOOP
                     --l_col := UPPER(REPLACE(REPLACE(l_keys(j), '__', '_'), ' ', '_'));
-                    l_col := sanitize_column_name(l_keys(j));
+                    l_col := ur_utils.sanitize_column_name(l_keys(j));
 
                     k := l_mapping.first;
                     WHILE k IS NOT NULL LOOP
