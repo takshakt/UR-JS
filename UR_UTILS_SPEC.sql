@@ -220,6 +220,23 @@ PROCEDURE fetch_templates(
 
 
     -- ============================================================================
+    -- PROCEDURE: extract_column_sample_values
+    -- ============================================================================
+    -- Purpose: Extract sample values from uploaded file column for date format detection
+    -- Used by: P1002 (Template Creation) to get sample data for format detection
+    -- Returns: JSON array of sample values ["value1", "value2", ...]
+    -- ============================================================================
+    PROCEDURE extract_column_sample_values (
+        p_file_id         IN  NUMBER,              -- ID from temp_BLOB table
+        p_column_name     IN  VARCHAR2,            -- Sanitized column name to extract
+        p_skip_rows       IN  NUMBER   DEFAULT 0,  -- Number of header rows to skip
+        p_xlsx_sheet_name IN  VARCHAR2 DEFAULT NULL, -- Excel sheet name (NULL for CSV)
+        p_sample_values   OUT CLOB,                -- OUT: JSON array of sample values
+        p_status          OUT VARCHAR2,            -- OUT: 'S'=success, 'E'=error
+        p_message         OUT VARCHAR2             -- OUT: Status message
+    );
+
+    -- ============================================================================
     -- DATE PARSER: Comprehensive date format detection and parsing
     -- ============================================================================
     -- Purpose: Unified procedure for date format detection (DETECT mode),

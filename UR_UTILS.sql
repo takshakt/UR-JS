@@ -1336,7 +1336,8 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
                 c003,
                 c004,
                 c005,
-                c006
+                c006,
+                c007
             FROM
                 apex_collections
             WHERE
@@ -1351,6 +1352,7 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
             apex_json.write('value', rec.c004);
             apex_json.write('mapping_type', rec.c005);
             apex_json.write('original_name', rec.c006);
+            apex_json.write('format_mask', rec.c007);
             apex_json.close_object;
         END LOOP;
 
@@ -2042,6 +2044,7 @@ END ' || v_trigger_name || ';
                     NVL(jt.mapping_type, 'Maps To') AS mapping_type,
                     jt.value,
                     jt.qualifier,
+                    jt.format_mask,
                     jt.name || ' (' || jt.data_type || ')' AS column_desc
                 FROM
                     UR_TEMPLATES t,
@@ -2053,7 +2056,8 @@ END ' || v_trigger_name || ';
                             data_type     VARCHAR2(100) PATH '$.data_type',
                             mapping_type  VARCHAR2(100) PATH '$.mapping_type',
                             value         VARCHAR2(4000) PATH '$.value',
-                            qualifier     VARCHAR2(100) PATH '$.qualifier'
+                            qualifier     VARCHAR2(100) PATH '$.qualifier',
+                            format_mask   VARCHAR2(100) PATH '$.format_mask'
                         )
                     ) jt
                 WHERE
@@ -2158,6 +2162,14 @@ END ' || v_trigger_name || ';
                         p_seq             => v_seq_id,
                         p_attr_number     => 6,
                         p_attr_value      => rec.qualifier
+                    );
+
+                    -- Update c007: format_mask from template (NEW for date parser integration)
+                    APEX_COLLECTION.UPDATE_MEMBER_ATTRIBUTE(
+                        p_collection_name => p_collection_name,
+                        p_seq             => v_seq_id,
+                        p_attr_number     => 7,
+                        p_attr_value      => rec.format_mask
                     );
 
                 EXCEPTION
@@ -3707,6 +3719,127 @@ EXCEPTION
     WHEN OTHERS THEN
         RETURN NULL;
 END parse_date_safe;
+
+--------------------------------------------------------------------------------
+-- PROCEDURE: extract_column_sample_values
+-- PURPOSE: Extract sample values from uploaded file for date format detection
+-- PARAMETERS:
+--   p_file_id: ID from temp_BLOB table
+--   p_column_name: Sanitized column name to extract
+--   p_skip_rows: Number of header rows to skip
+--   p_xlsx_sheet_name: Excel sheet name (NULL for CSV/other)
+--   p_sample_values: OUT CLOB containing JSON array of sample values
+--   p_status: OUT 'S'=success, 'E'=error
+--   p_message: OUT status message
+--------------------------------------------------------------------------------
+PROCEDURE extract_column_sample_values(
+    p_file_id         IN  NUMBER,
+    p_column_name     IN  VARCHAR2,
+    p_skip_rows       IN  NUMBER   DEFAULT 0,
+    p_xlsx_sheet_name IN  VARCHAR2 DEFAULT NULL,
+    p_sample_values   OUT CLOB,
+    p_status          OUT VARCHAR2,
+    p_message         OUT VARCHAR2
+) IS
+    v_file_blob    BLOB;
+    v_filename     VARCHAR2(500);
+    v_profile      CLOB;
+    v_sql          CLOB;
+    v_col_position NUMBER;
+    TYPE t_samples IS TABLE OF VARCHAR2(4000);
+    v_samples      t_samples := t_samples();
+    v_json_array   JSON_ARRAY_T;
+BEGIN
+    p_status := 'S';
+    p_sample_values := NULL;
+
+    -- Get file from temp_blob
+    BEGIN
+        SELECT BLOB_CONTENT, FILENAME, profile
+        INTO v_file_blob, v_filename, v_profile
+        FROM temp_BLOB
+        WHERE ID = p_file_id;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            p_status := 'E';
+            p_message := 'File not found for ID: ' || p_file_id;
+            RETURN;
+    END;
+
+    -- Find column position from profile
+    BEGIN
+        SELECT jt.col_position
+        INTO v_col_position
+        FROM JSON_TABLE(
+            v_profile,
+            '$."columns"[*]'
+            COLUMNS (
+                col_position FOR ORDINALITY,
+                name VARCHAR2(200) PATH '$.name'
+            )
+        ) jt
+        WHERE sanitize_column_name(jt.name) = UPPER(TRIM(p_column_name))
+          AND ROWNUM = 1;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            p_status := 'E';
+            p_message := 'Column not found in profile: ' || p_column_name;
+            RETURN;
+    END;
+
+    -- Build dynamic SQL to extract column values (max 366 rows)
+    v_sql := 'SELECT COL' || LPAD(v_col_position, 3, '0') || ' FROM TABLE(';
+
+    IF p_xlsx_sheet_name IS NOT NULL THEN
+        v_sql := v_sql || 'apex_data_parser.parse(' ||
+                 'p_content => :blob, ' ||
+                 'p_file_name => :fname, ' ||
+                 'p_skip_rows => :skip, ' ||
+                 'p_xlsx_sheet_name => :sheet, ' ||
+                 'p_max_rows => 366))';
+    ELSE
+        v_sql := v_sql || 'apex_data_parser.parse(' ||
+                 'p_content => :blob, ' ||
+                 'p_file_name => :fname, ' ||
+                 'p_skip_rows => :skip, ' ||
+                 'p_max_rows => 366))';
+    END IF;
+
+    -- Execute and collect values
+    BEGIN
+        IF p_xlsx_sheet_name IS NOT NULL THEN
+            EXECUTE IMMEDIATE v_sql
+            BULK COLLECT INTO v_samples
+            USING v_file_blob, v_filename, p_skip_rows, p_xlsx_sheet_name;
+        ELSE
+            EXECUTE IMMEDIATE v_sql
+            BULK COLLECT INTO v_samples
+            USING v_file_blob, v_filename, p_skip_rows;
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            p_status := 'E';
+            p_message := 'Error extracting sample values: ' || SQLERRM;
+            RETURN;
+    END;
+
+    -- Convert to JSON array format: ["value1", "value2", ...]
+    v_json_array := JSON_ARRAY_T();
+    FOR i IN 1..v_samples.COUNT LOOP
+        IF v_samples(i) IS NOT NULL AND TRIM(v_samples(i)) IS NOT NULL THEN
+            v_json_array.append(v_samples(i));
+        END IF;
+    END LOOP;
+
+    -- Convert to CLOB
+    p_sample_values := v_json_array.to_clob();
+    p_message := 'Extracted ' || v_json_array.get_size() || ' sample values';
+
+EXCEPTION
+    WHEN OTHERS THEN
+        p_status := 'E';
+        p_message := 'Unexpected error: ' || SQLERRM;
+END extract_column_sample_values;
 
 -- Main date parser procedure
 PROCEDURE date_parser(
