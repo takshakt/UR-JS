@@ -660,7 +660,7 @@ WHEN NOT MATCHED THEN
              UPDATE SET '|| rtrim(l_col_u, ', ')  ||'
          WHEN NOT MATCHED THEN
              INSERT (HOTEL_ID,'|| l_cols ||',INTERFACE_LOG_ID)
-             VALUES (s.HOTEL_ID, '||rtrim(l_col_s, ', ')||',s.INTERFACE_LOG_ID)';
+             VALUES (s.HOTEL_ID, s.'|| REPLACE(l_cols, ',', ', s.') ||', s.INTERFACE_LOG_ID)';
 ELSE
     --  No STAY_DATE in template → simple INSERT only
     l_sql_main :=
