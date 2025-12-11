@@ -42,12 +42,13 @@ create or replace PROCEDURE XX_LOCAL_Load_Data_2 (
 
     -- mapping record type
     TYPE t_map_rec IS RECORD (
-        src_col     VARCHAR2(32000),  
-        tgt_col     VARCHAR2(32000),  
-        parser_col  VARCHAR2(32000),   
+        src_col     VARCHAR2(32000),
+        tgt_col     VARCHAR2(32000),
+        parser_col  VARCHAR2(32000),
         data_type   VARCHAR2(1000),
         map_type    VARCHAR2(1000),
-        orig_col    VARCHAR2(32000)
+        orig_col    VARCHAR2(32000),
+        format_mask VARCHAR2(100)
     );
     TYPE t_map IS TABLE OF t_map_rec INDEX BY VARCHAR2(32000);
 
@@ -152,11 +153,12 @@ BEGIN
         jt.name             AS src_col,
         jt.name             AS tgt_col,
         ur_utils.sanitize_column_name(jt.original_name) AS orig_col,
-        CASE 
+        CASE
             WHEN jt.mapping_type = 'Maps To' THEN jt.name
             WHEN jt.mapping_type IN ('Default', 'Calculation') THEN TRIM(jt.value)
         END                  AS parser_col,
         jt.mapping_type      AS map_type,
+        jt.format_mask       AS format_mask,
         (
             SELECT data_type
               FROM all_tab_cols
@@ -178,18 +180,20 @@ BEGIN
                  qualifier     VARCHAR2(100)  PATH '$.qualifier',
                  mapping_type  VARCHAR2(50)   PATH '$.mapping_type',
                  value         VARCHAR2(4000) PATH '$.value',
-                 original_name  VARCHAR2(4000) PATH '$.original_name'
+                 original_name  VARCHAR2(4000) PATH '$.original_name',
+                 format_mask   VARCHAR2(100)  PATH '$.format_mask'
          ) jt
     WHERE t.id = l_template_id
 )
 LOOP
     -- Assign to associative array
-    l_mapping(UPPER(TRIM(rec.src_col))).src_col    := TRIM(rec.src_col);
-    l_mapping(UPPER(TRIM(rec.src_col))).tgt_col    := TRIM(rec.tgt_col);
-    l_mapping(UPPER(TRIM(rec.src_col))).parser_col := TRIM(rec.parser_col);
-    l_mapping(UPPER(TRIM(rec.src_col))).data_type  := rec.datatype1;
-    l_mapping(UPPER(TRIM(rec.src_col))).map_type   := TRIM(rec.map_type);
-    l_mapping(UPPER(TRIM(rec.src_col))).orig_col   := ur_utils.sanitize_column_name(rec.orig_col);
+    l_mapping(UPPER(TRIM(rec.src_col))).src_col     := TRIM(rec.src_col);
+    l_mapping(UPPER(TRIM(rec.src_col))).tgt_col     := TRIM(rec.tgt_col);
+    l_mapping(UPPER(TRIM(rec.src_col))).parser_col  := TRIM(rec.parser_col);
+    l_mapping(UPPER(TRIM(rec.src_col))).data_type   := rec.datatype1;
+    l_mapping(UPPER(TRIM(rec.src_col))).map_type    := TRIM(rec.map_type);
+    l_mapping(UPPER(TRIM(rec.src_col))).orig_col    := ur_utils.sanitize_column_name(rec.orig_col);
+    l_mapping(UPPER(TRIM(rec.src_col))).format_mask := TRIM(rec.format_mask);
 
     -- Debug logging
     INSERT INTO debug_log(message) VALUES('rec.src_col: ' || rec.src_col);
@@ -271,42 +275,21 @@ INSERT INTO debug_log(message) VALUES('l_template_id: ' || l_template_id);
 
 
                             ELSIF l_mapping(k).data_type = 'DATE' THEN
-   v_expr := 'CASE '||
-  -- Full datetime with DD-MM-YYYY
-  ' WHEN REGEXP_LIKE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''^\d{2}-\d{2}-\d{4}\s+\d{2}:\d{2}:\d{2}$'') '||
-  '      THEN TO_DATE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''DD-MM-YYYY HH24:MI:SS'') '||
-
-  -- Full datetime with DD/MM/YYYY
-  ' WHEN REGEXP_LIKE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''^\d{2}/\d{2}/\d{4}\s+\d{2}:\d{2}:\d{2}$'') '||
-  '      THEN TO_DATE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''DD/MM/YYYY HH24:MI:SS'') '||
-
-  -- Full datetime with DD-MON-YYYY
-  ' WHEN REGEXP_LIKE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''^\d{2}-[A-Z]{3}-\d{4}\s+\d{2}:\d{2}:\d{2}$'', ''i'') '||
-  '      THEN TO_DATE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''DD-MON-YYYY HH24:MI:SS'') '||
-
-  -- Just date YYYY-MM-DD
-  ' WHEN REGEXP_LIKE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''^\d{4}-\d{2}-\d{2}$'') '||
-  '      THEN TO_DATE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''YYYY-MM-DD'') '||
-
-  -- Just date DD/MM/YYYY
-  ' WHEN REGEXP_LIKE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''^\d{2}/\d{2}/\d{4}$'') '||
-  '      THEN TO_DATE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''DD/MM/YYYY'') '||
-
-  -- Just date DD-MM-YYYY
-  ' WHEN REGEXP_LIKE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''^\d{2}-\d{2}-\d{4}$'') '||
-  '      THEN TO_DATE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''DD-MM-YYYY'') '||
-
-  -- Just date DD-MON-YYYY
-  ' WHEN REGEXP_LIKE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''^\d{2}-[A-Z]{3}-\d{4}$'', ''i'') '||
-  '      THEN TO_DATE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''DD-MON-YYYY'') '||
-
-  -- ✅ NEW: Just date DD-MON-RR (2-digit year)
-  ' WHEN REGEXP_LIKE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''^\d{2}-[A-Z]{3}-\d{2}$'', ''i'') '||
-  '      THEN TO_DATE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''DD-MON-RR'') '||
-
-  -- Fallback
-  ' ELSE NULL END as ' || upper(l_mapping(k).parser_col);
-
+                                -- Use format_mask if available, otherwise fallback to common formats
+                                IF l_mapping(k).format_mask IS NOT NULL THEN
+                                    v_expr := 'ur_utils.parse_date_safe(TRIM(p.' || l_mapping(k).parser_col ||
+                                              '), ''' || l_mapping(k).format_mask || ''') as ' || upper(l_mapping(k).parser_col);
+                                ELSE
+                                    -- Backward compatibility fallback for templates without format_mask
+                                    v_expr := 'CASE ' ||
+                                              ' WHEN REGEXP_LIKE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''^\d{4}-\d{2}-\d{2}$'') ' ||
+                                              '      THEN TO_DATE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''YYYY-MM-DD'') ' ||
+                                              ' WHEN REGEXP_LIKE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''^\d{2}/\d{2}/\d{4}$'') ' ||
+                                              '      THEN TO_DATE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''DD/MM/YYYY'') ' ||
+                                              ' WHEN REGEXP_LIKE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''^\d{2}-[A-Z]{3}-\d{4}$'', ''i'') ' ||
+                                              '      THEN TO_DATE(TRIM(p.'|| l_mapping(k).parser_col ||'), ''DD-MON-YYYY'') ' ||
+                                              ' ELSE NULL END as ' || upper(l_mapping(k).parser_col);
+                                END IF;
 
                                 INSERT INTO debug_log(message) VALUES('v_expr: ' || v_expr);
 
@@ -552,15 +535,37 @@ commit;
                             END IF;
                         END IF;
 
-                        -- Validate DATE columns
+                        -- Validate DATE columns using format_mask if available
                         IF l_expected_type = 'DATE' AND l_val IS NOT NULL AND LENGTH(TRIM(l_val)) > 0 THEN
-                            IF fn_safe_to_date(l_val) IS NULL THEN
-                                l_is_valid := FALSE;
-                                l_warning_detail := 'Column "' || l_col || '": Expected date value, got "' ||
-                                                   SUBSTR(l_val, 1, 50) ||
-                                                   CASE WHEN LENGTH(l_val) > 50 THEN '...' ELSE '' END ||
-                                                   '" - value will be set to NULL';
-                            END IF;
+                            DECLARE
+                                v_test_date DATE;
+                                v_format_mask VARCHAR2(100);
+                            BEGIN
+                                -- Get format_mask from mapping if available
+                                v_format_mask := l_mapping(UPPER(l_col)).format_mask;
+
+                                IF v_format_mask IS NOT NULL THEN
+                                    -- Use advanced parser with detected format
+                                    v_test_date := ur_utils.parse_date_safe(l_val, v_format_mask, SYSDATE);
+                                ELSE
+                                    -- Fallback to old validation function
+                                    v_test_date := fn_safe_to_date(l_val);
+                                END IF;
+
+                                IF v_test_date IS NULL THEN
+                                    l_is_valid := FALSE;
+                                    l_warning_detail := 'Column "' || l_col || '": Expected date value, got "' ||
+                                                       SUBSTR(l_val, 1, 50) ||
+                                                       CASE WHEN LENGTH(l_val) > 50 THEN '...' ELSE '' END ||
+                                                       '" - value will be set to NULL';
+                                END IF;
+                            EXCEPTION
+                                WHEN OTHERS THEN
+                                    -- If validation fails, mark as invalid
+                                    l_is_valid := FALSE;
+                                    l_warning_detail := 'Column "' || l_col || '": Date validation error for "' ||
+                                                       SUBSTR(l_val, 1, 50) || '"';
+                            END;
                         END IF;
 
                         -- Validate CALCULATION columns (check if source values used in calculation are valid)
@@ -647,7 +652,27 @@ WHEN NOT MATCHED THEN
         
         IF l_stay_col_name IS NOT NULL THEN
     -- 🟢 Use MERGE for UPSERT when STAY_DATE qualifier exists
-    l_stay_val := TO_CHAR(fn_safe_to_date(l_stay_val), 'DD/MM/YYYY');
+    -- Convert stay_val using format_mask if available, otherwise use old function
+    DECLARE
+        v_stay_date DATE;
+        v_format_mask VARCHAR2(100);
+    BEGIN
+        v_format_mask := l_mapping(UPPER(l_stay_col_name)).format_mask;
+
+        IF v_format_mask IS NOT NULL THEN
+            -- Use advanced parser with detected format
+            v_stay_date := ur_utils.parse_date_safe(l_stay_val, v_format_mask, SYSDATE);
+        ELSE
+            -- Fallback to old function
+            v_stay_date := fn_safe_to_date(l_stay_val);
+        END IF;
+
+        l_stay_val := TO_CHAR(v_stay_date, 'DD/MM/YYYY');
+    EXCEPTION
+        WHEN OTHERS THEN
+            -- If conversion fails, set to NULL to prevent MERGE errors
+            l_stay_val := NULL;
+    END;
 
     l_sql_main :=
         'MERGE INTO '|| l_table_name ||' t
