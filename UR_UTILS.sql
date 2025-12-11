@@ -136,6 +136,52 @@ EXCEPTION
 END sanitize_reserved_words;
 
 -- ============================================================================
+-- FUNCTION: sanitize_column_name
+-- ============================================================================
+-- Purpose: Normalize column names by removing special characters,
+--          collapsing multiple underscores, and removing leading/trailing
+--          underscores. Used across file upload, template creation, and
+--          data loading for consistent column name handling.
+--
+-- Parameters:
+--   p_name: Column name to sanitize
+--
+-- Returns: Sanitized column name in UPPERCASE
+--
+-- Processing Steps:
+--   1. Replace non-alphanumeric characters with underscores
+--   2. Collapse multiple consecutive underscores into single underscore
+--   3. Remove leading and trailing underscores
+--   4. Convert to uppercase
+--
+-- Examples:
+--   'Hotel  Name'           -> 'HOTEL_NAME'
+--   'Price__$__Rate'        -> 'PRICE_RATE'
+--   '__Status___'           -> 'STATUS'
+--   'HOTEL___INDIGO___CARDIFF' -> 'HOTEL_INDIGO_CARDIFF'
+-- ============================================================================
+FUNCTION sanitize_column_name(p_name IN VARCHAR2) RETURN VARCHAR2 IS
+    v_name VARCHAR2(4000);
+BEGIN
+    -- Step 1: Replace non-alphanumeric characters with underscore
+    v_name := REGEXP_REPLACE(p_name, '[^A-Za-z0-9]', '_');
+
+    -- Step 2: Collapse multiple consecutive underscores into single underscore
+    v_name := REGEXP_REPLACE(v_name, '_+', '_');
+
+    -- Step 3: Remove leading and trailing underscores
+    v_name := REGEXP_REPLACE(v_name, '^_+|_+$', '');
+
+    -- Step 4: Convert to uppercase
+    RETURN UPPER(v_name);
+
+EXCEPTION
+    WHEN OTHERS THEN
+        -- On error, return original name in uppercase
+        RETURN UPPER(p_name);
+END sanitize_column_name;
+
+-- ============================================================================
 -- PROCEDURE: sanitize_template_definition
 -- ============================================================================
 -- Purpose: Process template definition JSON and sanitize reserved words
@@ -1868,30 +1914,53 @@ END ' || v_trigger_name || ';
                     RETURN;
             END;
 
-            -- Extract columns with correct data types
+            -- Extract columns with correct data types and sanitize names
             BEGIN
-                SELECT JSON_ARRAYAGG(
-                         JSON_OBJECT(
-                           'name' VALUE REGEXP_REPLACE(TRIM(jt.name), '_+$', ''),
-                           'data_type' VALUE CASE jt.data_type
-                                              WHEN 1 THEN 'TEXT'
-                                              WHEN 2 THEN 'NUMBER'
-                                              WHEN 3 THEN 'DATE'
-                                              ELSE 'TEXT'
-                                            END,
-                           'pos' VALUE 'COL' || LPAD(TO_CHAR(jt.ord), 3, '0')
-                         ) RETURNING CLOB
-                       )
-                INTO v_columns
-                FROM JSON_TABLE(
-                       v_profile,
-                       '$."columns"[*]'
-                       COLUMNS (
-                         ord FOR ORDINALITY,
-                         name VARCHAR2(100) PATH '$.name',
-                         data_type NUMBER PATH '$."data-type"'
-                       )
-                     ) jt;
+                DECLARE
+                    l_json_array JSON_ARRAY_T := JSON_ARRAY_T();
+                    l_json_obj   JSON_OBJECT_T;
+                    v_sanitized_name VARCHAR2(200);
+                    v_data_type_str  VARCHAR2(20);
+                BEGIN
+                    FOR rec IN (
+                        SELECT
+                            jt.ord,
+                            jt.name,
+                            jt.data_type
+                        FROM JSON_TABLE(
+                               v_profile,
+                               '$."columns"[*]'
+                               COLUMNS (
+                                 ord FOR ORDINALITY,
+                                 name VARCHAR2(100) PATH '$.name',
+                                 data_type NUMBER PATH '$."data-type"'
+                               )
+                             ) jt
+                    ) LOOP
+                        -- Sanitize the column name using our function
+                        v_sanitized_name := sanitize_column_name(rec.name);
+
+                        -- Map data type number to string
+                        v_data_type_str := CASE rec.data_type
+                                             WHEN 1 THEN 'TEXT'
+                                             WHEN 2 THEN 'NUMBER'
+                                             WHEN 3 THEN 'DATE'
+                                             ELSE 'TEXT'
+                                           END;
+
+                        -- Build JSON object for this column
+                        l_json_obj := JSON_OBJECT_T();
+                        l_json_obj.put('name', v_sanitized_name);
+                        l_json_obj.put('data_type', v_data_type_str);
+                        l_json_obj.put('pos', 'COL' || LPAD(TO_CHAR(rec.ord), 3, '0'));
+
+                        -- Add to array
+                        l_json_array.append(l_json_obj);
+                    END LOOP;
+
+                    -- Convert array to CLOB
+                    v_columns := l_json_array.to_clob();
+                END;
 
                 -- Update temp_blob with correctly parsed columns
                 UPDATE temp_BLOB
@@ -5573,17 +5642,6 @@ END test_date_parser;
         v_effective_sheet VARCHAR2(200);
         v_col_count       NUMBER := 0;
         v_step            VARCHAR2(100);
-
-        -- Helper function to sanitize column names
-        FUNCTION sanitize_column_name(p_name IN VARCHAR2) RETURN VARCHAR2 IS
-            v_name VARCHAR2(4000);
-        BEGIN
-            v_name := REGEXP_REPLACE(p_name, '[^A-Za-z0-9]', '_');
-            v_name := REGEXP_REPLACE(v_name, '_+', '_');
-            v_name := REGEXP_REPLACE(v_name, '^_+|_+$', '');
-            RETURN UPPER(v_name);
-        END sanitize_column_name;
-
     BEGIN
         p_status  := 'S';
         p_message := '';

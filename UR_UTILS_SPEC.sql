@@ -5,6 +5,20 @@ create or replace PACKAGE ur_utils IS
   p_suffix      IN VARCHAR2 DEFAULT 'COL'
 ) RETURN VARCHAR2;
 
+  -- ============================================================================
+  -- FUNCTION: sanitize_column_name
+  -- ============================================================================
+  -- Purpose: Normalize column names by removing special characters,
+  --          collapsing multiple underscores, and removing leading/trailing
+  --          underscores. Used across file upload, template creation, and
+  --          data loading for consistent column name handling.
+  --
+  -- Returns: Sanitized column name in UPPERCASE
+  -- ============================================================================
+  FUNCTION sanitize_column_name(
+    p_name IN VARCHAR2
+  ) RETURN VARCHAR2;
+
   PROCEDURE sanitize_template_definition(
   p_definition_json IN  CLOB,
   p_suffix          IN  VARCHAR2 DEFAULT 'COL',
