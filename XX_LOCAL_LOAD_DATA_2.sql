@@ -70,6 +70,13 @@ create or replace PROCEDURE XX_LOCAL_Load_Data_2 (
     l_warning_json   CLOB := '[';
     l_warning_cnt    NUMBER := 0;
     l_row_warnings   VARCHAR2(32767);  -- Accumulates warnings for current row
+
+    -- Template metadata for file parsing
+    v_file_type              NUMBER;
+    v_skip_rows              NUMBER;
+    v_sheet_file_name        VARCHAR2(200);
+    v_sheet_display_name     VARCHAR2(200);
+    v_matched_sheet_file_name VARCHAR2(200);
 BEGIN
     -------------------------------------------------------------------
     -- 0. DUPLICATE CHECK: stop if file already uploaded successfully
@@ -99,9 +106,14 @@ BEGIN
         RETURN;
     END IF;*/
 
-    -- 2. Get target table name + template id
-    SELECT db_object_name, id , definition
-      INTO l_table_name, l_template_id, l_json
+    -- 2. Get target table name + template id + metadata
+    SELECT db_object_name, id, definition,
+           JSON_VALUE(metadata, '$.file_type' RETURNING NUMBER),
+           JSON_VALUE(metadata, '$.skip_rows' RETURNING NUMBER DEFAULT 0 ON ERROR),
+           JSON_VALUE(metadata, '$.sheet_file_name'),
+           JSON_VALUE(metadata, '$.sheet_display_name')
+      INTO l_table_name, l_template_id, l_json,
+           v_file_type, v_skip_rows, v_sheet_file_name, v_sheet_display_name
       FROM ur_templates
      WHERE upper(id) = upper(p_template_key);
 
@@ -136,10 +148,10 @@ BEGIN
 
         -- 4. Load mapping directly from collection
  FOR rec IN (
-    SELECT 
+    SELECT
         jt.name             AS src_col,
         jt.name             AS tgt_col,
-        jt.original_name             AS orig_col,
+        REGEXP_REPLACE(TRIM(jt.original_name), '_+$', '') AS orig_col,
         CASE 
             WHEN jt.mapping_type = 'Maps To' THEN jt.name
             WHEN jt.mapping_type IN ('Default', 'Calculation') THEN TRIM(jt.value)
@@ -177,7 +189,7 @@ LOOP
     l_mapping(UPPER(TRIM(rec.src_col))).parser_col := TRIM(rec.parser_col);
     l_mapping(UPPER(TRIM(rec.src_col))).data_type  := rec.datatype1;
     l_mapping(UPPER(TRIM(rec.src_col))).map_type   := TRIM(rec.map_type);
-    l_mapping(UPPER(TRIM(rec.src_col))).orig_col   := TRIM(rec.orig_col);
+    l_mapping(UPPER(TRIM(rec.src_col))).orig_col   := REGEXP_REPLACE(TRIM(rec.orig_col), '_+$', '');
 
     -- Debug logging
     INSERT INTO debug_log(message) VALUES('rec.src_col: ' || rec.src_col);
@@ -314,14 +326,69 @@ INSERT INTO debug_log(message) VALUES('l_vals_calculation: ' || l_vals_calculati
 commit;
 
      -------------------------------------------------------------------
-    -- 4. Discover file profile
+    -- 4. Discover file profile with proper skip_rows and sheet parameters
     -------------------------------------------------------------------
-    v_profile_clob := apex_data_parser.discover(
-                         p_content   => l_blob,
-                         p_file_name => l_file_name
-                      );
+    BEGIN
+        IF v_file_type = 1 THEN
+            -- Excel: Handle sheet selection
+            IF v_sheet_display_name IS NOT NULL THEN
+                BEGIN
+                    -- Find the actual sheet_file_name by matching sheet_display_name
+                    SELECT SHEET_FILE_NAME
+                    INTO v_matched_sheet_file_name
+                    FROM TABLE(
+                        apex_data_parser.get_xlsx_worksheets(
+                            p_content => l_blob
+                        )
+                    )
+                    WHERE SHEET_DISPLAY_NAME = v_sheet_display_name;
 
-    INSERT INTO debug_log(message) VALUES('apex_data_parser.discover done');
+                    -- Use the matched sheet_file_name for parsing
+                    v_profile_clob := apex_data_parser.discover(
+                        p_content => l_blob,
+                        p_file_name => l_file_name,
+                        p_skip_rows => NVL(v_skip_rows, 0),
+                        p_xlsx_sheet_name => v_matched_sheet_file_name
+                    );
+                EXCEPTION
+                    WHEN NO_DATA_FOUND THEN
+                        -- Fallback: try using sheet_file_name directly
+                        v_profile_clob := apex_data_parser.discover(
+                            p_content => l_blob,
+                            p_file_name => l_file_name,
+                            p_skip_rows => NVL(v_skip_rows, 0),
+                            p_xlsx_sheet_name => v_sheet_file_name
+                        );
+                END;
+            ELSE
+                -- No sheet_display_name, use sheet_file_name directly
+                v_profile_clob := apex_data_parser.discover(
+                    p_content => l_blob,
+                    p_file_name => l_file_name,
+                    p_skip_rows => NVL(v_skip_rows, 0),
+                    p_xlsx_sheet_name => v_sheet_file_name
+                );
+            END IF;
+        ELSIF v_file_type = 2 THEN
+            -- CSV: Use skip_rows only
+            v_profile_clob := apex_data_parser.discover(
+                p_content => l_blob,
+                p_file_name => l_file_name,
+                p_skip_rows => NVL(v_skip_rows, 0)
+            );
+        ELSE
+            -- Other file types: Use defaults
+            v_profile_clob := apex_data_parser.discover(
+                p_content => l_blob,
+                p_file_name => l_file_name
+            );
+        END IF;
+    EXCEPTION
+        WHEN OTHERS THEN
+            RAISE_APPLICATION_ERROR(-20001, 'Error parsing file: ' || SQLERRM);
+    END;
+
+    INSERT INTO debug_log(message) VALUES('apex_data_parser.discover done with skip_rows=' || NVL(v_skip_rows, 0));
 
     -------------------------------------------------------------------
     -- 5. Insert initial log row
@@ -365,21 +432,40 @@ commit;
     END IF;
 
     -------------------------------------------------------------------
-    -- 7. Build JSON SQL
+    -- 7. Build JSON SQL with proper skip_rows and sheet parameters
     -------------------------------------------------------------------
     v_sql_json := 'SELECT p.line_number, JSON_OBJECT(';
     FOR i IN 1..v_col_count LOOP
         IF i > 1 THEN v_sql_json := v_sql_json || ', '; END IF;
         v_sql_json := v_sql_json || '''' || REPLACE(v_headers(i), '''', '''''') || ''' VALUE NVL(p.col' || LPAD(i,3,'0') || ', '''')';
     END LOOP;
-    v_sql_json := v_sql_json || ') AS row_json FROM TABLE(apex_data_parser.parse(p_content => :1, p_file_name => :2, p_skip_rows => 1)) p';
+
+    -- Build parse call based on file type
+    IF v_file_type = 1 THEN
+        -- Excel with sheet
+        IF v_matched_sheet_file_name IS NOT NULL THEN
+            v_sql_json := v_sql_json || ') AS row_json FROM TABLE(apex_data_parser.parse(p_content => :1, p_file_name => :2, p_skip_rows => :3, p_xlsx_sheet_name => :4)) p';
+        ELSE
+            v_sql_json := v_sql_json || ') AS row_json FROM TABLE(apex_data_parser.parse(p_content => :1, p_file_name => :2, p_skip_rows => :3, p_xlsx_sheet_name => :4)) p';
+        END IF;
+    ELSE
+        -- CSV or other: skip_rows only
+        v_sql_json := v_sql_json || ') AS row_json FROM TABLE(apex_data_parser.parse(p_content => :1, p_file_name => :2, p_skip_rows => :3)) p';
+    END IF;
 
     INSERT INTO debug_log(message) VALUES('Built SQL for JSON parse (len=' || LENGTH(v_sql_json) || ')');
 
     -------------------------------------------------------------------
     -- 8. Process each row
     -------------------------------------------------------------------
-    OPEN c FOR v_sql_json USING l_blob, l_file_name;
+    IF v_file_type = 1 THEN
+        -- Excel: pass sheet parameter
+        OPEN c FOR v_sql_json USING l_blob, l_file_name, NVL(v_skip_rows, 0) + 1,
+                                     NVL(v_matched_sheet_file_name, v_sheet_file_name);
+    ELSE
+        -- CSV or other: skip_rows only
+        OPEN c FOR v_sql_json USING l_blob, l_file_name, NVL(v_skip_rows, 0) + 1;
+    END IF;
     LOOP
         FETCH c INTO v_line_number, v_row_json;
         EXIT WHEN c%NOTFOUND;
@@ -389,7 +475,7 @@ commit;
         INSERT INTO debug_log(message) VALUES('--- v_row_json row #' || v_row_json || ' line=' || NVL(TO_CHAR(v_line_number),'N/A'));
 
         -- Reset dynamic variables
-        l_cols := NULL;
+        -- l_cols := NULL;  -- DO NOT reset - already built from template mapping (lines 198-311)
         l_vals := NULL;
         l_set  := NULL;
         l_stay_val := NULL;
@@ -525,12 +611,12 @@ INSERT INTO debug_log(message) VALUES('--- l_val_formatted:>' || l_val_formatted
                     -- Append to dynamic SQL parts
                     IF l_set IS NOT NULL THEN
                         l_set  := l_set || ', ';
-                        l_cols := l_cols || ', ';
+                        -- l_cols := l_cols || ', ';  -- REMOVED - don't rebuild column list here!
                         l_vals := l_vals || ', ';
                     END IF;
 
                     l_set  := NVL(l_set,'')  || l_col || ' = ' || l_val_formatted;
-                    l_cols := NVL(l_cols,'') || l_col;
+                    -- l_cols := NVL(l_cols,'') || l_col;  -- REMOVED - use template column names only!
                     --l_col_u := l_col_u ||'t.' || l_col ||' = '||'s.'||l_col ||' ,';
                     l_col_s := l_col_s ||'s.'||l_col||',';
                     l_vals := NVL(l_vals,'') || l_val_formatted;
