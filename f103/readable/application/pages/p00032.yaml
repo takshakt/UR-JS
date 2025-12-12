@@ -189,12 +189,12 @@ regions:
               p_max_rows        => 20              -- Limit preview rows
           )
       )
-      WHERE :P32_file_name_2 IS NOT NULL;
+      WHERE :P32_HIDDEN_UPLOAD_FILE_NAME IS NOT NULL;
     page-items-to-submit: 
-    - P32_SKIP_ROWS
-    - P32_SHEET_NAME
     - P32_FILE_ID
-    - P32_FILE_NAME_2
+    - P32_SHEET_NAME
+    - P32_SKIP_ROWS
+    - P32_HIDDEN_UPLOAD_FILE_NAME
 
   layout: 
     sequence: 20
@@ -2048,7 +2048,7 @@ page-items:
     type: No
 
   layout: 
-    sequence: 70
+    sequence: 80
     region: Controls # 32992226682781507
     slot: BODY
     alignment: Left
@@ -2070,7 +2070,7 @@ page-items:
 
   list-of-values: 
     type: Static Values
-    static-values: 'STATIC2:1;1,2;2,3;3,4;4,5;5,6;6,7;7,8;8,9;9,10;10'
+    static-values: 'STATIC2:0;0,1;1,2;2,3;3,4;4,5;5,6;6,7;7,8;8,9;9,10;10'
     display-extra-values: true
     display-null-value: false
 
@@ -2123,7 +2123,7 @@ page-items:
     value-protected: false
 
   layout: 
-    sequence: 20
+    sequence: 60
     region: Controls # 32992226682781507
     slot: BODY
 
@@ -2143,14 +2143,14 @@ page-items:
     store-value-encrypted-in-session-state: true
     restricted-characters: All characters can be saved.
 
-- # ====== Page Item: P32_FILE_NAME_HIDDEN =====================
-  id: 34042917896823108
+- # ====== Page Item: P32_HIDDEN_UPLOAD_FILE_NAME ==============
+  id: 34102489440020304
   identification: 
-    name: P32_FILE_NAME_HIDDEN
+    name: P32_HIDDEN_UPLOAD_FILE_NAME
     type: Display Only
 
   label: 
-    label: File Name 1
+    label: Hidden Upload File Name
     alignment: Left
 
   settings: 
@@ -2160,7 +2160,7 @@ page-items:
     send-on-page-submit: true
 
   layout: 
-    sequence: 50
+    sequence: 70
     region: Controls # 32992226682781507
     slot: BODY
     alignment: Left
@@ -2180,13 +2180,8 @@ page-items:
     warn-on-unsaved-changes: Page Default
 
   source: 
-    type: SQL Query (return single value)
-    sql-query: |
-      SELECT 
-             filename
-      FROM temp_blob
-      WHERE id = :P32_FILE_ID
-    used: Always, replacing any existing value in session state
+    type: Null
+    used: Only when current value in session state is null
 
   session-state: 
     data-type: VARCHAR2
@@ -3518,6 +3513,36 @@ dynamic-actions:
       fire-when-event-result-is: True
       fire-on-initialization: true
 
+  - # ====== Action: Show ========================================
+    id: 34102885599020308
+    identification: 
+      action: Show
+
+    affected-elements: 
+      selection-type: Region
+      region: Controls # 32992226682781507
+
+    execution: 
+      sequence: 50
+      event: Show and hide region # 32298595867901910
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+
+  - # ====== Action: Hide ========================================
+    id: 34102910504020309
+    identification: 
+      action: Hide
+
+    affected-elements: 
+      selection-type: Region
+      region: Controls # 32992226682781507
+
+    execution: 
+      sequence: 20
+      event: Show and hide region # 32298595867901910
+      fire-when-event-result-is: False
+      fire-on-initialization: true
+
 - # ====== Dynamic Action: Delete database objects =============
   id: 32300936074901917
   identification: 
@@ -3962,185 +3987,6 @@ dynamic-actions:
       fire-when-event-result-is: True
       fire-on-initialization: false
 
-  - # ====== Action: file_id =====================================
-    id: 32992503350781510
-    identification: 
-      name: file_id
-      action: Set Value
-
-    settings: 
-      set-type: SQL Statement
-      sql-statement: |
-        SELECT 
-            JSON_VALUE(metadata, '$.file_id') AS file_id
-        FROM ur_templates
-        WHERE id = :P32_TEMPLATE_LIST
-      items-to-submit: 
-      - P32_TEMPLATE_LIST
-      escape-special-characters: true
-      suppress-change-event: true
-
-    affected-elements: 
-      selection-type: Item(s)
-      item(s): 
-      - P32_FILE_ID
-
-    execution: 
-      sequence: 120
-      event: change template # 32303681838901925
-      fire-when-event-result-is: True
-      fire-on-initialization: false
-      stop-execution-on-error: true
-      wait-for-result: true
-
-    configuration: 
-      build-option: Commented Out # 8557885664922129
-
-  - # ====== Action: file_name ===================================
-    id: 32992643128781511
-    identification: 
-      name: file_name
-      action: Set Value
-
-    settings: 
-      set-type: SQL Statement
-      sql-statement: |
-        SELECT 
-            JSON_VALUE(metadata, '$.sheet_file_name') AS sheet_file_name
-        FROM ur_templates
-        WHERE id = :P32_TEMPLATE_LIST
-      items-to-submit: 
-      - P32_TEMPLATE_LIST
-      escape-special-characters: true
-      suppress-change-event: true
-
-    affected-elements: 
-      selection-type: Item(s)
-      item(s): 
-      - P32_FILE_NAME
-
-    execution: 
-      sequence: 130
-      event: change template # 32303681838901925
-      fire-when-event-result-is: True
-      fire-on-initialization: false
-      stop-execution-on-error: true
-      wait-for-result: true
-
-    configuration: 
-      build-option: Commented Out # 8557885664922129
-
-  - # ====== Action: file_type ===================================
-    id: 32992952046781514
-    identification: 
-      name: file_type
-      action: Set Value
-
-    settings: 
-      set-type: SQL Statement
-      sql-statement: |
-        SELECT 
-            JSON_VALUE(metadata, '$.file_type') AS file_type
-        FROM ur_templates
-        WHERE id = :P32_TEMPLATE_LIST
-      items-to-submit: 
-      - P32_TEMPLATE_LIST
-      escape-special-characters: true
-      suppress-change-event: true
-
-    affected-elements: 
-      selection-type: Item(s)
-      item(s): 
-      - P32_FILE_TYPE
-
-    execution: 
-      sequence: 140
-      event: change template # 32303681838901925
-      fire-when-event-result-is: True
-      fire-on-initialization: false
-      stop-execution-on-error: true
-      wait-for-result: true
-
-    configuration: 
-      build-option: Commented Out # 8557885664922129
-
-  - # ====== Action: SHEET_FILE_NAME =============================
-    id: 32993141801781516
-    identification: 
-      name: SHEET_FILE_NAME
-      action: Set Value
-
-    settings: 
-      set-type: SQL Statement
-      sql-statement: |
-        SELECT 
-               1
-        FROM TABLE(
-            apex_data_parser.get_xlsx_worksheets(
-                p_content => (SELECT blob_content
-                              FROM temp_blob
-                              WHERE id = (SELECT 
-            JSON_VALUE(metadata, '$.file_id') AS file_id
-        FROM ur_templates
-        WHERE id = :P32_TEMPLATE_LIST))
-            )
-        )
-        ORDER BY sheet_sequence;
-      items-to-submit: 
-      - P32_TEMPLATE_LIST
-      escape-special-characters: true
-      suppress-change-event: true
-
-    affected-elements: 
-      selection-type: Item(s)
-      item(s): 
-      - P32_SHEET_NAME
-
-    execution: 
-      sequence: 150
-      event: change template # 32303681838901925
-      fire-when-event-result-is: True
-      fire-on-initialization: false
-      stop-execution-on-error: true
-      wait-for-result: true
-
-    configuration: 
-      build-option: Commented Out # 8557885664922129
-
-  - # ====== Action: SKIP_ROWS ===================================
-    id: 32993819682781523
-    identification: 
-      name: SKIP_ROWS
-      action: Set Value
-
-    settings: 
-      set-type: SQL Statement
-      sql-statement: |
-        SELECT 
-            JSON_VALUE(metadata, '$.skip_rows') AS SKIP_ROWS
-        FROM ur_templates
-        WHERE id = :P32_TEMPLATE_LIST
-      items-to-submit: 
-      - P32_TEMPLATE_LIST
-      escape-special-characters: true
-      suppress-change-event: true
-
-    affected-elements: 
-      selection-type: Item(s)
-      item(s): 
-      - P32_SKIP_ROWS
-
-    execution: 
-      sequence: 160
-      event: change template # 32303681838901925
-      fire-when-event-result-is: True
-      fire-on-initialization: false
-      stop-execution-on-error: true
-      wait-for-result: true
-
-    configuration: 
-      build-option: Commented Out # 8557885664922129
-
   - # ====== Action: Execute Server-side Code ====================
     id: 32995414270781539
     identification: 
@@ -4213,7 +4059,7 @@ dynamic-actions:
       suppress-change-event: false
 
     execution: 
-      sequence: 170
+      sequence: 140
       event: change template # 32303681838901925
       fire-when-event-result-is: True
       fire-on-initialization: true
@@ -4224,27 +4070,41 @@ dynamic-actions:
       type: Item is NOT NULL
       item: P32_TEMPLATE_LIST
 
-  - # ====== Action: preview =====================================
-    id: 32996337803781548
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: file_name_hidden ============================
+    id: 34102150742020301
     identification: 
-      name: preview
-      action: Refresh
+      name: file_name_hidden
+      action: Set Value
 
     settings: 
-      maintain-pagination: false
+      set-type: SQL Statement
+      sql-statement: 'select name from temp_blob where id = :P32_TEMPLATE_LIST'
+      items-to-submit: 
+      - P32_TEMPLATE_LIST
+      escape-special-characters: true
+      suppress-change-event: true
 
     affected-elements: 
-      selection-type: Region
-      region: Preview # 32993974728781524
+      selection-type: Item(s)
+      item(s): 
+      - P32_STATUS
 
     execution: 
-      sequence: 220
+      sequence: 130
       event: change template # 32303681838901925
       fire-when-event-result-is: True
       fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
 
   - # ====== Action: Execute Server-side Code ====================
-    id: 34042267789823101
+    id: 34102219313020302
     identification: 
       action: Execute Server-side Code
 
@@ -4262,18 +4122,25 @@ dynamic-actions:
           -- Declare a variable to hold the dynamic SQL string
           v_sql_query      VARCHAR2(500); 
           v_xml_sheet_name VARCHAR2(500); 
-          v_file_id   VARCHAR2(500); 
+          v_id varchar2(100);
         BEGIN
           -- 1. Fetch template details including the dynamic table name
-          SELECT db_object_name, 
-          JSON_VALUE(metadata, '$.sheet_file_name')
-         
-                 
-          INTO  v_db_object_name, v_xml_sheet_name
+          SELECT 
+          name, type, db_object_name, JSON_VALUE(metadata, '$.sheet_file_name'),
+                 JSON_VALUE(metadata, '$.skip_rows' RETURNING NUMBER DEFAULT 0 ON ERROR),
+                -- JSON_VALUE(metadata, '$.sheet_display_name') || ' (' || JSON_VALUE(metadata, '$.sheet_file_name') || ')' as sheet_name,
+                 JSON_VALUE(metadata, '$.sheet_display_name'),
+                 CASE JSON_VALUE(metadata, '$.file_type' RETURNING NUMBER DEFAULT 0 ON ERROR)
+                     WHEN 1 THEN '1 - MS Excel (.xlsx, .xls)'
+                     WHEN 2 THEN '2 - CSV (.csv, .txt)'
+                     WHEN 3 THEN '3 - JSON'
+                     WHEN 4 THEN '4 - XML (.xml)'
+                     ELSE 'N/A'
+                 END
+          INTO  v_name, v_type, v_db_object_name, v_xml_sheet_name, v_skip_rows, v_sheet, v_file_type
           FROM ur_templates
-         -- WHERE id = :P32_TEMPLATE_LIST;
-          WHERE id = hextoraw(:P32_TEMPLATE_LIST);
-        
+          WHERE id = :P32_TEMPLATE_LIST;
+          
           -- 2. Construct the dynamic SQL statement
           v_sql_query := 'SELECT COUNT(*) FROM ' || v_db_object_name;
         
@@ -4281,156 +4148,107 @@ dynamic-actions:
           -- EXECUTE IMMEDIATE runs the string in v_sql_query and puts the result INTO v_records
           EXECUTE IMMEDIATE v_sql_query INTO v_records; 
         
-        
-          :P32_file_name_2 := v_sheet;
-         
-        
-           -- TEST STATIC VALUE
-        --  :P32_file_name_2 := 'TEST_STATIC_FILENAME.csv';
-          commit;
-         -- :p := v_records; -- Assuming you'll need to display this count
+          -- 4. Assign results to APEX page items (or bind variables)
+          --:P1011_TEMPLATE_NAME := v_name;
+          --:P1011_TEMPLATE_TYPE := v_type;
+          :P32_SKIP_ROWS := v_skip_rows;
+          :P32_SHEET_NAME := v_sheet;
+          --:P32_SHEET_NAME := v_xml_sheet_name;
+          :P32_FILE_TYPE := v_file_type;
+        --  :P1011_TEMPLATE_RECORD_COUNT := v_records; -- Assuming you'll need to display this count
+         -- :P32_FILE_ID := v_id;
         END;
       items-to-submit: 
       - P32_TEMPLATE_LIST
       items-to-return: 
-      - P32_FILE_NAME_2
+      - P32_FILE_TYPE
+      - P32_SKIP_ROWS
+      - P32_SHEET_NAME
+      - P32_FILE_ID
       suppress-change-event: false
 
     execution: 
-      sequence: 180
+      sequence: 150
       event: change template # 32303681838901925
       fire-when-event-result-is: True
       fire-on-initialization: false
       stop-execution-on-error: true
       wait-for-result: true
 
-    configuration: 
-      build-option: Commented Out # 8557885664922129
+    server-side-condition: 
+      type: Item is NOT NULL
+      item: P32_TEMPLATE_LIST
 
   - # ====== Action: Set Value ===================================
-    id: 34042385913823102
+    id: 34102506367020305
     identification: 
       action: Set Value
 
     settings: 
       set-type: SQL Statement
-      sql-statement: |2
-          -- 1. Fetch template details including the dynamic table name
-          SELECT 
-          JSON_VALUE(metadata, '$.sheet_file_name')
-         
-                 
-         
-          FROM ur_templates
-         -- WHERE id = :P32_TEMPLATE_LIST;
-          WHERE id = hextoraw(:P32_TEMPLATE_LIST);
-        
-          
-        
-         
-        
-        
-        
-        
-        
+      sql-statement: 'SELECT NAME FROM TEMP_BLOB WHERE ID = :P32_FILE_ID'
       items-to-submit: 
-      - P32_TEMPLATE_LIST
-      escape-special-characters: true
+      - P32_FILE_ID
+      escape-special-characters: false
       suppress-change-event: false
 
     affected-elements: 
       selection-type: Item(s)
       item(s): 
-      - P32_FILE_NAME_2
+      - P32_HIDDEN_UPLOAD_FILE_NAME
 
     execution: 
-      sequence: 190
+      sequence: 160
       event: change template # 32303681838901925
       fire-when-event-result-is: True
-      fire-on-initialization: false
+      fire-on-initialization: true
       stop-execution-on-error: true
       wait-for-result: true
 
   - # ====== Action: Set Value ===================================
-    id: 34042481263823103
+    id: 34102663087020306
     identification: 
-      action: Set Value
-
-    settings: 
-      set-type: SQL Statement
-      sql-statement: |2
-          -- 1. Fetch template details including the dynamic table name
-          SELECT 
-          JSON_VALUE(metadata, '$.skip_rows')
-         
-                 
-         
-          FROM ur_templates
-         -- WHERE id = :P32_TEMPLATE_LIST;
-          WHERE id = hextoraw(:P32_TEMPLATE_LIST);
-        
-          
-        
-         
-        
-        
-        
-        
-        
-      items-to-submit: 
-      - P32_TEMPLATE_LIST
-      escape-special-characters: true
-      suppress-change-event: false
-
-    affected-elements: 
-      selection-type: Item(s)
-      item(s): 
-      - P32_SKIP_ROWS
-
-    execution: 
-      sequence: 210
-      event: change template # 32303681838901925
-      fire-when-event-result-is: True
-      fire-on-initialization: false
-      stop-execution-on-error: true
-      wait-for-result: true
-
-    configuration: 
-      build-option: Commented Out # 8557885664922129
-
-  - # ====== Action: preview_sr ==================================
-    id: 34042732404823106
-    identification: 
-      name: preview_sr
-      action: Refresh
-
-    settings: 
-      maintain-pagination: false
-
-    affected-elements: 
-      selection-type: Item(s)
-      item(s): 
-      - P32_SKIP_ROWS
-
-    execution: 
-      sequence: 230
-      event: change template # 32303681838901925
-      fire-when-event-result-is: True
-      fire-on-initialization: false
-
-  - # ====== Action: filename ====================================
-    id: 34043053165823109
-    identification: 
-      name: filename
       action: Set Value
 
     settings: 
       set-type: SQL Statement
       sql-statement: |
-        SELECT 
-               filename
-        FROM temp_blob
-        WHERE id = :P32_TEMPLATE_LIST;
+        
+          -- 1. Fetch template details including the dynamic table name
+          SELECT JSON_VALUE(metadata, '$.file_id')
+        
+          FROM ur_templates
+          WHERE id = :P32_TEMPLATE_LIST;
+        
+        
+      items-to-submit: 
+      - P32_TEMPLATE_LIST
+      escape-special-characters: true
+      suppress-change-event: true
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P32_FILE_ID
+
+    execution: 
+      sequence: 120
+      event: change template # 32303681838901925
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Set Value ===================================
+    id: 34102739668020307
+    identification: 
+      action: Set Value
+
+    settings: 
+      set-type: SQL Statement
+      sql-statement: |
+        SELECT JSON_VALUE(metadata, '$.skip_rows' RETURNING NUMBER DEFAULT 0 ON ERROR) 
+        FROM ur_templates WHERE ID = :P32_TEMPLATE_LIST
       items-to-submit: 
       - P32_TEMPLATE_LIST
       escape-special-characters: false
@@ -4439,38 +4257,15 @@ dynamic-actions:
     affected-elements: 
       selection-type: Item(s)
       item(s): 
-      - P32_FILE_NAME_HIDDEN
+      - P32_SKIP_ROWS
 
     execution: 
-      sequence: 200
+      sequence: 170
       event: change template # 32303681838901925
       fire-when-event-result-is: True
       fire-on-initialization: false
       stop-execution-on-error: true
       wait-for-result: true
-
-    configuration: 
-      build-option: Commented Out # 8557885664922129
-
-  - # ====== Action: preview_filename ============================
-    id: 34043124169823110
-    identification: 
-      name: preview_filename
-      action: Refresh
-
-    settings: 
-      maintain-pagination: false
-
-    affected-elements: 
-      selection-type: Item(s)
-      item(s): 
-      - P32_FILE_NAME_2
-
-    execution: 
-      sequence: 240
-      event: change template # 32303681838901925
-      fire-when-event-result-is: True
-      fire-on-initialization: false
 
 - # ====== Dynamic Action: Create Template button click ========
   id: 32308533409901939
@@ -4599,27 +4394,7 @@ dynamic-actions:
         BEGIN
         
         
-         /*   IF :P32_SHEET_NAME IS NOT NULL THEN
-            SELECT sheet_display_name INTO v_sheet_display_name
-            FROM TABLE(apex_data_parser.get_xlsx_worksheets(
-                p_content => (SELECT blob_content FROM temp_blob WHERE ID = :P32_FILE_ID)))
-            WHERE SHEET_FILE_NAME = :P32_SHEET_NAME AND ROWNUM = 1;
-          END IF;
-          
-           SELECT ID, JSON_VALUE(profile, '$."file-type"' RETURNING NUMBER)
-          INTO v_file_id, v_file_type FROM temp_blob  WHERE ID = :P32_FILE_ID;
-          SELECT JSON_OBJECT(
-            'skip_rows' VALUE NVL(:P32_SKIP_ROWS, 0), 'sheet_file_name' VALUE :P32_FILE_NAME_2,
-            'sheet_display_name' VALUE v_sheet_display_name, 'file_type' VALUE v_file_type,
-            'file_id' VALUE v_file_id) INTO v_metadata FROM DUAL;
-        */
-        
-         UPDATE ur_templates
-               SET metadata = v_metadata,
-                   updated_on = SYSTIMESTAMP
-             WHERE id = :P32_TEMPLATE_LIST;
-        
-            COMMIT;
+         
         
             update_template_definition(
                 p_template_id     => :P32_TEMPLATE_LIST,
@@ -5201,7 +4976,7 @@ dynamic-actions:
            SELECT ID, JSON_VALUE(profile, '$."file-type"' RETURNING NUMBER)
           INTO v_file_id, v_file_type FROM temp_blob  WHERE ID = :P32_FILE_ID;
           SELECT JSON_OBJECT(
-            'skip_rows' VALUE NVL(:P32_SKIP_ROWS, 0), 'sheet_file_name' VALUE :P32_FILE_NAME_2,
+            'skip_rows' VALUE NVL(:P32_SKIP_ROWS, 0), 'sheet_file_name' VALUE :P32_SHEET_NAME,
             'sheet_display_name' VALUE v_sheet_display_name, 'file_type' VALUE v_file_type,
             'file_id' VALUE v_file_id) INTO v_metadata FROM DUAL;
         
@@ -5436,7 +5211,7 @@ dynamic-actions:
             v_alerts  CLOB;
         BEGIN
             ur_utils.refresh_file_profile_and_collection(
-                p_file_name       => :P32_file_name_2,
+                p_file_name       => :P32_HIDDEN_UPLOAD_FILE_NAME,
                 p_skip_rows       => NVL(:P32_SKIP_ROWS, 0),
                 p_sheet_name      => :P32_SHEET_NAME,
                 p_collection_name => 'TEMPLATE_DATA',
@@ -5456,9 +5231,9 @@ dynamic-actions:
             :P0_ALERT_MESSAGE := v_alerts;
         END;
       items-to-submit: 
-      - P32_SHEET_NAME
+      - P32_HIDDEN_UPLOAD_FILE_NAME
       - P32_SKIP_ROWS
-      - P32_FILE_NAME_2
+      - P32_SHEET_NAME
       items-to-return: 
       - P0_ALERT_MESSAGE
       suppress-change-event: false

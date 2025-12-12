@@ -2317,6 +2317,7 @@ function processAndPopulateTable(tabId, tableData, config, visibleColumns, alias
         };
 
 const cleanedData = processedData.map(cleanRowKeys);
+cleanedDatamain = cleanedData;
 console.log('cleanedData:>>>>',cleanedData);
 // Step 2: Normalize data using the now-clean keys
 const normalizedData = cleanedData.map(row => {
@@ -2377,7 +2378,7 @@ const normalizedData = cleanedData.map(row => {
 }
 
 
-
+let cleanedDatamain;
 
 function reorderVisibleColumns(visibleColumns, expressionJson) {
      expressionJson = JSON.parse(expressionJson);
@@ -2818,6 +2819,11 @@ function evaluateFilter(filter, row, aliasToOriginalMap, config) {
 
 function applyFormulas(data, formulas, aliasToOriginalMap, config) {
 
+    console.log('data:>>>>',data);
+    console.log('formulas:>>>>',formulas);
+    console.log('aliasToOriginalMap:>>>>',aliasToOriginalMap);
+    console.log('config:>>>>',config);
+
     const formulaEntries = Object.entries(formulas);
 
     if (formulaEntries.length === 0) return data;
@@ -2880,6 +2886,54 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
         });
     }
 
+    // Helper function to parse date string (DD-MMM-YYYY) to Date object
+    function parseDate(dateStr) {
+        const months = {
+            'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
+            'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11
+        };
+        
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = months[parts[1].toUpperCase()];
+            const year = parseInt(parts[2], 10);
+            return new Date(year, month, day);
+        }
+        return null;
+    }
+
+    // Helper function to format date as DD-MMM-YYYY
+    function formatDate(date) {
+        const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 
+                       'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+    }
+
+    // Helper function to add days to a date
+    function addDays(dateStr, days) {
+        const date = parseDate(dateStr);
+        if (!date) return dateStr;
+        date.setDate(date.getDate() + days);
+        return formatDate(date);
+    }
+
+    // Helper function to find value in cleanedDatamain by PK_COL and column name
+    function findValueInCleanedData(pkColDate, columnName) {
+        // Clean the column name - remove any {n} suffix
+        const cleanColumnName = columnName.replace(/\{\d+\}$/, '');
+        
+        // Look for the row in cleanedDatamain
+        const foundRow = cleanedDatamain.find(row => row.PK_COL === pkColDate);
+        if (foundRow) {
+            return foundRow[cleanColumnName] || null;
+        }
+        return null;
+    }
+
 
     finalFormulaEntries.forEach(([formulaName, formulaObj]) => { // Use finalFormulaEntries
 
@@ -2922,9 +2976,68 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
                 // CRITICAL CLEANUP: Ensure spaces are normalized
                 currentExpression = currentExpression.replace(/\s+/g, ' ').trim();
 
-         
+                // -------------------------
+                // NEW: Handle {1} functionality for offset column references
+                // -------------------------
+                // Find column references with {n} pattern
+                // -------------------------
+                // NEW: Handle {1} functionality for offset column references
+                // -------------------------
+                // Find column references with {n} pattern
+                const offsetColumnRegex = /(\[?\b[A-Z_][A-Z0-9_]*\b\]?)\{(\d+)\}/gi;
+                let match;
 
-                // 4. Find all column references (should now only be alias names like 'MOXY')
+                // Create a map to store offset column replacements
+                const offsetReplacements = {};
+
+                while ((match = offsetColumnRegex.exec(currentExpression)) !== null) {
+                    const fullMatch = match[0];
+                    const columnRef = match[1].replace(/[\[\]]/g, ''); // Remove brackets if present
+                    const offset = parseInt(match[2]);
+                    
+                    // Get current row's PK_COL date
+                    const currentDate = row.PK_COL || row.SDATE;
+                    
+                    if (currentDate) {
+                        // Calculate target date by adding offset
+                        const targetDate = addDays(currentDate, offset);
+                        
+                        // Find the value in cleanedDatamain
+                        const offsetValue = findValueInCleanedData(targetDate, columnRef);
+                        
+                        if (offsetValue !== null) {
+                            // Store the replacement value
+                            offsetReplacements[fullMatch] = offsetValue;
+                        } else {
+                            // If not found, use null
+                            offsetReplacements[fullMatch] = null;
+                        }
+                    } else {
+                        offsetReplacements[fullMatch] = null;
+                    }
+                }
+
+                // Replace all offset column references with their values
+                Object.entries(offsetReplacements).forEach(([pattern, value]) => {
+                    // Handle the value based on its type
+                    let replacementValue;
+                    
+                    if (value === null || value === undefined || value === '') {
+                        // For missing values, use 0 for numeric operations
+                        replacementValue = '0';
+                    } else if (!isNaN(value) && value !== null) {
+                        // Convert numeric strings to actual numbers
+                        replacementValue = parseFloat(value);
+                    } else {
+                        // For non-numeric values, use them as-is with quotes
+                        replacementValue = `"${value}"`;
+                    }
+                    
+                    // Replace the pattern in the expression
+                    currentExpression = currentExpression.replace(pattern, replacementValue);
+                });
+
+                // 4. Find all remaining column references (should now only be alias names like 'MOXY')
                 const columnMatches = currentExpression.match(/\[(.*?)\]/g) || [];
                 const simpleColumnMatches = currentExpression.match(/\b[A-Z_][A-Z0-9_]*\b/gi) || [];
 
@@ -2977,6 +3090,7 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
 
     return data;
 }
+
 
 function replaceDayNameFunction(expr) {
     if (!expr || typeof expr !== "string") return expr;

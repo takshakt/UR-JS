@@ -165,7 +165,8 @@ regions:
       type: Custom Headings
 
     download: 
-      csv-export-enabled: false
+      csv-export-enabled: true
+      link-text: Download
 
     printing: 
       enabled: false

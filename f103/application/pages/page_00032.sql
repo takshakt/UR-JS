@@ -91,9 +91,9 @@ wwv_flow_imp_page.create_page_plug(
 '        p_max_rows        => 20              -- Limit preview rows',
 '    )',
 ')',
-'WHERE :P32_file_name_2 IS NOT NULL;'))
+'WHERE :P32_HIDDEN_UPLOAD_FILE_NAME IS NOT NULL;'))
 ,p_plug_source_type=>'NATIVE_IG'
-,p_ajax_items_to_submit=>'P32_SKIP_ROWS,P32_SHEET_NAME,P32_FILE_ID,P32_FILE_NAME_2'
+,p_ajax_items_to_submit=>'P32_FILE_ID,P32_SHEET_NAME,P32_SKIP_ROWS,P32_HIDDEN_UPLOAD_FILE_NAME'
 ,p_prn_units=>'INCHES'
 ,p_prn_paper_size=>'LETTER'
 ,p_prn_width=>11
@@ -128,6 +128,7 @@ wwv_flow_imp_page.create_region_column(
 ,p_source_type=>'DB_COLUMN'
 ,p_source_expression=>'LINE_NUMBER'
 ,p_data_type=>'NUMBER'
+,p_session_state_data_type=>'VARCHAR2'
 ,p_is_query_only=>false
 ,p_item_type=>'NATIVE_NUMBER_FIELD'
 ,p_heading=>'Line Number'
@@ -1020,6 +1021,7 @@ wwv_flow_imp_page.create_region_column(
 ,p_session_state_data_type=>'VARCHAR2'
 ,p_item_type=>'NATIVE_ROW_ACTION'
 ,p_display_sequence=>20
+,p_use_as_row_header=>false
 );
 wwv_flow_imp_page.create_region_column(
  p_id=>wwv_flow_imp.id(60073932900789275)
@@ -1031,6 +1033,7 @@ wwv_flow_imp_page.create_region_column(
   'enable_multi_select', 'Y',
   'hide_control', 'N',
   'show_select_all', 'Y')).to_clob
+,p_use_as_row_header=>false
 );
 wwv_flow_imp_page.create_interactive_grid(
  p_id=>wwv_flow_imp.id(47880155599887270)
@@ -1286,7 +1289,7 @@ wwv_flow_imp_page.create_page_item(
 wwv_flow_imp_page.create_page_item(
  p_id=>wwv_flow_imp.id(32993261982781517)
 ,p_name=>'P32_SKIP_ROWS'
-,p_item_sequence=>70
+,p_item_sequence=>80
 ,p_item_plug_id=>wwv_flow_imp.id(32992226682781507)
 ,p_use_cache_before_default=>'NO'
 ,p_item_default=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -1310,7 +1313,7 @@ wwv_flow_imp_page.create_page_item(
 ,p_item_default_type=>'SQL_QUERY'
 ,p_prompt=>'Skip Rows'
 ,p_display_as=>'NATIVE_SELECT_LIST'
-,p_lov=>'STATIC2:1;1,2;2,3;3,4;4,5;5,6;6,7;7,8;8,9;9,10;10'
+,p_lov=>'STATIC2:0;0,1;1,2;2,3;3,4;4,5;5,6;6,7;7,8;8,9;9,10;10'
 ,p_cHeight=>1
 ,p_begin_on_new_line=>'N'
 ,p_field_template=>3031561666792084173
@@ -1322,25 +1325,18 @@ wwv_flow_imp_page.create_page_item(
 wwv_flow_imp_page.create_page_item(
  p_id=>wwv_flow_imp.id(32996519966781550)
 ,p_name=>'P32_FILE_NAME_2'
-,p_item_sequence=>20
+,p_item_sequence=>60
 ,p_item_plug_id=>wwv_flow_imp.id(32992226682781507)
 ,p_display_as=>'NATIVE_HIDDEN'
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
   'value_protected', 'N')).to_clob
 );
 wwv_flow_imp_page.create_page_item(
- p_id=>wwv_flow_imp.id(34042917896823108)
-,p_name=>'P32_FILE_NAME_HIDDEN'
-,p_item_sequence=>50
+ p_id=>wwv_flow_imp.id(34102489440020304)
+,p_name=>'P32_HIDDEN_UPLOAD_FILE_NAME'
+,p_item_sequence=>70
 ,p_item_plug_id=>wwv_flow_imp.id(32992226682781507)
-,p_use_cache_before_default=>'NO'
-,p_prompt=>'File Name 1'
-,p_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'SELECT ',
-'       filename',
-'FROM temp_blob',
-'WHERE id = :P32_FILE_ID'))
-,p_source_type=>'QUERY'
+,p_prompt=>'Hidden Upload File Name'
 ,p_display_as=>'NATIVE_DISPLAY_ONLY'
 ,p_field_template=>3031561666792084173
 ,p_item_template_options=>'#DEFAULT#'
@@ -1805,118 +1801,41 @@ wwv_flow_imp_page.create_page_da_action(
 ,p_wait_for_result=>'Y'
 );
 wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(32992503350781510)
+ p_id=>wwv_flow_imp.id(34102663087020306)
 ,p_event_id=>wwv_flow_imp.id(32303681838901925)
 ,p_event_result=>'TRUE'
 ,p_action_sequence=>120
 ,p_execute_on_page_init=>'N'
-,p_name=>'file_id'
 ,p_action=>'NATIVE_SET_VALUE'
 ,p_affected_elements_type=>'ITEM'
 ,p_affected_elements=>'P32_FILE_ID'
 ,p_attribute_01=>'SQL_STATEMENT'
 ,p_attribute_03=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'SELECT ',
-'    JSON_VALUE(metadata, ''$.file_id'') AS file_id',
-'FROM ur_templates',
-'WHERE id = :P32_TEMPLATE_LIST'))
+'',
+'  -- 1. Fetch template details including the dynamic table name',
+'  SELECT JSON_VALUE(metadata, ''$.file_id'')',
+'',
+'  FROM ur_templates',
+'  WHERE id = :P32_TEMPLATE_LIST;',
+'',
+''))
 ,p_attribute_07=>'P32_TEMPLATE_LIST'
 ,p_attribute_08=>'Y'
 ,p_attribute_09=>'Y'
 ,p_wait_for_result=>'Y'
-,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
 );
 wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(32992643128781511)
+ p_id=>wwv_flow_imp.id(34102150742020301)
 ,p_event_id=>wwv_flow_imp.id(32303681838901925)
 ,p_event_result=>'TRUE'
 ,p_action_sequence=>130
 ,p_execute_on_page_init=>'N'
-,p_name=>'file_name'
+,p_name=>'file_name_hidden'
 ,p_action=>'NATIVE_SET_VALUE'
 ,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P32_FILE_NAME'
+,p_affected_elements=>'P32_STATUS'
 ,p_attribute_01=>'SQL_STATEMENT'
-,p_attribute_03=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'SELECT ',
-'    JSON_VALUE(metadata, ''$.sheet_file_name'') AS sheet_file_name',
-'FROM ur_templates',
-'WHERE id = :P32_TEMPLATE_LIST'))
-,p_attribute_07=>'P32_TEMPLATE_LIST'
-,p_attribute_08=>'Y'
-,p_attribute_09=>'Y'
-,p_wait_for_result=>'Y'
-,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(32992952046781514)
-,p_event_id=>wwv_flow_imp.id(32303681838901925)
-,p_event_result=>'TRUE'
-,p_action_sequence=>140
-,p_execute_on_page_init=>'N'
-,p_name=>'file_type'
-,p_action=>'NATIVE_SET_VALUE'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P32_FILE_TYPE'
-,p_attribute_01=>'SQL_STATEMENT'
-,p_attribute_03=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'SELECT ',
-'    JSON_VALUE(metadata, ''$.file_type'') AS file_type',
-'FROM ur_templates',
-'WHERE id = :P32_TEMPLATE_LIST'))
-,p_attribute_07=>'P32_TEMPLATE_LIST'
-,p_attribute_08=>'Y'
-,p_attribute_09=>'Y'
-,p_wait_for_result=>'Y'
-,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(32993141801781516)
-,p_event_id=>wwv_flow_imp.id(32303681838901925)
-,p_event_result=>'TRUE'
-,p_action_sequence=>150
-,p_execute_on_page_init=>'N'
-,p_name=>'SHEET_FILE_NAME'
-,p_action=>'NATIVE_SET_VALUE'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P32_SHEET_NAME'
-,p_attribute_01=>'SQL_STATEMENT'
-,p_attribute_03=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'SELECT ',
-'       1',
-'FROM TABLE(',
-'    apex_data_parser.get_xlsx_worksheets(',
-'        p_content => (SELECT blob_content',
-'                      FROM temp_blob',
-'                      WHERE id = (SELECT ',
-'    JSON_VALUE(metadata, ''$.file_id'') AS file_id',
-'FROM ur_templates',
-'WHERE id = :P32_TEMPLATE_LIST))',
-'    )',
-')',
-'ORDER BY sheet_sequence;'))
-,p_attribute_07=>'P32_TEMPLATE_LIST'
-,p_attribute_08=>'Y'
-,p_attribute_09=>'Y'
-,p_wait_for_result=>'Y'
-,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(32993819682781523)
-,p_event_id=>wwv_flow_imp.id(32303681838901925)
-,p_event_result=>'TRUE'
-,p_action_sequence=>160
-,p_execute_on_page_init=>'N'
-,p_name=>'SKIP_ROWS'
-,p_action=>'NATIVE_SET_VALUE'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P32_SKIP_ROWS'
-,p_attribute_01=>'SQL_STATEMENT'
-,p_attribute_03=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'SELECT ',
-'    JSON_VALUE(metadata, ''$.skip_rows'') AS SKIP_ROWS',
-'FROM ur_templates',
-'WHERE id = :P32_TEMPLATE_LIST'))
+,p_attribute_03=>'select name from temp_blob where id = :P32_TEMPLATE_LIST'
 ,p_attribute_07=>'P32_TEMPLATE_LIST'
 ,p_attribute_08=>'Y'
 ,p_attribute_09=>'Y'
@@ -1927,7 +1846,7 @@ wwv_flow_imp_page.create_page_da_action(
  p_id=>wwv_flow_imp.id(32995414270781539)
 ,p_event_id=>wwv_flow_imp.id(32303681838901925)
 ,p_event_result=>'TRUE'
-,p_action_sequence=>170
+,p_action_sequence=>140
 ,p_execute_on_page_init=>'Y'
 ,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -1991,12 +1910,13 @@ wwv_flow_imp_page.create_page_da_action(
 ,p_wait_for_result=>'Y'
 ,p_server_condition_type=>'ITEM_IS_NOT_NULL'
 ,p_server_condition_expr1=>'P32_TEMPLATE_LIST'
+,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
 );
 wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(34042267789823101)
+ p_id=>wwv_flow_imp.id(34102219313020302)
 ,p_event_id=>wwv_flow_imp.id(32303681838901925)
 ,p_event_result=>'TRUE'
-,p_action_sequence=>180
+,p_action_sequence=>150
 ,p_execute_on_page_init=>'N'
 ,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
@@ -2011,18 +1931,25 @@ wwv_flow_imp_page.create_page_da_action(
 '  -- Declare a variable to hold the dynamic SQL string',
 '  v_sql_query      VARCHAR2(500); ',
 '  v_xml_sheet_name VARCHAR2(500); ',
-'  v_file_id   VARCHAR2(500); ',
+'  v_id varchar2(100);',
 'BEGIN',
 '  -- 1. Fetch template details including the dynamic table name',
-'  SELECT db_object_name, ',
-'  JSON_VALUE(metadata, ''$.sheet_file_name'')',
-' ',
-'         ',
-'  INTO  v_db_object_name, v_xml_sheet_name',
+'  SELECT ',
+'  name, type, db_object_name, JSON_VALUE(metadata, ''$.sheet_file_name''),',
+'         JSON_VALUE(metadata, ''$.skip_rows'' RETURNING NUMBER DEFAULT 0 ON ERROR),',
+'        -- JSON_VALUE(metadata, ''$.sheet_display_name'') || '' ('' || JSON_VALUE(metadata, ''$.sheet_file_name'') || '')'' as sheet_name,',
+'         JSON_VALUE(metadata, ''$.sheet_display_name''),',
+'         CASE JSON_VALUE(metadata, ''$.file_type'' RETURNING NUMBER DEFAULT 0 ON ERROR)',
+'             WHEN 1 THEN ''1 - MS Excel (.xlsx, .xls)''',
+'             WHEN 2 THEN ''2 - CSV (.csv, .txt)''',
+'             WHEN 3 THEN ''3 - JSON''',
+'             WHEN 4 THEN ''4 - XML (.xml)''',
+'             ELSE ''N/A''',
+'         END',
+'  INTO  v_name, v_type, v_db_object_name, v_xml_sheet_name, v_skip_rows, v_sheet, v_file_type',
 '  FROM ur_templates',
-' -- WHERE id = :P32_TEMPLATE_LIST;',
-'  WHERE id = hextoraw(:P32_TEMPLATE_LIST);',
-'',
+'  WHERE id = :P32_TEMPLATE_LIST;',
+'  ',
 '  -- 2. Construct the dynamic SQL statement',
 '  v_sql_query := ''SELECT COUNT(*) FROM '' || v_db_object_name;',
 '',
@@ -2030,148 +1957,57 @@ wwv_flow_imp_page.create_page_da_action(
 '  -- EXECUTE IMMEDIATE runs the string in v_sql_query and puts the result INTO v_records',
 '  EXECUTE IMMEDIATE v_sql_query INTO v_records; ',
 '',
-'',
-'  :P32_file_name_2 := v_sheet;',
-' ',
-'',
-'   -- TEST STATIC VALUE',
-'--  :P32_file_name_2 := ''TEST_STATIC_FILENAME.csv'';',
-'  commit;',
-' -- :p := v_records; -- Assuming you''ll need to display this count',
+'  -- 4. Assign results to APEX page items (or bind variables)',
+'  --:P1011_TEMPLATE_NAME := v_name;',
+'  --:P1011_TEMPLATE_TYPE := v_type;',
+'  :P32_SKIP_ROWS := v_skip_rows;',
+'  :P32_SHEET_NAME := v_sheet;',
+'  --:P32_SHEET_NAME := v_xml_sheet_name;',
+'  :P32_FILE_TYPE := v_file_type;',
+'--  :P1011_TEMPLATE_RECORD_COUNT := v_records; -- Assuming you''ll need to display this count',
+' -- :P32_FILE_ID := v_id;',
 'END;'))
 ,p_attribute_02=>'P32_TEMPLATE_LIST'
-,p_attribute_03=>'P32_FILE_NAME_2'
+,p_attribute_03=>'P32_FILE_TYPE,P32_SKIP_ROWS,P32_SHEET_NAME,P32_FILE_ID'
 ,p_attribute_04=>'N'
 ,p_attribute_05=>'PLSQL'
 ,p_wait_for_result=>'Y'
-,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
+,p_server_condition_type=>'ITEM_IS_NOT_NULL'
+,p_server_condition_expr1=>'P32_TEMPLATE_LIST'
 );
 wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(34042385913823102)
+ p_id=>wwv_flow_imp.id(34102506367020305)
 ,p_event_id=>wwv_flow_imp.id(32303681838901925)
 ,p_event_result=>'TRUE'
-,p_action_sequence=>190
-,p_execute_on_page_init=>'N'
+,p_action_sequence=>160
+,p_execute_on_page_init=>'Y'
 ,p_action=>'NATIVE_SET_VALUE'
 ,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P32_FILE_NAME_2'
+,p_affected_elements=>'P32_HIDDEN_UPLOAD_FILE_NAME'
 ,p_attribute_01=>'SQL_STATEMENT'
-,p_attribute_03=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'  -- 1. Fetch template details including the dynamic table name',
-'  SELECT ',
-'  JSON_VALUE(metadata, ''$.sheet_file_name'')',
-' ',
-'         ',
-' ',
-'  FROM ur_templates',
-' -- WHERE id = :P32_TEMPLATE_LIST;',
-'  WHERE id = hextoraw(:P32_TEMPLATE_LIST);',
-'',
-'  ',
-'',
-' ',
-'',
-'',
-'',
-'',
-''))
-,p_attribute_07=>'P32_TEMPLATE_LIST'
-,p_attribute_08=>'Y'
+,p_attribute_03=>'SELECT NAME FROM TEMP_BLOB WHERE ID = :P32_FILE_ID'
+,p_attribute_07=>'P32_FILE_ID'
+,p_attribute_08=>'N'
 ,p_attribute_09=>'N'
 ,p_wait_for_result=>'Y'
 );
 wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(34043053165823109)
+ p_id=>wwv_flow_imp.id(34102739668020307)
 ,p_event_id=>wwv_flow_imp.id(32303681838901925)
 ,p_event_result=>'TRUE'
-,p_action_sequence=>200
+,p_action_sequence=>170
 ,p_execute_on_page_init=>'N'
-,p_name=>'filename'
 ,p_action=>'NATIVE_SET_VALUE'
 ,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P32_FILE_NAME_HIDDEN'
+,p_affected_elements=>'P32_SKIP_ROWS'
 ,p_attribute_01=>'SQL_STATEMENT'
 ,p_attribute_03=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'SELECT ',
-'       filename',
-'FROM temp_blob',
-'WHERE id = :P32_TEMPLATE_LIST;'))
+'SELECT JSON_VALUE(metadata, ''$.skip_rows'' RETURNING NUMBER DEFAULT 0 ON ERROR) ',
+'FROM ur_templates WHERE ID = :P32_TEMPLATE_LIST'))
 ,p_attribute_07=>'P32_TEMPLATE_LIST'
 ,p_attribute_08=>'N'
 ,p_attribute_09=>'N'
 ,p_wait_for_result=>'Y'
-,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(34042481263823103)
-,p_event_id=>wwv_flow_imp.id(32303681838901925)
-,p_event_result=>'TRUE'
-,p_action_sequence=>210
-,p_execute_on_page_init=>'N'
-,p_action=>'NATIVE_SET_VALUE'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P32_SKIP_ROWS'
-,p_attribute_01=>'SQL_STATEMENT'
-,p_attribute_03=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'  -- 1. Fetch template details including the dynamic table name',
-'  SELECT ',
-'  JSON_VALUE(metadata, ''$.skip_rows'')',
-' ',
-'         ',
-' ',
-'  FROM ur_templates',
-' -- WHERE id = :P32_TEMPLATE_LIST;',
-'  WHERE id = hextoraw(:P32_TEMPLATE_LIST);',
-'',
-'  ',
-'',
-' ',
-'',
-'',
-'',
-'',
-''))
-,p_attribute_07=>'P32_TEMPLATE_LIST'
-,p_attribute_08=>'Y'
-,p_attribute_09=>'N'
-,p_wait_for_result=>'Y'
-,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(32996337803781548)
-,p_event_id=>wwv_flow_imp.id(32303681838901925)
-,p_event_result=>'TRUE'
-,p_action_sequence=>220
-,p_execute_on_page_init=>'N'
-,p_name=>'preview'
-,p_action=>'NATIVE_REFRESH'
-,p_affected_elements_type=>'REGION'
-,p_affected_region_id=>wwv_flow_imp.id(32993974728781524)
-,p_attribute_01=>'N'
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(34042732404823106)
-,p_event_id=>wwv_flow_imp.id(32303681838901925)
-,p_event_result=>'TRUE'
-,p_action_sequence=>230
-,p_execute_on_page_init=>'N'
-,p_name=>'preview_sr'
-,p_action=>'NATIVE_REFRESH'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P32_SKIP_ROWS'
-,p_attribute_01=>'N'
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(34043124169823110)
-,p_event_id=>wwv_flow_imp.id(32303681838901925)
-,p_event_result=>'TRUE'
-,p_action_sequence=>240
-,p_execute_on_page_init=>'N'
-,p_name=>'preview_filename'
-,p_action=>'NATIVE_REFRESH'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P32_FILE_NAME_2'
-,p_attribute_01=>'N'
 );
 wwv_flow_imp_page.create_page_da_event(
  p_id=>wwv_flow_imp.id(32308533409901939)
@@ -2461,7 +2297,7 @@ wwv_flow_imp_page.create_page_da_action(
 '   SELECT ID, JSON_VALUE(profile, ''$."file-type"'' RETURNING NUMBER)',
 '  INTO v_file_id, v_file_type FROM temp_blob  WHERE ID = :P32_FILE_ID;',
 '  SELECT JSON_OBJECT(',
-'    ''skip_rows'' VALUE NVL(:P32_SKIP_ROWS, 0), ''sheet_file_name'' VALUE :P32_FILE_NAME_2,',
+'    ''skip_rows'' VALUE NVL(:P32_SKIP_ROWS, 0), ''sheet_file_name'' VALUE :P32_SHEET_NAME,',
 '    ''sheet_display_name'' VALUE v_sheet_display_name, ''file_type'' VALUE v_file_type,',
 '    ''file_id'' VALUE v_file_id) INTO v_metadata FROM DUAL;',
 '',
@@ -2502,27 +2338,7 @@ wwv_flow_imp_page.create_page_da_action(
 'BEGIN',
 '',
 '',
-' /*   IF :P32_SHEET_NAME IS NOT NULL THEN',
-'    SELECT sheet_display_name INTO v_sheet_display_name',
-'    FROM TABLE(apex_data_parser.get_xlsx_worksheets(',
-'        p_content => (SELECT blob_content FROM temp_blob WHERE ID = :P32_FILE_ID)))',
-'    WHERE SHEET_FILE_NAME = :P32_SHEET_NAME AND ROWNUM = 1;',
-'  END IF;',
-'  ',
-'   SELECT ID, JSON_VALUE(profile, ''$."file-type"'' RETURNING NUMBER)',
-'  INTO v_file_id, v_file_type FROM temp_blob  WHERE ID = :P32_FILE_ID;',
-'  SELECT JSON_OBJECT(',
-'    ''skip_rows'' VALUE NVL(:P32_SKIP_ROWS, 0), ''sheet_file_name'' VALUE :P32_FILE_NAME_2,',
-'    ''sheet_display_name'' VALUE v_sheet_display_name, ''file_type'' VALUE v_file_type,',
-'    ''file_id'' VALUE v_file_id) INTO v_metadata FROM DUAL;',
-'*/',
-'',
-' UPDATE ur_templates',
-'       SET metadata = v_metadata,',
-'           updated_on = SYSTIMESTAMP',
-'     WHERE id = :P32_TEMPLATE_LIST;',
-'',
-'    COMMIT;',
+' ',
 '',
 '    update_template_definition(',
 '        p_template_id     => :P32_TEMPLATE_LIST,',
@@ -2955,6 +2771,16 @@ wwv_flow_imp_page.create_page_da_action(
 ,p_affected_region_id=>wwv_flow_imp.id(55440109709903475)
 );
 wwv_flow_imp_page.create_page_da_action(
+ p_id=>wwv_flow_imp.id(34102910504020309)
+,p_event_id=>wwv_flow_imp.id(32298595867901910)
+,p_event_result=>'FALSE'
+,p_action_sequence=>20
+,p_execute_on_page_init=>'Y'
+,p_action=>'NATIVE_HIDE'
+,p_affected_elements_type=>'REGION'
+,p_affected_region_id=>wwv_flow_imp.id(32992226682781507)
+);
+wwv_flow_imp_page.create_page_da_action(
  p_id=>wwv_flow_imp.id(32299594313901913)
 ,p_event_id=>wwv_flow_imp.id(32298595867901910)
 ,p_event_result=>'TRUE'
@@ -2973,6 +2799,16 @@ wwv_flow_imp_page.create_page_da_action(
 ,p_action=>'NATIVE_SHOW'
 ,p_affected_elements_type=>'REGION'
 ,p_affected_region_id=>wwv_flow_imp.id(47881562974887284)
+);
+wwv_flow_imp_page.create_page_da_action(
+ p_id=>wwv_flow_imp.id(34102885599020308)
+,p_event_id=>wwv_flow_imp.id(32298595867901910)
+,p_event_result=>'TRUE'
+,p_action_sequence=>50
+,p_execute_on_page_init=>'Y'
+,p_action=>'NATIVE_SHOW'
+,p_affected_elements_type=>'REGION'
+,p_affected_region_id=>wwv_flow_imp.id(32992226682781507)
 );
 wwv_flow_imp_page.create_page_da_event(
  p_id=>wwv_flow_imp.id(32294375944901896)
@@ -3476,7 +3312,7 @@ wwv_flow_imp_page.create_page_da_action(
 '    v_alerts  CLOB;',
 'BEGIN',
 '    ur_utils.refresh_file_profile_and_collection(',
-'        p_file_name       => :P32_file_name_2,',
+'        p_file_name       => :P32_HIDDEN_UPLOAD_FILE_NAME,',
 '        p_skip_rows       => NVL(:P32_SKIP_ROWS, 0),',
 '        p_sheet_name      => :P32_SHEET_NAME,',
 '        p_collection_name => ''TEMPLATE_DATA'',',
@@ -3495,7 +3331,7 @@ wwv_flow_imp_page.create_page_da_action(
 '',
 '    :P0_ALERT_MESSAGE := v_alerts;',
 'END;'))
-,p_attribute_02=>'P32_SHEET_NAME,P32_SKIP_ROWS,P32_FILE_NAME_2'
+,p_attribute_02=>'P32_HIDDEN_UPLOAD_FILE_NAME,P32_SKIP_ROWS,P32_SHEET_NAME'
 ,p_attribute_03=>'P0_ALERT_MESSAGE'
 ,p_attribute_04=>'N'
 ,p_attribute_05=>'PLSQL'

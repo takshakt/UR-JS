@@ -142,36 +142,6 @@ wwv_flow_imp_page.create_page_plug(
   'output_as', 'HTML')).to_clob
 );
 wwv_flow_imp_page.create_page_plug(
- p_id=>wwv_flow_imp.id(42946828459152118)
-,p_plug_name=>'TEMPLATE'
-,p_title=>'2. Choose Template'
-,p_parent_plug_id=>wwv_flow_imp.id(52476143455862522)
-,p_region_template_options=>'#DEFAULT#:t-Region--noPadding:t-Region--noBorder:t-Region--scrollBody'
-,p_plug_template=>4072358936313175081
-,p_plug_display_sequence=>30
-,p_plug_display_point=>'SUB_REGIONS'
-,p_location=>null
-,p_required_patch=>wwv_flow_imp.id(8557885664922129)
-,p_ai_enabled=>false
-,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
-  'expand_shortcuts', 'N',
-  'output_as', 'HTML')).to_clob
-);
-wwv_flow_imp_page.create_page_plug(
- p_id=>wwv_flow_imp.id(52744619806070202)
-,p_plug_name=>'New'
-,p_parent_plug_id=>wwv_flow_imp.id(42946828459152118)
-,p_region_template_options=>'#DEFAULT#:t-Region--noPadding:t-Region--removeHeader js-removeLandmark:t-Region--noBorder:t-Region--scrollBody:margin-top-lg'
-,p_plug_template=>4072358936313175081
-,p_plug_display_sequence=>10
-,p_plug_display_point=>'SUB_REGIONS'
-,p_location=>null
-,p_ai_enabled=>false
-,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
-  'expand_shortcuts', 'N',
-  'output_as', 'HTML')).to_clob
-);
-wwv_flow_imp_page.create_page_plug(
  p_id=>wwv_flow_imp.id(42950085823152151)
 ,p_plug_name=>'Mapping'
 ,p_title=>'3. Review Mapping & Calculations'
@@ -206,7 +176,8 @@ wwv_flow_imp_page.create_page_plug(
 '    c004 AS default_value,',
 '    c005 as target_original_name,',
 '    c006 as qualifier,',
-'    :P1011_TEMPLATE_LOV AS lov',
+'    c007 AS Format_Mask,',
+'    :P1011_TEMPLATE AS lov',
 'FROM apex_collections',
 'WHERE collection_name = ''UR_DATA_MAPPING_COLLECTION''',
 '  AND :P1011_TEMPLATE IS NOT NULL'))
@@ -242,17 +213,48 @@ wwv_flow_imp_page.create_page_plug(
 ,p_ai_enabled=>false
 );
 wwv_flow_imp_page.create_region_column(
+ p_id=>wwv_flow_imp.id(33349743175790146)
+,p_name=>'FORMAT_MASK'
+,p_source_type=>'DB_COLUMN'
+,p_source_expression=>'FORMAT_MASK'
+,p_data_type=>'VARCHAR2'
+,p_session_state_data_type=>'VARCHAR2'
+,p_is_query_only=>false
+,p_item_type=>'NATIVE_TEXTAREA'
+,p_heading=>'Format Mask'
+,p_heading_alignment=>'LEFT'
+,p_display_sequence=>100
+,p_value_alignment=>'LEFT'
+,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
+  'auto_height', 'N',
+  'character_counter', 'N',
+  'resizable', 'Y',
+  'trim_spaces', 'BOTH')).to_clob
+,p_is_required=>false
+,p_max_length=>32767
+,p_enable_filter=>true
+,p_filter_operators=>'C:S:CASE_INSENSITIVE:REGEXP'
+,p_filter_is_required=>false
+,p_filter_text_case=>'MIXED'
+,p_filter_lov_type=>'NONE'
+,p_use_as_row_header=>false
+,p_enable_sort_group=>false
+,p_enable_hide=>true
+,p_is_primary_key=>false
+,p_duplicate_value=>true
+,p_include_in_export=>true
+);
+wwv_flow_imp_page.create_region_column(
  p_id=>wwv_flow_imp.id(43333417662903917)
 ,p_name=>'MAPPING_TYPE'
 ,p_source_type=>'DB_COLUMN'
 ,p_source_expression=>'MAPPING_TYPE'
 ,p_data_type=>'VARCHAR2'
-,p_session_state_data_type=>'VARCHAR2'
 ,p_is_query_only=>false
 ,p_item_type=>'NATIVE_SELECT_LIST'
 ,p_heading=>'Mapping Type'
 ,p_heading_alignment=>'CENTER'
-,p_display_sequence=>50
+,p_display_sequence=>30
 ,p_value_alignment=>'CENTER'
 ,p_is_required=>false
 ,p_lov_type=>'SHARED'
@@ -283,7 +285,7 @@ wwv_flow_imp_page.create_region_column(
 ,p_item_type=>'NATIVE_TEXTAREA'
 ,p_heading=>'Calculation'
 ,p_heading_alignment=>'LEFT'
-,p_display_sequence=>70
+,p_display_sequence=>50
 ,p_value_alignment=>'LEFT'
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
   'auto_height', 'N',
@@ -316,7 +318,7 @@ wwv_flow_imp_page.create_region_column(
 ,p_item_type=>'NATIVE_DISPLAY_ONLY'
 ,p_heading=>'Source'
 ,p_heading_alignment=>'LEFT'
-,p_display_sequence=>40
+,p_display_sequence=>20
 ,p_value_alignment=>'LEFT'
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
   'based_on', 'VALUE',
@@ -340,12 +342,11 @@ wwv_flow_imp_page.create_region_column(
 ,p_source_type=>'DB_COLUMN'
 ,p_source_expression=>'TARGET'
 ,p_data_type=>'VARCHAR2'
-,p_session_state_data_type=>'VARCHAR2'
 ,p_is_query_only=>false
 ,p_item_type=>'NATIVE_POPUP_LOV'
 ,p_heading=>'Target'
 ,p_heading_alignment=>'LEFT'
-,p_display_sequence=>60
+,p_display_sequence=>40
 ,p_value_alignment=>'LEFT'
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
   'case_sensitive', 'N',
@@ -360,17 +361,8 @@ wwv_flow_imp_page.create_region_column(
 ,p_lov_type=>'SQL_QUERY'
 ,p_lov_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
 'select COLUMN_NAME||''(''||DATA_TYPE||'')'' AS target from all_tab_cols where TABLE_NAME ',
-'like (select db_object_name from ur_templates where id = :P1011_TEMPLATE_LOV)',
-'',
-'',
-'',
-'--''UR_UR_BHAUMIK_30_SEP_T'' --:P1011_TEMPLATE_LOV',
-'',
-' /*select  c002 AS target',
-'from APEX_COLLECTIONS',
-'where 1 = 1',
-'and collection_name = ''UR_DATA_MAPPING_COLLECTION''',
-'AND :P1011_TEMPLATE_LOV IS NOT NULL*/'))
+'like (select db_object_name from ur_templates where id = :P1011_TEMPLATE)',
+''))
 ,p_lov_display_extra=>true
 ,p_lov_display_null=>true
 ,p_enable_filter=>true
@@ -392,12 +384,11 @@ wwv_flow_imp_page.create_region_column(
 ,p_source_type=>'DB_COLUMN'
 ,p_source_expression=>'SEQ_ID'
 ,p_data_type=>'NUMBER'
-,p_session_state_data_type=>'VARCHAR2'
 ,p_is_query_only=>false
 ,p_item_type=>'NATIVE_NUMBER_FIELD'
 ,p_heading=>'Seq Id'
 ,p_heading_alignment=>'RIGHT'
-,p_display_sequence=>80
+,p_display_sequence=>10
 ,p_value_alignment=>'RIGHT'
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
   'number_alignment', 'left',
@@ -425,7 +416,7 @@ wwv_flow_imp_page.create_region_column(
 ,p_item_type=>'NATIVE_TEXTAREA'
 ,p_heading=>'Lov'
 ,p_heading_alignment=>'LEFT'
-,p_display_sequence=>90
+,p_display_sequence=>70
 ,p_value_alignment=>'LEFT'
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
   'auto_height', 'N',
@@ -457,7 +448,7 @@ wwv_flow_imp_page.create_region_column(
 ,p_item_type=>'NATIVE_TEXTAREA'
 ,p_heading=>'Target Original Name'
 ,p_heading_alignment=>'LEFT'
-,p_display_sequence=>100
+,p_display_sequence=>110
 ,p_value_alignment=>'LEFT'
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
   'auto_height', 'N',
@@ -477,6 +468,7 @@ wwv_flow_imp_page.create_region_column(
 ,p_is_primary_key=>false
 ,p_duplicate_value=>true
 ,p_include_in_export=>true
+,p_required_patch=>wwv_flow_imp.id(8557885664922129)
 );
 wwv_flow_imp_page.create_region_column(
  p_id=>wwv_flow_imp.id(60658060515302128)
@@ -489,7 +481,7 @@ wwv_flow_imp_page.create_region_column(
 ,p_item_type=>'NATIVE_TEXTAREA'
 ,p_heading=>'Qualifier'
 ,p_heading_alignment=>'LEFT'
-,p_display_sequence=>110
+,p_display_sequence=>90
 ,p_value_alignment=>'LEFT'
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
   'auto_height', 'N',
@@ -548,6 +540,14 @@ wwv_flow_imp_page.create_ig_report_view(
 ,p_srv_exclude_null_values=>false
 ,p_srv_only_display_columns=>true
 ,p_edit_mode=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(34233448217715741)
+,p_view_id=>wwv_flow_imp.id(43358760172517814)
+,p_display_seq=>9
+,p_column_id=>wwv_flow_imp.id(33349743175790146)
+,p_is_visible=>true
+,p_is_frozen=>false
 );
 wwv_flow_imp_page.create_ig_report_column(
  p_id=>wwv_flow_imp.id(43426555280629867)
@@ -642,6 +642,7 @@ wwv_flow_imp_page.create_page_plug(
 ,p_plug_template=>4072358936313175081
 ,p_plug_display_sequence=>30
 ,p_location=>null
+,p_required_patch=>wwv_flow_imp.id(8557885664922129)
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
   'expand_shortcuts', 'N',
   'output_as', 'HTML')).to_clob
@@ -769,20 +770,6 @@ wwv_flow_imp_page.create_worksheet_rpt(
 ,p_status=>'PUBLIC'
 ,p_is_default=>'Y'
 ,p_report_columns=>'ATTRIBUTE:VALUE:'
-);
-wwv_flow_imp_page.create_page_button(
- p_id=>wwv_flow_imp.id(33310197356701575)
-,p_button_sequence=>10
-,p_button_plug_id=>wwv_flow_imp.id(52744619806070202)
-,p_button_name=>'FETCH_TEMPLATE'
-,p_button_action=>'DEFINED_BY_DA'
-,p_button_template_options=>'#DEFAULT#:t-Button--success'
-,p_button_template_id=>4072362960822175091
-,p_button_image_alt=>'Analyse Template'
-,p_warn_on_unsaved_changes=>null
-,p_grid_new_row=>'Y'
-,p_grid_column_span=>3
-,p_grid_column=>1
 );
 wwv_flow_imp_page.create_page_button(
  p_id=>wwv_flow_imp.id(33306423082701540)
@@ -1000,43 +987,6 @@ wwv_flow_imp_page.create_page_item(
   'trim_spaces', 'BOTH')).to_clob
 );
 wwv_flow_imp_page.create_page_item(
- p_id=>wwv_flow_imp.id(42951948470152195)
-,p_name=>'P1011_TEMPLATE_LOV'
-,p_item_sequence=>20
-,p_item_plug_id=>wwv_flow_imp.id(52744619806070202)
-,p_use_cache_before_default=>'NO'
-,p_prompt=>'Template'
-,p_display_as=>'NATIVE_SELECT_LIST'
-,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'SELECT Template_Name || '' - '' || Score || ''%'' AS display_value,',
-'       Template_id AS return_value',
-'  FROM JSON_TABLE(',
-'    :P1011_TEMPLATE_JSON,',
-'    ''$[*]''',
-'    COLUMNS (',
-'      Template_id   VARCHAR2(100) PATH ''$.Template_id'',',
-'      Template_Name VARCHAR2(4000) PATH ''$.Template_Name'',',
-'      Score         NUMBER PATH ''$.Score''',
-'    )',
-'  )',
-'WHERE Template_id IS NOT NULL',
-'ORDER BY Score DESC, Template_Name'))
-,p_lov_display_null=>'YES'
-,p_lov_cascade_parent_items=>'P0_HOTEL_ID'
-,p_ajax_items_to_submit=>'P0_HOTEL_ID'
-,p_ajax_optimize_refresh=>'Y'
-,p_cHeight=>1
-,p_begin_on_new_line=>'N'
-,p_colspan=>6
-,p_grid_column=>4
-,p_field_template=>1609121967514267634
-,p_item_template_options=>'#DEFAULT#'
-,p_lov_display_extra=>'YES'
-,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
-  'page_action_on_selection', 'NONE')).to_clob
-,p_ai_enabled=>false
-);
-wwv_flow_imp_page.create_page_item(
  p_id=>wwv_flow_imp.id(42957484856152233)
 ,p_name=>'P1011_COLLECTION_NAME'
 ,p_item_sequence=>70
@@ -1057,16 +1007,6 @@ wwv_flow_imp_page.create_page_item(
 ,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
   'value_protected', 'Y')).to_clob
 ,p_ai_enabled=>false
-);
-wwv_flow_imp_page.create_page_item(
- p_id=>wwv_flow_imp.id(43367069099477461)
-,p_name=>'P1011_TEMPLATE_JSON'
-,p_item_sequence=>90
-,p_use_cache_before_default=>'NO'
-,p_display_as=>'NATIVE_HIDDEN'
-,p_required_patch=>wwv_flow_imp.id(8557885664922129)
-,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
-  'value_protected', 'Y')).to_clob
 );
 wwv_flow_imp_page.create_page_item(
  p_id=>wwv_flow_imp.id(51958492837349954)
@@ -1238,8 +1178,6 @@ wwv_flow_imp_page.create_page_da_action(
 '  END IF;',
 'END;'))
 ,p_attribute_02=>'P1011_P1_FILE_ID,P1011_HOTEL_LIST,P0_HOTEL_ID'
-,p_attribute_03=>'P1011_TEMPLATE_JSON'
-,p_attribute_04=>'N'
 ,p_attribute_05=>'PLSQL'
 ,p_wait_for_result=>'Y'
 ,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
@@ -1280,22 +1218,8 @@ wwv_flow_imp_page.create_page_da_action(
 '  END IF;',
 'END;'))
 ,p_attribute_02=>'P1011_P1_FILE_ID,P1011_HOTEL_LIST,P0_HOTEL_ID'
-,p_attribute_03=>'P1011_TEMPLATE_JSON'
-,p_attribute_04=>'N'
 ,p_attribute_05=>'PLSQL'
 ,p_wait_for_result=>'Y'
-,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33339947053701699)
-,p_event_id=>wwv_flow_imp.id(33338489396701695)
-,p_event_result=>'TRUE'
-,p_action_sequence=>90
-,p_execute_on_page_init=>'N'
-,p_action=>'NATIVE_REFRESH'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P1011_TEMPLATE_LOV'
-,p_attribute_01=>'N'
 ,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
 );
 wwv_flow_imp_page.create_page_da_action(
@@ -1315,111 +1239,14 @@ wwv_flow_imp_page.create_page_da_action(
 ,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
 );
 wwv_flow_imp_page.create_page_da_event(
- p_id=>wwv_flow_imp.id(33343321936701709)
-,p_name=>'Page_Load_DA1'
-,p_event_sequence=>50
-,p_bind_type=>'bind'
-,p_execution_type=>'IMMEDIATE'
-,p_bind_event_type=>'ready'
-,p_required_patch=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33344848370701713)
-,p_event_id=>wwv_flow_imp.id(33343321936701709)
-,p_event_result=>'TRUE'
-,p_action_sequence=>10
-,p_execute_on_page_init=>'N'
-,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
-,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'DECLARE',
-'  v_output CLOB;',
-'  v_status VARCHAR2(1);',
-'  v_msg    VARCHAR2(4000);',
-'BEGIN',
-'  -- Call your procedure with desired inputs:',
-'  UR_UTILS.FETCH_TEMPLATES(',
-'    p_file_id    => :P1011_P1_FILE_ID,',
-'    p_hotel_id   => ''3B9B828094379CA8E063DD59000AC846'',',
-'    p_min_score  => 90,',
-'    p_debug_flag => ''N'',',
-'    p_output_json => v_output,',
-'    p_status    => v_status,',
-'    p_message   => v_msg',
-'  );',
-'',
-'  IF v_status = ''S'' THEN',
-'    :P1011_TEMPLATE_JSON := v_output;',
-'  ELSE',
-'    :P1011_TEMPLATE_JSON := ''[{}]''; -- fallback empty',
-'    apex_debug.message(''Template matching error: '' || v_msg);',
-'  END IF;',
-'END;'))
-,p_attribute_05=>'PLSQL'
-,p_wait_for_result=>'Y'
-,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33343890450701711)
-,p_event_id=>wwv_flow_imp.id(33343321936701709)
-,p_event_result=>'TRUE'
-,p_action_sequence=>20
-,p_execute_on_page_init=>'N'
-,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
-,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'DECLARE',
-'  v_output CLOB;',
-'  v_status VARCHAR2(1);',
-'  v_msg    VARCHAR2(4000);',
-'BEGIN',
-'  -- Call your procedure with desired inputs:',
-'  UR_UTILS.FETCH_TEMPLATES(',
-'    p_file_id    => :P1011_P1_FILE_ID,',
-'    p_hotel_id   => :P0_HOTEL_ID,',
-'    p_min_score  => 50,',
-'    p_debug_flag => ''N'',',
-'    p_output_json => v_output,',
-'    p_status    => v_status,',
-'    p_message   => v_msg',
-'  );',
-'',
-'  IF v_status = ''S'' THEN',
-'    :P1011_TEMPLATE_JSON := v_output;',
-'    ur_utils.add_alert(p_existing_json => :P1011_ALERT_MESSAGE,',
-'                        p_message       => v_msg,',
-'                        p_icon          => v_status,',
-'                        p_updated_json  => :P1011_ALERT_MESSAGE);',
-'  ELSE',
-'    :P1011_TEMPLATE_JSON := ''[{}]''; -- fallback empty',
-'    apex_debug.message(''Template matching error: '' || v_msg);',
-'  END IF;',
-'END;'))
-,p_attribute_02=>'P1011_HOTEL_LIST,P1011_FILE_LOAD,P0_HOTEL_ID'
-,p_attribute_03=>'P1011_TEMPLATE_JSON'
-,p_attribute_04=>'N'
-,p_attribute_05=>'PLSQL'
-,p_wait_for_result=>'Y'
-,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33344371307701712)
-,p_event_id=>wwv_flow_imp.id(33343321936701709)
-,p_event_result=>'TRUE'
-,p_action_sequence=>30
-,p_execute_on_page_init=>'N'
-,p_action=>'NATIVE_REFRESH'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P1011_TEMPLATE_LOV'
-,p_attribute_01=>'N'
-,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_event(
  p_id=>wwv_flow_imp.id(33332594911701678)
 ,p_name=>'Change_Hotel'
 ,p_event_sequence=>60
 ,p_triggering_element_type=>'ITEM'
 ,p_triggering_element=>'P0_HOTEL_ID'
 ,p_condition_element=>'P0_HOTEL_ID'
-,p_triggering_condition_type=>'NOT_NULL'
+,p_triggering_condition_type=>'NOT_EQUALS'
+,p_triggering_expression=>'FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF'
 ,p_bind_type=>'bind'
 ,p_execution_type=>'IMMEDIATE'
 ,p_bind_event_type=>'change'
@@ -1471,19 +1298,6 @@ wwv_flow_imp_page.create_page_da_action(
 'apex.region("MY_IG_MAPPING").widget().interactiveGrid("getViews").grid.model.clearChanges();',
 'apex.region("MY_IG_MAPPING").widget().interactiveGrid("getActions").set("edit", false);'))
 ,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33334029819701682)
-,p_event_id=>wwv_flow_imp.id(33332594911701678)
-,p_event_result=>'TRUE'
-,p_action_sequence=>40
-,p_execute_on_page_init=>'Y'
-,p_action=>'NATIVE_SET_VALUE'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P1011_TEMPLATE_LOV'
-,p_attribute_01=>'STATIC_ASSIGNMENT'
-,p_attribute_09=>'N'
-,p_wait_for_result=>'Y'
 );
 wwv_flow_imp_page.create_page_da_action(
  p_id=>wwv_flow_imp.id(33335561477701687)
@@ -1561,109 +1375,8 @@ wwv_flow_imp_page.create_page_da_action(
 '    apex_debug.message(''Template matching error: '' || v_msg); ',
 'END;'))
 ,p_attribute_02=>'P1011_P1_FILE_ID,P1011_HOTEL_LIST,P0_HOTEL_ID'
-,p_attribute_03=>'P1011_TEMPLATE_JSON'
-,p_attribute_04=>'N'
 ,p_attribute_05=>'PLSQL'
 ,p_wait_for_result=>'Y'
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33338098575701694)
-,p_event_id=>wwv_flow_imp.id(33332594911701678)
-,p_event_result=>'TRUE'
-,p_action_sequence=>110
-,p_execute_on_page_init=>'N'
-,p_action=>'NATIVE_REFRESH'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P1011_TEMPLATE_LOV'
-,p_attribute_01=>'N'
-);
-wwv_flow_imp_page.create_page_da_event(
- p_id=>wwv_flow_imp.id(33325410002701655)
-,p_name=>'Template Selected'
-,p_event_sequence=>80
-,p_triggering_element_type=>'ITEM'
-,p_triggering_element=>'P1011_TEMPLATE_LOV'
-,p_condition_element=>'P1011_TEMPLATE_LOV'
-,p_triggering_condition_type=>'NOT_NULL'
-,p_bind_type=>'bind'
-,p_execution_type=>'IMMEDIATE'
-,p_bind_event_type=>'change'
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33326401858701659)
-,p_event_id=>wwv_flow_imp.id(33325410002701655)
-,p_event_result=>'FALSE'
-,p_action_sequence=>10
-,p_execute_on_page_init=>'Y'
-,p_action=>'NATIVE_HIDE'
-,p_affected_elements_type=>'REGION'
-,p_affected_region_id=>wwv_flow_imp.id(42877625058126951)
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33327469871701662)
-,p_event_id=>wwv_flow_imp.id(33325410002701655)
-,p_event_result=>'TRUE'
-,p_action_sequence=>10
-,p_execute_on_page_init=>'N'
-,p_action=>'NATIVE_SET_VALUE'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P1011_TEMPLATE_ID'
-,p_attribute_01=>'PLSQL_EXPRESSION'
-,p_attribute_04=>':P1011_TEMPLATE_LOV'
-,p_attribute_07=>'P1011_TEMPLATE_LOV,P1011_TEMPLATE_ID'
-,p_attribute_08=>'Y'
-,p_attribute_09=>'N'
-,p_wait_for_result=>'Y'
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33326956263701660)
-,p_event_id=>wwv_flow_imp.id(33325410002701655)
-,p_event_result=>'TRUE'
-,p_action_sequence=>20
-,p_execute_on_page_init=>'N'
-,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
-,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'DECLARE',
-'    v_status  VARCHAR2(1);',
-'    v_message VARCHAR2(4000);',
-'BEGIN',
-'    UR_UTILS.LOAD_DATA_MAPPING_COLLECTION(',
-'        p_file_id         => :P1011_P1_FILE_ID,',
-'        p_template_id    => :P1011_TEMPLATE_LOV,',
-'        p_collection_name => ''UR_DATA_MAPPING_COLLECTION'',',
-'        p_use_original_name => ''AUTO'',',
-'        p_match_datatype =>''N'',',
-'        p_status          => v_status,',
-'        p_message         => v_message',
-'    );',
-'',
-'    DBMS_OUTPUT.PUT_LINE(''Status : '' || v_status);',
-'    DBMS_OUTPUT.PUT_LINE(''Message: '' || v_message);',
-'END;'))
-,p_attribute_02=>'P1011_TEMPLATE_LOV,P1011_P1_FILE_ID'
-,p_attribute_05=>'PLSQL'
-,p_wait_for_result=>'Y'
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33327970409701664)
-,p_event_id=>wwv_flow_imp.id(33325410002701655)
-,p_event_result=>'TRUE'
-,p_action_sequence=>30
-,p_execute_on_page_init=>'N'
-,p_action=>'NATIVE_REFRESH'
-,p_affected_elements_type=>'REGION'
-,p_affected_region_id=>wwv_flow_imp.id(42877625058126951)
-,p_attribute_01=>'N'
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33325998957701658)
-,p_event_id=>wwv_flow_imp.id(33325410002701655)
-,p_event_result=>'TRUE'
-,p_action_sequence=>40
-,p_execute_on_page_init=>'Y'
-,p_action=>'NATIVE_SHOW'
-,p_affected_elements_type=>'REGION'
-,p_affected_region_id=>wwv_flow_imp.id(42877625058126951)
 );
 wwv_flow_imp_page.create_page_da_event(
  p_id=>wwv_flow_imp.id(33330161498701670)
@@ -1699,7 +1412,7 @@ wwv_flow_imp_page.create_page_da_action(
 '    v_alerts   CLOB := NULL;',
 'BEGIN',
 '    -- 1. Call the main data load procedure',
-'    XX_LOCAL_Load_Data_2(',
+'    ur_utils.load_data_v2(',
 '        p_file_id         => :P1011_P1_FILE_ID,        -- NUMBER',
 '        p_template_key    => :P1011_TEMPLATE,      -- VARCHAR2',
 '        p_hotel_id        => :P0_HOTEL_ID,       -- RAW(16)',
@@ -1734,6 +1447,7 @@ unistr('        -- Success \2192 normal alert'),
 '            p_html_safe     => ''N'',',
 '            p_updated_json  => v_alerts',
 '        );',
+'',
 '',
 '    ELSIF l_status = ''W'' THEN',
 unistr('        -- Warning \2192 normal alert'),
@@ -1777,29 +1491,6 @@ unistr('        -- Any unhandled exception \2192 show error alert'),
 ,p_wait_for_result=>'Y'
 );
 wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33331134373701674)
-,p_event_id=>wwv_flow_imp.id(33330161498701670)
-,p_event_result=>'TRUE'
-,p_action_sequence=>30
-,p_execute_on_page_init=>'N'
-,p_action=>'NATIVE_JAVASCRIPT_CODE'
-,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'/*showAlert(',
-'    "Debug Message",',
-'    $v("P1011_P1_FILE_ID") + "-" + $v("P1011_TEMPLATE_LOV") + "-" + $v("P0_HOTEL_ID"),',
-'    $v("P1011_ALERT_ICON"),',
-'    $v("P1011_ALERT_TIMER")',
-'*/',
-'showAlert(',
-'    $v("P1011_ALERT_TITLE"),',
-'    $v("P1011_ALERT_MESSAGE"),',
-'    $v("P1011_ALERT_ICON"),',
-'    $v("P1011_ALERT_TIMER")',
-');',
-''))
-,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_action(
  p_id=>wwv_flow_imp.id(33332166054701677)
 ,p_event_id=>wwv_flow_imp.id(33330161498701670)
 ,p_event_result=>'TRUE'
@@ -1809,107 +1500,6 @@ wwv_flow_imp_page.create_page_da_action(
 ,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
 '$("#apex_wait_overlay").remove();',
 '$(".u-Processing").remove();'))
-);
-wwv_flow_imp_page.create_page_da_event(
- p_id=>wwv_flow_imp.id(33321877244701645)
-,p_name=>'Reset Hotel'
-,p_event_sequence=>110
-,p_bind_type=>'bind'
-,p_execution_type=>'IMMEDIATE'
-,p_bind_event_type=>'ready'
-,p_required_patch=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33322394069701646)
-,p_event_id=>wwv_flow_imp.id(33321877244701645)
-,p_event_result=>'TRUE'
-,p_action_sequence=>10
-,p_execute_on_page_init=>'Y'
-,p_action=>'NATIVE_SET_VALUE'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P0_HOTEL_ID'
-,p_attribute_01=>'STATIC_ASSIGNMENT'
-,p_attribute_09=>'N'
-,p_wait_for_result=>'Y'
-);
-wwv_flow_imp_page.create_page_da_event(
- p_id=>wwv_flow_imp.id(33319997560701637)
-,p_name=>'Clicked'
-,p_event_sequence=>120
-,p_triggering_element_type=>'BUTTON'
-,p_triggering_button_id=>wwv_flow_imp.id(33310197356701575)
-,p_bind_type=>'bind'
-,p_execution_type=>'IMMEDIATE'
-,p_bind_event_type=>'click'
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33320944707701642)
-,p_event_id=>wwv_flow_imp.id(33319997560701637)
-,p_event_result=>'TRUE'
-,p_action_sequence=>10
-,p_execute_on_page_init=>'N'
-,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
-,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'DECLARE',
-'  v_output CLOB;',
-'  v_status VARCHAR2(1);',
-'  v_msg    VARCHAR2(4000);',
-'BEGIN',
-'  -- Call your procedure with desired inputs:',
-'  UR_UTILS.FETCH_TEMPLATES(',
-'    p_file_id    => :P1011_P1_FILE_ID,',
-'    p_hotel_id   => :P0_HOTEL_ID,',
-'    p_min_score  => 50,',
-'    p_debug_flag => ''N'',',
-'    p_output_json => v_output,',
-'    p_match_datatype =>''N'',',
-'    p_status    => v_status,',
-'    p_message   => v_msg',
-'  );',
-'',
-'  IF v_status = ''S'' THEN',
-'    :P1011_TEMPLATE_JSON := v_output;',
-'    ur_utils.add_alert(p_existing_json => :P1011_ALERT_MESSAGE,',
-'                        p_message       => v_msg,',
-'                        p_icon          => v_status,',
-'                        p_updated_json  => :P1011_ALERT_MESSAGE);',
-'  ELSE',
-'    :P1011_TEMPLATE_JSON := ''[{}]''; -- fallback empty',
-'    apex_debug.message(''Template matching error: '' || v_msg);',
-'  END IF;',
-'END;'))
-,p_attribute_02=>'P1011_P1_FILE_ID,P1011_HOTEL_LIST,P0_HOTEL_ID'
-,p_attribute_03=>'P1011_TEMPLATE_JSON'
-,p_attribute_04=>'N'
-,p_attribute_05=>'PLSQL'
-,p_wait_for_result=>'Y'
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33320432925701640)
-,p_event_id=>wwv_flow_imp.id(33319997560701637)
-,p_event_result=>'TRUE'
-,p_action_sequence=>30
-,p_execute_on_page_init=>'N'
-,p_action=>'NATIVE_REFRESH'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P1011_TEMPLATE_LOV'
-,p_attribute_01=>'N'
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33321497215701644)
-,p_event_id=>wwv_flow_imp.id(33319997560701637)
-,p_event_result=>'TRUE'
-,p_action_sequence=>40
-,p_execute_on_page_init=>'N'
-,p_action=>'NATIVE_JAVASCRIPT_CODE'
-,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
-'showAlert(',
-'    $v("P1011_ALERT_TITLE"),',
-'    $v("P1011_P1_FILE_ID") + $v("P0_HOTEL_ID"),',
-'    $v("P1011_ALERT_ICON"),',
-'    $v("P1011_ALERT_TIMER")',
-');'))
-,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
 );
 wwv_flow_imp_page.create_page_da_event(
  p_id=>wwv_flow_imp.id(33322711332701647)
@@ -1973,53 +1563,6 @@ wwv_flow_imp_page.create_page_da_action(
 ,p_affected_elements_type=>'ITEM'
 ,p_affected_elements=>'P1011_TEMPLATE_LOV'
 ,p_attribute_01=>'N'
-);
-wwv_flow_imp_page.create_page_da_event(
- p_id=>wwv_flow_imp.id(33328316013701665)
-,p_name=>'Page_Load_DA'
-,p_event_sequence=>150
-,p_bind_type=>'bind'
-,p_execution_type=>'IMMEDIATE'
-,p_bind_event_type=>'ready'
-,p_required_patch=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33329237392701668)
-,p_event_id=>wwv_flow_imp.id(33328316013701665)
-,p_event_result=>'TRUE'
-,p_action_sequence=>10
-,p_execute_on_page_init=>'Y'
-,p_action=>'NATIVE_HIDE'
-,p_affected_elements_type=>'REGION'
-,p_affected_region_id=>wwv_flow_imp.id(52476143455862522)
-,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33328768059701666)
-,p_event_id=>wwv_flow_imp.id(33328316013701665)
-,p_event_result=>'TRUE'
-,p_action_sequence=>20
-,p_execute_on_page_init=>'Y'
-,p_action=>'NATIVE_SET_VALUE'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P0_HOTEL_ID'
-,p_attribute_01=>'STATIC_ASSIGNMENT'
-,p_attribute_02=>'NULL'
-,p_attribute_09=>'N'
-,p_wait_for_result=>'Y'
-);
-wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(33329738754701669)
-,p_event_id=>wwv_flow_imp.id(33328316013701665)
-,p_event_result=>'TRUE'
-,p_action_sequence=>30
-,p_execute_on_page_init=>'Y'
-,p_action=>'NATIVE_SET_VALUE'
-,p_affected_elements_type=>'ITEM'
-,p_affected_elements=>'P0_HOTEL_ID'
-,p_attribute_01=>'STATIC_ASSIGNMENT'
-,p_attribute_09=>'N'
-,p_wait_for_result=>'Y'
 );
 wwv_flow_imp_page.create_page_da_event(
  p_id=>wwv_flow_imp.id(33324512751701652)

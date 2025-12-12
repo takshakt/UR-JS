@@ -1670,7 +1670,7 @@ wwv_flow_imp_page.create_page_da_action(
 '  UR_UTILS.FETCH_TEMPLATES(',
 '    p_file_id    => :P1010_P1_FILE_ID,',
 '    p_hotel_id   => :P0_HOTEL_ID,',
-'    p_min_score  => 50,',
+'    p_min_score  => 10,',
 '    p_debug_flag => ''N'',',
 '    p_output_json => v_output,',
 '    p_match_datatype =>''N'',',

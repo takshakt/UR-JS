@@ -15,7 +15,7 @@ wwv_flow_imp_shared.create_list(
  p_id=>wwv_flow_imp.id(8558978835922138)
 ,p_name=>'Navigation Menu'
 ,p_list_status=>'PUBLIC'
-,p_version_scn=>45852251605116
+,p_version_scn=>45852340034771
 );
 wwv_flow_imp_shared.create_list_item(
  p_id=>wwv_flow_imp.id(10490026312115713)
@@ -139,6 +139,16 @@ wwv_flow_imp_shared.create_list_item(
 ,p_list_item_current_for_pages=>'1010'
 );
 wwv_flow_imp_shared.create_list_item(
+ p_id=>wwv_flow_imp.id(33305718671701521)
+,p_list_item_display_sequence=>31
+,p_list_item_link_text=>'Load Data v2'
+,p_list_item_link_target=>'f?p=&APP_ID.:1011:&SESSION.::&DEBUG.::::'
+,p_list_item_icon=>'fa-cloud-check'
+,p_parent_list_item_id=>wwv_flow_imp.id(15689157068470336)
+,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
+,p_list_item_current_for_pages=>'1011'
+);
+wwv_flow_imp_shared.create_list_item(
  p_id=>wwv_flow_imp.id(17886663119874598)
 ,p_list_item_display_sequence=>320
 ,p_list_item_link_text=>'Price Override'
@@ -147,15 +157,6 @@ wwv_flow_imp_shared.create_list_item(
 ,p_parent_list_item_id=>wwv_flow_imp.id(15689157068470336)
 ,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
 ,p_list_item_current_for_pages=>'1075,1071'
-);
-wwv_flow_imp_shared.create_list_item(
- p_id=>wwv_flow_imp.id(33305718671701521)
-,p_list_item_display_sequence=>340
-,p_list_item_link_text=>'Load Data v2'
-,p_list_item_link_target=>'f?p=&APP_ID.:1011:&APP_SESSION.::&DEBUG.:::'
-,p_parent_list_item_id=>wwv_flow_imp.id(15689157068470336)
-,p_list_item_current_type=>'COLON_DELIMITED_PAGE_LIST'
-,p_list_item_current_for_pages=>'1011'
 );
 wwv_flow_imp_shared.create_list_item(
  p_id=>wwv_flow_imp.id(19687573748008468)

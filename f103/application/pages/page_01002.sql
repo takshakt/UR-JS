@@ -674,7 +674,7 @@ wwv_flow_imp_page.create_page_plug(
 'SELECT seq_id, c001 AS name, c002 AS data_type, c003 as qualifier,  ',
 '     c005 mapping_type,',
 '',
-'        c004 as default_value',
+'        c004 as default_value,c007 as format_mask',
 '  FROM apex_collections',
 ' WHERE collection_name = ''UR_FILE_DATA_PROFILES'''))
 ,p_plug_source_type=>'NATIVE_IG'
@@ -708,6 +708,39 @@ wwv_flow_imp_page.create_page_plug(
 ,p_prn_page_footer_alignment=>'CENTER'
 ,p_prn_border_color=>'#666666'
 ,p_ai_enabled=>false
+);
+wwv_flow_imp_page.create_region_column(
+ p_id=>wwv_flow_imp.id(33349095798790139)
+,p_name=>'FORMAT_MASK'
+,p_source_type=>'DB_COLUMN'
+,p_source_expression=>'FORMAT_MASK'
+,p_data_type=>'VARCHAR2'
+,p_session_state_data_type=>'VARCHAR2'
+,p_is_query_only=>false
+,p_item_type=>'NATIVE_TEXTAREA'
+,p_heading=>'Format Mask'
+,p_heading_alignment=>'LEFT'
+,p_display_sequence=>90
+,p_value_alignment=>'LEFT'
+,p_attributes=>wwv_flow_t_plugin_attributes(wwv_flow_t_varchar2(
+  'auto_height', 'N',
+  'character_counter', 'N',
+  'resizable', 'Y',
+  'trim_spaces', 'BOTH')).to_clob
+,p_is_required=>false
+,p_max_length=>32767
+,p_enable_filter=>true
+,p_filter_operators=>'C:S:CASE_INSENSITIVE:REGEXP'
+,p_filter_is_required=>false
+,p_filter_text_case=>'MIXED'
+,p_filter_lov_type=>'NONE'
+,p_use_as_row_header=>false
+,p_enable_sort_group=>false
+,p_enable_hide=>true
+,p_is_primary_key=>false
+,p_duplicate_value=>true
+,p_include_in_export=>true
+,p_help_text=>'Oracle date format mask (e.g., DD-MON-YYYY). Auto-detected for DATE columns.'
 );
 wwv_flow_imp_page.create_region_column(
  p_id=>wwv_flow_imp.id(39777265593926039)
@@ -959,6 +992,14 @@ wwv_flow_imp_page.create_ig_report_view(
 ,p_srv_exclude_null_values=>false
 ,p_srv_only_display_columns=>true
 ,p_edit_mode=>false
+);
+wwv_flow_imp_page.create_ig_report_column(
+ p_id=>wwv_flow_imp.id(34200243157142089)
+,p_view_id=>wwv_flow_imp.id(39814347094014117)
+,p_display_seq=>8
+,p_column_id=>wwv_flow_imp.id(33349095798790139)
+,p_is_visible=>true
+,p_is_frozen=>false
 );
 wwv_flow_imp_page.create_ig_report_column(
  p_id=>wwv_flow_imp.id(39814847904014121)
@@ -1657,17 +1698,6 @@ wwv_flow_imp_page.create_page_da_action(
 ,p_attribute_01=>'N'
 );
 wwv_flow_imp_page.create_page_da_action(
- p_id=>wwv_flow_imp.id(30237120912500792)
-,p_event_id=>wwv_flow_imp.id(30235602035500788)
-,p_event_result=>'TRUE'
-,p_action_sequence=>30
-,p_execute_on_page_init=>'N'
-,p_action=>'NATIVE_CONFIRM'
-,p_attribute_01=>'Do you want to define new template?'
-,p_attribute_03=>'warning'
-,p_attribute_04=>'fa-warning'
-);
-wwv_flow_imp_page.create_page_da_action(
  p_id=>wwv_flow_imp.id(30237673141500794)
 ,p_event_id=>wwv_flow_imp.id(30235602035500788)
 ,p_event_result=>'TRUE'
@@ -1684,7 +1714,20 @@ wwv_flow_imp_page.create_page_da_action(
 '  v_algo_ok BOOLEAN; v_algo_msg VARCHAR2(4000);',
 '  v_metadata CLOB; v_sheet_display_name VARCHAR2(200);',
 '  v_file_id NUMBER; v_file_type NUMBER;',
+'  v_base_key VARCHAR2(4000); v_suffix NUMBER := 1;',
 'BEGIN',
+'  SELECT COUNT(*)',
+'  INTO v_exists',
+'  FROM UR_TEMPLATES',
+'  WHERE HOTEL_ID = :P0_HOTEL_ID',
+'    AND UPPER(NAME) = UPPER(:P1002_TEMPLATE_NAME);',
+'  IF v_exists > 0 THEN',
+'    ur_utils.add_alert(v_alerts,',
+'      ''Template name "'' || :P1002_TEMPLATE_NAME || ''" already exists for this hotel.'',',
+'      ''error'', NULL, NULL, v_alerts);',
+'    :P0_ALERT_MESSAGE := v_alerts;',
+'    RETURN;',
+'  END IF;',
 '  ur_utils.get_collection_json(''UR_FILE_DATA_PROFILES'', v_json, v_ok, v_msg);',
 '  IF v_ok = ''E'' THEN',
 '    ur_utils.add_alert(v_alerts, v_msg, ''error'', NULL, NULL, v_alerts);',
@@ -1700,29 +1743,28 @@ wwv_flow_imp_page.create_page_da_action(
 '  ELSIF v_san_status IN (''S'',''W'') THEN ',
 '    ur_utils.add_alert(v_alerts, v_san_msg, ''success'', NULL, NULL, v_alerts);',
 '  END IF;',
-'',
-'  v_key := ur_utils.Clean_TEXT(:P1002_TEMPLATE_NAME);',
-'',
-'  SELECT COUNT(*) INTO v_exists FROM UR_TEMPLATES WHERE KEY = v_key;',
-'  IF v_exists > 0 THEN',
-'    ur_utils.add_alert(v_alerts, ''Template key "'' || v_key || ''" already exists.'', ''warning'', NULL, NULL, v_alerts);',
-'    :P0_ALERT_MESSAGE := v_alerts; RETURN;',
-'  END IF;',
-'',
+'v_base_key := ur_utils.Clean_TEXT(:P1002_TEMPLATE_NAME); ',
+'v_key := v_base_key; ',
+'LOOP ',
+'SELECT COUNT(*) INTO v_exists ',
+'FROM UR_TEMPLATES ',
+'WHERE KEY = v_key; ',
+'EXIT WHEN v_exists = 0; ',
+'v_key := v_base_key || ''_'' || v_suffix;',
+' v_suffix := v_suffix + 1; ',
+' END LOOP;',
 '  IF :P1002_SHEET_NAME IS NOT NULL THEN',
 '    SELECT sheet_display_name INTO v_sheet_display_name',
 '    FROM TABLE(apex_data_parser.get_xlsx_worksheets(',
 '        p_content => (SELECT blob_content FROM temp_blob WHERE NAME = :P1002_FILE_NAME_HIDDEN)))',
 '    WHERE SHEET_FILE_NAME = :P1002_SHEET_NAME AND ROWNUM = 1;',
 '  END IF;',
-'  ',
 '  SELECT ID, JSON_VALUE(profile, ''$."file-type"'' RETURNING NUMBER)',
 '  INTO v_file_id, v_file_type FROM temp_blob WHERE name = :P1002_FILE_NAME_HIDDEN;',
 '  SELECT JSON_OBJECT(',
 '    ''skip_rows'' VALUE NVL(:P1002_SKIP_ROWS, 0), ''sheet_file_name'' VALUE :P1002_SHEET_NAME,',
 '    ''sheet_display_name'' VALUE v_sheet_display_name, ''file_type'' VALUE v_file_type,',
 '    ''file_id'' VALUE v_file_id) INTO v_metadata FROM DUAL;',
-'',
 '  INSERT INTO UR_TEMPLATES (KEY, NAME, Hotel_ID, TYPE, ACTIVE, DEFINITION, METADATA)',
 '  VALUES (v_key, :P1002_TEMPLATE_NAME, :P0_HOTEL_ID, :P1002_TEMPLATE_TYPE, ''Y'', v_sanitized_json, v_metadata);',
 '  COMMIT;',
@@ -2158,6 +2200,138 @@ wwv_flow_imp_page.create_page_da_action(
 ,p_affected_region_id=>wwv_flow_imp.id(39776995830926037)
 ,p_attribute_01=>'N'
 );
+wwv_flow_imp_page.create_page_da_event(
+ p_id=>wwv_flow_imp.id(33349187759790140)
+,p_name=>'Change to Date'
+,p_event_sequence=>170
+,p_triggering_element_type=>'COLUMN'
+,p_triggering_region_id=>wwv_flow_imp.id(39776995830926037)
+,p_triggering_element=>'DATA_TYPE'
+,p_condition_element_type=>'COLUMN'
+,p_condition_element=>'DATA_TYPE'
+,p_triggering_condition_type=>'EQUALS'
+,p_triggering_expression=>'DATE'
+,p_bind_type=>'bind'
+,p_execution_type=>'IMMEDIATE'
+,p_bind_event_type=>'change'
+);
+wwv_flow_imp_page.create_page_da_action(
+ p_id=>wwv_flow_imp.id(33349445257790143)
+,p_event_id=>wwv_flow_imp.id(33349187759790140)
+,p_event_result=>'FALSE'
+,p_action_sequence=>10
+,p_execute_on_page_init=>'N'
+,p_action=>'NATIVE_CLEAR'
+,p_affected_elements_type=>'COLUMN'
+,p_affected_elements=>'FORMAT_MASK'
+);
+wwv_flow_imp_page.create_page_da_action(
+ p_id=>wwv_flow_imp.id(33349294526790141)
+,p_event_id=>wwv_flow_imp.id(33349187759790140)
+,p_event_result=>'TRUE'
+,p_action_sequence=>20
+,p_execute_on_page_init=>'N'
+,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
+,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'DECLARE',
+'    v_seq_id NUMBER := :SEQ_ID;',
+'    v_column_name VARCHAR2(100) := :NAME;',
+'    v_file_id NUMBER;',
+'    v_format_mask VARCHAR2(100) := NULL;',
+'    v_sample_values CLOB;',
+'    v_extract_status VARCHAR2(1);',
+'    v_extract_msg VARCHAR2(4000);',
+'    v_alert_clob CLOB := NULL;',
+'    v_confidence NUMBER;',
+'    v_converted_date DATE;',
+'    v_has_year VARCHAR2(1);',
+'    v_is_ambiguous VARCHAR2(1);',
+'    v_special_values VARCHAR2(500);',
+'    v_all_formats CLOB;',
+'    v_detect_status VARCHAR2(1);',
+'    v_detect_msg VARCHAR2(4000);',
+'BEGIN',
+'    -- Get file_id from temp_blob',
+'    BEGIN',
+'        SELECT ID INTO v_file_id FROM temp_blob WHERE name = :P1002_FILE_NAME_HIDDEN AND ROWNUM = 1;',
+'    EXCEPTION',
+'        WHEN NO_DATA_FOUND THEN',
+'            ur_utils.add_alert(v_alert_clob, ''Column "'' || v_column_name || ''": File not found for format detection.'', ''error'', NULL, NULL, v_alert_clob);',
+'            :P0_ALERT_MESSAGE := v_alert_clob;',
+'            RETURN;',
+'    END;',
+'',
+'    -- Extract sample values',
+'    ur_utils.extract_column_sample_values(v_file_id, v_column_name, NVL(:P1002_SKIP_ROWS, 0), :P1002_SHEET_NAME, v_sample_values, v_extract_status, v_extract_msg);',
+'',
+'    IF v_extract_status = ''S'' AND v_sample_values IS NOT NULL THEN',
+'        -- Detect format',
+'        ur_utils.date_parser(''DETECT'', NULL, NULL, v_sample_values, NULL, NULL, NULL, 90, ''N'', v_alert_clob, v_format_mask, v_confidence, v_converted_date, v_has_year, v_is_ambiguous, v_special_values, v_all_formats, v_detect_status, v_detect_msg);',
+'',
+'        -- Update collection with detected format',
+'        IF v_detect_status IN (''S'', ''W'') AND v_format_mask IS NOT NULL THEN',
+'            apex_collection.update_member_attribute(''UR_FILE_DATA_PROFILES'', v_seq_id, 2, ''DATE'');',
+'            apex_collection.update_member_attribute(''UR_FILE_DATA_PROFILES'', v_seq_id, 7, v_format_mask);',
+'            ',
+'            -- Set alert message based on result',
+'            IF v_is_ambiguous = ''Y'' THEN',
+'                ur_utils.add_alert(v_alert_clob, ''Column "'' || v_column_name || ''": Ambiguous format detected as "'' || v_format_mask || ''" (confidence: '' || ROUND(v_confidence) || ''%). Please verify.'', ''warning'', NULL, NULL, v_alert_clob);',
+'            ELSE',
+'                ur_utils.add_alert(v_alert_clob, ''Column "'' || v_column_name || ''": Format detected as "'' || v_format_mask || ''" (confidence: '' || ROUND(v_confidence) || ''%)'', ''success'', NULL, NULL, v_alert_clob);',
+'            END IF;',
+'        ELSE',
+'            ur_utils.add_alert(v_alert_clob, ''Column "'' || v_column_name || ''": Unable to detect format. Please enter manually.'', ''warning'', NULL, NULL, v_alert_clob);',
+'        END IF;',
+'    ELSE',
+'        ur_utils.add_alert(v_alert_clob, ''Column "'' || v_column_name || ''": Sample extraction failed. '' || v_extract_msg, ''error'', NULL, NULL, v_alert_clob);',
+'    END IF;',
+'',
+'    -- Return alert message to display',
+'    :P0_ALERT_MESSAGE := v_alert_clob;',
+'',
+'EXCEPTION',
+'    WHEN OTHERS THEN',
+'        ur_utils.add_alert(v_alert_clob, ''Column "'' || v_column_name || ''": Error during format detection. '' || SQLERRM, ''error'', NULL, NULL, v_alert_clob);',
+'        :P0_ALERT_MESSAGE := v_alert_clob;',
+'END;'))
+,p_attribute_02=>'P1002_SKIP_ROWS,P1002_FILE_NAME_HIDDEN,P1002_SHEET_NAME,SEQ_ID,NAME'
+,p_attribute_03=>'P0_ALERT_MESSAGE,FORMAT_MASK'
+,p_attribute_04=>'N'
+,p_attribute_05=>'PLSQL'
+,p_wait_for_result=>'Y'
+);
+wwv_flow_imp_page.create_page_da_action(
+ p_id=>wwv_flow_imp.id(33349645369790145)
+,p_event_id=>wwv_flow_imp.id(33349187759790140)
+,p_event_result=>'TRUE'
+,p_action_sequence=>30
+,p_execute_on_page_init=>'N'
+,p_action=>'NATIVE_JAVASCRIPT_CODE'
+,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'var formatMask = apex.item("FORMAT_MASK").getValue();',
+'',
+'if (formatMask) {',
+'    var ig$ = apex.region("Collection_grid").widget().interactiveGrid;',
+'    var model = ig$.getViews().grid.model;',
+'    var record = ig$.getActions().invoke("get-current-record");',
+'    ',
+'    if (record) {',
+'        model.setValue(record, "FORMAT_MASK", formatMask);',
+'    }',
+'}'))
+,p_build_option_id=>wwv_flow_imp.id(8557885664922129)
+);
+wwv_flow_imp_page.create_page_da_action(
+ p_id=>wwv_flow_imp.id(33349396114790142)
+,p_event_id=>wwv_flow_imp.id(33349187759790140)
+,p_event_result=>'TRUE'
+,p_action_sequence=>40
+,p_execute_on_page_init=>'N'
+,p_action=>'NATIVE_REFRESH'
+,p_affected_elements_type=>'REGION'
+,p_affected_region_id=>wwv_flow_imp.id(39776995830926037)
+,p_attribute_01=>'N'
+);
 wwv_flow_imp_page.create_page_process(
  p_id=>wwv_flow_imp.id(30221170973500742)
 ,p_process_sequence=>10
@@ -2489,24 +2663,66 @@ unistr('           -- \2705 Build columns JSON safely as CLOB'),
 '      INTO v_columns',
 '      FROM dual;',
 '',
-'    FOR col IN (',
-'  SELECT jt.name, jt.data_type',
-'    FROM JSON_TABLE(',
-'           v_columns,',
-'           ''$[*]''',
-'           COLUMNS (',
-'             name       VARCHAR2(100) PATH ''$.name'',',
-'             data_type  VARCHAR2(20) PATH ''$."data-type"''',
-'           )',
-'         ) jt',
-') LOOP',
-'  apex_collection.add_member(',
-'    p_collection_name => ''UR_FILE_DATA_PROFILES'',',
-'    p_c001            => sanitize_column_name(col.name),',
-'    p_c002            => col.data_type',
-'  );',
-'END LOOP;',
+'      FOR col IN (',
+'    SELECT jt.name, jt.data_type',
+'      FROM JSON_TABLE(',
+'             v_columns,',
+'             ''$[*]''',
+'             COLUMNS (',
+'               name       VARCHAR2(100) PATH ''$.name'',',
+'               data_type  VARCHAR2(20) PATH ''$."data-type"''',
+'             )',
+'           ) jt',
+'  ) LOOP',
+'    DECLARE',
+'        v_format_mask VARCHAR2(100) := NULL;',
+'        v_sample_values CLOB;',
+'        v_extract_status VARCHAR2(1);',
+'        v_extract_msg VARCHAR2(4000);',
+'        v_column_display VARCHAR2(200);',
+'    BEGIN',
+'        v_column_display := sanitize_column_name(col.name);',
+'        ',
+'        -- Only detect format for DATE columns',
+'        IF col.data_type = ''DATE'' THEN',
+'            -- Extract sample values (366 rows after skip_rows)',
+'            ur_utils.extract_column_sample_values(rec.ID, v_column_display, NVL(:P1002_SKIP_ROWS, 0), :P1002_SHEET_NAME, v_sample_values, v_extract_status, v_extract_msg);',
 '',
+'            IF v_extract_status = ''S'' AND v_sample_values IS NOT NULL THEN',
+'                -- Use simple detection wrapper',
+'                v_format_mask := ur_utils.detect_date_format_simple(v_sample_values);',
+'                ',
+'                IF v_format_mask IS NOT NULL THEN',
+'                    apex_debug.message(''Column "'' || v_column_display || ''": Format detected as "'' || v_format_mask || ''"'');',
+'                ELSE',
+'                    apex_debug.message(''Column "'' || v_column_display || ''": Unable to detect format'');',
+'                END IF;',
+'            ELSE',
+'                apex_debug.message(''Column "'' || v_column_display || ''": Sample extraction failed - '' || v_extract_msg);',
+'            END IF;',
+'        END IF;',
+'',
+'        -- Add to collection with format_mask (NULL for non-DATE or detection failure)',
+'        apex_collection.add_member(',
+'          p_collection_name => ''UR_FILE_DATA_PROFILES'',',
+'          p_c001            => v_column_display,',
+'          p_c002            => col.data_type,',
+'          p_c007            => v_format_mask',
+'        );',
+'        ',
+'    EXCEPTION',
+'        WHEN OTHERS THEN',
+'            apex_debug.message(''Column "'' || v_column_display || ''": Error - '' || SQLERRM);',
+'            ',
+'            -- Add member without format_mask',
+'            apex_collection.add_member(',
+'              p_collection_name => ''UR_FILE_DATA_PROFILES'',',
+'              p_c001            => sanitize_column_name(col.name),',
+'              p_c002            => col.data_type,',
+'              p_c007            => NULL',
+'            );',
+'    END;',
+'  END LOOP;',
 '',
 '    -- Update temp_BLOB table with profile info',
 '    UPDATE temp_BLOB',

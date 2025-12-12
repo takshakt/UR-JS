@@ -2243,7 +2243,7 @@ dynamic-actions:
             :P0_ALERT_MESSAGE := v_alerts;
             RETURN;
           END IF;
-          
+        ----  
           ur_utils.get_collection_json('UR_FILE_DATA_PROFILES', v_json, v_ok, v_msg);
           IF v_ok = 'E' THEN
             ur_utils.add_alert(v_alerts, v_msg, 'error', NULL, NULL, v_alerts);
@@ -2273,7 +2273,8 @@ dynamic-actions:
         EXIT WHEN v_exists = 0; 
         v_key := v_base_key || '_' || v_suffix;
          v_suffix := v_suffix + 1; 
-         END LOOP; 
+         END LOOP;
+        ---- 
          --------------------------------------------------------------------------------
           INSERT INTO UR_TEMPLATES (KEY, NAME, Hotel_ID, TYPE, ACTIVE, DEFINITION)
           VALUES (v_key, :P1001_TEMPLATE_NAME, :P0_HOTEL_ID, :P1001_TEMPLATE_TYPE, 'Y', v_sanitized_json);

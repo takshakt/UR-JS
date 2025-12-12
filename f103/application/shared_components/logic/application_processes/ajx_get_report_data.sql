@@ -37,7 +37,7 @@ wwv_flow_imp_shared.create_flow_process(
 'APEX_JSON.parse(l_columns, apex_application.g_x02);',
 '',
 '    -- Build SELECT list',
-'    l_sql := ''SELECT '';',
+'    l_sql := ''select * from (SELECT '';',
 '    FOR i IN 1 .. APEX_JSON.get_count(p_path => ''.'', p_values => l_columns) LOOP',
 '        IF i > 1 THEN',
 '            l_sql := l_sql || '', '';',
@@ -45,7 +45,7 @@ wwv_flow_imp_shared.create_flow_process(
 '        l_sql := l_sql || ''"'' || APEX_JSON.get_varchar2(p_path => ''[''||i||''].name'', p_values => l_columns) || ''"'';',
 '    END LOOP;',
 '    --l_sql := l_sql || '' FROM ''||apex_application.g_x03||'' where rownum <= 10'';',
-'    l_sql := l_sql||'' ,PK_COL '' || '' FROM ''||apex_application.g_x03||'' FETCH FIRST 10 ROWS ONLY'';',
+'    l_sql := l_sql||'' ,PK_COL '' || '' FROM ''||apex_application.g_x03||'' FETCH FIRST 10 ROWS ONLY) order by PK_COL'';',
 '  --  l_sql := l_sql || '' FROM ''||apex_application.g_x03||'''';',
 '',
 '    -- Prepare and describe',
@@ -124,7 +124,7 @@ wwv_flow_imp_shared.create_flow_process(
 '',
 '    END LOOP;',
 '',
-'    l_sql := l_sql || '' FROM ''||apex_application.g_x03;  -- pass db object name separately',
+'    l_sql := l_sql || ''  ,PK_COL FROM ''||apex_application.g_x03 || '' order by  PK_COL'';  -- pass db object name separately',
 '	',
 '',
 '    -- Prepare, describe, execute',
@@ -166,7 +166,7 @@ wwv_flow_imp_shared.create_flow_process(
 'END;'))
 ,p_process_clob_language=>'PLSQL'
 ,p_security_scheme=>'MUST_NOT_BE_PUBLIC_USER'
-,p_version_scn=>45852316681280
+,p_version_scn=>45852321308992
 );
 wwv_flow_imp.component_end;
 end;

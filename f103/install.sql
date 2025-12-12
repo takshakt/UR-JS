@@ -46,10 +46,10 @@ prompt --install
 @@application/shared_components/files/sample_load_data_template_old_xlsx.sql
 @@application/shared_components/files/sample_load_data_template_xlsx.sql
 @@application/shared_components/files/algopgjs_min_js.sql
-@@application/shared_components/files/dynamicreportjs_min_js.sql
-@@application/shared_components/files/reportdashboardjs_min_js.sql
-@@application/shared_components/files/gridreportsummary_min_js.sql
 @@application/shared_components/files/showalert_min_js.sql
+@@application/shared_components/files/dynamicreportjs_min_js.sql
+@@application/shared_components/files/gridreportsummary_min_js.sql
+@@application/shared_components/files/reportdashboardjs_min_js.sql
 @@application/plugin_settings.sql
 @@application/shared_components/security/authorizations/administration_rights.sql
 @@application/shared_components/security/authorizations/reader_rights.sql

@@ -5,7 +5,7 @@
     name: Navigation Menu
 
   subscription: 
-    version-number: 45852251605116
+    version-number: 45852340034771
 
   source: 
     type: Static Values
@@ -619,8 +619,11 @@
     label: 
       label: Load Data v2
 
+    icon: 
+      image/icon-css-classes: fa-cloud-check
+
     layout: 
-      sequence: 340
+      sequence: 31
       parent-entry: Hotel Data # 15689157068470336
 
     is-current: 
@@ -630,7 +633,7 @@
 
     link: 
       target: 
-        url: 'f?p=&APP_ID.:1011:&APP_SESSION.::&DEBUG.:::'
+        url: 'f?p=&APP_ID.:1011:&SESSION.::&DEBUG.::::'
         page: 1011 # Load Data v2
 
     click-counting: 

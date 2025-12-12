@@ -460,11 +460,59 @@ function replaceDayNameFunction(expr) {
 }
 
 
-
 function createCard(index, data) {
-    // console.log('data:>>>>',data);
+    console.log('data:>>>>', data);
     let expressionJson = data?.expressionJson;
     const card = document.createElement('div');
+
+    // Helper functions for date manipulation
+    function parseDate(dateStr) {
+        const months = {
+            'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
+            'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11
+        };
+        
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = months[parts[1].toUpperCase()];
+            const year = parseInt(parts[2], 10);
+            return new Date(year, month, day);
+        }
+        return null;
+    }
+
+    function formatDate(date) {
+        const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 
+                       'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+    }
+
+    function addDays(dateStr, days) {
+        const date = parseDate(dateStr);
+        if (!date) return dateStr;
+        date.setDate(date.getDate() + days);
+        return formatDate(date);
+    }
+
+    // Store original data for lookup
+    const originalData = data?.rows?.rows || [];
+
+    // Helper function to find value in originalData by PK_COL and column name
+    function findValueInOriginalData(pkColDate, columnName) {
+        // Clean the column name - remove any {n} suffix
+        const cleanColumnName = columnName.replace(/\{\d+\}$/, '');
+        
+        // Look for the row in originalData
+        const foundRow = originalData.find(row => row.PK_COL === pkColDate || row.SDATE === pkColDate);
+        if (foundRow) {
+            return foundRow[cleanColumnName] || null;
+        }
+        return null;
+    }
 
     // 1. Initialize Data
     let rowsArray = data?.rows?.rows ? JSON.parse(JSON.stringify(data.rows.rows)) : (data?.rows || []);
@@ -480,7 +528,7 @@ function createCard(index, data) {
         }
     }
     expressionJson = expressionJson || {};
-    console.log('createCard data:>>>>>>>>>>>',data);
+    console.log('createCard data:>>>>>>>>>>>', data);
     
     // 2. Map "Col Names" and "Long Names" to "Alias"
     const nameToAliasMap = {};
@@ -850,30 +898,143 @@ function createCard(index, data) {
                 // ---------------------------------------------------------
                 
                 // Replace tokens in the calculation expression
-                tokensToReplace.forEach(token => {
-                    if (expr.includes(token)) {
-                        const alias = nameToAliasMap[token];
-                        let val = row[alias];
+                 expr = typeof formulaObj === 'object' ? formulaObj.formula : formulaObj;
 
-                        if (val === undefined || val === null || val === '') {
-                            val = 0; // numeric fallback
-                        } else if (!isNaN(val)) {
-                            // Numeric strings or numbers → convert to number
-                            val = parseFloat(val);
-                        } else if (!isNaN(Date.parse(val))) {
-                            // Date strings → keep in quotes for DayName
-                            val = `"${val}"`;
-                        } else {
-                            // Text strings → keep exactly as-is
-                            val = `"${val}"`;
+                // NEW: First remove template suffixes (like "- MCL LoS1") from the expression
+                // This must be done BEFORE handling {1} functionality
+                if (expressionJson?.columnConfiguration?.selectedColumns) {
+                    expressionJson.columnConfiguration.selectedColumns.forEach(col => {
+                        if (col.temp_name) {
+                            // Target the full suffix string and the optional following operator.
+                            const suffixPattern = new RegExp(`\\s*-\\s*${col.temp_name}\\s*(\\+|\\-|\\*|\\/)?`, 'gi');
+                            
+                            // Replace the entire pattern with just the operator (or nothing).
+                            expr = expr.replace(suffixPattern, (match, operator) => {
+                                return operator || '';
+                            });
                         }
+                    });
+                }
+                
+                // CRITICAL CLEANUP: Ensure spaces are normalized
+                expr = expr.replace(/\s+/g, ' ').trim();
 
-                        // Replace token in expr
-                        expr = expr.split(token).join(val);
+                console.log('After template removal expr:', expr);
+
+                // ---------------------------------------------------------
+// FIX: Convert ORIGINAL COLUMN NAMES → ALIAS NAMES
+// BEFORE {1} logic runs
+// ---------------------------------------------------------
+if (expressionJson?.columnConfiguration?.selectedColumns) {
+    expressionJson.columnConfiguration.selectedColumns.forEach(col => {
+        const original = col.col_name;         // e.g. "MOXY_YORK"
+        const alias = col.alias_name;         // e.g. "MX_YK"
+
+        // Replace plain usage of original name
+        const regex1 = new RegExp(`\\b${original}\\b`, "g");
+
+        // Replace bracketed usage [MOXY_YORK]
+        const regex2 = new RegExp(`\\[${original}\\]`, "g");
+
+        expr = expr.replace(regex1, alias);
+        expr = expr.replace(regex2, alias);
+
+        // Also fix ORIGINAL{1} → ALIAS{1}
+        expr = expr.replace(new RegExp(`\\b${original}\\{`, "g"), `${alias}{`);
+    });
+}
+
+console.log("After alias conversion expr:", expr);
+
+
+                // Now handle {1} functionality for offset column references
+                // Find column references with {n} pattern (now should be just column names like "MOXY_YORK{1}")
+                const offsetColumnRegex = /(\[?\b[A-Z_][A-Z0-9_]*\b\]?)\{(\d+)\}/gi;
+                let match;
+
+                // Create a map to store offset column replacements
+                const offsetReplacements = {};
+
+                while ((match = offsetColumnRegex.exec(expr)) !== null) {
+                    const fullMatch = match[0];
+                    const columnRef = match[1].replace(/[\[\]]/g, ''); // Remove brackets if present
+                    const offset = parseInt(match[2]);
+                    
+                    // Get current row's PK_COL date
+                    const currentDate = row.PK_COL || row.SDATE;
+                    
+                    if (currentDate) {
+                        // Calculate target date by adding offset
+                        const targetDate = addDays(currentDate, offset);
+                        
+                        // Find the value in originalData
+                        const offsetValue = findValueInOriginalData(targetDate, columnRef);
+                        
+                        if (offsetValue !== null) {
+                            // Store the replacement value
+                            offsetReplacements[fullMatch] = offsetValue;
+                        } else {
+                            // If not found, use null
+                            offsetReplacements[fullMatch] = null;
+                        }
+                    } else {
+                        offsetReplacements[fullMatch] = null;
                     }
+                }
+
+                // Replace all offset column references with their values
+                Object.entries(offsetReplacements).forEach(([pattern, value]) => {
+                    // Handle the value based on its type
+                    let replacementValue;
+                    
+                    if (value === null || value === undefined || value === '') {
+                        // For missing values, use 0 for numeric operations
+                        replacementValue = '0';
+                    } else if (!isNaN(value) && value !== null) {
+                        // Convert numeric strings to actual numbers
+                        replacementValue = parseFloat(value);
+                    } else {
+                        // For non-numeric values, use them as-is with quotes
+                        replacementValue = `"${value}"`;
+                    }
+                    
+                    // Replace the pattern in the expression
+                    expr = expr.replace(pattern, replacementValue);
                 });
 
-                console.log('expr:>>>>>>>>',expr);
+                console.log('After {1} replacement expr:', expr);
+
+                // Now replace remaining column references (without {n})
+                // Find all column references (should now only be alias names like 'MOXY_YORK')
+                const columnMatches = expr.match(/\[(.*?)\]/g) || [];
+                const simpleColumnMatches = expr.match(/\b[A-Z_][A-Z0-9_]*\b/gi) || [];
+
+                const allColumnNames = [
+                    ...columnMatches.map(match => match.replace(/[\[\]]/g, '')),
+                    ...simpleColumnMatches.filter(word => !['AND', 'OR', 'NOT', 'Day', 'Date', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].includes(word))
+                ];
+                const uniqueColumnNames = [...new Set(allColumnNames)];
+
+                // Safe replacements for numeric values
+                uniqueColumnNames.forEach(col => {
+                    // 'col' is the ALIAS (e.g., 'MOXY_YORK'), which is the row key.
+                    let value = row[col]; // Direct lookup by alias/row key
+
+                    if (dataTypeMap[col] === 'date' && value != null && value !== '') {
+                        value = `"${value}"`; // keep quotes for JS eval
+                    } else if (!isNaN(value) && value !== '' && value !== null) {
+                        value = parseFloat(value);
+                    } else {
+                        value = `"${value}"`; // fallback as string
+                    }
+
+                    // Replace both bracketed and unbracketed versions
+                    expr = expr.replace(new RegExp(`\\[${col}\\]`, 'g'), value);
+                    expr = expr.replace(new RegExp(`\\b${col}\\b`, 'g'), value);
+                });
+
+                console.log('Final expr before eval:', expr);
+                
                 expr = replaceDayNameFunction(expr);
 
                 try {
@@ -891,7 +1052,8 @@ function createCard(index, data) {
                     }
 
                 } catch (err) {
-                    row[fColKey] = expr; // fallback
+                    console.error(`Error evaluating formula ${fColKey}: ${err.message}`);
+                    row[fColKey] = null;
                 }
             });
         });
@@ -1000,96 +1162,83 @@ function createCard(index, data) {
     // ==========================================================================================
     const columnCount = columns.length;
     const widthClass = getCardWidthClass(columnCount);
- 
-
 
     if (userType === 'P') {
         card.classList.add('table-cardsData', 'p-4', 'rounded-xl', 'flex', 'flex-col', 'transition-all', 'duration-300', 'hover:shadow-lg', 'draggable', 'relative', widthClass);
         card.setAttribute('data-index', index);
         card.setAttribute('draggable', true);
     } else {
-
-        card.classList.add('table-cardsData', 'p-4', 'rounded-xl', 'flex', 'flex-col', 'transition-all', 'duration-300', 'hover:shadow-lg',
-            'relative', widthClass);
+        card.classList.add('table-cardsData', 'p-4', 'rounded-xl', 'flex', 'flex-col', 'transition-all', 'duration-300', 'hover:shadow-lg', 'relative', widthClass);
         card.setAttribute('data-index', index);
         card.setAttribute('draggable', false);
     }
 
     columns = reorderVisibleColumns(columns, expressionJson);
-    console.log('reorderVisibleColumns :>>> columns',columns ); 
-    console.log('reorderVisibleColumns :>>> data',data );
-     console.log('reorderVisibleColumns :>>> groupedData',groupedData );
-    
-    
+    console.log('reorderVisibleColumns :>>> columns', columns); 
+    console.log('reorderVisibleColumns :>>> data', data);
+    console.log('reorderVisibleColumns :>>> groupedData', groupedData);
 
-
-// Sort grouped data by year, then by month (January to December)
-groupedData.sort((a, b) => {
-    const aKey = a[groupByAlias];
-    const bKey = b[groupByAlias];
-    
-    // Handle undefined/null keys
-    if (!aKey && !bKey) return 0;
-    if (!aKey) return -1;
-    if (!bKey) return 1;
-    
-    const monthNames = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-    ];
-    
-    const parseMonthYear = (str) => {
-        // Ensure it's a string
-        str = String(str);
+    // Sort grouped data by year, then by month (January to December)
+    groupedData.sort((a, b) => {
+        const aKey = a[groupByAlias];
+        const bKey = b[groupByAlias];
         
-        const parts = str.split('-');
-        if (parts.length !== 2) return { year: 0, month: -1 };
+        // Handle undefined/null keys
+        if (!aKey && !bKey) return 0;
+        if (!aKey) return -1;
+        if (!bKey) return 1;
         
-        const monthName = parts[0];
-        const shortYear = parts[1];
+        const monthNames = [
+            'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+            'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+        ];
         
-        // Find month index (0-11)
-        const monthIndex = monthNames.findIndex(name => name === monthName);
-        
-        // Convert short year to full year
-        let fullYear = parseInt(shortYear, 10);
-        if (!isNaN(fullYear) && fullYear < 100) {
-            // Simple logic: assume 20xx for years 00-99
-            // You can adjust this based on your data range
-            const currentYear = new Date().getFullYear();
-            const currentCentury = Math.floor(currentYear / 100) * 100;
-            fullYear += currentCentury;
+        const parseMonthYear = (str) => {
+            // Ensure it's a string
+            str = String(str);
             
-            // If year is far in the future, adjust to previous century
-            if (fullYear > currentYear + 10) {
-                fullYear -= 100;
+            const parts = str.split('-');
+            if (parts.length !== 2) return { year: 0, month: -1 };
+            
+            const monthName = parts[0];
+            const shortYear = parts[1];
+            
+            // Find month index (0-11)
+            const monthIndex = monthNames.findIndex(name => name === monthName);
+            
+            // Convert short year to full year
+            let fullYear = parseInt(shortYear, 10);
+            if (!isNaN(fullYear) && fullYear < 100) {
+                // Simple logic: assume 20xx for years 00-99
+                // You can adjust this based on your data range
+                const currentYear = new Date().getFullYear();
+                const currentCentury = Math.floor(currentYear / 100) * 100;
+                fullYear += currentCentury;
+                
+                // If year is far in the future, adjust to previous century
+                if (fullYear > currentYear + 10) {
+                    fullYear -= 100;
+                }
             }
+            
+            return { 
+                year: isNaN(fullYear) ? 0 : fullYear, 
+                month: monthIndex === -1 ? -1 : monthIndex 
+            };
+        };
+        
+        const aDate = parseMonthYear(aKey);
+        const bDate = parseMonthYear(bKey);
+        
+        // First compare by year
+        if (aDate.year !== bDate.year) {
+            return aDate.year - bDate.year;
         }
         
-        return { 
-            year: isNaN(fullYear) ? 0 : fullYear, 
-            month: monthIndex === -1 ? -1 : monthIndex 
-        };
-    };
-    
-    const aDate = parseMonthYear(aKey);
-    const bDate = parseMonthYear(bKey);
-    
-    // First compare by year
-    if (aDate.year !== bDate.year) {
-        return aDate.year - bDate.year;
-    }
-    
-    // If same year, compare by month
-    return aDate.month - bDate.month;
-});
+        // If same year, compare by month
+        return aDate.month - bDate.month;
+    });
 
-
-
-
-
-    //${col.name}              ${nameToAliasMap[col.name || col.key]}
-    // <span class="col-count-badge bg-gray-200 dark:bg-gray-600 px-2 py-1 rounded text-xs">${columnCount} cols</span>
     if (data) {
         const displayTitle = data.title || `Table ${index + 1}`;
         card.classList.remove('justify-center', 'items-center');
@@ -1098,7 +1247,6 @@ groupedData.sort((a, b) => {
             <div class="card-content h-full flex flex-col">
                 <div class="flex justify-between items-center mb-2">
                     <h3 class="text-lg font-bold truncate text-blue-600 dark:text-blue-400" title="${displayTitle}">${displayTitle}</h3>
-                    
                 </div>
                 <div class="flex-grow overflow-hidden flex flex-col">
                     <div class="table-container flex-grow overflow-auto custom-scrollbar"> 
@@ -1107,8 +1255,6 @@ groupedData.sort((a, b) => {
                                 <tr>
                                     ${columns.map(col => `
                                         <th class="font-medium border-b dark:border-gray-600 px-4 py-2 whitespace-nowrap">
-                                            
-                                            
                                             ${nameToAliasMap[col.name || col.key] ? nameToAliasMap[col.name || col.key] : col.name}
                                         </th>
                                     `).join('')}
@@ -1178,7 +1324,6 @@ groupedData.sort((a, b) => {
     }
     return card;
 }
-
 
 
 
