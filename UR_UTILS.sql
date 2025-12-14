@@ -1178,7 +1178,14 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
                                         l_ref_value := NULL;
                                     END IF;
                                 ELSE
-                                    l_ref_value := NULL;
+                                    -- Missing attribute case
+                                    -- Special handling for attributes that should default to 0 when not found
+                                    IF UPPER(l_ref_key) = 'OUT_OF_ORDER_ROOMS' THEN
+                                        l_ref_value := 0;  -- Default to 0 instead of NULL
+                                        append_debug('Attribute ' || l_ref_key || ' not found, defaulting to 0');
+                                    ELSE
+                                        l_ref_value := NULL;
+                                    END IF;
                                 END IF;
 
                             -- Substitute in formula
