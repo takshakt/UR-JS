@@ -1096,24 +1096,34 @@ document.head.insertAdjacentHTML('beforeend', multiScheduleCSS);
 const multiScheduleDialogHTML = `
 <div id="multi-schedule-formula-dialog" class="formula-dialog" style="display: none;">
   <div class="dialog-content" style="max-width: 1000px; width: 95%; max-height: 90vh; overflow-y: auto;">
-    <div class="control-panel-header" style="margin-bottom: 20px;">
-      <h2 style="color: #fff; margin: 0; display: flex; justify-content: space-between; align-items: center;">
-        <span>Multi-Schedule Formula</span>
-        <span class="collapse-btn" id="close-multi-schedule" style="cursor: pointer; font-size: 1.5rem;">×</span>
-      </h2>
+    <div class="control-panel-header">
+      <h2>Formula</h2>
+      <span class="collapse-btn" id="close-multi-schedule">×</span>
     </div>
 
-    <!-- Formula Name Input -->
-    <div style="margin-bottom: 20px;">
-      <label for="multi-schedule-formula-name" style="display: block; color: #ccc; margin-bottom: 8px; font-weight: bold;">
-        Formula Name <span style="color: #f88;">*</span>
-      </label>
-      <input
-        type="text"
-        id="multi-schedule-formula-name"
-        placeholder="Enter formula name (e.g., Dynamic_Pricing)"
-        style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; color: #ccc; border-radius: 4px; font-size: 14px;"
-      />
+    <!-- Formula Name and Type -->
+    <div style="margin-bottom: 20px; display: grid; grid-template-columns: 2fr 1fr; gap: 15px;">
+      <div>
+        <label for="multi-schedule-formula-name" style="display: block; color: #ccc; margin-bottom: 8px; font-weight: bold;">
+          Formula Name <span style="color: #f88;">*</span>
+        </label>
+        <input
+          type="text"
+          id="multi-schedule-formula-name"
+          placeholder="Enter formula name (e.g., Dynamic_Pricing)"
+          style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; color: #ccc; border-radius: 4px; font-size: 14px;"
+        />
+      </div>
+      <div>
+        <label for="formula-output-type" style="display: block; color: #ccc; margin-bottom: 8px; font-weight: bold;">
+          Output Type <span style="color: #f88;">*</span>
+        </label>
+        <select id="formula-output-type" class="form-input" style="width: 100%; padding: 8px; font-size: 14px;">
+          <option value="number">Number</option>
+          <option value="string">Text</option>
+          <option value="date">Date</option>
+        </select>
+      </div>
     </div>
 
     <!-- Schedule List Container -->
@@ -1121,17 +1131,13 @@ const multiScheduleDialogHTML = `
       <!-- Dynamically added schedule blocks will go here -->
     </div>
 
-    <!-- Add Schedule Button -->
-    <div style="text-align: center; margin: 20px 0;">
-      <div class="action-btn" id="add-schedule-btn" style="display: inline-block; background-color: #528e54;">
-        + Add Schedule
-      </div>
-    </div>
-
     <!-- Dialog Footer -->
-    <div class="dialog-footer" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #444;">
-      <div class="action-btn btn-secondary" id="cancel-multi-schedule">Cancel</div>
-      <div class="button-group-right">
+    <div class="dialog-footer" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #444; display: flex; justify-content: space-between; align-items: center;">
+      <div style="display: flex; gap: 10px;">
+        <div class="action-btn btn-secondary" id="cancel-multi-schedule">Cancel</div>
+        <div class="action-btn" id="add-schedule-btn" style="background-color: #528e54;">+ Add Schedule</div>
+      </div>
+      <div style="display: flex; gap: 10px;">
         <div class="action-btn btn-info" id="validate-schedules-btn">Validate</div>
         <div class="action-btn" id="save-multi-schedule" style="background-color: #007bff;">Save All Schedules</div>
       </div>
@@ -1148,6 +1154,21 @@ const multiScheduleDialogHTML = `
 
 // Inject dialog into DOM
 document.body.insertAdjacentHTML('beforeend', multiScheduleDialogHTML);
+
+// Add hover styles for schedule controls
+const scheduleControlStyles = `
+<style>
+.schedule-controls > div:hover {
+    background: #444 !important;
+    color: #fff !important;
+}
+.schedule-controls .delete-schedule:hover {
+    background: #a33 !important;
+    color: #fff !important;
+}
+</style>
+`;
+document.head.insertAdjacentHTML('beforeend', scheduleControlStyles);
 
 // Create global autocomplete div (separate from schedule blocks for proper z-index layering)
 const globalAutocompleteHTML = `<div id="global-formula-autocomplete" class="formula-autocomplete"></div>`;
@@ -5068,6 +5089,7 @@ renderSavedFormula(name, "", formulaDisplay);
 function openMultiScheduleDialog(formulaName) {
     const dialog = document.getElementById('multi-schedule-formula-dialog');
     const nameInput = document.getElementById('multi-schedule-formula-name');
+    const outputTypeSelect = document.getElementById('formula-output-type');
     const container = document.getElementById('schedule-container');
 
     container.innerHTML = '';
@@ -5082,6 +5104,9 @@ function openMultiScheduleDialog(formulaName) {
 
         // Load existing schedules
         const formulaConfig = savedFormulas[formulaName];
+
+        // Set output type
+        outputTypeSelect.value = formulaConfig?.type || 'number';
 
         if (formulaConfig?.isMultiSchedule && formulaConfig.schedules) {
             // Load existing multi-schedule formulas
@@ -5107,6 +5132,9 @@ function openMultiScheduleDialog(formulaName) {
         nameInput.removeAttribute('readonly');
         nameInput.style.opacity = '1';
         nameInput.style.cursor = 'text';
+
+        // Set default output type
+        outputTypeSelect.value = 'number';
 
         // Create one empty schedule
         addScheduleBlock(null);
@@ -5138,120 +5166,109 @@ function addScheduleBlock(scheduleData) {
     const sequence = container.children.length + 1;
 
     const scheduleHTML = `
-    <div class="control-panel-region schedule-block" id="${scheduleId}" data-sequence="${sequence}" style="margin-bottom: 15px; position: relative;">
-        <div class="control-panel-header rule-header" style="cursor: pointer; padding: 15px; background: #2d2d2d; border-radius: 8px 8px 0 0;">
-            <div style="display: flex; align-items: center; gap: 10px; flex-grow: 1;">
-                <span class="toggle-icon" style="transition: transform 0.2s;">▼</span>
+    <div class="control-panel-region schedule-block" id="${scheduleId}" data-sequence="${sequence}" style="margin-bottom: 12px; border: 1px solid #444; border-radius: 4px;">
+        <div class="control-panel-header rule-header" style="cursor: pointer; padding: 10px 15px; background: #2d2d2d; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="toggle-icon" style="transition: transform 0.2s; font-size: 12px;">▼</span>
                 <span class="schedule-sequence" style="font-weight: bold; color: #4a9eff;">${sequence}.</span>
                 <span class="title-display" style="font-weight: 600; color: #fff; cursor: pointer;">${scheduleData?.name || `Schedule ${sequence}`}</span>
-                <input type="text" class="title-input form-input" value="${scheduleData?.name || `Schedule ${sequence}`}" style="display: none; width: 200px; padding: 5px;">
+                <input type="text" class="title-input form-input" value="${scheduleData?.name || `Schedule ${sequence}`}" style="display: none; width: 200px; padding: 4px;">
             </div>
-            <div class="schedule-controls" style="display: flex; gap: 8px;">
-                <div class="action-btn btn-info copy-schedule" title="Copy Schedule" style="padding: 5px 10px; font-size: 0.85rem;">📋</div>
-                <div class="action-btn btn-info move-up" title="Move Up" style="padding: 5px 10px; font-size: 0.85rem;">▲</div>
-                <div class="action-btn btn-info move-down" title="Move Down" style="padding: 5px 10px; font-size: 0.85rem;">▼</div>
-                <div class="action-btn btn-danger delete-schedule" title="Delete Schedule" style="padding: 5px 10px; font-size: 0.85rem;">×</div>
+            <div class="schedule-controls" style="display: flex; gap: 2px;">
+                <div class="copy-schedule" title="Copy" style="cursor: pointer; padding: 4px 8px; font-size: 14px; color: #aaa; background: transparent; border-radius: 3px;">📋</div>
+                <div class="move-up" title="Move Up" style="cursor: pointer; padding: 4px 8px; font-size: 14px; color: #aaa; background: transparent; border-radius: 3px;">▲</div>
+                <div class="move-down" title="Move Down" style="cursor: pointer; padding: 4px 8px; font-size: 14px; color: #aaa; background: transparent; border-radius: 3px;">▼</div>
+                <div class="delete-schedule" title="Delete" style="cursor: pointer; padding: 4px 8px; font-size: 16px; color: #f88; background: transparent; border-radius: 3px;">×</div>
             </div>
         </div>
 
-        <div class="schedule-content" style="padding: 20px; background: #1a1a1a; border-radius: 0 0 8px 8px; border: 1px solid #333; border-top: none;">
+        <div class="schedule-content" style="padding: 15px; background: #1e1e1e;">
             <!-- Filters Section -->
-            <div class="form-group" style="margin-bottom: 20px; padding: 15px; background: #0c0c0c; border-radius: 6px;">
-                <label class="form-label" style="font-size: 14px; color: #4a9eff; margin-bottom: 15px; display: block; font-weight: bold;">Filters (WHERE Clause)</label>
+            <div style="margin-bottom: 15px;">
+                <label style="font-size: 13px; color: #4a9eff; margin-bottom: 10px; display: block; font-weight: bold;">Filter</label>
 
                 <!-- Date Range Filter -->
-                <div class="field-container" style="margin-bottom: 15px;">
-                    <label style="display: flex; align-items: center; gap: 10px; color: #ccc;">
+                <div class="field-container" style="margin-bottom: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px; color: #ccc;">
                         <input type="checkbox" class="field-checkbox filter-date-range-checkbox" style="cursor: pointer;">
-                        <span style="font-weight: 600;">Date Range</span>
+                        <span>Date Range</span>
                     </label>
-                    <div class="field-content filter-date-range-content" style="display: none; margin-left: 30px; margin-top: 10px;">
+                    <div class="field-content filter-date-range-content" style="display: none; margin-left: 25px; margin-top: 8px;">
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                             <div>
-                                <label style="font-size: 12px; color: #999; margin-bottom: 3px; display: block;">From Date</label>
-                                <input type="date" class="form-input date-from" style="width: 100%;">
+                                <label style="font-size: 11px; color: #999; margin-bottom: 3px; display: block;">From</label>
+                                <input type="date" class="form-input date-from" style="width: 100%; padding: 5px;">
                             </div>
                             <div>
-                                <label style="font-size: 12px; color: #999; margin-bottom: 3px; display: block;">To Date</label>
-                                <input type="date" class="form-input date-to" style="width: 100%;">
+                                <label style="font-size: 11px; color: #999; margin-bottom: 3px; display: block;">To</label>
+                                <input type="date" class="form-input date-to" style="width: 100%; padding: 5px;">
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <!-- Days of Week Filter -->
-                <div class="field-container" style="margin-bottom: 15px;">
-                    <label style="display: flex; align-items: center; gap: 10px; color: #ccc;">
+                <div class="field-container" style="margin-bottom: 10px;">
+                    <label style="display: flex; align-items: center; gap: 8px; color: #ccc;">
                         <input type="checkbox" class="field-checkbox filter-days-checkbox" style="cursor: pointer;">
-                        <span style="font-weight: 600;">Days of Week</span>
+                        <span>Days of Week</span>
                     </label>
-                    <div class="field-content filter-days-content" style="display: none; margin-left: 30px; margin-top: 10px;">
-                        <div class="checkbox-group" style="display: flex; gap: 12px; flex-wrap: wrap;">
-                            <label style="display: flex; align-items: center; gap: 5px; color: #ccc; cursor: pointer;"><input type="checkbox" value="0" class="day-checkbox"> Sun</label>
-                            <label style="display: flex; align-items: center; gap: 5px; color: #ccc; cursor: pointer;"><input type="checkbox" value="1" class="day-checkbox"> Mon</label>
-                            <label style="display: flex; align-items: center; gap: 5px; color: #ccc; cursor: pointer;"><input type="checkbox" value="2" class="day-checkbox"> Tue</label>
-                            <label style="display: flex; align-items: center; gap: 5px; color: #ccc; cursor: pointer;"><input type="checkbox" value="3" class="day-checkbox"> Wed</label>
-                            <label style="display: flex; align-items: center; gap: 5px; color: #ccc; cursor: pointer;"><input type="checkbox" value="4" class="day-checkbox"> Thu</label>
-                            <label style="display: flex; align-items: center; gap: 5px; color: #ccc; cursor: pointer;"><input type="checkbox" value="5" class="day-checkbox"> Fri</label>
-                            <label style="display: flex; align-items: center; gap: 5px; color: #ccc; cursor: pointer;"><input type="checkbox" value="6" class="day-checkbox"> Sat</label>
+                    <div class="field-content filter-days-content" style="display: none; margin-left: 25px; margin-top: 8px;">
+                        <div class="checkbox-group" style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <label style="display: flex; align-items: center; gap: 4px; color: #ccc; cursor: pointer;"><input type="checkbox" value="0" class="day-checkbox"> Sun</label>
+                            <label style="display: flex; align-items: center; gap: 4px; color: #ccc; cursor: pointer;"><input type="checkbox" value="1" class="day-checkbox"> Mon</label>
+                            <label style="display: flex; align-items: center; gap: 4px; color: #ccc; cursor: pointer;"><input type="checkbox" value="2" class="day-checkbox"> Tue</label>
+                            <label style="display: flex; align-items: center; gap: 4px; color: #ccc; cursor: pointer;"><input type="checkbox" value="3" class="day-checkbox"> Wed</label>
+                            <label style="display: flex; align-items: center; gap: 4px; color: #ccc; cursor: pointer;"><input type="checkbox" value="4" class="day-checkbox"> Thu</label>
+                            <label style="display: flex; align-items: center; gap: 4px; color: #ccc; cursor: pointer;"><input type="checkbox" value="5" class="day-checkbox"> Fri</label>
+                            <label style="display: flex; align-items: center; gap: 4px; color: #ccc; cursor: pointer;"><input type="checkbox" value="6" class="day-checkbox"> Sat</label>
                         </div>
                     </div>
                 </div>
 
                 <!-- Custom Filter Text -->
                 <div class="field-container">
-                    <label style="display: flex; align-items: center; gap: 10px; color: #ccc;">
+                    <label style="display: flex; align-items: center; gap: 8px; color: #ccc;">
                         <input type="checkbox" class="field-checkbox filter-custom-checkbox" style="cursor: pointer;">
-                        <span style="font-weight: 600;">Custom Filter Expression</span>
+                        <span>Custom Expression</span>
                     </label>
-                    <div class="field-content filter-custom-content" style="display: none; margin-left: 30px; margin-top: 10px;">
-                        <textarea class="form-input custom-filter-text" rows="2" placeholder="e.g., #COLUMN_NAME# > 100" style="font-family: monospace; font-size: 13px;"></textarea>
+                    <div class="field-content filter-custom-content" style="display: none; margin-left: 25px; margin-top: 8px;">
+                        <textarea class="form-input custom-filter-text" rows="2" placeholder="e.g., #COLUMN_NAME# > 100" style="font-family: monospace; font-size: 12px; padding: 6px;"></textarea>
                     </div>
                 </div>
             </div>
 
             <!-- Formula Section -->
-            <div class="form-group" style="padding: 15px; background: #0c0c0c; border-radius: 6px;">
-                <label class="form-label" style="font-size: 14px; color: #4a9eff; margin-bottom: 10px; display: block; font-weight: bold;">Formula Expression</label>
+            <div style="margin-top: 15px;">
+                <label style="font-size: 13px; color: #4a9eff; margin-bottom: 10px; display: block; font-weight: bold;">Expression</label>
 
                 <!-- Column and Operator Selection -->
-                <div style="margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 200px;">
-                        <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Insert Column</label>
-                        <select class="form-input column-select" style="width: 100%; padding: 6px; font-size: 13px;">
-                            <option value="">-- Select Column --</option>
-                        </select>
-                    </div>
-                    <div style="flex: 1; min-width: 150px;">
-                        <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Insert Operator</label>
-                        <select class="form-input operator-select" style="width: 100%; padding: 6px; font-size: 13px;">
-                            <option value="">-- Select Operator --</option>
-                            <option value="+">+ (Add)</option>
-                            <option value="-">- (Subtract)</option>
-                            <option value="*">* (Multiply)</option>
-                            <option value="/">\u00F7 (Divide)</option>
-                            <option value="%">% (Modulo)</option>
-                            <option value="(">) (Greater Than)</option>
-                            <option value="<">< (Less Than)</option>
-                            <option value=">=">>= (Greater or Equal)</option>
-                            <option value="<="><= (Less or Equal)</option>
-                            <option value="==">== (Equal)</option>
-                            <option value="!=">!= (Not Equal)</option>
-                            <option value="&&">&& (AND)</option>
-                            <option value="||">|| (OR)</option>
-                        </select>
-                    </div>
+                <div style="margin-bottom: 8px; display: flex; gap: 10px;">
+                    <select class="form-input column-select" style="flex: 1; padding: 5px; font-size: 12px;">
+                        <option value="">-- Select Column --</option>
+                    </select>
+                    <select class="form-input operator-select" style="flex: 1; padding: 5px; font-size: 12px;">
+                        <option value="">-- Select Operator --</option>
+                        <option value="+">+ (Add)</option>
+                        <option value="-">- (Subtract)</option>
+                        <option value="*">* (Multiply)</option>
+                        <option value="/">\u00F7 (Divide)</option>
+                        <option value="%">% (Modulo)</option>
+                        <option value="(">) (Greater Than)</option>
+                        <option value="<">< (Less Than)</option>
+                        <option value=">=">>= (Greater or Equal)</option>
+                        <option value="<="><= (Less or Equal)</option>
+                        <option value="==">== (Equal)</option>
+                        <option value="!=">!= (Not Equal)</option>
+                        <option value="&&">&& (AND)</option>
+                        <option value="||">|| (OR)</option>
+                    </select>
                 </div>
 
-                <textarea class="form-input formula-textarea" rows="4" placeholder="Type # to see column autocomplete, or select from dropdowns above. All columns must be wrapped as #Column Name#" style="font-family: monospace; font-size: 13px; background: #1e1e1e; color: #0f0;"></textarea>
+                <textarea class="form-input formula-textarea" rows="3" placeholder="Type # to see autocomplete. All columns must be wrapped as #Column Name#" style="font-family: monospace; font-size: 12px; background: #1a1a1a; color: #0f0; padding: 8px;"></textarea>
 
-                <div style="margin-top: 10px; display: flex; gap: 10px;">
-                    <div class="action-btn btn-info validate-formula-btn" style="font-size: 0.85rem; padding: 6px 12px;">Validate Formula</div>
-                    <select class="form-input formula-type-select" style="width: auto; padding: 6px 12px;">
-                        <option value="number" ${scheduleData?.type === 'number' ? 'selected' : ''}>Number</option>
-                        <option value="string" ${scheduleData?.type === 'string' ? 'selected' : ''}>String</option>
-                        <option value="boolean" ${scheduleData?.type === 'boolean' ? 'selected' : ''}>Boolean</option>
-                    </select>
+                <div style="margin-top: 8px;">
+                    <div class="action-btn btn-info validate-formula-btn" style="font-size: 0.8rem; padding: 5px 10px;">Validate</div>
                 </div>
             </div>
         </div>
@@ -5818,9 +5835,10 @@ function updateScheduleSequence() {
  * Save multi-schedule configuration
  */
 function saveMultiSchedule() {
-    // Get formula name from input
+    // Get formula name and output type from inputs
     const nameInput = document.getElementById('multi-schedule-formula-name');
     const formulaName = nameInput.value.trim();
+    const outputType = document.getElementById('formula-output-type').value;
 
     if (!formulaName) {
         alert('Please enter a formula name');
@@ -5848,15 +5866,15 @@ function saveMultiSchedule() {
         return;
     }
 
-    // Update savedFormulas
+    // Update savedFormulas - use global output type instead of per-schedule type
     savedFormulas[formulaName] = {
         isMultiSchedule: true,
         schedules: schedules,
-        type: schedules[0]?.type || 'number' // Use first schedule's type as default
+        type: outputType
     };
 
     // Ensure the calculated column exists in tableColumns
-    const columnType = schedules[0]?.type || 'number';
+    const columnType = outputType;
     if (!tableColumns.find(col => col.name === formulaName)) {
         const newCalcColumn = { name: formulaName, type: columnType };
         tableColumns.push(newCalcColumn);
@@ -5880,6 +5898,9 @@ function saveMultiSchedule() {
     // Save to localStorage
     saveFormulas();
 
+    // Reload formula list to show the new/updated formula
+    loadSavedFormulas();
+
     // Save to backend
     saveAllDataToJSON();
     handleSave();
@@ -5891,7 +5912,7 @@ function saveMultiSchedule() {
     // Close dialog
     closeMultiScheduleDialog();
 
-    alert(`Multi-schedule formula "${formulaName}" saved successfully with ${schedules.length} schedule(s)!`);
+    alert(`Formula "${formulaName}" saved successfully with ${schedules.length} schedule(s)!`);
 }
 
 /**
@@ -6091,6 +6112,17 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelBtn.addEventListener('click', closeMultiScheduleDialog);
     }
 
+    // Click outside to close
+    const dialog = document.getElementById('multi-schedule-formula-dialog');
+    if (dialog) {
+        dialog.addEventListener('click', (e) => {
+            // Only close if clicking on the dialog backdrop (not the content)
+            if (e.target === dialog) {
+                closeMultiScheduleDialog();
+            }
+        });
+    }
+
     // Add schedule button
     const addBtn = document.getElementById('add-schedule-btn');
     if (addBtn) {
@@ -6199,20 +6231,68 @@ currentFormulaName = formulaName;
         // Delete a saved formula
         function deleteFormula(formulaName) {
             if (confirm(`Are you sure you want to delete the formula "${formulaName}"?`)) {
+                // Remove from savedFormulas
                 delete savedFormulas[formulaName];
                 saveFormulas();
                 loadSavedFormulas();
 
+                // Remove the calculated column from all data structures
+                // 1. Remove from pristineReportData (actual data)
+                pristineReportData.forEach(row => {
+                    delete row[formulaName];
+                });
+
+                // 1b. Remove from reporttblData.rows (used for display)
+                if (typeof reporttblData !== 'undefined' && reporttblData.rows) {
+                    reporttblData.rows.forEach(row => {
+                        delete row[formulaName];
+                    });
+                }
+
+                // 2. Remove from tableColumns
+                const tableColIndex = tableColumns.findIndex(col => col.name === formulaName);
+                if (tableColIndex !== -1) {
+                    tableColumns.splice(tableColIndex, 1);
+                }
+
+                // 3. Remove from report_expressions.columnMetadata
+                if (typeof report_expressions !== 'undefined' && report_expressions.columnMetadata) {
+                    const metadataIndex = report_expressions.columnMetadata.findIndex(col => col.name === formulaName);
+                    if (metadataIndex !== -1) {
+                        report_expressions.columnMetadata.splice(metadataIndex, 1);
+                    }
+                }
+
+                // 4. Remove from savedCalculationColumns
+                if (typeof savedCalculationColumns !== 'undefined') {
+                    const calcColIndex = savedCalculationColumns.findIndex(col => col.name === formulaName);
+                    if (calcColIndex !== -1) {
+                        savedCalculationColumns.splice(calcColIndex, 1);
+                    }
+                }
+
+                // 5. Remove from jsondata_details.selectedColumns
+                if (typeof jsondata_details !== 'undefined' && jsondata_details.selectedColumns) {
+                    const selectedColIndex = jsondata_details.selectedColumns.findIndex(col => col.name === formulaName);
+                    if (selectedColIndex !== -1) {
+                        jsondata_details.selectedColumns.splice(selectedColIndex, 1);
+                    }
+                }
+
+                // Save to backend
                 saveAllDataToJSON();
-                handleSave(); 
-                
-                
+                handleSave();
+
+                // Recalculate remaining formulas
+                recalculateAllFormulas();
+
+                // Refresh the table display
+                displayReportTable('deleteFormula');
+
                 // If we're currently editing this formula, clear the form
                 if (currentFormulaName === formulaName) {
                     clearFormula();
                 }
-                //displayReportTable();
-                generateJson();
             }
         }
         
@@ -7113,20 +7193,46 @@ function addCalculation() {
                             return; // Skip to next row
                         }
 
-                        // Evaluate and assign
+                        // Evaluate and assign with type conversion
                         try {
                             let result = eval(scheduleFormula);
                             console.log('[Multi-Schedule] Evaluation result:', result);
+
+                            // Get the global formula output type
+                            const outputType = savedFormulas[calcName].type || 'number';
 
                             // Handle NaN results
                             if (typeof result === 'number' && isNaN(result)) {
                                 row[calcName] = 'Calculation Issue';
                             } else {
-                                row[calcName] = schedule.type === 'number' ? parseFloat(result) : result;
+                                // Apply type conversion based on formula output type
+                                if (outputType === 'number') {
+                                    const numValue = parseFloat(result);
+                                    row[calcName] = isNaN(numValue) ? 'Calculation Issue' : numValue;
+                                } else if (outputType === 'date') {
+                                    // Try to convert to UK date format (DD-MMM-YYYY)
+                                    try {
+                                        const dateObj = new Date(result);
+                                        if (isNaN(dateObj.getTime())) {
+                                            row[calcName] = 'Calculation Issue';
+                                        } else {
+                                            row[calcName] = dateObj.toLocaleDateString('en-GB', {
+                                                day: '2-digit',
+                                                month: 'short',
+                                                year: 'numeric'
+                                            }).toUpperCase().replace(/ /g, '-');
+                                        }
+                                    } catch (e) {
+                                        row[calcName] = 'Calculation Issue';
+                                    }
+                                } else {
+                                    // String/Text - display as-is
+                                    row[calcName] = String(result);
+                                }
                             }
                         } catch (e) {
                             console.error('[Multi-Schedule] Schedule formula error:', e, 'Formula:', scheduleFormula);
-                            row[calcName] = 'ERR';
+                            row[calcName] = 'Calculation Issue';
                         }
 
                         // First match wins - stop evaluating and skip legacy code
@@ -7470,16 +7576,42 @@ function replaceDayFunction(expr) {
                         try {
                             let result = eval(scheduleFormula);
 
+                            // Get the global formula output type
+                            const outputType = savedFormulas[calcName].type || 'number';
+
                             // Handle NaN results
                             if (typeof result === 'number' && isNaN(result)) {
                                 row[calcName] = 'Calculation Issue';
                             } else {
-                                row[calcName] = schedule.type === 'number' ? parseFloat(result) : result;
+                                // Apply type conversion based on formula output type
+                                if (outputType === 'number') {
+                                    const numValue = parseFloat(result);
+                                    row[calcName] = isNaN(numValue) ? 'Calculation Issue' : numValue;
+                                } else if (outputType === 'date') {
+                                    // Try to convert to UK date format (DD-MMM-YYYY)
+                                    try {
+                                        const dateObj = new Date(result);
+                                        if (isNaN(dateObj.getTime())) {
+                                            row[calcName] = 'Calculation Issue';
+                                        } else {
+                                            row[calcName] = dateObj.toLocaleDateString('en-GB', {
+                                                day: '2-digit',
+                                                month: 'short',
+                                                year: 'numeric'
+                                            }).toUpperCase().replace(/ /g, '-');
+                                        }
+                                    } catch (e) {
+                                        row[calcName] = 'Calculation Issue';
+                                    }
+                                } else {
+                                    // String/Text - display as-is
+                                    row[calcName] = String(result);
+                                }
                             }
                             console.log('[recalculateAllFormulas] Result:', result);
                         } catch (e) {
                             console.error('[recalculateAllFormulas] Evaluation error:', e);
-                            row[calcName] = 'ERR';
+                            row[calcName] = 'Calculation Issue';
                         }
 
                         // First match wins - go to next formula
