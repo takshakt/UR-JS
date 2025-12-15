@@ -1172,6 +1172,51 @@ const scheduleControlStyles = `
 #saved-formulas-list thead th:last-child {
     display: none !important;
 }
+
+/* Rename "Rule Name" to "Name" - hide original text and replace with CSS */
+.saved-formulas-table thead th:nth-child(1),
+#saved-formulas-list thead th:nth-child(1) {
+    font-size: 0 !important; /* Hide original text */
+}
+
+.saved-formulas-table thead th:nth-child(1)::before,
+#saved-formulas-list thead th:nth-child(1)::before {
+    content: "Name";
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Hide "Saved Formulas" section title */
+.saved-formulas-table caption,
+#saved-formulas-list caption,
+.formulas-section-title,
+.saved-formulas-header {
+    display: none !important;
+}
+
+/* Rename "Formula" to "Expression" - hide original text and replace with CSS */
+.saved-formulas-table thead th:nth-child(2),
+#saved-formulas-list thead th:nth-child(2) {
+    font-size: 0 !important; /* Hide original text */
+}
+
+.saved-formulas-table thead th:nth-child(2)::before,
+#saved-formulas-list thead th:nth-child(2)::before {
+    content: "Expression";
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Clickable formula name and expression hover effects */
+.edit-formula:hover {
+    text-decoration: underline !important;
+}
+
+strong.edit-formula:hover {
+    color: #66b3ff !important;
+}
 </style>
 `;
 document.head.insertAdjacentHTML('beforeend', scheduleControlStyles);
@@ -5092,7 +5137,7 @@ function loadSavedFormulas() {
         }
 
 
-renderSavedFormula(name, "", formulaDisplay);
+renderSavedFormula(name, formulaType, formulaDisplay);
     }
     
     // Add event listeners to formula buttons (now divs)
@@ -6272,11 +6317,37 @@ currentFormulaName = formulaName;
      function renderSavedFormula(name, formulaType, formulaDisplay) {
             const savedFormulasList = document.getElementById('saved-formulas-list');
 
+            // Determine type badge style
+            let typeColor, typeLabel;
+            switch(formulaType?.toLowerCase()) {
+                case 'number':
+                    typeColor = '#17a2b8';
+                    typeLabel = 'Number';
+                    break;
+                case 'string':
+                case 'text':
+                    typeColor = '#28a745';
+                    typeLabel = 'Text';
+                    break;
+                case 'date':
+                    typeColor = '#ffc107';
+                    typeLabel = 'Date';
+                    break;
+                default:
+                    typeColor = '#6c757d';
+                    typeLabel = formulaType || 'Unknown';
+            }
+
             const row = document.createElement('tr');
             row.className = 'formula-item';
             row.innerHTML = `
-                <td style="width: 20%; white-space: nowrap;"><strong>${name}</strong></td>
-                <td style="width: 65%;">${formulaDisplay}</td>
+                <td style="width: 20%; white-space: nowrap;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <strong class="edit-formula" data-name="${name}" style="cursor: pointer; color: #4a9eff; text-decoration: none;">${name}</strong>
+                        <span style="background-color: ${typeColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 600; white-space: nowrap;">${typeLabel}</span>
+                    </div>
+                </td>
+                <td style="width: 65%; cursor: pointer;" class="edit-formula" data-name="${name}">${formulaDisplay}</td>
                 <td style="width: 15%; white-space: nowrap;">
                     <div style="display: flex; gap: 8px; justify-content: flex-start;">
                         <div class="action-btn btn-info edit-formula" data-name="${name}" role="button" style="padding: 4px 10px; font-size: 12px;">Edit</div>

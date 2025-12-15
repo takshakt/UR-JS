@@ -999,6 +999,52 @@
   display: none !important;
 }
 
+/* Rename "Rule Name" to "Name" - hide original text and replace with CSS */
+.saved-formulas-table thead th:nth-child(1),
+#saved-formulas-list thead th:nth-child(1) {
+  font-size: 0 !important; /* Hide original text */
+}
+
+.saved-formulas-table thead th:nth-child(1)::before,
+#saved-formulas-list thead th:nth-child(1)::before {
+  content: "Name";
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* Hide "Saved Formulas" section title */
+.saved-formulas-table caption,
+#saved-formulas-list caption,
+.formulas-section-title,
+h3:contains("Saved Formulas"),
+.saved-formulas-header {
+  display: none !important;
+}
+
+/* Rename "Formula" to "Expression" - hide original text and replace with CSS */
+.saved-formulas-table thead th:nth-child(2),
+#saved-formulas-list thead th:nth-child(2) {
+  font-size: 0 !important; /* Hide original text */
+}
+
+.saved-formulas-table thead th:nth-child(2)::before,
+#saved-formulas-list thead th:nth-child(2)::before {
+  content: "Expression";
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* Clickable formula name and expression hover effects */
+.edit-formula:hover {
+  text-decoration: underline !important;
+}
+
+strong.edit-formula:hover {
+  color: #66b3ff !important;
+}
+
 
 
 
