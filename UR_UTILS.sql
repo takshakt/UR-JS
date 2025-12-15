@@ -4111,6 +4111,108 @@ PROCEDURE date_parser(
     END strip_day_name;
 
     ---------------------------------------------------------------------------
+    -- preprocess_dy_sample: Lightweight preprocessing that preserves day names
+    -- Used for testing DY/DAY formats where day name is part of the format
+    ---------------------------------------------------------------------------
+    FUNCTION preprocess_dy_sample(
+        p_sample IN VARCHAR2
+    ) RETURN VARCHAR2 IS
+        v_clean VARCHAR2(500);
+    BEGIN
+        IF p_sample IS NULL THEN
+            RETURN NULL;
+        END IF;
+
+        v_clean := TRIM(p_sample);
+
+        -- Normalize day name abbreviations (but don't remove them!)
+        -- Also uppercase them because Oracle's DY format is case-sensitive
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])Thurs([^a-zA-Z]|$)', '\1THU\2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])Tues([^a-zA-Z]|$)', '\1TUE\2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])Weds([^a-zA-Z]|$)', '\1WED\2', 1, 0, 'i');
+
+        -- Uppercase all day names for Oracle's DY format (case-sensitive)
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Mon)(day)?([^a-zA-Z]|$)', '\1MON\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Tue)(sday)?([^a-zA-Z]|$)', '\1TUE\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Wed)(nesday)?([^a-zA-Z]|$)', '\1WED\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Thu)(rsday)?([^a-zA-Z]|$)', '\1THU\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Fri)(day)?([^a-zA-Z]|$)', '\1FRI\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Sat)(urday)?([^a-zA-Z]|$)', '\1SAT\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Sun)(day)?([^a-zA-Z]|$)', '\1SUN\4', 1, 0, 'i');
+
+        -- Remove parenthetical content
+        v_clean := REGEXP_REPLACE(v_clean, '\s*\([^)]*\)', '');
+
+        -- Selective text number conversion (only safe patterns that won't corrupt day names)
+        -- Pad with spaces for word boundary matching
+        v_clean := ' ' || v_clean || ' ';
+
+        -- Convert compound ordinals (safe - won't corrupt day names)
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)twenty[- ]?first(\s)', '\1 21 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)twenty[- ]?second(\s)', '\1 22 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)twenty[- ]?third(\s)', '\1 23 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)twenty[- ]?fourth(\s)', '\1 24 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)twenty[- ]?fifth(\s)', '\1 25 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)twenty[- ]?sixth(\s)', '\1 26 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)twenty[- ]?seventh(\s)', '\1 27 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)twenty[- ]?eighth(\s)', '\1 28 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)twenty[- ]?ninth(\s)', '\1 29 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)thirty[- ]?first(\s)', '\1 31 \2', 1, 0, 'i');
+
+        -- Convert standalone ordinals that are safe
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)seventeenth(\s)', '\1 17 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)eighteenth(\s)', '\1 18 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)nineteenth(\s)', '\1 19 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)eleventh(\s)', '\1 11 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)twelfth(\s)', '\1 12 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)first(\s)', '\1 1 \2', 1, 0, 'i');
+
+        -- DO NOT convert: second, third, fourth, fifth, sixth, seventh, eighth, ninth, tenth
+        -- These would corrupt Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday
+
+        -- Convert cardinals (numbers, not ordinals - these are safe)
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)twenty(\s)', '\1 20 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)thirty(\s)', '\1 30 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)eleven(\s)', '\1 11 \2', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)twelve(\s)', '\1 12 \2', 1, 0, 'i');
+
+        v_clean := TRIM(v_clean);
+
+        -- Remove filler words (but NOT "day" since it's part of day names!)
+        v_clean := ' ' || v_clean || ' ';
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)the(\s)', ' ', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)of(\s)', ' ', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)on(\s)', ' ', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(\s)in(\s)', ' ', 1, 0, 'i');
+        -- Note: NOT removing "day" here because it's part of day names (Monday, Tuesday, etc.)
+        v_clean := REGEXP_REPLACE(v_clean, '\s+', ' ');
+        v_clean := REGEXP_REPLACE(v_clean, '\s*,\s*', ', ');
+        v_clean := TRIM(v_clean);
+
+        -- Strip ordinal suffixes
+        v_clean := REGEXP_REPLACE(v_clean, '(\d+)(st|nd|rd|th)([^a-zA-Z]|$)', '\1\3', 1, 0, 'i');
+
+        -- Uppercase month names for Oracle's MON/MONTH format (case-sensitive)
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Jan)(uary)?([^a-zA-Z]|$)', '\1JAN\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Feb)(ruary)?([^a-zA-Z]|$)', '\1FEB\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Mar)(ch)?([^a-zA-Z]|$)', '\1MAR\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Apr)(il)?([^a-zA-Z]|$)', '\1APR\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(May)([^a-zA-Z]|$)', '\1MAY\3', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Jun)(e)?([^a-zA-Z]|$)', '\1JUN\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Jul)(y)?([^a-zA-Z]|$)', '\1JUL\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Aug)(ust)?([^a-zA-Z]|$)', '\1AUG\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Sep)(tember)?([^a-zA-Z]|$)', '\1SEP\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Oct)(ober)?([^a-zA-Z]|$)', '\1OCT\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Nov)(ember)?([^a-zA-Z]|$)', '\1NOV\4', 1, 0, 'i');
+        v_clean := REGEXP_REPLACE(v_clean, '(^|[^a-zA-Z])(Dec)(ember)?([^a-zA-Z]|$)', '\1DEC\4', 1, 0, 'i');
+
+        -- Final cleanup
+        v_clean := TRIM(REGEXP_REPLACE(v_clean, '\s+', ' '));
+
+        RETURN v_clean;
+    END preprocess_dy_sample;
+
+    ---------------------------------------------------------------------------
     -- preprocess_date_sample: Full preprocessing pipeline (10 steps)
     ---------------------------------------------------------------------------
     FUNCTION preprocess_date_sample(
@@ -4669,7 +4771,49 @@ PROCEDURE date_parser(
                 v_preprocessed := preprocess_date_sample(rec.val);
 
                 -- Try direct parse first
-                IF fn_try_date(v_preprocessed, v_formats(i).format_mask) IS NOT NULL THEN
+                -- For DY/DAY formats, use pattern matching instead of TO_DATE
+                -- Oracle's DY format doesn't work reliably without year
+                IF v_formats(i).has_day_name = 'Y' THEN
+                    -- Use pattern matching for DY formats
+                    IF v_formats(i).format_mask = 'DY DD-MON' THEN
+                        -- Pattern: day-name space digits hyphen month-name (NO YEAR at end)
+                        IF REGEXP_LIKE(rec.val, '^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d{1,2}\s*-\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*$', 'i') THEN
+                            v_match_count := v_match_count + 1;
+                        END IF;
+                    ELSIF v_formats(i).format_mask = 'DY DD-MON-YYYY' THEN
+                        -- Pattern: day-name space digits hyphen month-name hyphen 4-digit-year
+                        IF REGEXP_LIKE(rec.val, '^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d{1,2}\s*-\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*-\s*\d{4}\s*$', 'i') THEN
+                            v_match_count := v_match_count + 1;
+                        END IF;
+                    ELSIF v_formats(i).format_mask = 'DY DD MON' THEN
+                        -- Pattern: day-name space digits space month-name (NO YEAR at end)
+                        IF REGEXP_LIKE(rec.val, '^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*$', 'i') THEN
+                            v_match_count := v_match_count + 1;
+                        END IF;
+                    ELSIF v_formats(i).format_mask = 'DY DD MON YYYY' THEN
+                        -- Pattern: day-name space digits space month-name space 4-digit-year
+                        IF REGEXP_LIKE(rec.val, '^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\s*$', 'i') THEN
+                            v_match_count := v_match_count + 1;
+                        END IF;
+                    ELSIF v_formats(i).format_mask = 'DY, DD MON' THEN
+                        -- Pattern: day-name comma space digits space month-name (NO YEAR at end)
+                        IF REGEXP_LIKE(rec.val, '^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*,\s*\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s*$', 'i') THEN
+                            v_match_count := v_match_count + 1;
+                        END IF;
+                    ELSIF v_formats(i).format_mask = 'DY, DD MON YYYY' THEN
+                        -- Pattern: day-name comma space digits space month-name space 4-digit-year
+                        IF REGEXP_LIKE(rec.val, '^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s*,\s*\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}\s*$', 'i') THEN
+                            v_match_count := v_match_count + 1;
+                        END IF;
+                    ELSE
+                        -- For other DY formats with year, try parsing normally
+                        IF v_formats(i).has_year = 'Y' THEN
+                            IF fn_try_date(preprocess_dy_sample(rec.val), v_formats(i).format_mask) IS NOT NULL THEN
+                                v_match_count := v_match_count + 1;
+                            END IF;
+                        END IF;
+                    END IF;
+                ELSIF fn_try_date(v_preprocessed, v_formats(i).format_mask) IS NOT NULL THEN
                     v_match_count := v_match_count + 1;
                 -- If format has no day name but input has one, try stripping day name
                 ELSIF v_formats(i).has_day_name = 'N' AND v_structure.has_day_name = 'Y' THEN
@@ -4694,6 +4838,10 @@ PROCEDURE date_parser(
                 -- Apply modifiers
                 IF v_formats(i).category IN ('ISO', 'DAYNAME', 'MONTHNAME') THEN
                     v_score := v_score * 1.15;
+                END IF;
+                -- Strong bonus for DY formats when input actually has day names
+                IF v_formats(i).has_day_name = 'Y' AND v_structure.has_day_name = 'Y' THEN
+                    v_score := v_score * 1.20;  -- 20% bonus for DY format matching DY input
                 END IF;
                 IF v_formats(i).format_mask LIKE 'YYYY-MM-DD%' THEN
                     v_score := v_score * 1.10;
@@ -4805,6 +4953,7 @@ PROCEDURE date_parser(
 
         p_message := 'Detected format: ' || p_format_mask ||
                      ' (Confidence: ' || p_confidence || '%)' ||
+                     ' [PKG-v2.6-DY-NOYEAR-FIX-2025-12-15]' ||
                      CASE WHEN p_is_ambiguous = 'Y' THEN ' - AMBIGUOUS (defaulting to European DD/MM)' ELSE '' END;
 
     EXCEPTION
@@ -4897,6 +5046,26 @@ PROCEDURE date_parser(
                 NULL; -- Continue with format-based parsing
         END CASE;
 
+        -- Special handling for DY/DAY formats
+        -- Oracle's TO_DATE doesn't work reliably with DY without year, so use fn_infer_year directly
+        IF (p_format LIKE '%DY%' OR p_format LIKE '%DAY%') AND p_format NOT LIKE '%YYYY%' AND p_format NOT LIKE '%RR%' THEN
+            -- DY format without year - use year inference which validates day names
+            append_debug('DY format without year - using fn_infer_year');
+            v_date := fn_infer_year(p_date_str, NVL(p_start, SYSDATE), p_format);
+            IF v_date IS NOT NULL THEN
+                p_result_date := v_date;
+                p_message := 'Parsed with day name validation to ' || TO_CHAR(v_date, 'YYYY-MM-DD');
+                append_debug('Parsed with day name validation: ' || TO_CHAR(v_date, 'YYYY-MM-DD'));
+            ELSE
+                p_result_date := NULL;
+                p_status := 'E';
+                p_message := 'Failed to parse DY format with format ' || p_format;
+                append_debug('DY parse failed');
+            END IF;
+            RETURN;
+        END IF;
+
+        -- Standard parsing for non-DY formats
         -- Preprocess the date string
         v_preprocessed := preprocess_date_sample(p_date_str);
         append_debug('Preprocessed: "' || v_preprocessed || '"');
@@ -4915,7 +5084,11 @@ PROCEDURE date_parser(
                 p_result_date := v_date;
                 p_message := 'Parsed (after stripping day name) to ' || TO_CHAR(v_date, 'YYYY-MM-DD');
                 append_debug('Parsed after strip: ' || TO_CHAR(v_date, 'YYYY-MM-DD'));
-            ELSE
+                RETURN;
+            END IF;
+
+            -- If not parsed yet, try year inference
+            IF TRUE THEN
                 -- Try year inference if no year in format
                 IF p_format NOT LIKE '%YYYY%' AND p_format NOT LIKE '%RR%' AND p_start IS NOT NULL THEN
                     v_date := fn_infer_year(p_date_str, p_start, p_format);
