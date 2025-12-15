@@ -1,402 +1,1079 @@
+// Tab management variables
+let currentTabId = null;
+let tabCounter = 0;
+let tabData = {};
+let parsedTabsData = {};
+let formula_filterJSON_global;
+let isHotelLovLoading = false;
+let currentlyEditingTabId = null;
 
-        // --- DOM Elements (IDs remain the same) ---
-        const canvas = document.getElementById('reportCanvas');
-        const ctx = canvas.getContext('2d');
-        const addReportBtn = document.getElementById('addReportBtn');
-        const modal = document.getElementById('reportModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const cancelBtn = document.getElementById('cancelBtn');
-        const saveBtn = document.getElementById('saveBtn');
-		const deleteBtn = document.getElementById('deleteBtn'); // <--- NEW
-        const reportNameInput = document.getElementById('reportName');
-        const reportDataInput = document.getElementById('reportData');
 
-        // --- Canvas & Drawing Configuration ---
-        const ROW_HEIGHT = 35; 
-        const HEADER_HEIGHT = 45; 
-        const TITLE_HEIGHT = 40;
-        const PADDING = 15;
-        const FONT_SIZE = 14;
-        const ROWS_PER_PAGE = 5; 
-        const TABLE_SPACING = 10; 
+//--- Varun test code --------
+function syncHotelFromGlobal() {
+    console.log('[RunReports] Syncing hotel from global LOV...');
 
-        // --- State Management ---
-        let reports = []; 
-        let scale = 1.0;
-        let pan = { x: 0, y: 0 };
-        let lastMouse = { x: 0, y: 0 };
-        let isPanning = false;
-        let isDraggingTable = false;
-        let draggedTableIndex = -1;
-        let dragOffset = { x: 0, y: 0 };
-        let editingReportIndex = -1; 
-        let expressionJson;        
-		function deleteReport() {
-    if (editingReportIndex !== -1 && confirm(`Are you sure you want to delete report: ${reports[editingReportIndex].name}?`)) {
-        reports.splice(editingReportIndex, 1);
-        hideModal();
-        draw();
-        saveReports();
+    let globalLov = document.getElementById('P0_HOTEL_ID');
+    let pageLov = document.getElementById('static-lov-hotel');
+
+    if (!globalLov || !pageLov) {
+        console.warn('Hotel LOV not found.');
+        return;
     }
-	}
-	
-        // Sample data to pre-fill the textarea
-        const sampleData = {
-            "rows": [{"ELMBANK_YORK_TAPESTRY_COLLECTION_BY_HILTON": "105", "HAMPTON": "101", "STAY_DATE": "9/28/2025", "DOUBLETREE_BY_HILTON_YORK": "98", "MOXY_YORK": "105", "NOVOTEL_YORK_CENTRE": "82", "HILTON_YORK": "93", "HAMPTON_BY_HILTON_YORK": "101"}, {"ELMBANK_YORK_TAPESTRY_COLLECTION_BY_HILTON": "1100", "HAMPTON": "203", "STAY_DATE": "9/29/2025", "DOUBLETREE_BY_HILTON_YORK": "223", "MOXY_YORK": "210", "NOVOTEL_YORK_CENTRE": "212", "HILTON_YORK": "215"}, {"ELMBANK_YORK_TAPESTRY_COLLECTION_BY_HILTON": "119", "HAMPTON": "135", "STAY_DATE": "9/27/2025", "DOUBLETREE_BY_HILTON_YORK": "126", "MOXY_YORK": "122", "NOVOTEL_YORK_CENTRE": "141", "HILTON_YORK": "129", "HAMPTON_BY_HILTON_YORK": "135"}, {"ELMBANK_YORK_TAPESTRY_COLLECTION_BY_HILTON": "119", "HAMPTON": "135", "STAY_DATE": "9/24/2025", "DOUBLETREE_BY_HILTON_YORK": "135", "MOXY_YORK": "140", "NOVOTEL_YORK_CENTRE": "147", "HILTON_YORK": "134", "HAMPTON_BY_HILTON_YORK": "135"}, {"ELMBANK_YORK_TAPESTRY_COLLECTION_BY_HILTON": "131", "HAMPTON": "172", "STAY_DATE": "9/26/2025", "DOUBLETREE_BY_HILTON_YORK": "148", "MOXY_YORK": "149", "NOVOTEL_YORK_CENTRE": "150", "HILTON_YORK": "158", "HAMPTON_BY_HILTON_YORK": "172"}, {"ELMBANK_YORK_TAPESTRY_COLLECTION_BY_HILTON": "137", "HAMPTON": "161", "STAY_DATE": "9/23/2025", "DOUBLETREE_BY_HILTON_YORK": "182", "MOXY_YORK": "171", "NOVOTEL_YORK_CENTRE": "175", "HILTON_YORK": "156", "HAMPTON_BY_HILTON_YORK": "161"}, {"ELMBANK_YORK_TAPESTRY_COLLECTION_BY_HILTON": "159", "HAMPTON": "200", "STAY_DATE": "9/22/2025", "DOUBLETREE_BY_HILTON_YORK": "204", "MOXY_YORK": "219", "NOVOTEL_YORK_CENTRE": "224", "HILTON_YORK": "213"}, {"ELMBANK_YORK_TAPESTRY_COLLECTION_BY_HILTON": "89", "HAMPTON": "101", "STAY_DATE": "9/21/2025", "DOUBLETREE_BY_HILTON_YORK": "1111", "MOXY_YORK": "96", "NOVOTEL_YORK_CENTRE": "89", "HILTON_YORK": "95", "HAMPTON_BY_HILTON_YORK": "101"}, {"ELMBANK_YORK_TAPESTRY_COLLECTION_BY_HILTON": "Sold out", "HAMPTON": "172", "STAY_DATE": "9/25/2025", "DOUBLETREE_BY_HILTON_YORK": "Sold out", "MOXY_YORK": "158", "NOVOTEL_YORK_CENTRE": "180", "HILTON_YORK": "147", "HAMPTON_BY_HILTON_YORK": "172"}]
-            };
 
+    let selectedOption = globalLov.options[globalLov.selectedIndex];
+    pageLov.value = selectedOption.value; // set LOV VALUE
 
-            // --- Aggregate Calculation Function ---
-            function calculateAggregates(data, columns) {
-                const aggregates = {};
-                
-                if (!data.rows || data.rows.length === 0) {
-                    columns.forEach(col => { aggregates[col.key] = ''; });
-                    return aggregates;
-                }
+    // If you want text also stored:
+    pageLov.setAttribute('data-text', selectedOption.text);
 
-                columns.forEach(col => {
-                    if (col.key === 'STAY_DATE') {
-                        aggregates[col.key] = '';
-                        return;
-                    }
-                    
-                    let sum = 0;
-                    data.rows.forEach(row => {
-                        let value = row[col.key];
-                        if (typeof value === 'string') {
-                            value = value.replace(/[^0-9.]/g, ''); 
-                        }
-                        const num = parseFloat(value);
-                        if (!isNaN(num) && num !== Infinity) {
-                            sum += num;
-                        }
-                    });
-                    
-                    aggregates[col.key] = Math.round(sum).toLocaleString();
-                });
-                return aggregates;
-            }
+    console.log('[RunReports] Set hotel to:', selectedOption.text, selectedOption.value);
+}
+//--- end -----
 
-            // --- Core Report Processor (Reusable Logic) ---
-            function processReportData(name, data, existingX, existingY, existingPage = 0) {
-                console.log('processReportData:>>>expressionJson>>>>>>',expressionJson);
-                if (!data.rows || data.rows.length === 0) {
-                    return {
-                        name,
-                        data,
-                        x: existingX || 50,
-                        y: existingY || 50,
-                        width: 200, 
-                        height: TITLE_HEIGHT + HEADER_HEIGHT + (2 * ROW_HEIGHT), 
-                        currentPage: 0,
-                        totalPages: 0,
-                        columns: [{ key: 'Error', header: 'No Data', width: 200 }],
-                        aggregates: {},
-                        expressionJson: expressionJson,
-                    };
-                }
-                
-               // const headers = Object.keys(data.rows[0]);
-                const headers = [...new Set(data.rows.flatMap(row => Object.keys(row)))];
-                
-                const aggregates = calculateAggregates(data, headers.map(h => ({ key: h })));
-
-                const maxContentWidths = headers.reduce((acc, header) => {
-                    ctx.font = `${FONT_SIZE}px Inter`;
-                    let maxWidth = 0;
-                    data.rows.forEach(row => {
-                        maxWidth = Math.max(maxWidth, ctx.measureText(row[header] || '').width);
-                    });
-                    
-                    const aggregateLabelWidth = ctx.measureText('TOTAL (All Pages)').width;
-                    const aggregateValueWidth = ctx.measureText(aggregates[header] || '').width;
-                    
-                    if (headers[0] === header) {
-                        maxWidth = Math.max(maxWidth, aggregateLabelWidth + aggregateValueWidth + PADDING); 
-                    } else {
-                        maxWidth = Math.max(maxWidth, aggregateValueWidth);
-                    }
-
-                    acc[header] = maxWidth;
-                    return acc;
-                }, {});
-
-                // Column Width Calculation
-                const MIN_COL_WIDTH = 100;
-                let columns = headers.map(header => {
-                    ctx.font = `bold ${FONT_SIZE}px Inter`;
-                    const headerText = header.replace(/_/g, ' ');
-                    const headerWidth = ctx.measureText(headerText).width;
-                    
-                    const calculatedWidth = Math.max(
-                        MIN_COL_WIDTH,
-                        headerWidth,
-                        maxContentWidths[header]
-                    ) + (PADDING * 4);
-                    
-                    return {
-                        key: header,
-                        header: headerText,
-                        width: calculatedWidth,
-                    };
-                });
-                console.log('setup columns:>>>>>>>>>>>>>>>>>>>>>__________>',columns);
-               columns = columns.map(column => ({
-                        ...column,
-                        key: column.key.includes(" - ") ? column.key.split(" - ")[0] : column.key
-                    }));
-
-                const tableWidth = columns.reduce((acc, col) => acc + col.width, 0);
-                const maxVisibleRowsCount = ROWS_PER_PAGE; 
-                
-                const tableHeight = TITLE_HEIGHT + HEADER_HEIGHT + (maxVisibleRowsCount * ROW_HEIGHT) + (2 * ROW_HEIGHT);
-                
-                const totalPages = Math.ceil(data.rows.length / ROWS_PER_PAGE);
-
-                const report = {
-								name,
-								data,
-								x: existingX || 50,
-								y: existingY || 50,
-								width: tableWidth,
-								height: tableHeight,
-								currentPage: existingPage,
-								totalPages,
-								columns,
-								aggregates,
-                                expressionJson: expressionJson,
-							};
-
-							// REMOVED: report.prevButton = ... and report.nextButton = ... 
-							// The coordinates are now calculated dynamically in mousedown.
-
-							return report;
-            }
-
-
-            // --- Report Management Functions ---
-
-           // Ensure 'pan' is a global object defined elsewhere, e.g., let pan = { x: 0, y: 0 };
-
-function saveReports() {
-    const savableReports = reports.map(r => ({
-        name: r.name,
-        x: Math.round(r.x), 
-        y: Math.round(r.y),
-        reportId: r.reportId,
-        currentPage: r.currentPage,
-      //  data: r.data, 
-    }));
-    
-    // NEW: Combine Reports array and Pan state into a single object
-    const fullState = {
-        reports: savableReports,
-        canvasState: {
-            panX: Math.round(pan.x),
-            panY: Math.round(pan.y),
-        }
-    };
-    
-    const savedJson = JSON.stringify(fullState, null, 2);
-    
-    console.log('--- Saved Report Canvas Data (JSON) ---');
-    console.log(savedJson);
-    console.log('-----------------------------------------');
+function populateHotelLov() { 
+    if (isHotelLovLoading) {
+        console.log("Already loading, skipping...");
+        return;
+    }
+    isHotelLovLoading = true;
 
     apex.server.process(
-        'AJX_MANAGE_REPORT_DASHBOARD', // Your AJAX process name
-        {x01: 'INSERT_SUMMARY',
-        x02: hotel_id,
-        x03: savedJson},
+        'AJX_GET_REPORT_HOTEL', 
+        {x01: 'HOTEL'},
         {
            success: function(pData) {
-             console.log('--- Saved Report Canvas Data (JSON) ---');
-                // pData is now the array itself, so you can check its length
-               //alert('Report has been saved successfully.!' );
-            },
-            error: function(jqXHR, textStatus, errorThrown) {
-                console.error("AJAX Error: " + textStatus + " - " + errorThrown);
-            }
+                var selectList = $('#static-lov-hotel');
+                selectList.empty();
+                selectList.append('<option value="">Select Hotel</option>');
+
+                if (Array.isArray(pData)) {
+                    $.each(pData, function(index, item) {
+                        var option = $('<option></option>')
+                            .attr('value', item.ID)
+                            .text(item.HOTEL_NAME);
+                        selectList.append(option);
+                    });
+                }
+
+                // -------- AUTO SELECT HOTEL FROM GLOBAL LOV --------
+                var globalHotelId = $('#P0_HOTEL_ID').val();
+                if (globalHotelId) {
+                    console.log('[AUTO-SET HOTEL] Using global hotel:', globalHotelId);
+
+                    if (selectList.find("option[value='" + globalHotelId + "']").length) {
+                        selectList.val(globalHotelId);
+                        console.log('[AUTO-SET HOTEL] Matched in LOV, triggering change...');
+                        selectList.trigger('change');   // Load reports + dashboard
+                    } else {
+                        console.warn('[AUTO-SET HOTEL] Global hotel not found in LOV');
+                    }
+                } else {
+                    console.log('[AUTO-SET HOTEL] No global hotel found.');
+                }
+
+                isHotelLovLoading = false;
+           },
+           error: function() {
+               isHotelLovLoading = false;
+           }
         }
     );
+}
 
-    // Return the full state object as a JSON string
-    return savedJson;
-} 
 
-function call_dashboard_data(selectedHotel_Id){
-  
-apex.server.process(
-            'AJX_MANAGE_REPORT_DASHBOARD', 
+
+// ----------------- PAGE LOAD -----------------
+document.addEventListener("DOMContentLoaded", function() {
+    console.log("Page loaded → populateHotelLov()");
+    populateHotelLov();   // This will also auto-select and trigger .change()
+});
+
+
+
+// ----------------- HOTEL CHANGE -----------------
+$('#static-lov-hotel').on('change', function() {
+
+    var selectedHotelId = $(this).val();
+    console.log('-----Hotellov change call:>>> ' + selectedHotelId);
+
+    if (selectedHotelId) {
+        apex.server.process(
+            'AJX_GET_REPORT_HOTEL', 
             {
-                x01: 'SELECT_SUMMARY',
-                x02:  selectedHotel_Id
+                x01: 'REPORT',
+                x02: selectedHotelId
             },
             {
                 success: function(pData) {
-                    console.log('AJX_MANAGE_REPORT_DASHBOARD call successful!', pData);
-                      loadReportsFromResponse(pData);
-                            
-                           
+                    console.log('AJAX call successful!', pData);
+
+                    var selectList = $('#static-lov-report');
+                    selectList.empty();
+                    selectList.append('<option value="">Select Report</option>');
+
+                    if (Array.isArray(pData)) {
+                        $.each(pData, function(index, item) {
+                            console.log('Inside LOV:> ', item.REPORT_NAME);
+                            var option = $('<option></option>')
+                                .attr('value', item.ID)
+                                .text(item.REPORT_NAME);
+                            selectList.append(option);
+                        });
+                    }
+
+                    // Auto load dashboard after report LOV loads
+                    call_dashboard_data(selectedHotelId);
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
                     console.error("AJAX Error: " + textStatus + " - " + errorThrown);
                 }
             }
         );
-}
-
-function loadReportsFromResponse(response) {
-  try {
-        const parsed = typeof response === "string" ? JSON.parse(response) : response;
-        const payload = JSON.parse(parsed[0].l_payload);
-
-        reports.length = 0; // optional: clear old reports
-        const reportList = payload.reports || [];
-console.log('reportList:>>>>>',reportList);
-       reportList.forEach((rep, index) => {
-    setTimeout(() => {
-        loadReportDataForCanvas(rep.reportId, -1, rep.x, rep.y);
-        if (index === reportList.length - 1) {
-            // Wait a short moment to ensure draw() is done
-            setTimeout(() => fitCanvasToReports(), 500);
-        }
-    }, index * 400);
-});
-
-      
-    } catch (err) {
-        console.error("Error loading reports from JSON:", err, "response:", response);
     }
-}
 
-
-function fitCanvasToReports() {
-    if (!reports || reports.length === 0) return;
-
-    // 1️⃣ Find bounding box that covers all reports
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    reports.forEach(r => {
-        minX = Math.min(minX, r.x);
-        minY = Math.min(minY, r.y);
-        maxX = Math.max(maxX, r.x + (r.width || 300));
-        maxY = Math.max(maxY, r.y + (r.height || 200));
-    });
-
-    // 2️⃣ Add a little margin around all reports
-    const margin = 100;
-    minX -= margin;
-    minY -= margin;
-    maxX += margin;
-    maxY += margin;
-
-    // 3️⃣ Compute required scale to fit them all within canvas
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
-
-    const reportsWidth = maxX - minX;
-    const reportsHeight = maxY - minY;
-
-    const scaleX = canvasWidth / reportsWidth;
-    const scaleY = canvasHeight / reportsHeight;
-
-    // Choose the smaller scale so everything fits
-    let newScale = Math.min(scaleX, scaleY);
-    newScale = Math.min(1, newScale * 0.6); // don’t zoom in above 1x
-
-    // 4️⃣ Center the reports in the view
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-
-    pan.x = canvasWidth / 2 - centerX * newScale;
-    pan.y = canvasHeight / 2 - centerY * newScale;
-
-    scale = newScale;
-
-    console.log(`Canvas fit: scale=${scale.toFixed(2)}, pan=`, pan);
-    draw();
-}
-
-
-
-
-const hotelSelect = document.getElementById('hotelSelect');
-let hotel_id ;
-// Add a listener to trigger report list loading whenever the hotel selection changes
-hotelSelect.addEventListener('change', function() {
-    const selectedHotelId = this.value;
-    hotel_id = selectedHotelId;
-    if (selectedHotelId) {
-        // Load the Report LOV in the modal
-        loadReportLov(selectedHotelId); 
-        call_dashboard_data(selectedHotelId);
-    } else {
-        // If no hotel is selected, reset and disable the report LOV
-        $('#reportSelect').prop('disabled', true).html('<option value="">-- Select Hotel First --</option>');
+    else {
+        var selectList = $('#static-lov-report');
+        selectList.empty();
+        selectList.append('<option value="">Select Report</option>');
+        reportID = null;
+        clearAllTabs();
     }
 });
 
 
-function loadReportLov(selectedHotelId) {
-    // Assuming jQuery is available based on your reference code snippet
-    const reportLov = $('#reportSelect');
-    
-    // Disable and show 'Loading' message while fetching data
-    reportLov.prop('disabled', true).html('<option value="">Loading Reports...</option>');
-
-    if (!selectedHotelId) {
-        reportLov.html('<option value="">-- Select Hotel First --</option>');
-        return;
-    }
+function call_dashboard_data(selectedHotel_Id){
+    clearAllTabs();
 
     apex.server.process(
-        'AJX_GET_REPORT_HOTEL', // Your On-Demand Process Name
+        'AJX_MANAGE_REPORT_DASHBOARD', 
         {
-            x01: 'REPORT', 
-            x02: selectedHotelId
+            x01: 'SELECT',
+            x02: selectedHotel_Id
         },
         {
             success: function(pData) {
-                // Clear the loading message
-                console.log('pData:>>>>',pData);
-                reportLov.empty();
-                
-                // Add the default option
-                reportLov.append('<option value="">-- Select Report --</option>');
+                console.log('AJX_MANAGE_REPORT_DASHBOARD call successful!', pData);
 
-                if (Array.isArray(pData) && pData.length > 0) {
-                    pData.forEach(function(item) {
-                        // Use the keys from your AJAX response (ID, REPORT_NAME, DEFINITION)
-                        reportLov.append(
-                            $('<option>', {
-                                value: item.ID,
-                                text: item.REPORT_NAME,
-                                title: item.DEFINITION // Store definition for a potential tooltip
-                            })
-                        );
-                    });
-                } else {
-                    reportLov.append('<option value="">No Reports Found</option>');
+                // parse payload safely
+                let tabsData;
+                try {
+                    tabsData = JSON.parse(pData[0].l_payload);
+                } catch (err) {
+                    console.error('Failed to parse tabs payload:', err, pData);
+                    return;
                 }
-                
-                // Enable the LOV after population
-                reportLov.prop('disabled', false); 
+
+                console.log('Parsed tabs data (raw):', tabsData);
+
+                // store globally so other handlers (drop, save) can access it
+                parsedTabsData = tabsData;
+
+                // Ensure tabs array exists
+                if (!parsedTabsData.tabs) parsedTabsData.tabs = [];
+
+                // Sort tabs by saved position (if present) so UI renders in stored order
+                parsedTabsData.tabs.sort((a, b) => (a.position || 0) - (b.position || 0));
+                console.log('Parsed tabs data (sorted):', parsedTabsData);
+
+                /* 
+                 * Use your existing functions that create DOM tabs + content.
+                 * You said renderTabs doesn't exist — use recreateTabsFromJSON which you have.
+                 */
+                recreateTabsFromJSON(parsedTabsData);
+
+                // repopulate LOVs / other UI
+                populateReportLOVFromTabsData(parsedTabsData);
             },
             error: function(jqXHR, textStatus, errorThrown) {
-                console.error("AJAX call failed to fetch report list:", textStatus, errorThrown);
-                reportLov.html('<option value="">Load Failed</option>');
-                reportLov.prop('disabled', true);
-            },
-            dataType: "json"
+                console.error("AJAX Error: " + textStatus + " - " + errorThrown);
+            }
         }
     );
 }
 
 
-function loadReportDataForCanvas(reportId, updateIndex = -1, posX = 50, posY = 50) {
-    console.log('Loading report data for reportId:', reportId, 'updateIndex:', updateIndex);
+// Function to clear all existing tabs
+function clearAllTabs() {
+    console.log('Clearing all tabs...');
+    
+    // Remove all tab headers except the add-tab-div
+    const tabsHeader = document.getElementById('tabs-header');
+    if (tabsHeader) {
+        const tabs = tabsHeader.querySelectorAll('.tab');
+        tabs.forEach(tab => tab.remove());
+    }
+    
+    // Remove all tab contents
+    const tabContents = document.querySelectorAll('.tab-content');
+    tabContents.forEach(tabContent => tabContent.remove());
+    
+    // Reset tab data
+    tabData = {};
+    tabCounter = 0;
+    currentTabId = null;
+}
 
+
+function recreateTabsFromJSON(jsonData) {
+    console.log('Recreating tabs from JSON:', jsonData);
+    
+    if (!jsonData) {
+        console.error('Invalid JSON data for tab recreation');
+        return;
+    }
+    
+    if (jsonData.report_id) {
+        reportID = jsonData.report_id;
+    }
+    
+    if (jsonData.tabs && Array.isArray(jsonData.tabs)) {
+        // Create tabs from JSON tabs array
+        jsonData.tabs.forEach((tabInfo, index) => {
+            createTabFromData(tabInfo, index, jsonData);
+           
+        });
+    } else {
+        // If no tabs array, create a single tab from the main JSON
+        console.log('No tabs array found, creating single tab from main data');
+        createTabFromData(jsonData, Date.now(), jsonData);
+    }
+    
+    // Activate the first tab if any exist
+    const firstTabId = Object.keys(tabData)[0];
+    if (firstTabId) {
+        switchTab(firstTabId);
+    }
+    
+    console.log('Tab recreation completed. Total tabs:', Object.keys(tabData).length);
+}
+
+function createTabFromData(tabInfo, index, mainJsonData) {
+    const tabNumber = index + 1;
+    tabCounter = Math.max(tabCounter, tabNumber);
+
+    const tabId = tabInfo.tab_id || `Report${tabNumber}`;
+    const tabName = tabInfo.tab_name || `Report ${tabNumber}`;
+    const tabReportId = tabInfo.report_id || mainJsonData.report_id;
+    const tabHotelId = tabInfo.hotel_id || mainJsonData.hotel_id;
+
+    // 🟢 FIXED: define tabPosition BEFORE using it
+    const tabPosition = tabInfo.position || tabNumber;
+
+    console.log('Creating tab:', tabId, tabName, tabReportId, '→ position:', tabPosition);
+
+    // --- Create tab header ---
+    const tabsHeader = document.getElementById('tabs-header');
+    const addTabDiv = document.getElementById('add-tab-div');
+
+    const newTab = document.createElement('div');
+    newTab.className = 'tab';
+    newTab.setAttribute('data-tab', tabId);
+
+    // 🟢 Make tab draggable for reordering
+    newTab.setAttribute('draggable', 'true');
+    // 🟢 Store position in DOM dataset for debugging
+    newTab.dataset.position = tabPosition;
+
+    newTab.innerHTML = `${tabName} <span class="tab-close" data-tab="${tabId}">×</span>`;
+
+    tabsHeader.insertBefore(newTab, addTabDiv);
+
+    // --- Create tab content ---
+    const container = document.querySelector('.container');
+    const newTabContent = document.createElement('div');
+    newTabContent.className = 'tab-content';
+    newTabContent.id = tabId;
+    newTabContent.innerHTML = generateTabContent();
+    container.appendChild(newTabContent);
+
+    // --- Initialize tab data ---
+    tabData[tabId] = {
+        tableData: null,
+        savedFormulas: {},
+        currentFormulaName: '',
+        displayName: tabName,
+        reportId: tabReportId,
+        hotelId: tabHotelId,
+        position: tabPosition,          // 🟢 Save in memory
+        originalData: tabInfo
+    };
+
+    // --- Load data if reportId exists ---
+   // if (tabReportId) {
+       // loadReportDataForTab(tabId, tabReportId);
+   // }
+
+    // --- Setup tab events ---
+    setupTabEventListeners(tabId);
+}
+
+
+
+function populateReportLOVFromTabsData(tabsData) {
+    console.log('Populating report LOV from tabs data:', tabsData);
+    
+    const selectList = $('#static-lov-report');
+    selectList.empty();
+    selectList.append('<option value="">Select Report</option>');
+    
+    if (tabsData && tabsData.report_id) {
+        // Set the report ID from the tabs data
+        reportID = tabsData.report_id;
+        
+        // We need to get the report name - you might need to modify this
+        // based on what data you have available
+        apex.server.process(
+            'AJX_GET_REPORT_HOTEL',
+            {
+                x01: 'REPORT',
+                x02: tabsData.hotel_id
+            },
+            {
+                success: function(reportData) {
+                    if (Array.isArray(reportData)) {
+                        reportData.forEach(function(item) {
+                            if (item.ID === tabsData.report_id) {
+                                const option = $('<option></option>')
+                                    .attr('value', item.ID)
+                                    .text(item.REPORT_NAME)
+                                    .prop('selected', true);
+                                selectList.append(option);
+                            }
+                        });
+                    }
+                }
+            }
+        );
+    }
+}
+
+// Regular report LOV population (fallback)
+function populateReportLOVRegular(pData) {
+    var selectList = $('#static-lov-report');
+    selectList.empty();
+    selectList.append('<option value="">Select Report</option>');
+    
+    $.each(pData, function(index, item) {
+        var option = $('<option></option>')
+            .attr('value', item.ID)
+            .text(item.REPORT_NAME);
+        selectList.append(option);
+    });
+}
+
+
+// ------ varun test code
+document.addEventListener("DOMContentLoaded", function () {
+    // console.log('[RunReports] DOM Ready → syncing hotel and loading reports');
+
+    // syncHotelFromGlobal();
+
+    // populateHotelLov();
+
+    // // Trigger report + dashboard load automatically
+    // setTimeout(() => {
+    //     $('#static-lov-hotel').trigger('change');
+    // }, 300);
+
+    // When GLOBAL LOV changes
+    document.addEventListener('change', function (e) {
+        if (e.target.id === 'P0_HOTEL_ID') {
+            console.log('[RunReports] Global LOV changed → updating');
+            syncHotelFromGlobal();
+
+            setTimeout(() => {
+                $('#static-lov-hotel').trigger('change');
+            }, 300);
+        }
+    });
+});
+
+
+// ---end
+
+
+var reportID;
+// Listen for the 'change' event on the report LOV
+$('#static-lov-report').on('change', function() {
+    // Get the value (ID) of the selected option
+    var selectedReportId = $(this).val();
+reportID = $(this).val();
+    // Log the ID to the browser's console
+    console.log("Selected Report ID:", selectedReportId);
+});
+
+
+    // Setup tab functionality
+    function setupTabs() {
+                console.log('Setting up tabs...');
+                
+                // Add new tab div (not button)
+                const addTabDiv = document.getElementById('add-tab-div');
+                if (addTabDiv) {
+                    addTabDiv.addEventListener('click', showNewTabModal);
+                    
+                    // Prevent any default behavior that might cause page refresh
+                    addTabDiv.addEventListener('mousedown', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    });
+                    
+                    addTabDiv.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    });
+                }
+            
+
+            let clickTimer = null;
+            const tabsHeader = document.getElementById('tabs-header');
+
+                if (tabsHeader) {
+
+                    tabsHeader.addEventListener('click', function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        if (clickTimer !== null) {
+                            // Detected a double-click → clear single click
+                            clearTimeout(clickTimer);
+                            clickTimer = null;
+                            handleDoubleClick(e);
+                        } else {
+                            // Wait a bit to confirm if double-click will occur
+                            clickTimer = setTimeout(() => {
+                                handleSingleClick(e);
+                                clickTimer = null;
+                            }, 250); // adjust delay if needed
+                        }
+                    });
+
+                    // ✅ SINGLE CLICK HANDLER
+                    function handleSingleClick(e) {
+                        console.log('Tab header single-clicked:', e.target);
+
+                        // Handle tab click
+                        if (e.target.classList.contains('tab')) {
+                            const tabId = e.target.getAttribute('data-tab');
+                            if (tabId) switchTab(tabId);
+                        }
+                        // Handle tab close click
+                        else if (e.target.classList.contains('tab-close')) {
+                            const tabId = e.target.getAttribute('data-tab');
+                            if (tabId) closeTab(tabId);
+                        }
+                        // Handle click on tab text (child element)
+                        else if (e.target.parentElement?.classList.contains('tab')) {
+                            const tabId = e.target.parentElement.getAttribute('data-tab');
+                            if (tabId) switchTab(tabId);
+                        }
+                    }
+
+                    // ✅ DOUBLE CLICK HANDLER
+                    function handleDoubleClick(e) {
+                        const tabEl = e.target.closest('.tab');
+                        if (!tabEl || tabEl.id === 'add-tab-div') return;
+
+                        const tabId = tabEl.dataset.tab;
+                        const selectedTab = parsedTabsData.tabs.find(t => t.tab_id === tabId);
+
+                        if (!selectedTab) {
+                            console.error("❌ Tab data missing for:", tabId);
+                            return;
+                        }
+
+                        console.log("🟢 Double-click update:", selectedTab);
+                        console.log("🟢 Double-click update Report ID:", selectedTab.report_id);
+
+                        // ✅ SAVE selected tab data globally so LOV can access it later
+                       
+                        window.UPDATE_TAB_DATA = selectedTab;
+                        // ✅ Open existing modal
+                        showNewTabModal();
+
+                        // ✅ Pre-fill modal fields immediately
+                        document.getElementById("tab-name-input").value = selectedTab.tab_name || "";
+                        setTimeout(() => {
+                            $('#popup-report-lov').val(selectedTab.report_id).trigger('change');
+                            console.log("✅ Set report ID after delay:", selectedTab.report_id);
+                        }, 200);
+                         window.UPDATE_TAB_DATA = selectedTab;
+                    }
+
+                }
+
+
+
+
+    // --- Drag and Drop for Tab Reordering (fixed '+ New Report' at end) ---
+    const tabsHeaderEl = document.getElementById('tabs-header');
+    if (tabsHeaderEl) {
+        let draggedTab = null;
+        const addTabDiv = document.getElementById('add-tab-div'); // + New Report tab
+
+        // Make all tabs draggable except "+ New Report"
+        function makeTabsDraggable() {
+            tabsHeaderEl.querySelectorAll('.tab').forEach(tab => {
+                if (tab.id === 'add-tab-div' || tab === addTabDiv) {
+                    tab.removeAttribute('draggable');
+                } else {
+                    tab.setAttribute('draggable', 'true');
+                }
+            });
+        }
+        makeTabsDraggable();
+
+        // Observe for new tabs being added dynamically
+        const observer = new MutationObserver(makeTabsDraggable);
+        observer.observe(tabsHeaderEl, { childList: true });
+
+        tabsHeaderEl.addEventListener('dragstart', (e) => {
+            const target = e.target.closest('.tab');
+            if (!target || target === addTabDiv) return; // don't drag +New Report
+            draggedTab = target;
+            target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', target.dataset.tab);
+        });
+
+        tabsHeaderEl.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(tabsHeaderEl, e.clientX);
+            const dragging = document.querySelector('.dragging');
+            if (!dragging) return;
+
+            // Don't allow dropping after +New Report
+            if (afterElement == null || afterElement === addTabDiv) {
+                tabsHeaderEl.insertBefore(dragging, addTabDiv);
+            } else {
+                tabsHeaderEl.insertBefore(dragging, afterElement);
+            }
+        });
+
+        tabsHeaderEl.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (draggedTab) {
+        draggedTab.classList.remove('dragging');
+        draggedTab = null;
+    }
+
+    // 🟢 Get updated tab order
+    const newOrder = [];
+    document.querySelectorAll('#tabs-header .tab').forEach((tab, index) => {
+        // Skip the +New Report tab
+        if (tab.id !== 'add-tab-div') {
+            newOrder.push({
+                tab_id: tab.dataset.tab,
+                position: index + 1
+            });
+        }
+    });
+
+    console.log('🟢 New tab order:', newOrder);
+
+    // 🟢 Update your existing parsedTabsData JSON with the new positions
+    parsedTabsData.tabs.forEach(tab => {
+        const match = newOrder.find(o => o.tab_id === tab.tab_id);
+        if (match) {
+            tab.position = match.position;
+        }
+    });
+
+    // 🟢 Log the final JSON before saving
+    console.log('💾 Updated parsedTabsData:', parsedTabsData);
+
+    const hotelIdToUse = parsedTabsData.hotel_id || $('#static-lov-hotel').val();
+
+apex.server.process(
+  'AJX_MANAGE_REPORT_DASHBOARD',
+  {
+    x01: 'INSERT',
+    x02: hotelIdToUse,
+    x03: JSON.stringify(parsedTabsData)
+  },
+  {
+    success: function(pData) {
+      console.log('✅ Tab order saved successfully for hotel:', hotelIdToUse);
+      console.log('Server response:', pData);
+    },
+    error: function(jqXHR, textStatus, errorThrown) {
+      console.error('❌ Error saving tab order:', textStatus, errorThrown);
+    }
+  }
+);
+
+});
+
+
+        tabsHeaderEl.addEventListener('dragend', (e) => {
+            if (e.target.classList.contains('tab')) {
+                e.target.classList.remove('dragging');
+                console.log('tabsHeaderEl323232:>>>>',tabsHeaderEl);
+            }
+        });
+
+        console.log('tabsHeaderEl:>>>>',tabsHeaderEl);
+
+        // Utility: find nearest element for insertion
+        function getDragAfterElement(container, x) {
+            const draggableElements = [...container.querySelectorAll('.tab:not(.dragging):not(#add-tab-div)')];
+            return draggableElements.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = x - box.left - box.width / 2;
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset: offset, element: child };
+                } else {
+                    return closest;
+                }
+            }, { offset: Number.NEGATIVE_INFINITY }).element;
+        }
+
+        function saveTabOrder() {
+    // Get current order of tab IDs
+    const orderedTabs = [...tabsHeaderEl.querySelectorAll('.tab')]
+        .filter(tab => tab !== addTabDiv)
+        .map((tab, index) => ({
+            tab_id: tab.dataset.tab,
+            position: index + 1
+        }));
+
+    console.log('Saving tab order:', orderedTabs);
+
+    // Get the existing definition JSON (already stored client-side)
+    let currentDef = JSON.parse(localStorage.getItem('parsedTabsData') || '{}');
+
+    if (currentDef.tabs && currentDef.tabs.length > 0) {
+        currentDef.tabs.forEach(t => {
+            const found = orderedTabs.find(o => o.tab_id === t.tab_id);
+            if (found) t.position = found.position;
+        });
+
+        // Optional: sort JSON array by position
+        currentDef.tabs.sort((a, b) => a.position - b.position);
+    }
+
+    // Update localStorage for faster reloads
+    localStorage.setItem('parsedTabsData', JSON.stringify(currentDef));
+
+    // 🔵 Send updated DEFINITION back to APEX (same process)
+    apex.server.process(
+        'AJX_MANAGE_REPORT_DASHBOARD',
+        {
+            x01: 'INSERT', // same branch as used for saving
+            x02: currentDef.hotel_id,
+            x03: JSON.stringify(currentDef)
+        },
+        {
+            success: function(pData) {
+                console.log('Tab order updated successfully on server.');
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error("AJAX Error while saving order: " + textStatus + " - " + errorThrown);
+            }
+        }
+    );
+}
+
+}
+
+
+
+    // Modal event listeners
+    setupModalEventListeners();
+}
+
+function setupModalEventListeners() {
+    // Close modal when clicking X
+    document.querySelector('.close-modal').addEventListener('click', hideNewTabModal);
+    
+    // Close modal when clicking cancel
+    document.getElementById('cancel-new-tab').addEventListener('click', hideNewTabModal);
+    
+document.getElementById('save-new-tab').addEventListener('click', function(e) {
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    const tabName = document.getElementById('tab-name-input').value.trim();
+    const selectedReportId = document.getElementById('popup-report-lov').value;
+    const selectedHotelId = document.getElementById('static-lov-hotel').value;
+
+    if (!tabName) return alert('Please enter a tab name!');
+    if (!selectedReportId) return alert('Please select a report!');
+    if (!selectedHotelId) return alert('Please select a hotel!');
+
+    // ✅ UPDATE MODE (double-clicked tab)
+    if (window.UPDATE_TAB_DATA) {
+
+        const tabObj = window.UPDATE_TAB_DATA;
+
+        console.log("🟡 Updating tab:", tabObj);
+
+        // Update values inside parsedTabsData
+       // tabObj.tab_name = tabName;
+       // tabObj.report_id = selectedReportId;
+       if (tabData[tabObj.tab_id]) {
+            tabData[tabObj.tab_id].displayName = tabName;
+            tabData[tabObj.tab_id].reportId = selectedReportId;
+        }
+
+
+        // Update UI tab text
+        const tabEl = document.querySelector(`.tab[data-tab="${tabObj.tab_id}"]`);
+        if (tabEl) {
+            tabEl.childNodes[0].textContent = tabName + " ";
+        }
+        
+        
+             parsedTabsData = { ...parsedTabsData };
+
+            // Loop through tabs and update only the matching one
+            parsedTabsData.tabs = parsedTabsData.tabs.map(tab => {
+            if (tab.tab_id === window.UPDATE_TAB_DATA.tab_id) {
+                return {
+                ...tab,
+                tab_name: tabName,
+                report_id: selectedReportId
+                };
+            }
+            return tab;
+            });
+
+
+
+    console.log('parsedTabsData:>>>>>>>>>',parsedTabsData);
+        // Save JSON back to DB
+        apex.server.process(
+            'AJX_MANAGE_REPORT_DASHBOARD',
+            { x01: 'INSERT', x02: selectedHotelId, x03: JSON.stringify(parsedTabsData) },
+            {
+                success: function() { console.log("✅ Updated tab saved."); },
+                error: function(err) { console.error("❌ Update failed:", err); }
+            }
+        );
+
+        
+        hideNewTabModal();
+        loadReportDataForTab(window.UPDATE_TAB_DATA.tab_id, selectedReportId);
+        window.UPDATE_TAB_DATA = null;
+        return false;
+    }
+    else{
+        // ✅ CREATE MODE (new report)
+        const tabsData = JSON.stringify(generateTabsJSON(selectedHotelId, selectedReportId, tabName));
+      //  const tabsData = JSON.stringify(parsedTabsData);
+
+        apex.server.process(
+            'AJX_MANAGE_REPORT_DASHBOARD',
+            { x01: 'INSERT', x02: selectedHotelId, x03: tabsData },
+            { success: function(){
+
+                // Create the new tab in UI
+            addNewTab(null, tabName, selectedReportId);
+        
+            }, error: function(e){console.error(e);} }
+        );
+
+        
+
+        hideNewTabModal();
+        return false;
+    }
+});
+
+    
+    // Close modal when clicking outside
+    document.getElementById('newTabModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            hideNewTabModal();
+        }
+    });
+}
+
+function generateTabsJSON(hotelId, reportId, newTabName) {
+    const tabsJSON = {
+        hotel_id: hotelId,
+        report_id: reportId,
+        tabs: []
+    };
+
+    // ✅ Use parsedTabsData.tabs instead of tabData
+    if (parsedTabsData.tabs && Array.isArray(parsedTabsData.tabs)) {
+        parsedTabsData.tabs.forEach(tab => {
+            tabsJSON.tabs.push({
+                tab_id: tab.tab_id,
+                tab_name: tab.tab_name,
+                report_id: tab.report_id,
+                hotel_id: hotelId,
+                position: tab.position
+            });
+        });
+    }
+
+    // ✅ Add the new tab ONLY in create mode
+    tabsJSON.tabs.push({
+        tab_id: `Report${Date.now() + 1}`,
+        tab_name: newTabName,
+        report_id: reportId,
+        hotel_id: hotelId,
+        position: tabsJSON.tabs.length + 1,
+        is_new: true
+    });
+
+    return tabsJSON;
+}
+
+
+function generateTabsJSON_delete(hotelId, reportId) {
+    const tabsJSON = {
+        hotel_id: hotelId,
+        report_id: reportId,
+        tabs: []
+    };
+    
+    // Add all existing tabs
+    Object.keys(tabData).forEach(tabId => {
+        const tab = tabData[tabId];
+        tabsJSON.tabs.push({
+            tab_id: tabId,
+            tab_name: tab.displayName || tabId,
+            report_id: tab.reportId || reportId,
+            hotel_id: hotelId
+        });
+    });
+    
+   
+    
+    return tabsJSON;
+}
+
+function populatePopupReportLov() {
+    const popupLov = document.getElementById('popup-report-lov');
+    const selectedHotelId = document.getElementById('static-lov-hotel').value;
+    
+    if (!selectedHotelId) {
+        popupLov.innerHTML = '<option value="">Please select a hotel first</option>';
+        return;
+    }
+    
+    // Show loading state
+    popupLov.innerHTML = '<option value="">Loading reports...</option>';
+    
+    // Fetch reports for the selected hotel
+    apex.server.process(
+        'AJX_GET_REPORT_HOTEL', 
+        {
+            x01: 'REPORT',
+            x02: selectedHotelId
+        },
+        {
+            success: function(pData) {
+                console.log('Reports fetched for popup LOV:', pData);
+                
+                // Clear existing options
+                popupLov.innerHTML = '<option value="">Select Report</option>';
+                
+                if (Array.isArray(pData)) {
+                    pData.forEach(function(item) {
+                        const option = document.createElement('option');
+                        option.value = item.ID;
+                        option.textContent = item.REPORT_NAME;
+                        popupLov.appendChild(option);
+                    });
+                    
+                    // If there's a current reportID, select it
+                    /*if (reportID) {
+                        popupLov.value = reportID;*/
+                        // ✅ If we are updating an existing tab
+if (window.UPDATE_TAB_DATA && window.UPDATE_TAB_DATA.report_id) {
+    popupLov.value = window.UPDATE_TAB_DATA.report_id;
+
+
+                    }
+                } else {
+                    popupLov.innerHTML = '<option value="">No reports available</option>';
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error("Error fetching reports for popup LOV:", textStatus, errorThrown);
+                popupLov.innerHTML = '<option value="">Error loading reports</option>';
+            }
+        }
+    );
+}
+
+// New function to populate popup LOV with all reports
+function populatePopupReportLovWithAllReports() {
+    const popupLov = document.getElementById('popup-report-lov');
+    const selectedHotelId = document.getElementById('static-lov-hotel').value;
+    
+    if (!selectedHotelId) {
+        alert('Please select a hotel first!');
+        return;
+    }
+    
+    // Fetch reports for the selected hotel
+    apex.server.process(
+        'AJX_GET_REPORT_HOTEL', 
+        {
+            x01: 'REPORT',
+            x02: selectedHotelId
+        },
+        {
+            success: function(pData) {
+                console.log('Reports fetched for popup LOV:', pData);
+                
+                // Clear existing options
+                popupLov.innerHTML = '<option value="">Select Report</option>';
+                
+                if (Array.isArray(pData)) {
+                    pData.forEach(function(item) {
+                        const option = document.createElement('option');
+                        option.value = item.ID;
+                        option.textContent = item.REPORT_NAME;
+                        popupLov.appendChild(option);
+                    });
+                }
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error("Error fetching reports for popup LOV:", textStatus, errorThrown);
+            }
+        }
+    );
+}
+
+
+function showNewTabModal() {
+
+    // ✅ VERY IMPORTANT: Reset update mode when opening modal normally
+    window.UPDATE_TAB_DATA = null;
+
+    const selectedHotelId = document.getElementById('static-lov-hotel').value;
+
+    if (!selectedHotelId) {
+        alert('Please select a hotel first!');
+        return;
+    }
+
+    // Populate the popup report LOV
+    populatePopupReportLov();
+
+    // Set default tab name
+    document.getElementById('tab-name-input').value = `Report ${Date.now() + 1}`;
+
+    // Show modal
+    document.getElementById('newTabModal').style.display = 'flex';
+}
+
+
+function hideNewTabModal() {
+    document.getElementById('newTabModal').style.display = 'none';
+}
+
+
+// Add new tab with modal
+function addNewTab(e, tabName = null, selectedReportId = null) {
+    if (reportID != null || selectedReportId != null) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        tabCounter++;
+        const newTabId = `Report${Date.now()}`;
+        const displayName = tabName || `Report ${Date.now()}`;
+        const reportIdToUse = selectedReportId || reportID;
+        const hotelIdToUse = parsedTabsData.hotel_id || $('#static-lov-hotel').val();
+
+        console.log('Adding new tab:', newTabId, displayName, reportIdToUse);
+
+        // 🟢 Create DOM element
+        const tabsHeader = document.getElementById('tabs-header');
+        const addTabDiv = document.getElementById('add-tab-div');
+        const newTab = document.createElement('div');
+        newTab.className = 'tab';
+        newTab.setAttribute('data-tab', newTabId);
+        newTab.setAttribute('draggable', 'true'); // draggable
+        newTab.innerHTML = `${displayName} <span class="tab-close" data-tab="${newTabId}">×</span>`;
+        tabsHeader.insertBefore(newTab, addTabDiv);
+
+        // 🟢 Create tab content
+        const container = document.querySelector('.container');
+        const newTabContent = document.createElement('div');
+        newTabContent.className = 'tab-content';
+        newTabContent.id = newTabId;
+        newTabContent.innerHTML = generateTabContent();
+        container.appendChild(newTabContent);
+
+        // 🟢 Initialize data
+        const newTabObj = {
+            tab_id: newTabId,
+            tab_name: displayName,
+            report_id: reportIdToUse,
+            hotel_id: hotelIdToUse,
+            position: parsedTabsData.tabs ? parsedTabsData.tabs.length + 1 : 1,
+            is_new: true
+        };
+
+        // 🟢 Add it to parsedTabsData JSON
+        if (!parsedTabsData.tabs) parsedTabsData.tabs = [];
+        parsedTabsData.tabs.push(newTabObj);
+
+        console.log('  Added new tab to parsedTabsData:', newTabObj);
+        console.log('  Full tabsData now:', parsedTabsData);
+
+        // 🟢 Immediately save to DB
+        apex.server.process(
+            'AJX_MANAGE_REPORT_DASHBOARD',
+            {
+                x01: 'INSERT',
+                x02: hotelIdToUse,
+                x03: JSON.stringify(parsedTabsData)
+            },
+            {
+                success: function (pData) {
+                    console.log(' New tab saved successfully:', pData);
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.error('  Error saving new tab:', textStatus, errorThrown);
+                }
+            }
+        );
+
+        //   Continue existing setup
+        tabData[newTabId] = {
+            tableData: null,
+            savedFormulas: {},
+            currentFormulaName: '',
+            displayName: displayName,
+            reportId: reportIdToUse
+        };
+
+        switchTab(newTabId);
+        loadReportDataForTab(newTabId, reportIdToUse);
+        setupTabEventListeners(newTabId);
+
+        if (selectedReportId) {
+            $('#static-lov-report').val('');
+            reportID = null;
+        }
+
+        setTimeout(hidePanels, 100);
+
+        return false;
+    } else {
+        alert('Please select a report first!');
+        return false;
+    }
+}
+
+
+let col_alias;
+let expressionJson; 
+// New function to load report data for specific tab
+function loadReportDataForTab(tabId, reportId) {
+    console.log('Loading report data for tab:', tabId, 'with report ID:', reportId);
+    
     apex.server.process(
         "AJX_GET_REPORT_HOTEL",
         { 
@@ -406,382 +1083,961 @@ function loadReportDataForCanvas(reportId, updateIndex = -1, posX = 50, posY = 5
         {
             dataType: "json",
             success: function(data) {
-                if (!data || data.length === 0) return;
-
-                let reportCol, db_ob_name, col_alias;
+             //   console.log('Report data received for tab:', tabId, data); 
+                let reportCol;
+                let db_ob_name;
                 data.forEach(function(report) {
                     reportCol = report.DEFINITION_JSON; 
-                    db_ob_name = report.DB_OBJECT_NAME;
+                    db_ob_name = report.DB_OBJECT_NAME
                     col_alias = report.COLUMN_ALIAS;
                     expressionJson = report.EXPRESSIONS_CLOB;
                 });
-                console.log('expressionJson:>>>>>===========>>',expressionJson);
+                //console.log('expressionJson:>>>>',expressionJson);
                 const reportColObj = JSON.parse(reportCol);
 
-                var columns_list = reportColObj.selectedColumns.map(item => ({
+                // Generate columns_list from the JSON data
+              /*  var  columns_list = reportColObj.selectedColumns.map(item => ({
                     name: `${item.col_name} - ${item.temp_name}`,
-                    type: item.data_type
-                        ? item.data_type.toLowerCase() === 'number' ? 'number'
-                        : item.data_type.toLowerCase() === 'date' ? 'date'
-                        : 'string'
-                        : 'number'
+                    type: item.data_type.toLowerCase() === 'number' ? 'number' : 'string'
                 }));
+*/
+
+//console.log('reportColObj:>>>>>>>',reportColObj);
+var columns_list = reportColObj.selectedColumns.map(item => ({
+                                name: `${item.col_name} - ${item.temp_name}`,
+                                type: item.data_type
+                                    ? item.data_type.toLowerCase() === 'number' ? 'number'
+                                    : item.data_type.toLowerCase() === 'date' ? 'date'
+                                    : 'string'
+                                    : 'number' // ✅ default to 'number' if data_type is null
+                            }));
+
+                console.log('Generated db_ob_name:', db_ob_name);
+                console.log('columns_list:>>>',JSON.stringify(columns_list) );
+                console.log('col_alias:>>',col_alias);
 
                 apex.server.process(
                     "AJX_GET_REPORT_DATA",
-                    { 
-                        x01: JSON.stringify(columns_list),
-                        x02: col_alias,
-                        x03: db_ob_name
+                    { x01: JSON.stringify(columns_list) ,
+                      x02: col_alias,
+                      x03: db_ob_name
                     },
                     {
                         success: function(pData) {
-                            console.log('pData:>>>>>>>>',pData);
-                                                        const colAliasObj = JSON.parse(col_alias);
-                                    const dataForCanvas = { rows: pData.rows };
-
-                                    // ✅ Always use the name the user entered in the modal
-                                    const reportName = reportNameInput.value.trim() || colAliasObj.hotel || `Report_${Date.now()}`;
-
-                                    
-                                    const newReport = processReportData(reportName, dataForCanvas);
-
-                                    newReport.id = newReport.id || crypto.randomUUID();
-
-                                    if (updateIndex !== -1 && reports[updateIndex]) {
-                                        // ✅ Update existing report (keep its position & pagination)
-                                        const old = reports[updateIndex];
-                                        newReport.id = old.id; // ✅ Preserve the same unique ID
-                                        newReport.x = old.x;
-                                        newReport.y = old.y;
-                                        newReport.reportId = old.reportId;
-                                        newReport.currentPage = old.currentPage;
-
-                                        // Replace the single element safely
-                                        reports.splice(updateIndex, 1, newReport);
-                                        console.log('reports:>>>>>>',reports);
-                                        console.log(`Updated existing report: ${reportName}`);
-                                    } else {
+                            console.log('Table data received for tab:', tabId, pData);
+                            
+                            // Store data in the specific tab
+                            var colAliasObj = JSON.parse(col_alias);
+                            console.log('colAliasObj---->',colAliasObj);
+                            columns_list = colAliasObj.selectedColumns.map(item => ({
+                                name: item.alias_name, // take the latest alias value
+                              //  type: item.data_type.toLowerCase() === 'number' ? 'number' : 'string'
+                              type: ''
+                            }));
 
 
-                                        // ✅ Add new report
+                            if (tabData[tabId]) {
+                                tabData[tabId].tableData = {
+                                    columns: columns_list,   // now matches alias_name
+                                    data: pData.rows         // keys from PL/SQL also match alias_name
+                                };
 
-                                        if (l_new_create > 0){
-                                      //  newReport.x = reports.length > 0 ? reports[reports.length - 1].x + reports[reports.length - 1].width + 20 : 50;
-                                     //   newReport.y = 50;
-                                        newReport.x = posX;
-                                        newReport.y = posY;
-                                        newReport.reportId = reportId;
-                                        reports.push(newReport);
-                                        console.log('reports:>>>>>>',reports);
-                                        console.log(`Added new report: ${reportName}`);
-                                        }else{
-
-                                            const rect = canvas.getBoundingClientRect();
-                                            const centerX = (rect.width / 2 - pan.x) / scale;
-                                            const centerY = (rect.height / 2 - pan.y) / scale;
-
-                                            newReport.x = centerX - (newReport.width || 300) / 2;
-                                            newReport.y = centerY - (newReport.height || 200) / 2;
-                                            newReport.reportId = reportId;
-
-                                            reports.push(newReport);
-                                            console.log(`Added new report: ${reportName} at`, newReport.x, newReport.y);
-                                            l_new_create = 10;
-                                        }
-                                    }
-
-                                    hideModal(); // close only after update is done
-                                    draw();
-                                    saveReports();
+                                console.log('Final columns:', columns_list);
+                                console.log('First row of data:', pData.rows[0]);
+                                
+                                // Initialize table for the specific tab
+                                initializeTable(tabId,expressionJson);
+                            }
                         },
                         error: function(jqXHR, textStatus, errorThrown) {
-                            console.error("Error fetching report data:", textStatus, errorThrown);
+                            console.error("Error fetching table data for tab " + tabId + ":", textStatus, errorThrown);
                         }
                     }
                 );
             },
             error: function(xhr, status, error) {
-                console.error("Error fetching report definition:", error);
+                console.error("Error fetching report details for tab " + tabId + ":", error);
             }
         }
     );
 }
 
-
-let reportId;
-$('#reportSelect').on('change', function() {
-     reportId = $(this).val();
+function hidePanels() {
+    const panelsContainer = document.querySelector('.panels-container');
+    if (panelsContainer) {
+        panelsContainer.style.display = 'none';
+    }
     
+    // Alternative: Hide individual panels
+    const controlPanels = document.querySelectorAll('.control-panel');
+    controlPanels.forEach(panel => {
+        panel.style.display = 'none';
+    });
+}
+
+// Call this function when DOM is ready and when new tabs are created
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing...');
+    setupTabs();
+    hidePanels(); // Add this line
 });
 
 
-
-            function loadHotelList() {
-                const hotelSelect = document.getElementById('hotelSelect');
+function generateTabContent() {
+    return `
+        <div class="panels-container hidden"> <!-- Add hidden class -->
+            <div class="panels-row">
+                <div class="control-panel hidden"> <!-- Add hidden class -->
+                    <h2>
+                        Column Operations
+                        <div class="fake-btn collapse-btn">−</div>
+                    </h2>
+                    <div class="form-group">
+                        <label>Select Column:</label>
+                        <select class="column-select"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Select Operation:</label>
+                        <select class="operation">
+                            <option value="sum">Sum</option>
+                            <option value="average">Average</option>
+                            <option value="min">Minimum</option>
+                            <option value="max">Maximum</option>
+                            <option value="count">Count</option>
+                        </select>
+                    </div>
+                    <div class="fake-btn calculate-btn">Calculate</div>
+                </div>
                 
-                if (typeof apex === 'undefined' || !apex.server) {
-                    console.error("APEX utilities not available. Cannot fetch hotel list.");
-                    hotelSelect.innerHTML = '<option value="">APEX Error</option>';
-                    return;
-                }
-
-                // Call the APEX On-Demand Process: 'GET_HOTEL_LIST'
-                // NOTE: You must create this process in APEX for this code to work.
-                apex.server.process(
-                    "AJX_GET_REPORT_HOTEL",   // Ajax Callback name
-                    { x01: 'HOTEL'           
-                    },
-                    {
-                        dataType: "json",
-                        success: function(pData) {
-                                // pData is now expected to be the array: [ { "ID": "...", "HOTEL_NAME": "..." }, ... ]
-
-                                // Clear the "Loading Hotels..." option
-                                hotelSelect.innerHTML = ''; 
-                                
-                                const defaultOption = document.createElement('option');
-                                defaultOption.value = '';
-                                defaultOption.textContent = '--- Select a Hotel ---';
-                                hotelSelect.appendChild(defaultOption);
-
-                                // Check if pData is a non-empty array
-                                if (Array.isArray(pData) && pData.length > 0) {
-                                    pData.forEach(hotel => {
-                                        const option = document.createElement('option');
-                                        
-                                        // Use the correct keys from your JSON structure: ID and HOTEL_NAME
-                                        option.value = hotel.ID; 
-                                        option.textContent = hotel.HOTEL_NAME;
-                                        
-                                        hotelSelect.appendChild(option);
-                                    });
-                                } else {
-                                    const noDataOption = document.createElement('option');
-                                    noDataOption.value = '';
-                                    noDataOption.textContent = 'No hotels found';
-                                    hotelSelect.appendChild(noDataOption);
-                                }
-                            },
-                            error: function(jqXHR, textStatus, errorThrown) {
-                                console.error("AJAX call failed to fetch hotel list:", textStatus, errorThrown);
-                                hotelSelect.innerHTML = '<option value="">Load Failed</option>';
-                            },
-                            // IMPORTANT: Ensure dataType is set to "json" to automatically parse the response array
-                            dataType: "json" 
-                        });
-                    }
-                function loadReports(savedJson) {
-                                    reports = []; 
-                                    // Reset pan state to default before loading
-                                    pan.x = 0;
-                                    pan.y = 0;
-                                    
-                                    let loadedReports = [];
-                                    
-                                    if (savedJson) {
-                                        try {
-                                            const fullState = JSON.parse(savedJson);
-                                            
-                                            // 1. Load Reports Data
-                                            if (fullState.reports && Array.isArray(fullState.reports)) {
-                                                loadedReports = fullState.reports;
-                                            }
-
-                                            // 2. Load Canvas State
-                                            if (fullState.canvasState) {
-                                                pan.x = fullState.canvasState.panX || 0;
-                                                pan.y = fullState.canvasState.panY || 0;
-                                            }
-
-                                        } catch (e) {
-                                            // console.error("Error loading or parsing saved state:", e); // <--- LINE REMOVED
-                                            // Execution continues below if loading failed
-                                        }
-                                    } else {
-                                        // Handle case where loadReports is called with empty data (initial load)
-                                        loadedReports = [];
-                                    }
-                                    
-                                    // Process loaded reports or create a default one
-                                    if (loadedReports.length > 0) {
-                                        loadedReports.forEach(r => {
-                                            const newReport = processReportData(r.name, r.data, r.x, r.y, r.currentPage,r.reportId,r.expressionJson);
-                                            reports.push(newReport);
-                                        });
-                                    } else {
-                                        const defaultReport = processReportData(`Report 1`, sampleData);
-                                        //reports.push(defaultReport);
-                                    }
-                                    
-                                    // Draw the canvas with the restored pan position
-                                    draw();
-                                }
+                <div class="control-panel hidden"> <!-- Add hidden class -->
+                    <h2>
+                        Summary Results
+                        <div class="fake-btn collapse-btn">−</div>
+                    </h2>
+                    <div class="summary-results"></div>
+                </div>
+                
+                <div class="control-panel hidden"> <!-- Add hidden class -->
+                    <h2>
+                        Filter Data
+                        <div class="fake-btn collapse-btn">−</div>
+                    </h2>
+                    <div class="form-group">
+                        <label>Select Column:</label>
+                        <select class="filter-column"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Operator:</label>
+                        <select class="filter-operator">
+                            <option value="equals">Equals</option>
+                            <option value="greater">Greater Than</option>
+                            <option value="less">Less Than</option>
+                            <option value="contains">Contains</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Value:</label>
+                        <input type="text" class="filter-value" placeholder="Enter value to filter">
+                    </div>
+                    <div class="fake-btn apply-filter">Apply Filter</div>
+                    <div class="fake-btn fake-btn-danger clear-filter">Clear Filter</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="download-section">
+                <div class="fake-btn export-excel-btn">Download</div>
+            </div>
+        <div class="table-container">
+            
+            <table class="data-table">
+                <thead>
+                    <tr class="table-header"></tr>
+                </thead>
+                <tbody class="table-body"></tbody>
+            </table>
+        </div>
+    `;
+}
 
 
-            // --- Canvas Setup ---
-            function resizeCanvas() {
-                const dpr = window.devicePixelRatio || 1;
-                canvas.width = window.innerWidth * dpr;
-                canvas.height = (window.innerHeight - addReportBtn.parentElement.offsetHeight) * dpr;
-                canvas.style.width = `${window.innerWidth}px`;
-                canvas.style.height = `${window.innerHeight - addReportBtn.parentElement.offsetHeight}px`;
-                ctx.scale(dpr, dpr);
-                draw();
+// ======================
+//   DOWNLOAD BUTTON WITH DROPDOWN
+// ======================
+
+document.addEventListener('click', function (e) {
+    // If "Download" clicked
+    if (e.target.classList.contains('export-excel-btn')) {
+        const existingMenu = document.querySelector('.download-dropdown');
+        if (existingMenu) existingMenu.remove(); // close if open
+
+        const dropdown = document.createElement('div');
+        dropdown.classList.add('download-dropdown');
+        dropdown.innerHTML = `
+            <div class="dropdown-option" data-type="excel">📘 Excel</div>
+            <div class="dropdown-option" data-type="csv">📄 CSV</div>
+            <div class="dropdown-option" data-type="pdf">📕 PDF</div>
+        `;
+        dropdown.style.position = 'absolute';
+        dropdown.style.top = `${e.clientY + 5}px`;
+        dropdown.style.left = `${e.clientX - 40}px`;
+        dropdown.style.background = '#fff';
+        dropdown.style.border = '1px solid #ccc';
+        dropdown.style.borderRadius = '6px';
+        dropdown.style.boxShadow = '0 2px 6px rgba(0,0,0,0.2)';
+        dropdown.style.zIndex = '9999';
+        dropdown.style.cursor = 'pointer';
+
+        document.body.appendChild(dropdown);
+
+        // Remove when clicking outside
+        document.addEventListener('click', function removeDropdown(ev) {
+            if (!dropdown.contains(ev.target) && !ev.target.classList.contains('export-excel-btn')) {
+                dropdown.remove();
+                document.removeEventListener('click', removeDropdown);
+            }
+        });
+
+        // Handle selection
+        dropdown.addEventListener('click', function (ev) {
+            const exportType = ev.target.dataset.type;
+            if (!exportType) return;
+
+            if (!currentTabId || !tabData[currentTabId]) {
+                alert('No active report tab to export.');
+                return;
             }
 
-            function openAddModal() {
-                editingReportIndex = -1; 
-                modalTitle.textContent = 'Add New Report';
-                saveBtn.textContent = 'Add Report';
-                //reportDataInput.value = JSON.stringify(sampleData, null, 4);
-                reportNameInput.value = `Report ${reports.length + 1}`;
-                
-                // FIX: Use explicit style enforcement for APEX compatibility
-                modal.style.setProperty('display', 'flex', 'important'); 
-                
-                deleteBtn.classList.add('hidden');
+            console.log('🟢 Selected export type:', exportType);
+            switch (exportType) {
+                case 'excel':
+    exportToExcelWithFormatting(currentTabId, formula_filterJSON_global);
+    break;
+
+                case 'csv':
+        exportToCSV(currentTabId);
+        break;
+
+    case 'pdf':
+        //exportToPDF(currentTabId);
+        exportToPDFWithFormatting(currentTabId, formula_filterJSON_global);
+        break;
+
             }
-             function escapeRegExp(string) {
-        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            dropdown.remove(); // close after selection
+        });
+    }
+});
+
+
+// 🔹 CSV Export
+function exportToCSV(tabId) {
+    const tableObj = tabData[tabId]?.tableData;
+    if (!tableObj || !tableObj.data || tableObj.data.length === 0) {
+        alert("No data available for export.");
+        return;
     }
 
-            function openEditModal(reportIndex) {
-                        // ✅ Ensure we're working with the right report index every time
-                        if (reportIndex < 0 || !reports[reportIndex]) {
-                            console.warn("Invalid report index:", reportIndex);
-                            return;
-                        }
+    // ✅ Extract actual row keys from the first row
+    const headers = Object.keys(tableObj.data[0]);
 
-                        const report = reports[reportIndex];
+    const rows = tableObj.data.map(row =>
+        headers.map(h => `"${row[h] ?? ''}"`).join(',')
+    );
 
-                        // ✅ Always reset previous edit context before assigning a new one
-                        editingReportIndex = -1;
-                        setTimeout(() => {
-                            editingReportIndex = reportIndex;
-                        }, 0);
+    const csvContent = [headers.join(','), ...rows].join("\n");
 
-                        modalTitle.textContent = `Edit Report: ${report.name}`;
-                        saveBtn.textContent = 'Update Report';
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
 
-                        // ✅ Load the correct report name into input
-                        reportNameInput.value = report.name || '';
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${tabData[tabId].displayName || "Report"}.csv`;
+    link.click();
 
-                        // (optional: populate data field if needed)
-                        // reportDataInput.value = JSON.stringify(report.data, null, 4);
-
-                        // ✅ Show modal (APEX-safe)
-                        modal.style.setProperty('display', 'flex', 'important');
-                        reportId = report.reportId || null; 
-                        deleteBtn.classList.remove('hidden');
-                    }
+    URL.revokeObjectURL(url);
+}
 
 
-            function hideModal() {
-                editingReportIndex = -1; 
-                // FIX: Use explicit style enforcement to hide the modal
-                modal.style.setProperty('display', 'none', 'important');
-                
-                deleteBtn.classList.add('hidden');
+
+
+// 🔹 Excel Export (requires SheetJS)
+function exportToExcel(tabId) {
+    const data = tabData[tabId]?.tableData;
+    if (!data || !data.length) {
+        alert('No data available for export.');
+        return;
+    }
+
+    if (typeof XLSX === 'undefined') {
+        alert('Excel export requires SheetJS (XLSX library).');
+        console.error('Missing XLSX library');
+        return;
+    }
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Report');
+
+    // Example color styling for key columns
+    const colorCols = ['STATUS', 'RISK', 'HEALTH'];
+    const range = XLSX.utils.decode_range(worksheet['!ref']);
+    for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+            const cellRef = XLSX.utils.encode_cell({ r: R, c: C });
+            const header = Object.keys(data[0])[C];
+            if (colorCols.includes(header)) {
+                worksheet[cellRef].s = {
+                    fill: { fgColor: { rgb: 'FFF0B3' } }, // light yellow
+                };
             }
-
-
-            const saveReportsData = () => {
-                // 1. Convert the reports array to a JSON string
-                const dataStr = JSON.stringify(reports, null, 4); 
-                // null, 4 is for pretty printing (indentation)
-                
-                // 2. Create a Blob (a file-like object of immutable, raw data)
-                const blob = new Blob([dataStr], { type: 'application/json' });
-                
-                // 3. Create a temporary anchor (<a>) element for the download
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = 'report_layout_' + new Date().toISOString().slice(0, 10) + '.json'; // Generate a default file name
-                
-                // 4. Programmatically click the anchor to start the download
-                document.body.appendChild(a);
-                a.click();
-                
-                // 5. Clean up the temporary anchor and URL object
-                document.body.removeChild(a);
-                URL.revokeObjectURL(a.href);
-                editingReportIndex = -1;
-                console.log('Reports data saved to file.');
-            };
-
-            // Event Listener for the new Save button
-            document.getElementById('saveReportsBtn').addEventListener('click', saveReportsData);
-
-            
-            // --- Coordinate Transformation ---
-            function getCanvasCoords(event) {
-                const rect = canvas.getBoundingClientRect();
-                // This correctly converts screen coordinates to canvas (scaled/panned) coordinates
-                const x = (event.clientX - rect.left - pan.x) / scale;
-                const y = (event.clientY - rect.top - pan.y) / scale;
-                return { x, y };
-            }
-
-            // --- Drawing Functions ---
-            function draw() {
-                ctx.save();
-                ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
-                ctx.fillStyle = '#111827'; 
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                ctx.translate(pan.x, pan.y);
-                ctx.scale(scale, scale);
-
-                reports.forEach(report => drawTable(report));
-                
-                ctx.restore();
-            }
-
-         
-       
-   function groupAndAggregateRows(report) {
-    const rows = report.data.rows;
-    if (!rows || !rows.length) return;
-
-    let expressionJsontbl = {};
-    if (report.expressionJson) {
-        try {
-            expressionJsontbl = typeof report.expressionJson === "string"
-                ? JSON.parse(report.expressionJson)
-                : report.expressionJson;
-        } catch (err) {
-            console.warn("Invalid expressionJson:", err);
-            expressionJsontbl = {};
         }
     }
 
-    const selectedColumns = expressionJsontbl?.columnConfiguration?.selectedColumns || [];
+    XLSX.writeFile(workbook, `${tabId}.xlsx`);
+    console.log('✅ Excel exported successfully:', tabId);
+}
+
+// 🔹 PDF Export (requires jsPDF + autotable)
+function exportToPDF(tabId) {
+    const tableObj = tabData[tabId]?.tableData;
+
+    if (!tableObj || !tableObj.data || tableObj.data.length === 0) {
+        alert("No data available for export.");
+        return;
+    }
+
+    // ✅ Extract real headers from row object
+    const headers = Object.keys(tableObj.data[0]);
+    const body = tableObj.data.map(row =>
+        headers.map(h => row[h] ?? '')
+    );
+
+    // ✅ ✅ Correct way to use jsPDF UMD inside APEX
+    const { jsPDF } = window.jspdf;
+
+    if (!jsPDF) {
+        alert("PDF library not loaded.");
+        return;
+    }
+
+    const doc = new jsPDF("l", "pt");
+
+    doc.text(tabData[tabId].displayName || "Report", 40, 30);
+
+    doc.autoTable({
+        startY: 50,
+        head: [headers],
+        body: body,
+        theme: "grid",
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [41, 128, 185] }
+    });
+
+    doc.save(`${tabData[tabId].displayName || "Report"}.pdf`);
+}
+
+
+
+
+
+
+
+// Switch between tabs
+function switchTab(tabId) {
+    console.log('Switching to tab:', tabId);
+    
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Show selected tab content
+    const tabContent = document.getElementById(tabId);
+    if (tabContent) {
+        tabContent.classList.add('active');
+        console.log('Tab content activated:', tabId);
+    } else {
+        console.error('Tab content not found:', tabId);
+    }
+    
+    // Activate selected tab
+    const tabElement = document.querySelector(`.tab[data-tab="${tabId}"]`);
+    if (tabElement) {
+        tabElement.classList.add('active');
+        console.log('Tab header activated:', tabId);
+    } else {
+        console.error('Tab element not found:', tabId);
+    }
+    
+    currentTabId = tabId;
+    console.log('tabId:>>'+tabId);
+    console.log('tabData[tabId].reportId:>>'+tabData[tabId].reportId);
+    // If tab doesn't have data yet but should have, load it
+   // if (tabData[tabId] && !tabData[tabId].tableData && tabData[tabId].reportId) {
+        console.log('Loading data for existing tab:', tabId);
+        loadReportDataForTab(tabId, tabData[tabId].reportId);
+ //   }
+}
+
+// Close a tab
+function closeTab(tabId) {
+    if (Object.keys(tabData).length <= 1) {
+        alert('You must have at least one tab open!');
+        return;
+    }
+
+    const tabElement = document.querySelector(`.tab[data-tab="${tabId}"]`);
+    let tabName = '';
+
+    if (tabElement) {
+        tabName = tabElement.textContent.replace('×', '').trim();
+    }
+    console.log('🗑️ Attempting to close tab:', tabName, tabId);
+
+    if (confirm(`Are you sure you want to close "${tabName}"? All unsaved data will be lost.`)) {
+        // --- Remove from DOM ---
+        const tabContent = document.getElementById(tabId);
+        if (tabElement) tabElement.remove();
+        if (tabContent) tabContent.remove();
+
+        // --- Remove from tabData memory ---
+        delete tabData[tabId];
+
+        // --- Update parsedTabsData ---
+        if (parsedTabsData && parsedTabsData.tabs) {
+            // Remove this tab from the saved array
+            parsedTabsData.tabs = parsedTabsData.tabs.filter(t => t.tab_id !== tabId);
+
+            // Recalculate sequential positions
+            parsedTabsData.tabs.forEach((t, i) => t.position = i + 1);
+
+            console.log('🧾 Updated parsedTabsData after delete:', parsedTabsData);
+
+            // --- Save updated JSON to DB ---
+            const hotelIdToUse = parsedTabsData.hotel_id || $('#static-lov-hotel').val();
+            apex.server.process(
+                'AJX_MANAGE_REPORT_DASHBOARD',
+                {
+                    x01: 'INSERT',
+                    x02: hotelIdToUse,
+                    x03: JSON.stringify(parsedTabsData)
+                },
+                {
+                    success: function (pData) {
+                        console.log('Tabs updated successfully after delete:', pData);
+                    },
+                    error: function (jqXHR, textStatus, errorThrown) {
+                        console.error('Error saving tabs after delete:', textStatus, errorThrown);
+                    }
+                }
+            );
+        }
+
+        // --- Switch to next available tab ---
+        const remainingTabs = Object.keys(tabData);
+        if (remainingTabs.length > 0) {
+            switchTab(remainingTabs[0]);
+        } else {
+            currentTabId = null;
+            console.log('ℹ No tabs left open.');
+        }
+    }
+}
+
+function setupTabEventListeners(tabId) {
+    const tabElement = document.getElementById(tabId);
+    if (!tabElement) {
+        console.error('Tab element not found:', tabId);
+        return;
+    }
+    
+    console.log('Setting up event listeners for tab:', tabId);
+    
+    setTimeout(() => {
+        const calculateBtn = tabElement.querySelector('.calculate-btn');
+        const applyFilter = tabElement.querySelector('.apply-filter');
+        const clearFilter = tabElement.querySelector('.clear-filter');
+        
+        if (calculateBtn) calculateBtn.addEventListener('click', function() { calculateOperation(tabId); });
+        if (applyFilter) applyFilter.addEventListener('click', function() { applyFilterFunc(tabId); });
+        if (clearFilter) clearFilter.addEventListener('click', function() { clearFilterFunc(tabId); });
+
+     //   const exportExcelBtn = tabElement.querySelector('.export-excel-btn');
+    //if (exportExcelBtn) exportExcelBtn.addEventListener('click', function() { 
+       // exportToExcel(tabId);
+      //  exportToExcelWithFormatting(tabId, formula_filterJSON_global); 
+       
+        // });
+        
+        setupCollapseButtonsForTab(tabElement);
+    }, 100);
+ 
+
+}
+ 
+
+function exportToExcel(tabId = currentTabId) {
+    if (!tabId) return;
+
+    const tabElement = document.getElementById(tabId);
+    const table = tabElement.querySelector('.data-table');
+    if (!table) {
+        console.error('Table not found for export.');
+        return;
+    }
+
+    let csv = [];
+    const rows = table.querySelectorAll('tr');
+
+    for (const row of rows) {
+        let rowData = [];
+        const cols = row.querySelectorAll('th, td');
+        
+        for (const col of cols) {
+            // Get the text content, and wrap it in double quotes if it contains a comma
+            let text = col.textContent.replace(/"/g, '""');
+            if (text.includes(',')) {
+                text = `"${text}"`;
+            }
+            rowData.push(text);
+        }
+        csv.push(rowData.join(','));
+    }
+
+    const csvFile = csv.join('\n');
+    const blob = new Blob([csvFile], { type: 'text/csv;charset=utf-8;' });
+
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'report_data.csv';
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Helper function to setup collapse buttons for a specific tab
+function setupCollapseButtonsForTab(tabElement) {
+    if (!tabElement) return;
+    
+    tabElement.querySelectorAll('.collapse-btn').forEach(button => {
+        const panel = button.closest('.control-panel');
+        
+        // Correctly set initial button state based on the 'collapsed' class
+        if (panel.classList.contains('collapsed')) {
+            button.textContent = '+';
+        } else {
+            button.textContent = '−';
+        }
+        
+        button.addEventListener('click', function() {
+            // Toggle the 'collapsed' class on the parent panel
+            panel.classList.toggle('collapsed');
+            
+            // Now, toggle the button text
+            this.textContent = (this.textContent === '−') ? '+' : '−';
+        });
+    });
+}
+function optimizeTableForColumns(tableElement, columnCount) {
+    if (columnCount > 25) {
+        tableElement.classList.add('compact-table');
+    } else {
+        tableElement.classList.remove('compact-table');
+    }
+}
+
+// Populate table with data for a specific tab
+function populateTable(tabId = currentTabId) {
+    if (!tabId) return;
+    
+    const tab = tabData[tabId];
+    if (!tab || !tab.tableData) return;
+    
+    const tabElement = document.getElementById(tabId);
+    if (!tabElement) return;
+    
+    const tableBody = tabElement.querySelector('.table-body');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = '';
+    
+    tab.tableData.data.forEach(row => {
+        const tr = document.createElement('tr');
+        
+        tab.tableData.columns.forEach(column => {
+            const td = document.createElement('td');
+            // Format numbers to two decimal places
+            if (column.type === 'number') {
+                td.textContent = typeof row[column.name] === 'number' ? 
+                    row[column.name].toFixed(2) : row[column.name];
+            } else {
+                td.textContent = row[column.name];
+            }
+            tr.appendChild(td);
+        });
+        
+        tableBody.appendChild(tr);
+    });
+}
+
+// Calculate operation on column for a specific tab
+function calculateOperation(tabId = currentTabId) {
+    if (!tabId) return;
+    
+    const tab = tabData[tabId];
+    if (!tab.tableData) return;
+    
+    const tabElement = document.getElementById(tabId);
+    const column = tabElement.querySelector('.column-select').value;
+    const operation = tabElement.querySelector('.operation').value;
+    
+    if (!column) {
+        alert('Please select a column first!');
+        return;
+    }
+    
+    let result;
+    const values = tab.tableData.data
+        .map(row => parseFloat(row[column]))
+        .filter(val => !isNaN(val));
+    
+    if (values.length === 0) {
+        alert('No numeric data found in the selected column!');
+        return;
+    }
+    
+    switch(operation) {
+        case 'sum':
+            result = values.reduce((acc, val) => acc + val, 0);
+            break;
+        case 'average':
+            result = values.reduce((acc, val) => acc + val, 0) / values.length;
+            break;
+        case 'min':
+            result = Math.min(...values);
+            break;
+        case 'max':
+            result = Math.max(...values);
+            break;
+        case 'count':
+            result = values.length;
+            break;
+    }
+    
+    const summaryResults = tabElement.querySelector('.summary-results');
+    const summaryItem = document.createElement('div');
+    summaryItem.className = 'summary-item';
+    summaryItem.innerHTML = `<strong>${operation.toUpperCase()}</strong> of <strong>${column}</strong>: ${Number(result).toFixed(2)}`;
+    summaryResults.appendChild(summaryItem);
+}
+
+// Apply filter to table for a specific tab (renamed to avoid conflict)
+function applyFilterFunc(tabId = currentTabId) {
+    if (!tabId) return;
+    
+    const tab = tabData[tabId];
+    if (!tab.tableData) return;
+    
+    const tabElement = document.getElementById(tabId);
+    const column = tabElement.querySelector('.filter-column').value;
+    const operator = tabElement.querySelector('.filter-operator').value;
+    const value = tabElement.querySelector('.filter-value').value;
+    
+    if (!column || !value) {
+        alert('Please select a column and enter a value!');
+        return;
+    }
+    
+    const filteredData = tab.tableData.data.filter(row => {
+        const cellValue = row[column];
+        
+        // Handle different data types appropriately
+        if (tab.tableData.columns.find(col => col.name === column).type === 'number') {
+            const numValue = parseFloat(value);
+            const numCellValue = parseFloat(cellValue);
+            switch(operator) {
+                case 'equals': return numCellValue === numValue;
+                case 'greater': return numCellValue > numValue;
+                case 'less': return numCellValue < numValue;
+                default: return true;
+            }
+        } else {
+            switch(operator) {
+                case 'equals': return cellValue.toString() === value;
+                case 'contains': return cellValue.toString().toLowerCase().includes(value.toLowerCase());
+                default: return true;
+            }
+        }
+    });
+    
+    // Create a temporary filtered dataset for display
+    const tempTableData = {
+        columns: tab.tableData.columns,
+        data: filteredData
+    };
+    
+    // Display filtered data
+    displayFilteredData(tempTableData, tabId);
+}
+
+// Display filtered data
+function displayFilteredData(filteredData, tabId = currentTabId) {
+    if (!tabId) return;
+    
+    const tabElement = document.getElementById(tabId);
+    const tableBody = tabElement.querySelector('.table-body');
+    tableBody.innerHTML = '';
+    
+    filteredData.data.forEach(row => {
+        const tr = document.createElement('tr');
+        
+        filteredData.columns.forEach(column => {
+            const td = document.createElement('td');
+            if (column.type === 'number') {
+                td.textContent = typeof row[column.name] === 'number' ? 
+                    row[column.name].toFixed(2) : row[column.name];
+            } else {
+                td.textContent = row[column.name];
+            }
+            tr.appendChild(td);
+        });
+        
+        tableBody.appendChild(tr);
+    });
+}
+
+// Clear filter and show all data for a specific tab (renamed to avoid conflict)
+function clearFilterFunc(tabId = currentTabId) {
+    if (!tabId) return;
+    
+    const tab = tabData[tabId];
+    if (!tab.tableData) return;
+    
+    const tabElement = document.getElementById(tabId);
+    tabElement.querySelector('.filter-value').value = '';
+    populateTable(tabId);
+}
+
+
+
+
+
+
+
+
+function initializeTable(tabId = currentTabId, expressionJson = null) {
+     if (!tabId) return;
+    console.log('tabData[tabId]:>>>>>>>>>>>',tabData[tabId]);
+    const tab = tabData[tabId];
+    if (!tab || !tab.tableData || !tab.tableData.columns) {
+        console.error('No table data available for tab:', tabId);
+        return;
+    }
+    
+    const tabElement = document.getElementById(tabId);
+    if (!tabElement) {
+        console.error('Tab element not found:', tabId);
+        return;
+    }
+    
+    const tableHeader = tabElement.querySelector('.table-header');
+    const columnSelect = tabElement.querySelector('.column-select');
+    const filterColumn = tabElement.querySelector('.filter-column');
+    
+    if (!tableHeader || !columnSelect || !filterColumn) {
+        console.error('One or more table elements not found in tab:', tabId);
+        return;
+    }
+    
+    console.log('Initializing table for tab:', tab.tableData);
+    
+    // Use the expressionJson parameter
+    let formula_filterJSON = {};
+    
+    if (expressionJson) {
+        try {
+            // If it's a string, parse it; if it's already an object, use it directly
+            formula_filterJSON = typeof expressionJson === 'string' ? JSON.parse(expressionJson) : expressionJson;
+            console.log('Loaded configuration from expressionJson:', formula_filterJSON);
+        } catch (error) {
+            console.error('Error parsing expressionJson:', error);
+            formula_filterJSON = {};
+        }
+    } else {
+        console.log('No expressionJson provided, using empty configuration');
+        formula_filterJSON = {};
+    }
+    
+    tableHeader.innerHTML = '';
+    columnSelect.innerHTML = '';
+    filterColumn.innerHTML = '';
+    
+    // Create mappings between col_name and alias_name
+    const columnMappings = {};
+    const aliasToOriginalMap = {};
+    
+    let visibleColumnsFromConfig = [];
+    
+    if (formula_filterJSON.columnConfiguration && formula_filterJSON.columnConfiguration.selectedColumns && formula_filterJSON.columnConfiguration.selectedColumns.length > 0) {
+        // We have configuration with selectedColumns
+        formula_filterJSON.columnConfiguration.selectedColumns.forEach(col => {
+            columnMappings[col.col_name] = col.alias_name || col.col_name;
+            aliasToOriginalMap[col.alias_name || col.col_name] = col.col_name;
+        });
+        
+        visibleColumnsFromConfig = formula_filterJSON.columnConfiguration.selectedColumns
+            .filter(col => col.visibility !== 'hide')
+            .map(col => ({
+                originalName: col.col_name,
+                displayName: col.alias_name || col.col_name,
+                dataType: col.data_type
+            }));
+            
+        // Add formula columns to the visible columns list
+        if (formula_filterJSON.formulas) {
+            Object.keys(formula_filterJSON.formulas).forEach(formulaName => {
+                visibleColumnsFromConfig.push({
+                    originalName: formulaName,
+                    displayName: formulaName,
+                    dataType: 'number',
+                    isFormula: true
+                });
+            });
+        }
+    } else {
+        // No configuration - create columns from table data
+        if (tab.tableData.data && tab.tableData.data.length > 0) {
+    // Get all unique column names from ALL rows
+    const allColumnNames = new Set();
+    tab.tableData.data.forEach(row => {
+        Object.keys(row).forEach(colName => {
+            if (colName && colName.trim() !== '') {
+                allColumnNames.add(colName);
+            }
+        });
+    });
+
+    visibleColumnsFromConfig = Array.from(allColumnNames).map(colName => ({
+        originalName: colName,
+        displayName: colName,
+        dataType: 'string' // Default type
+    }));
+     
+}
+    }
+
+    const uniqueColumnsMap = visibleColumnsFromConfig.reduce((map, column) => {
+    const name = column.originalName;
+    const isFormula = column.isFormula === true;
+ 
+    if (map.has(name)) {
+        const existingColumn = map.get(name); 
+        if (isFormula && existingColumn.isFormula !== true) {
+            map.set(name, column);
+        } 
+
+    } else { 
+        map.set(name, column);
+    }
+    
+    return map;
+}, new Map());
+
+// Convert the Map values back to an array
+ visibleColumnsFromConfig = Array.from(uniqueColumnsMap.values());
+
+visibleColumnsFromConfig = reorderVisibleColumns(visibleColumnsFromConfig, expressionJson);
+ 
+visibleColumnsFromConfig.forEach(column => {
+    const th = document.createElement('th');
+    th.textContent = column.displayName;
+    th.setAttribute('data-column-name', column.originalName);
+     
+      
+    if (column.isFormula) {
+        th.classList.add('formula-column');
+        if (formula_filterJSON.formulas && formula_filterJSON.formulas[column.originalName]) {
+            th.title = `Formula: ${formula_filterJSON.formulas[column.originalName]}`;
+        }
+    }
+    tableHeader.appendChild(th);
+    
+    // Add to dropdowns - only add numeric columns to calculation dropdown
+    if (column.dataType === 'number' || column.isFormula) {
+        const option = document.createElement('option');
+        option.value = column.originalName;
+        option.textContent = column.displayName;
+        if (column.isFormula) {
+            option.classList.add('formula-option');
+        }
+        columnSelect.appendChild(option); 
+    }
+    
+    // Add all columns to filter dropdown
+    const filterOption = document.createElement('option');
+    filterOption.value = column.originalName;
+    filterOption.textContent = column.displayName;
+    if (column.isFormula) {
+        filterOption.classList.add('formula-option');
+    }
+    filterColumn.appendChild(filterOption); 
+});
+
+ 
+visibleColumnsFromConfig.forEach((col, index) => {
+ });
+ 
+    // Process and populate table data
+    formula_filterJSON_global =  formula_filterJSON;
+    
+    tab.tableData = groupAndAggregateTableData(tab.tableData, formula_filterJSON, aliasToOriginalMap);
+    console.log('tab.formula_filterJSON :>>>>',formula_filterJSON);
+    processAndPopulateTable(tabId, tab.tableData, formula_filterJSON, visibleColumnsFromConfig, aliasToOriginalMap);
+console.log('processAndPopulateTable   tab.tableData:>>>>',tab.tableData);
+    
+    const tableElement = tabElement.querySelector('table');
+    const columnCount = visibleColumnsFromConfig.length;
+    optimizeTableForColumns(tableElement, columnCount);
+     
+
+    setTimeout(() => {
+        makeColumnsResizable(tabId);
+    }, 100);
+}
+
+function groupAndAggregateTableData(tableData, formula_filterJSON, aliasMap = {}) {
+
+    if (!tableData?.data?.length) return tableData;
+
+    const rows = tableData.data;
+    const selectedColumns = formula_filterJSON?.columnConfiguration?.selectedColumns || [];
 
     // 1️⃣ Find date column with week/month/year aggregation
     const dateAggCol = selectedColumns.find(col =>
         col.data_type?.toLowerCase() === "date" &&
         ["week", "month", "year"].includes((col.aggregation || "").toLowerCase())
     );
-    if (!dateAggCol) return;
 
-    const dateKey = dateAggCol.alias_name || dateAggCol.col_name;
-    const dateAggType = dateAggCol.aggregation.toLowerCase();
+    const dateKey = dateAggCol ? (dateAggCol.alias_name) : null;
+    const dateAggType = dateAggCol ? dateAggCol.aggregation.toLowerCase() : null;
 
-    // 2️⃣ Helper to format date by aggregation
+    // Helper to format date by aggregation
     function formatDateByAgg(dateStr) {
         const date = new Date(dateStr);
         if (isNaN(date)) return dateStr;
-
         switch (dateAggType) {
             case "week": {
-                // ISO week calculation
-                const tmpDate = new Date(date.valueOf());
-                const dayNum = (date.getDay() + 6) % 7; // Monday=0
-                tmpDate.setDate(tmpDate.getDate() - dayNum + 3);
-                const firstThursday = new Date(tmpDate.getFullYear(), 0, 4);
-                const weekNumber = 1 + Math.round(((tmpDate - firstThursday) / 86400000 - 3 + ((firstThursday.getDay() + 6) % 7)) / 7);
-                return `${tmpDate.getFullYear()}-W${weekNumber.toString().padStart(2,'0')}`;
+                const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+                const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+                const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+                return `${date.getFullYear()}-W${weekNumber.toString().padStart(2,'0')}`;
             }
             case "month":
                 return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2,'0')}`;
@@ -792,560 +2048,1306 @@ $('#reportSelect').on('change', function() {
         }
     }
 
-    // 3️⃣ Group rows by formatted date
+    // 2️⃣ Group rows only if aggregation type exists; otherwise keep all rows individually
     const grouped = {};
-    rows.forEach(row => {
-        const groupKey = formatDateByAgg(row[dateKey]);
-        if (!grouped[groupKey]) grouped[groupKey] = [];
-        grouped[groupKey].push(row);
-    });
+    if (dateKey && dateAggType) {
+        // Group by formatted date
+        rows.forEach(row => {
+            const groupKey = formatDateByAgg(row[dateKey]);
+            if (!grouped[groupKey]) grouped[groupKey] = [];
+            grouped[groupKey].push(row);
+        });
+    } else {
+        // No grouping: each row is its own group
+        rows.forEach((row, idx) => grouped[idx] = [row]);
+    }
 
-    // 4️⃣ Aggregate other columns per group
-    const newRows = [];
-    Object.keys(grouped).forEach(groupKey => { 
+    // 3️⃣ Aggregate other columns
+   const newRows = [];
+Object.keys(grouped).forEach(groupKey => {
     const groupRows = grouped[groupKey];
+
+    // If no aggregation on date, leave rows unchanged
+    if (!dateKey || !dateAggType) {
+        newRows.push(...groupRows);
+        return;
+    }
+
     const aggRow = {};
     aggRow[dateKey] = groupKey;
-
+ console.log('groupRows:>>>>>>>>>>>>',groupRows);
     selectedColumns.forEach(col => {
-        const key = col.alias_name || col.col_name;
-        if (key === dateKey) return; // skip date column
+        const key = col.alias_name ;
+        if (key === dateKey) return;
         const type = (col.data_type || "").toLowerCase();
         const aggType = (col.aggregation || "none").toLowerCase();
 
-        if (type === "text") return; // ignore TEXT columns
+        if (type === "text") return;
 
         const values = groupRows.map(r => parseFloat(r[key])).filter(v => !isNaN(v));
         if (!values.length) {
             aggRow[key] = null;
             return;
         }
-
-        // --- Handle all aggregation types ---
+        
         switch (aggType) {
-            case "avg":
-                aggRow[key] = values.reduce((a,b) => a+b, 0) / values.length;
-                break;
-            case "min":
-                aggRow[key] = Math.min(...values);
-                break;
-            case "max":
-                aggRow[key] = Math.max(...values);
-                break;
-            case "cnt":
-                aggRow[key] = values.length;
-                break;
-            case "none":
-            default:
-                aggRow[key] = values.reduce((a,b) => a+b, 0); // default sum
+            case "avg": aggRow[key] = values.reduce((a,b)=>a+b,0)/values.length; break;
+            case "min": aggRow[key] = Math.min(...values); break;
+            case "max": aggRow[key] = Math.max(...values); break;
+            case "cnt": aggRow[key] = values.length; break;
+            default: aggRow[key] = values.reduce((a,b)=>a+b,0); // sum
         }
     });
 
     newRows.push(aggRow);
+    console.log('aggRow:>>>>>>>>>>>>',aggRow);
 });
 
+    // Optional: sort by dateKey if aggregation exists
+    if (dateKey && dateAggType) {
+        newRows.sort((a,b) => a[dateKey] > b[dateKey] ? 1 : -1);
+    }
 
-    // 5️⃣ Sort rows by date/week/month/year correctly
-    newRows.sort((a,b) => {
-        if (dateAggType === "week") {
-            // convert "YYYY-W##" to a date for comparison
-            const [yearA, weekA] = a[dateKey].split('-W').map(Number);
-            const [yearB, weekB] = b[dateKey].split('-W').map(Number);
-            return yearA !== yearB ? yearA - yearB : weekA - weekB;
-        } else if (dateAggType === "month") {
-            return new Date(a[dateKey]+'-01') - new Date(b[dateKey]+'-01');
-        } else if (dateAggType === "year") {
-            return Number(a[dateKey]) - Number(b[dateKey]);
+    // Replace tableData rows with aggregated rows
+    tableData.data = newRows;
+    return tableData;
+}
+
+
+
+function makeColumnsResizable(tabId) {
+    const tabElement = document.getElementById(tabId);
+    if (!tabElement) return;
+    
+    const table = tabElement.querySelector('table');
+    const headers = tabElement.querySelectorAll('th');
+    const tableContainer = tabElement.querySelector('.table-container');
+    
+    if (!table || headers.length === 0) return;
+    
+    // Remove any existing resize handles
+    const existingHandles = tabElement.querySelectorAll('.resize-handle');
+    existingHandles.forEach(handle => handle.remove());
+    
+    // Add resize handles to each header (except the last one)
+    headers.forEach((header, index) => {
+        if (index < headers.length - 1) { // Don't add resize handle to last column
+            const resizeHandle = document.createElement('div');
+            resizeHandle.className = 'resize-handle';
+            header.appendChild(resizeHandle);
+            
+            // Make header position relative if not already
+           // header.style.position = 'relative';
+            
+            setupResize(resizeHandle, header, table, tableContainer);
         }
-        return 0;
+    });
+    
+}
+
+function setupResize(resizeHandle, header, table, tableContainer) {
+    let startX, startWidth, isResizing = false;
+    
+    resizeHandle.addEventListener('mousedown', function(e) {
+        isResizing = true;
+        startX = e.clientX;
+        startWidth = parseInt(getComputedStyle(header).width, 10);
+        
+        // Add active class and prevent text selection
+        resizeHandle.classList.add('active');
+        tableContainer.style.userSelect = 'none';
+        tableContainer.style.cursor = 'col-resize';
+        
+        // Add resizing class to header for visual feedback
+        header.classList.add('resizing');
+        
+        e.preventDefault();
+        e.stopPropagation();
+    });
+    
+    document.addEventListener('mousemove', function(e) {
+        if (!isResizing) return;
+        
+        const width = startWidth + (e.clientX - startX);
+        
+        // Set minimum width
+        if (width > 50) {
+            header.style.width = width + 'px';
+            header.style.minWidth = width + 'px';
+            header.style.maxWidth = width + 'px';
+            
+            // Update the corresponding cells in the same column
+            const columnIndex = Array.from(header.parentElement.children).indexOf(header);
+            const rows = table.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('th, td');
+                if (cells[columnIndex]) {
+                    cells[columnIndex].style.width = width + 'px';
+                    cells[columnIndex].style.minWidth = width + 'px';
+                    cells[columnIndex].style.maxWidth = width + 'px';
+                }
+            });
+        }
+    });
+    
+    document.addEventListener('mouseup', function() {
+        if (isResizing) {
+            isResizing = false;
+            resizeHandle.classList.remove('active');
+            tableContainer.style.userSelect = '';
+            tableContainer.style.cursor = '';
+            header.classList.remove('resizing');
+        }
+    });
+    
+    // Also handle touch events for mobile
+    resizeHandle.addEventListener('touchstart', function(e) {
+        isResizing = true;
+        startX = e.touches[0].clientX;
+        startWidth = parseInt(getComputedStyle(header).width, 10);
+        
+        resizeHandle.classList.add('active');
+        tableContainer.style.userSelect = 'none';
+        tableContainer.style.cursor = 'col-resize';
+        header.classList.add('resizing');
+        
+        e.preventDefault();
+    });
+    
+    document.addEventListener('touchmove', function(e) {
+        if (!isResizing) return;
+        
+        const width = startWidth + (e.touches[0].clientX - startX);
+        
+        if (width > 50) {
+            header.style.width = width + 'px';
+            header.style.minWidth = width + 'px';
+            header.style.maxWidth = width + 'px';
+            
+            const columnIndex = Array.from(header.parentElement.children).indexOf(header);
+            const rows = table.querySelectorAll('tr');
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('th, td');
+                if (cells[columnIndex]) {
+                    cells[columnIndex].style.width = width + 'px';
+                    cells[columnIndex].style.minWidth = width + 'px';
+                    cells[columnIndex].style.maxWidth = width + 'px';
+                }
+            });
+        }
+    });
+    
+    document.addEventListener('touchend', function() {
+        if (isResizing) {
+            isResizing = false;
+            resizeHandle.classList.remove('active');
+            tableContainer.style.userSelect = '';
+            tableContainer.style.cursor = '';
+            header.classList.remove('resizing');
+        }
+    });
+}
+
+function processAndPopulateTable(tabId, tableData, config, visibleColumns, aliasToOriginalMap) {
+    const tabElement = document.getElementById(tabId);
+    if (!tabElement) return;
+    
+    const tableBody = tabElement.querySelector('.table-body');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = '';
+    
+    let processedData = JSON.parse(JSON.stringify(tableData.data)); // Deep copy
+    
+    // console.log('Original data:', processedData);
+    // console.log('Config:', config);
+    // console.log('Visible columns:', visibleColumns);
+    
+    // If no configuration or empty selectedColumns, use the table data as-is
+    if (!config || !config.columnConfiguration || !config.columnConfiguration.selectedColumns || config.columnConfiguration.selectedColumns.length === 0) {
+            console.log('No configuration found, using table data as-is');
+            
+            // Create visible columns from ALL unique column names in ALL rows
+            const allColumnNames = new Set();
+            processedData.forEach(row => {
+                Object.keys(row).forEach(colName => {
+                    if (colName && colName.trim() !== '') {
+                        allColumnNames.add(colName);
+                    }
+                });
+            });
+            
+            const dataColumns = Array.from(allColumnNames).map(colName => ({
+                originalName: colName,
+                displayName: colName,
+                dataType: 'string' // Default type
+            }));
+            
+            console.log('Auto-detected columns from all data:', dataColumns);
+            
+            // Populate table directly with original data
+            populateTableDataDirect(tableBody, processedData, dataColumns, {}, {});
+            return;
+        }
+    
+    console.log('processedData:>>>>>>>>>>>',processedData);
+    //console.log('visibleColumns:>>>>>>>>>>>',visibleColumns);
+    // Step 1: Normalize data - create a version with original column names for processing
+
+
+        const cleanRowKeys = (row) => {
+        const cleanedRow = {};
+        for (const key in row) {
+            if (Object.prototype.hasOwnProperty.call(row, key)) {
+                // Find the index of the first hyphen
+                const hyphenIndex = key.indexOf('-');
+                
+                // Extract the part of the key before the hyphen, trimming any trailing space.
+                // If no hyphen is found, use the original key.
+                const newKey = hyphenIndex !== -1 
+                    ? key.substring(0, hyphenIndex).trim() 
+                    : key;
+                    
+                    cleanedRow[newKey] = row[key];
+                }
+            }
+            return cleanedRow;
+        };
+
+const cleanedData = processedData.map(cleanRowKeys);
+cleanedDatamain = cleanedData;
+console.log('cleanedData:>>>>',cleanedData);
+// Step 2: Normalize data using the now-clean keys
+// const normalizedData = cleanedData.map(row => {
+//     const normalizedRow = {};
+//     visibleColumns.forEach(col => {
+//         if (!col.isFormula) {
+//             // 💡 RESOLUTION: Look up the value using the clean 'originalName'
+//             // or 'displayName' (since they are identical in your sample).
+//             const lookupKey = col.displayName; 
+
+//             // Safely retrieve the value from the cleaned row
+//             const value = row[lookupKey] !== undefined ? row[lookupKey] : '';
+            
+//             // Map the value back to the 'originalName'
+//             normalizedRow[col.displayName] = value;
+//         }
+//     });
+//     return normalizedRow;
+// });
+
+const normalizedData = cleanedData.map(row => {
+    const normalizedRow = {};
+
+    // Keep PK_COL for formula calculations
+    normalizedRow.PK_COL = row.PK_COL;
+
+    visibleColumns.forEach(col => {
+        if (!col.isFormula) {
+            const lookupKey = col.displayName; 
+            const value = row[lookupKey] !== undefined ? row[lookupKey] : '';
+            normalizedRow[col.displayName] = value;
+        }
     });
 
-    report.data.rows = newRows; // replace original rows
+    return normalizedRow;
+});
     
+    console.log('normalizedData data:', normalizedData);
+    
+    // Step 2: Apply filters
+    let filteredData = normalizedData;
+    if (config.filters && Object.keys(config.filters).length > 0) {
+        filteredData = applyFilters(normalizedData, config.filters, config);
+        console.log('Data after filtering:', filteredData);
+    }
+    
+    // Step 3: Apply formulas - pass the config parameter
+    let dataWithFormulas = filteredData;
+    if (config.formulas && Object.keys(config.formulas).length > 0) {
+        dataWithFormulas = applyFormulas(filteredData, config.formulas, aliasToOriginalMap, config); 
+        console.log('Data after formulas:', dataWithFormulas);
+    }
+    
+    // Step 4: Convert back to display names for rendering
+    //console.log('dataWithFormulas:>>>>>>>>>>>>>>>',dataWithFormulas);
+    const displayData = dataWithFormulas.map(row => {
+        const displayRow = {};
+        visibleColumns.forEach(col => {
+            if (col.isFormula) {
+                // For formula columns, use the calculated value
+                displayRow[col.displayName] = row[col.displayName] !== undefined ? row[col.displayName] : '';
+            } else {
+                // For regular columns, use the original value
+                displayRow[col.displayName] = row[col.displayName];
+            }
+        });
+        return displayRow;
+    });
+    //console.log('displayData:>>>>>>>>>>>>>>>',displayData);
+  
+    visibleColumns = reorderVisibleColumns(visibleColumns, expressionJson);
+ 
+    // Step 5: Populate table
+    populateTableData(tableBody, displayData, visibleColumns, config.conditionalFormatting, aliasToOriginalMap, config);
+}
+
+
+let cleanedDatamain;
+
+function reorderVisibleColumns(visibleColumns, expressionJson) {
+     expressionJson = JSON.parse(expressionJson);
+    const positions = expressionJson?.columnposition;
+   
+    if (!Array.isArray(positions)) {
+        console.warn("No columnposition array found. Skipping reorder.");
+        return visibleColumns;
+    }
+
+    // Build a map: baseColumnName → position
+    const posMap = {};
+    positions.forEach(p => {
+        if (p.baseColumnName != null && typeof p.position === "number") {
+            posMap[p.baseColumnName] = p.position;
+        }
+    });
+
+    // Sort using the map, and keep items without position at the end
+    const reordered = [...visibleColumns].sort((a, b) => {
+        const posA = posMap[a.originalName];
+        const posB = posMap[b.originalName];
+
+        // If both don't exist, keep original order
+        if (posA == null && posB == null) return 0;
+
+        // Only A missing → A goes after B
+        if (posA == null) return 1;
+
+        // Only B missing → B goes after A
+        if (posB == null) return -1;
+
+        return posA - posB;
+    });
+
+    return reordered;
 }
 
 
 
 
-
-
-       function drawTable(report) {
-    let { name, data, x, y, width, height, currentPage, totalPages, columns, aggregates, expressionJson } = report;
-
-
- // Parse expressionJson
-    let expressionJsontbl = {};
-    if (expressionJson) {
-        try {
-            expressionJsontbl = typeof expressionJson === "string" 
-                ? JSON.parse(expressionJson) 
-                : expressionJson;
-        } catch (err) {
-            console.warn("Invalid expressionJson:", err);
-            expressionJsontbl = {};
-        }
+function populateTableDataDirect(tableBody, data, visibleColumns, conditionalFormatting, aliasToOriginalMap) {
+    if (data.length === 0) {
+        showNoDataMessage(tableBody, visibleColumns.length);
+        return;
     }
 
-    // Check if there is a DATE column with aggregation
-    const selectedColumns = expressionJsontbl?.columnConfiguration?.selectedColumns || [];
-    const hasDateAggregation = selectedColumns.some(col => 
-        col.data_type?.toUpperCase() === "DATE" && ["week", "month", "year"].includes(col.aggregation)
-    );
+    const fragment = document.createDocumentFragment();
 
-    if (hasDateAggregation) {
-        groupAndAggregateRows(report);
-    }
-
-
-    // --- Load expression JSON ---
-      expressionJsontbl = report.expressionJson || expressionJson || {};
-    if (typeof expressionJsontbl === "string") {
-        try { expressionJsontbl = JSON.parse(expressionJsontbl); }
-        catch (err) { console.warn("Invalid expressionJson:", err); expressionJsontbl = {}; }
-    }
-
-    // 🟢 Column settings for visibility + aggregation
-    const selectedColumnsConfig = expressionJsontbl?.columnConfiguration?.selectedColumns || [];
-    const columnVisibilityMap = {};
-    const columnAggregationMap = {};
-    selectedColumnsConfig.forEach(col => {
-        const key = col.alias_name || col.col_name;
-        columnVisibilityMap[key] = (col.visibility || "show").toLowerCase();
-        columnAggregationMap[key] = (col.aggregation || "none").toLowerCase();
+    data.forEach((row) => {
+        const tr = document.createElement('tr');
+        visibleColumns.forEach(column => {
+            const td = document.createElement('td');
+            const value = row[column.displayName] !== undefined ? row[column.displayName] : '';
+            td.textContent = value;
+            td.setAttribute('data-column', column.originalName);
+            tr.appendChild(td);
+        });
+        fragment.appendChild(tr);
     });
 
-    ctx.strokeStyle = '#4B5563';
-    ctx.lineWidth = 1 / scale;
+    tableBody.innerHTML = ''; // clear old rows once
+    tableBody.appendChild(fragment); // append all at once
 
-    // Draw table container
-    ctx.fillStyle = '#1F2937';
-    ctx.fillRect(x, y, width, height);
-    ctx.strokeRect(x, y, width, height);
-
-    // --- Draw Title ---
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = `bold ${FONT_SIZE * 1.2}px Inter`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    if (editingReportIndex !== -1 && reports[editingReportIndex] === report) {
-        ctx.fillStyle = '#6366F1';
-        ctx.fillRect(x, y, width, TITLE_HEIGHT);
-        ctx.fillStyle = '#FFFFFF';
-    }
-    const titleToShow = (editingReportIndex !== -1 && reports[editingReportIndex] === report)
-        ? reportNameInput.value.trim() || report.name
-        : report.name;
-    ctx.fillText(titleToShow, x + width / 2, y + TITLE_HEIGHT / 2);
-
-    ctx.beginPath();
-    ctx.moveTo(x, y + TITLE_HEIGHT);
-    ctx.lineTo(x + width, y + TITLE_HEIGHT);
-    ctx.stroke();
-
-    // --- Draw Header ---
-    let headerYtbl = y + TITLE_HEIGHT;
-    ctx.fillStyle = '#374151';
-    ctx.fillRect(x, headerYtbl, width, HEADER_HEIGHT);
-    ctx.font = `bold ${FONT_SIZE}px Inter`;
-    ctx.fillStyle = '#FEE2E2';
-    const visibleColumns = columns.filter(col => (columnVisibilityMap[col.key] || "show") === "show");
-
-  let currentXtbl = x;
-visibleColumns.forEach((col, index) => {
-    // --- Header fill for formula columns (optional) ---
-    let headerBg = '#374151'; // default header background
-    // const isFormula = formulaColumns.includes(col.key);
-    // if (isFormula) {
-    //     // Example: light blue for formula headers
-    //     headerBg = '#2563EB'; 
-    // }
-
-    ctx.fillStyle = headerBg;
-    ctx.fillRect(currentXtbl, headerYtbl, col.width, HEADER_HEIGHT);
-
-    // --- Header text ---
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#FEE2E2';
-    ctx.fillText(col.header, currentXtbl + col.width / 2, headerYtbl + HEADER_HEIGHT / 2);
-
-    // --- Column separator ---
-    currentXtbl += col.width;
-    if (index < visibleColumns.length - 1) {
-        ctx.beginPath();
-        ctx.moveTo(currentXtbl, headerYtbl);
-        ctx.lineTo(currentXtbl, headerYtbl + HEADER_HEIGHT);
-        ctx.stroke();
-    }
-});
+    console.log(`Populated ${data.length} rows in table`);
+}
 
 
-    // --- Build alias map ---
-    const aliasMap = {};
-    const replacementTokens = [];
-    selectedColumnsConfig.forEach(col => {
-        const alias = col.alias_name || col.col_name;
-        const fullToken = col.temp_name ? `${col.col_name} - ${col.temp_name}` : col.col_name;
-        aliasMap[col.col_name] = alias;
-        aliasMap[fullToken] = alias;
-        replacementTokens.push({ token: fullToken, alias });
-        replacementTokens.push({ token: col.col_name, alias });
-        if (alias !== col.col_name) replacementTokens.push({ token: alias, alias });
-    });
+function showNoDataMessage(tableBody, columnCount) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = columnCount || 1;
+    td.textContent = 'No data available';
+    td.style.textAlign = 'center';
+    td.style.padding = '20px';
+    tr.appendChild(td);
+    tableBody.appendChild(tr);
+}
 
-    // --- Apply aliases ---
-    if (data?.rows) {
-        data.rows = data.rows.map(row => {
-            const newRow = {};
-            Object.keys(row).forEach(key => newRow[aliasMap[key] || key] = row[key]);
-            return newRow;
-        });
-    }
 
-    // --- Formula Columns ---
-    const formulas = expressionJsontbl?.formulas || {};
-    const formulaColumns = Object.keys(formulas);
-    if (formulaColumns.length && Array.isArray(data.rows)) {
-        data.rows = data.rows.map(row => {
-            const newRow = { ...row };
-            formulaColumns.forEach(fcol => {
-                let expr = String(formulas[fcol] || "");
-                replacementTokens.forEach(tokenObj => {
-                    const val = parseFloat(row[tokenObj.alias]);
-                    if (!isNaN(val)) expr = expr.replace(new RegExp(`\\b${escapeRegExp(tokenObj.token)}\\b`, "g"), val);
-                });
-                Object.keys(row).forEach(colKey => {
-                    const val = parseFloat(row[colKey]);
-                    if (!isNaN(val)) expr = expr.replace(new RegExp(`\\b${escapeRegExp(colKey)}\\b`, "g"), val);
-                });
-                expr = expr.replace(/\s+/g, " ").trim();
-                try { newRow[fcol] = eval(expr); } catch { newRow[fcol] = null; }
-            });
-            return newRow;
-        });
-        formulaColumns.forEach(fcol => {
-            if (!columns.find(c => c.key === fcol)) {
-                columns.push({ key: fcol, header: fcol, width: 120 });
-                aliasMap[fcol] = fcol;
+function applyFilters(data, filters, config) {
+    const filterConditions = Object.values(filters);
+    if (filterConditions.length === 0) return data;
+
+    // Build templateSuffixMap (same as before) and aliasToOriginalMap (like your other function)
+    const templateSuffixMap = {};
+    const aliasToOriginalMap = {}; // alias -> original
+    if (config.columnConfiguration && config.columnConfiguration.selectedColumns) {
+        config.columnConfiguration.selectedColumns.forEach(col => {
+            if (col.temp_name) {
+                templateSuffixMap[col.col_name] = ` - ${col.temp_name}`;
+                if (col.alias_name) {
+                    templateSuffixMap[col.alias_name] = ` - ${col.temp_name}`;
+                }
+            }
+            if (col.alias_name) {
+                aliasToOriginalMap[col.alias_name] = col.col_name;
             }
         });
     }
 
-    // --- Conditional Formatting ---
-    const conditionalRules = expressionJsontbl?.conditionalFormatting || {};
-    const formattedCells = {};
-    Object.keys(conditionalRules).forEach(exprKey => {
-        const rules = conditionalRules[exprKey];
-        if (!Array.isArray(rules)) return;
-        const aliasColKey = aliasMap[exprKey] || exprKey;
-        rules.forEach(rule => {
-            const { expression, color } = rule;
-            if (!expression) return;
-            data.rows.forEach((row, rowIndex) => {
-                let exprValue = String(expression);
-                const matches = exprValue.match(/\[([^\]]+)\]/g) || [];
-                matches.forEach(matchedToken => {
-                    const cleanToken = matchedToken.replace(/[\[\]]/g, '');
-                    const aliasToken = aliasMap[cleanToken] || cleanToken;
-                    const val = parseFloat(row[aliasToken]) || 0;
-                    exprValue = exprValue.replaceAll(matchedToken, val);
-                });
-                try { if (eval(exprValue)) formattedCells[`${rowIndex}:${aliasColKey}`] = color || "#ff0000"; } catch {}
-            });
+    return data.filter(row => {
+        return filterConditions.every(filterCondition => {
+            try {
+                let condition = filterCondition;
+
+                // Find all [something] occurrences
+                const columnMatches = condition.match(/\[(.*?)\]/g);
+
+                if (columnMatches) {
+                    columnMatches.forEach(match => {
+                        const colNameInCondition = match.replace(/[\[\]]/g, '');
+
+                        // Robustly strip any " - ..." suffix by taking the leftmost part before " - "
+                        // This handles "MY_OTB - My Hotel - Strat C" => "MY_OTB"
+                        let actualColumnName = colNameInCondition.split(' - ')[0].trim();
+
+                        // Also try to remove any known templateSuffix (fallback)
+                        Object.keys(templateSuffixMap).forEach(colKey => {
+                            const suffix = templateSuffixMap[colKey];
+                            if (actualColumnName.endsWith(suffix)) {
+                                actualColumnName = actualColumnName.replace(suffix, '').trim();
+                            }
+                        });
+
+                        // Map alias -> original if present
+                        const originalColName = aliasToOriginalMap[actualColumnName] || actualColumnName;
+
+                        // Find a column name that exists in the row: prefer display/alias then original
+                        // (here display/alias means keys in aliasToOriginalMap)
+                        const displayColName = Object.keys(aliasToOriginalMap).find(alias => aliasToOriginalMap[alias] === originalColName) || originalColName;
+
+                        // Read the value from row using both candidates
+                        let value = row[displayColName];
+                        if (value === undefined) value = row[originalColName];
+
+                        // Normalize the value for use inside the condition string
+                        if (value === null || value === undefined || value === "") {
+                            value = "null";  // keeps logic correct
+                        } else if (!isNaN(value)) {
+                            value = parseFloat(value);
+                        } else if (value === "Sold out") {
+                            value = 0;
+                        } else {
+                            value = `"${value.replace(/"/g, '\\"')}"`;
+                        }
+
+                        // Replace the [..] token with the normalized value
+                        condition = condition.replace(match, value);
+                    });
+                }
+
+                // Remove any remaining template suffix fragments like " - something" that might remain
+                // but avoid removing " - 50" (numbers) or comparison operators; limit to characters until ']' or whitespace or comparison chars
+                // Simpler safe cleanup: remove " - <words>" sequences (non-greedy)
+                condition = condition.replace(/\s-\s[^>\]<]+/g, '');
+
+                // Evaluate
+                return !!eval(condition);
+            } catch (error) {
+                // If something fails for a particular filter, don't exclude the row
+                return true;
+            }
         });
     });
+}
 
-    // --- Compute Aggregates for bottom TOTAL row ---
-    const totalAggregates = {};
-    visibleColumns.forEach(col => {
-        const colValues = data.rows.map(r => parseFloat(r[col.key])).filter(v => !isNaN(v));
-        if (!colValues.length) return;
-        totalAggregates[col.key] = colValues.reduce((a, b) => a + b, 0); // sum of all numeric columns
+
+
+function applyConditionalFormattingToCell(td, row, column, conditionalFormatting, aliasToOriginalMap, config) {
+    if (!conditionalFormatting) return;
+    
+    
+    // Create template suffix map
+    const templateSuffixMap = {};
+    if (config.columnConfiguration && config.columnConfiguration.selectedColumns) {
+        config.columnConfiguration.selectedColumns.forEach(col => {
+            if (col.temp_name) {
+                templateSuffixMap[col.col_name] = ` - ${col.temp_name}`;
+                if (col.alias_name) {
+                    templateSuffixMap[col.alias_name] = ` - ${col.temp_name}`;
+                }
+            }
+        });
+    }
+    
+    // Check if this column has conditional formatting rules
+    let columnRules = conditionalFormatting[column.originalName] || conditionalFormatting[column.displayName];
+    
+    // If not found, try removing template suffixes
+    if (!columnRules) {
+        Object.keys(conditionalFormatting).forEach(key => {
+            let cleanKey = key;
+            Object.values(templateSuffixMap).forEach(suffix => {
+                cleanKey = cleanKey.replace(suffix, '');
+            });
+            if (cleanKey === column.originalName || cleanKey === column.displayName) {
+                columnRules = conditionalFormatting[key];
+            }
+        });
+    }
+    
+    //console.log('columnRules:>>>',columnRules);
+
+    if (!columnRules) return;
+    
+    columnRules.forEach(rule => {
+        try {
+            let expression = rule.expression;
+            const columnMatches = expression.match(/\[(.*?)\]/g);
+            
+            if (columnMatches) {
+                columnMatches.forEach(match => {
+                    const colNameInRule = match.replace(/[\[\]]/g, '');
+                    
+                    // Handle dynamic template suffixes
+                    let actualColumnName = colNameInRule;
+                    Object.keys(templateSuffixMap).forEach(colKey => {
+                        const suffix = templateSuffixMap[colKey];
+                        if (colNameInRule.endsWith(suffix)) {
+                            actualColumnName = colNameInRule.replace(suffix, '');
+                        }
+                    });
+                    
+                    // Convert the column name in rule to the display name for lookup
+                    const originalColName = aliasToOriginalMap[actualColumnName] || actualColumnName;
+                    const displayColName = Object.keys(aliasToOriginalMap).find(alias => aliasToOriginalMap[alias] === originalColName) || originalColName;
+                    
+                    let value = row[displayColName] || row[originalColName];
+                    
+                    // Convert to number if possible
+                    if (!isNaN(value) && value !== '' && value !== null && value !== 'Sold out') {
+                        value = parseFloat(value);
+                    } else {
+                        value = 0;
+                    }
+                    
+                    expression = expression.replace(match, value);
+                });
+            }
+            
+            // Remove any remaining template suffixes
+            Object.values(templateSuffixMap).forEach(suffix => {
+                expression = expression.replace(new RegExp(suffix, 'g'), '');
+            });
+            //console.log('expression:>>>>',expression);
+            // Evaluate the condition
+            if (eval(expression)) {
+                td.style.backgroundColor = rule.color;
+                td.style.color = '#ffffff';
+                td.style.fontWeight = 'bold';
+            }
+        } catch (error) {
+            console.error('Error applying conditional formatting:', error);
+        }
     });
+}
 
-    // --- Draw Data Rows ---
-    const totalWidth = visibleColumns.reduce((acc, c) => acc + (c.width || 100), 0);
-    const tableWidth = Math.max(width, totalWidth);
-    const headerY = y + TITLE_HEIGHT;
-    const startRow = currentPage * ROWS_PER_PAGE;
-    const endRow = Math.min(startRow + ROWS_PER_PAGE, data.rows.length);
-    const visibleRows = data.rows.slice(startRow, endRow);
 
-    ctx.font = `${FONT_SIZE}px Inter`;
-    visibleRows.forEach((row, rowIndex) => {
-    const rowY = headerY + HEADER_HEIGHT + rowIndex * ROW_HEIGHT;
-    ctx.fillStyle = rowIndex % 2 === 0 ? "#1F2937" : "#374151";
-    ctx.fillRect(x, rowY, tableWidth, ROW_HEIGHT);
 
-    let cellX = x;
-    visibleColumns.forEach(col => {
-        const key = col.key;
-        let cellValue = row[key] ?? ""; // Use already-aggregated value from groupAndAggregateRows
-        const absoluteRowIndex = startRow + rowIndex;
-        const textColor = formattedCells[`${absoluteRowIndex}:${key}`] || "#D1D5DB";
-        ctx.fillStyle = textColor;
-        ctx.textAlign = "right";
-        ctx.fillText(String(cellValue), cellX + col.width - PADDING, rowY + ROW_HEIGHT / 2);
-        cellX += col.width;
+/**
+ * Evaluates a numeric or date function/column reference for a given row.
+ * Handles template suffix removal and value substitution.
+ * * NOTE: This is a new helper function required for filter evaluation.
+ * You should place this outside the main functions or define it globally.
+ */
 
-        ctx.beginPath();
-        ctx.moveTo(cellX, rowY);
-        ctx.lineTo(cellX, rowY + ROW_HEIGHT);
-        ctx.stroke();
-    });
-});
+function evaluateExpression(expression, row, aliasToOriginalMap, config) {
 
-    // --- Bottom TOTAL Row ---
-    let aggregateRowY = headerY + HEADER_HEIGHT + visibleRows.length * ROW_HEIGHT;
-    ctx.fillStyle = '#4F46E5';
-    ctx.fillRect(x, aggregateRowY, tableWidth, ROW_HEIGHT);
-    ctx.font = `bold ${FONT_SIZE}px Inter`;
-    ctx.fillStyle = '#FFFFFF';
+    let currentExpression = expression;
 
-    let aggCellX = x;
-    visibleColumns.forEach((col, colIndex) => {
-        const cellValue = totalAggregates[col.key] ?? '';
-        if (colIndex === 0) {
-            ctx.textAlign = 'left';
-            ctx.fillText('TOTAL (All Pages)', aggCellX + PADDING, aggregateRowY + ROW_HEIGHT / 2);
-            ctx.textAlign = 'right';
-            ctx.fillText(cellValue, aggCellX + col.width - PADDING, aggregateRowY + ROW_HEIGHT / 2);
+    // 4. Find all column references (e.g., from "[MOXY] > 150" get 'MOXY')
+    // Get all bracketed and unbracketed column names
+    const columnMatches = currentExpression.match(/\[(.*?)\]/g) || [];
+    const simpleColumnMatches = currentExpression.match(/\b[A-Z_][A-Z0-9_]*\b/gi) || [];
+
+    const allColumnNames = [
+        ...columnMatches.map(match => match.replace(/[\[\]]/g, '')), // Strip brackets here
+        ...simpleColumnMatches.filter(word => !['AND', 'OR', 'NOT', 'Day', 'Date', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].includes(word))
+    ];
+    // This gives us: ['MOXY']
+    const uniqueColumnNames = [...new Set(allColumnNames)];
+
+
+    // 5. Safe replacements for numeric values
+    uniqueColumnNames.forEach(col => {
+        // 'col' is the ALIAS (e.g., 'MOXY'), which is the row key.
+        let value = row[col]; // Direct lookup: row['MOXY'] -> "159"
+
+        // Safely parse the value
+        if (!isNaN(value) && value !== '' && value !== null && value !== undefined) {
+            value = parseFloat(value);
         } else {
-            ctx.textAlign = 'right';
-            ctx.fillText(String(cellValue), aggCellX + col.width - PADDING, aggregateRowY + ROW_HEIGHT / 2);
+            value = 0; // The issue is here if it defaults to 0
         }
-        aggCellX += col.width;
-        if (colIndex < visibleColumns.length - 1) {
-            ctx.beginPath();
-            ctx.moveTo(aggCellX, aggregateRowY);
-            ctx.lineTo(aggCellX, aggregateRowY + ROW_HEIGHT);
-            ctx.stroke();
-        }
+        
+        // Convert value to string for replacement, essential for expressions like "159 > 150"
+        const replacementValue = String(value);
+
+ 
+        currentExpression = currentExpression.replace(new RegExp(`\\[${col}\\]`, 'g'), replacementValue);
+        
+         currentExpression = currentExpression.replace(new RegExp(`\\b${col}\\b`, 'g'), replacementValue);
     });
 
-    // --- Pagination ---
-    const paginationRowY = aggregateRowY + ROW_HEIGHT;
-    ctx.fillStyle = '#4B5563';
-    ctx.fillRect(x, paginationRowY, tableWidth, ROW_HEIGHT);
-    if (totalPages > 1) {
-       ctx.textAlign = 'center';
-            ctx.fillStyle = '#FFFFFF';
-            ctx.font = `${FONT_SIZE}px Inter`;
-            const pageText = `Page ${currentPage + 1} of ${totalPages}`;
-            ctx.fillText(pageText, x + tableWidth / 2, paginationRowY + ROW_HEIGHT / 2);
+    // 6. Evaluate (The expression should be "159 > 150")
+    try {
+        // Run final evaluation. The comparison logic should now work.
+        const result = eval(currentExpression);
+        return result;
+    } catch (e) {
+        console.error("Evaluation Error in expression:", currentExpression, e);
+        return null; 
+    }
+}
 
-            const prevButtonX = x + PADDING;
-            const nextButtonX = x + width - PADDING - 30;
+/**
+ * Evaluates a filter string for a given row.
+ * Returns true if the row passes the filter, false otherwise.
+ * * NOTE: This is a new helper function required for filter evaluation.
+ * You should place this outside the main functions or define it globally.
+ */
 
-            ctx.fillStyle = currentPage > 0 ? '#6B7280' : '#374151';
-            ctx.fillRect(prevButtonX, paginationRowY, 30, ROW_HEIGHT);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillText('<', prevButtonX + 15, paginationRowY + ROW_HEIGHT / 2);
+/**
+ * Evaluates a filter string for a given row.
+ * Returns true if the row passes the filter, false otherwise.
+ */
 
-            ctx.fillStyle = currentPage < totalPages - 1 ? '#6B7280' : '#374151';
-            ctx.fillRect(x + tableWidth - PADDING - 30 + 15, paginationRowY, 30, ROW_HEIGHT);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillText('>', nextButtonX + 15, paginationRowY + ROW_HEIGHT / 2);
+function evaluateFilter(filter, row, aliasToOriginalMap, config) {
+    if (!filter) return true; // No filter means it passes
+
+    // Assuming getDayNameFromDate and date parsing helpers are available and working (as they are for for6/7/8)
+
+    // --- 1. Handling DAY_OF_WEEK Date Filters ---
+    const dayOfWeekMatch = filter.match(/\[(.*?)\]\s*DAY_OF_WEEK\s*\((.*?)\)/i);
+    if (dayOfWeekMatch) {
+        const fullColumn = dayOfWeekMatch[1].trim();
+        // ... (rest of DAY_OF_WEEK logic remains unchanged and is assumed correct) ...
+        const daysString = dayOfWeekMatch[2];
+        const allowedDays = daysString.split(',').map(d => d.trim().toUpperCase());
+        
+        // Find the original column name without the template suffix for the date value
+        const colMatch = fullColumn.match(/(.*)\s*-\s*(.*)/);
+        const colName = colMatch ? colMatch[1].trim() : fullColumn;
+        const originalColName = aliasToOriginalMap[colName] || colName;
+        const dateString = row[originalColName];
+        
+        if (!dateString) return false;
+
+        const shortDayName = getDayNameFromDate(dateString).toUpperCase();
+        
+        if (shortDayName === 'UNKNOWN' || shortDayName === 'INVALID DATE' || shortDayName === 'ERROR') {
+            return false;
+        }
+
+        return allowedDays.includes(shortDayName);
+    }
+    
+    // --- 2. Handling DATE_RANGE / BETWEEN Date Filters ---
+    // ... (rest of DATE_RANGE/BETWEEN logic remains unchanged and is assumed correct) ...
+    const dateRangeMatch = filter.match(/\[(.*?)\]\s*DATE_RANGE\s*\((.*?)\)/i);
+    const betweenMatch = filter.match(/\[(.*?)\]\s*between\s*(.*?)\s*and\s*(.*?)$/i);
+
+    if (dateRangeMatch || betweenMatch) {
+        let fullColumn, startStr, endStr;
+
+        if (dateRangeMatch) {
+            fullColumn = dateRangeMatch[1].trim();
+            const rangeStr = dateRangeMatch[2]; 
+            [startStr, endStr] = rangeStr.split(',').map(s => s.trim());
+        } else if (betweenMatch) {
+            fullColumn = betweenMatch[1].trim();
+            startStr = betweenMatch[2].trim();
+            endStr = betweenMatch[3].trim();
+        }
+
+        if (!startStr || !endStr) return false;
+
+        const colMatch = fullColumn.match(/(.*)\s*-\s*(.*)/);
+        const colName = colMatch ? colMatch[1].trim() : fullColumn;
+        const originalColName = aliasToOriginalMap[colName] || colName;
+        const dateString = row[originalColName];
+
+        if (!dateString) return false;
+
+        const date = new Date(dateString);
+        const start = new Date(startStr);
+        const end = new Date(endStr);
+        
+        start.setHours(0, 0, 0, 0);
+        end.setHours(23, 59, 59, 999); 
+
+        if (isNaN(date.getTime()) || isNaN(start.getTime()) || isNaN(end.getTime())) {
+            return false;
+        }
+
+        return date.getTime() >= start.getTime() && date.getTime() <= end.getTime();
+    }
+
+
+    // --- 3. Handling Standard Numeric/Boolean Filters (Fallback using eval) ---
+    else {
+         // Since this is not a custom date filter, we prepare the filter string
+        // by stripping template suffixes before calling evaluateExpression.
+
+        if (filter.match(/DAY_OF_WEEK|DATE_RANGE|between/i)) {
+            return false;
+        }
+
+        // FIX: STRIPPING LOGIC FOR NUMERIC FILTER (Addresses for5 failure)
+        let cleanedFilter = filter; 
+        
+        if (config.columnConfiguration?.selectedColumns) {
+            config.columnConfiguration.selectedColumns.forEach(col => {
+                if (col.temp_name) {
+                    // Target the full suffix string including surrounding spaces
+                    const fullSuffixPattern = new RegExp(`\\s*-\\s*${col.temp_name}`, 'gi');
+                    
+                    cleanedFilter = cleanedFilter.replace(fullSuffixPattern, '');
+                }
+            });
+        }
+        
+        // CRITICAL CLEANUP: Ensure spaces are normalized (e.g., "[MOXY] > 150")
+        cleanedFilter = cleanedFilter.replace(/\s+/g, ' ').trim();
+         // evaluateExpression handles replacing columns with numbers and running eval().
+        // It should receive a clean expression like "[MOXY] > 150"
+        const result = evaluateExpression(cleanedFilter, row, aliasToOriginalMap, config);
+         if (result === null) {
+            return false;
+        }
+
+        return !!result; // Coerce result to boolean
     }
 }
 
 
 
+function applyFormulas(data, formulas, aliasToOriginalMap, config) {
+
+    console.log('data:>>>>',data);
+    console.log('formulas:>>>>',formulas);
+    console.log('aliasToOriginalMap:>>>>',aliasToOriginalMap);
+    console.log('config:>>>>',config);
+
+    const formulaEntries = Object.entries(formulas);
+
+    if (formulaEntries.length === 0) return data;
 
 
+    // --- NEW STEP 1: RENAME FORMULA DB COLUMNS TO ALIASES ---
+    const dbToAliasMap = {};
+    if (config.columnConfiguration && config.columnConfiguration.selectedColumns) {
+        config.columnConfiguration.selectedColumns.forEach(col => {
+            // Only map if col_name and alias_name are different.
+            if (col.col_name !== col.alias_name) {
+                dbToAliasMap[col.col_name] = col.alias_name;
+            }
+        });
+    }
 
+    // Process all formulas to replace 'col_name' with 'alias_name'
+    const processedFormulas = {};
+    for (const [formulaName, formulaObj] of formulaEntries) {
+        // Handle both string and object formats
+        let expression = typeof formulaObj === 'object' ? formulaObj.formula : formulaObj;
+        
+        // FIX for TypeError: Ensure filter is a string (formulaObj.filter || '')
+        let filter = typeof formulaObj === 'object' ? (formulaObj.filter || '') : ''; 
+        
+        let formulaType = typeof formulaObj === 'object' ? formulaObj.type : 'number';
 
-
+        // 1. Rename column names (e.g., MOXY_YORK -> MOXY) in both formula and filter
+        for (const [dbName, aliasName] of Object.entries(dbToAliasMap)) {
             
+            // FIX: Match bracketed or unbracketed column names
+            const dbNameRegex = new RegExp(`(\\[|\\b)${dbName}(\\]|\\b)`, 'g');
             
-            loadHotelList();
-            
-            // --- Event Handlers (Using DIVs) ---
-            addReportBtn.addEventListener('click', openAddModal);
-            cancelBtn.addEventListener('click', hideModal);
-			deleteBtn.addEventListener('click', deleteReport);
+            // Replacement function preserves the surrounding bracket/boundary.
+            const replacementFn = (match, prefix, suffix) => {
+                return prefix + aliasName + suffix;
+            };
 
-            modal.addEventListener('click', (e) => {
-                if(e.target === modal) hideModal();
-            });
+            expression = expression.replace(dbNameRegex, replacementFn);
+            filter = filter.replace(dbNameRegex, replacementFn);
+        }
 
-
-
-let l_new_create = 10;
-            saveBtn.addEventListener('click', () => {
-                            l_new_create = -1;
-						const name = reportNameInput.value.trim();
-						const dataStr = reportDataInput.value.trim();
-                        console.log('dataStr:>>>>>',dataStr);
-                           if (reportId) {
-                                loadReportDataForCanvas(reportId, editingReportIndex);
-                            } else {
-                                alert('Report ID not found. Please select a valid report.');
-                            }
-                     
-
-						// --- NEW VALIDATION LOGIC FOR UNIQUE NAME ---
-						const isDuplicate = reports.some((report, index) => {
-							// If we are in EDIT mode, we skip the report currently being edited
-							// as it's allowed to keep its own name.
-							if (editingReportIndex !== -1 && index === editingReportIndex) {
-								return false; 
-							}
-							// Check for a case-insensitive match against other reports
-							return report.name.trim().toLowerCase() === name.toLowerCase();
-						});
-
-						if (isDuplicate) {
-							alert(`A report named "${name}" already exists. Please choose a unique name.`);
-							// Optional: Highlight the input field for better UX
-							reportNameInput.focus();
-							reportNameInput.classList.add('border-red-500', 'ring-red-500');
-							setTimeout(() => {
-								reportNameInput.classList.remove('border-red-500', 'ring-red-500');
-							}, 3000);
-							return;
-						}
-						hideModal(); 
-					});
-
-            canvas.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const rect = canvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-
-                const zoomFactor = 1.1;
-                const oldScale = scale;
-
-                if (e.deltaY < 0) { 
-                    scale *= zoomFactor;
-                } else { 
-                    scale /= zoomFactor;
-                }
-                
-                scale = Math.max(0.1, Math.min(scale, 5)); 
-
-                pan.x = mouseX - (mouseX - pan.x) * (scale / oldScale);
-                pan.y = mouseY - (mouseY - pan.y) * (scale / oldScale);
-                
-                draw();
-            });
-
-            canvas.addEventListener('mousedown', (e) => {
-                const pos = getCanvasCoords(e);
-                lastMouse = { x: e.clientX, y: e.clientY };
-                
-                // 1. Check for TITLE click (Edit Report)
-
-                    const clickedReport = reports.find(r => {
-                        return (
-                            pos.x >= r.x &&
-                            pos.x <= r.x + r.width &&
-                            pos.y >= r.y &&
-                            pos.y <= r.y + TITLE_HEIGHT
-                        );
-                    });
-
-                    if (clickedReport) {
-                        const index = reports.findIndex(r => r.id === clickedReport.id);
-                        console.log("Clicked header for:", clickedReport.name, "at index:", index);
-                        openEditModal(index);
-                        return;
-                    }
+        // Store the newly renamed formula object
+        processedFormulas[formulaName] = { 
+            formula: expression, 
+            filter: filter, 
+            type: formulaType 
+        };
+    }
+   // console.log('processedFormulas:>>>',processedFormulas);
+    // Formula processing will now use processedFormulas instead of 'formulas'
+    const finalFormulaEntries = Object.entries(processedFormulas);
+    // --- END NEW STEP 1 ---
 
 
-                // 2. Check for pagination clicks (FIXED LOGIC)
-                for (const report of reports) {
-                    if (report.totalPages > 1) {
-                        
-                        // Calculate the current visual extent of the table data/footer
-                        const startRow = report.currentPage * ROWS_PER_PAGE;
-                        const visibleRowsLength = Math.min(ROWS_PER_PAGE, report.data.rows.length - startRow);
+    // Create a map of column data types 
+    const columnDataTypes = {};
+    if (config.columnConfiguration && config.columnConfiguration.selectedColumns) {
+        config.columnConfiguration.selectedColumns.forEach(col => {
+            columnDataTypes[col.alias_name || col.col_name] = col.data_type;
+        });
+    }
 
-                        // Total height above the pagination row: Title + Header + Visible Rows + Aggregate Row
-                        const contentHeightAbovePagination = TITLE_HEIGHT + HEADER_HEIGHT + (visibleRowsLength * ROW_HEIGHT) + ROW_HEIGHT;
-                        
-                        const paginationY = report.y + contentHeightAbovePagination;
+    // Helper function to parse date string (DD-MMM-YYYY) to Date object
+    function parseDate(dateStr) {
+        const months = {
+            'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
+            'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11
+        };
+        
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            const day = parseInt(parts[0], 10);
+            const month = months[parts[1].toUpperCase()];
+            const year = parseInt(parts[2], 10);
+            return new Date(year, month, day);
+        }
+        return null;
+    }
 
-                        // Calculate button rectangles in canvas coordinates
-                        const prevBtnRect = { x: report.x + PADDING, y: paginationY, width: 30, height: ROW_HEIGHT };
-                        const nextBtnRect = { x: report.x + report.width - PADDING - 30, y: paginationY, width: 30, height: ROW_HEIGHT };
+    // Helper function to format date as DD-MMM-YYYY
+    function formatDate(date) {
+        const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 
+                       'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+        const day = date.getDate().toString().padStart(2, '0');
+        const month = months[date.getMonth()];
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+    }
 
-                        // Check Prev Button
-                        if (pos.x >= prevBtnRect.x && pos.x <= prevBtnRect.x + prevBtnRect.width && pos.y >= prevBtnRect.y && pos.y <= prevBtnRect.y + prevBtnRect.height) {
-                            if (report.currentPage > 0) {
-                                report.currentPage--;
-                                draw();
-                                return; 
-                            }
-                        }
-                        // Check Next Button
-                        if (pos.x >= nextBtnRect.x && pos.x <= nextBtnRect.x + nextBtnRect.width && pos.y >= nextBtnRect.y && pos.y <= nextBtnRect.y + nextBtnRect.height) {
-                           if (report.currentPage < report.totalPages - 1) {
-                                report.currentPage++;
-                                draw();
-                                return;
-                            }
-                        }
-                    }
-                }
-                
-                // 3. Check if dragging a table
-                draggedTableIndex = reports.findIndex(r => pos.x >= r.x && pos.x <= r.x + r.width && pos.y >= r.y && pos.y <= r.y + r.height);
-                if (draggedTableIndex !== -1) {
-                    isDraggingTable = true;
-                    dragOffset.x = pos.x - reports[draggedTableIndex].x;
-                    dragOffset.y = pos.y - reports[draggedTableIndex].y;
+    // Helper function to add days to a date
+    function addDays(dateStr, days) {
+        const date = parseDate(dateStr);
+        if (!date) return dateStr;
+        date.setDate(date.getDate() + days);
+        return formatDate(date);
+    }
+
+    // Helper function to find value in cleanedDatamain by PK_COL and column name
+    function findValueInCleanedData(pkColDate, columnName) {
+        // Clean the column name - remove any {n} suffix
+        const cleanColumnName = columnName.replace(/\{\d+\}$/, '');
+        
+        // Look for the row in cleanedDatamain
+        const foundRow = cleanedDatamain.find(row => row.PK_COL === pkColDate);
+        if (foundRow) {
+            return foundRow[cleanColumnName] || null;
+        }
+        return null;
+    }
+
+
+    finalFormulaEntries.forEach(([formulaName, formulaObj]) => { // Use finalFormulaEntries
+
+        let expression = formulaObj.formula;
+        let filter = formulaObj.filter;
+        let formulaType = formulaObj.type;
+
+        data.forEach(row => {
+            try {
+                // -------------------------
+                // 2. APPLY FILTER LOGIC
+                // -------------------------
+                // Assumes evaluateFilter is working with the now-aliased names
+                if (filter && !evaluateFilter(filter, row, aliasToOriginalMap, config)) {
+                    // Filter failed, set result to null and skip calculation
+                    row[formulaName] = null;
                     return;
                 }
 
-                // If not doing anything else, start panning
-                isPanning = true;
-            });
+                // If filter passes (or no filter exists), proceed with calculation
+                let currentExpression = expression;
 
-            canvas.addEventListener('mousemove', (e) => {
-                if (isPanning) {
-                    const dx = e.clientX - lastMouse.x;
-                    const dy = e.clientY - lastMouse.y;
-                    pan.x += dx;
-                    pan.y += dy;
-                    lastMouse = { x: e.clientX, y: e.clientY };
-                    draw();
-                } else if (isDraggingTable) {
-                    const pos = getCanvasCoords(e);
-                    reports[draggedTableIndex].x = pos.x - dragOffset.x;
-                    reports[draggedTableIndex].y = pos.y - dragOffset.y;
-                    draw();
+                // -------------------------
+                // 3. REMOVE TEMPLATE SUFFIXES (Must happen AFTER renaming, BEFORE evaluation)
+                // -------------------------
+                if (config.columnConfiguration?.selectedColumns) {
+                    config.columnConfiguration.selectedColumns.forEach(col => {
+                        if (col.temp_name) {
+                            // Target the full suffix string and the optional following operator.
+                            const suffixPattern = new RegExp(`\\s*-\\s*${col.temp_name}\\s*(\\+|\\-|\\*|\\/)?`, 'gi');
+                            
+                            // Replace the entire pattern with just the operator (or nothing).
+                            currentExpression = currentExpression.replace(suffixPattern, (match, operator) => {
+                                return operator || '';
+                            });
+                        }
+                    });
+                }
+                
+                // CRITICAL CLEANUP: Ensure spaces are normalized
+                currentExpression = currentExpression.replace(/\s+/g, ' ').trim();
+
+                // console.log('currentExpression:>>>',currentExpression);
+                // -------------------------
+                // NEW: Handle {1} functionality for offset column references
+                // -------------------------
+                // Find column references with {n} pattern
+
+                const regex = /(\[?[A-Za-z0-9_% ]+?\]?)\{(\d+)\}/g;
+
+             //   const offsetColumnRegex = /(\[?\b[A-Z_][A-Z0-9_]*\b\]?)\{(\d+)\}/gi;
+
+                const offsetColumnRegex =  /(\[?[A-Za-z_][A-Za-z0-9_% ]*[A-Za-z0-9_%]\]?){(\d+)}/g;
+                let match;
+
+                // Create a map to store offset column replacements
+                const offsetReplacements = {};
+                
+                while ((match = offsetColumnRegex.exec(currentExpression)) !== null) {
+                    const fullMatch = match[0];
+                    const columnRef = match[1].replace(/[\[\]]/g, ''); // Remove brackets if present
+                    const offset = parseInt(match[2]);
+                    //console.log('match:>>>',match);
+                    // Get current row's PK_COL date
+                    const currentDate = row.PK_COL;
+                    
+                    if (currentDate) {
+                        // Calculate target date by adding offset
+                        const targetDate = addDays(currentDate, offset);
+                        
+                        // Find the value in cleanedDatamain
+                        const offsetValue = findValueInCleanedData(targetDate, columnRef);
+                        
+                        if (offsetValue !== null) {
+                            // Store the replacement value
+                            offsetReplacements[fullMatch] = offsetValue;
+                        } else {
+                            // If not found, use null
+                            offsetReplacements[fullMatch] = null;
+                        }
+                    } else {
+                        offsetReplacements[fullMatch] = null;
+                    }
+                }
+
+                // Replace all offset column references with their values
+                Object.entries(offsetReplacements).forEach(([pattern, value]) => {
+                    // Handle the value based on its type
+                    let replacementValue;
+                    
+                    if (value === null || value === undefined || value === '') {
+                        // For missing values, use 0 for numeric operations
+                        replacementValue = 'Calculation Issue';
+                        currentExpression = replacementValue;
+                        return;
+                    } else if (!isNaN(value) && value !== null) {
+                        // Convert numeric strings to actual numbers
+                        replacementValue = parseFloat(value);
+                    } else {
+                        // For non-numeric values, use them as-is with quotes
+                        replacementValue = `"${value}"`;
+                    }
+                    
+                    // Replace the pattern in the expression
+                    currentExpression = currentExpression.replace(pattern, replacementValue);
+                });
+
+                // 4. Find all remaining column references (should now only be alias names like 'MOXY')
+                const columnMatches = currentExpression.match(/\[(.*?)\]/g) || [];
+                const simpleColumnMatches = currentExpression.match(/\b[A-Z_][A-Z0-9_]*\b/gi) || [];
+
+                const allColumnNames = [
+                    ...columnMatches.map(match => match.replace(/[\[\]]/g, '')),
+                    ...simpleColumnMatches.filter(word => !['AND', 'OR', 'NOT', 'Day', 'Date', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].includes(word))
+                ];
+                const uniqueColumnNames = [...new Set(allColumnNames)];
+
+                // -------------------------
+                // 5. Safe replacements for numeric values
+                // -------------------------
+                uniqueColumnNames.forEach(col => {
+                    // 'col' is the ALIAS (e.g., 'MOXY'), which is the row key.
+                    
+                    let value = row[col]; // Direct lookup by alias/row key
+
+                    if (columnDataTypes[col] === 'date' && value != null && value !== '') {
+                        value = `"${value}"`; // keep quotes for JS eval
+                    } else if (!isNaN(value) && value !== '' && value !== null) {
+                        value = parseFloat(value);
+                    } else {
+                        value = `"${value}"`; // fallback as string
+                    }
+                    const sanitizedCol = col.replace(/%/g, ''); 
+                    // Replace both bracketed and unbracketed versions
+                    currentExpression = currentExpression.replace(new RegExp(`\\[${sanitizedCol}\\]`, 'g'), value);
+                    currentExpression = currentExpression.replace(new RegExp(`\\b${sanitizedCol}\\b`, 'g'), value);
+                   
+                });
+
+                // 6. Evaluate
+                
+                //console.log('Last currentExpression:>>>>>>>>>>>>>>>',currentExpression);
+                currentExpression = replaceDayNameFunction(currentExpression);
+
+                const result = eval(currentExpression);
+                if (typeof result === 'number' && isNaN(result)) {
+                    row[formulaName] = 'Calculation Issue';
+                } else {
+                    row[formulaName] = result;
+                }
+
+            } catch (error) {
+                //console.error(`Error processing formula ${formulaName}: ${error.message}`);
+                row[formulaName] = 'Calculation Issue';
+            }
+        });
+
+    });
+
+    return data;
+}
+
+
+function replaceDayNameFunction(expr) {
+    if (!expr || typeof expr !== "string") return expr;
+
+    return expr.replace(/Day\s*\(\s*([^)]+?)\s*\)/gi,
+    "(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date($1).getDay() ])"
+);
+
+}
+
+
+function evaluateDateFunctions(expression, row, aliasToOriginalMap, columnDataTypes) {
+ 
+    // Handle Day() function with space: "Day (STAY_DATE)"
+    if (expression.includes('Day') && expression.includes('(')) {
+        // Match both "Day(STAY_DATE)" and "Day (STAY_DATE)" patterns
+        const dayMatches = expression.match(/Day\s*\(\s*([^)]+)\s*\)/gi);
+        if (dayMatches) {
+            dayMatches.forEach(match => {
+                
+                // Extract the inner content (column name)
+                const innerContent = match.replace(/Day\s*\(\s*/i, '').replace(/\s*\)\s*/, '');
+                
+                // Remove any brackets from the inner content
+                let columnName = innerContent.replace(/[\[\]]/g, '').trim();
+                
+                
+                // Check if this is a date column
+                const dataType = columnDataTypes[columnName];
+                
+                if (dataType && dataType.toLowerCase() === 'date') {
+                    const originalColName = aliasToOriginalMap[columnName] || columnName;
+                    const dateValue = row[originalColName];
+                    
+                    
+                    if (dateValue) {
+                        const dayName = getDayNameFromDate(dateValue);
+                        expression = expression.replace(match, `"${dayName}"`);
+                    } else {
+                        expression = expression.replace(match, '"Unknown"');
+                    }
+                } else {
+                    expression = expression.replace(match, '"NotADate"');
                 }
             });
+        }
+    }
+    
+    //console.log('Expression after date function processing:', expression);
+    return expression;
+}
 
-            canvas.addEventListener('mouseup', () => {
-                isPanning = false;
-                if (isDraggingTable) {
-                    saveReports(); 
-                    isDraggingTable = false;
-                    draggedTableIndex = -1;
-                }
-            });
+function getDayNameFromDate(dateString) {
+    if (!dateString) return 'Unknown';
+    
+    try {
+        
+        // Handle different date formats
+        let date;
+        
+        // Try MM/DD/YYYY format (like "9/28/2025")
+        if (dateString.includes('/')) {
+            const parts = dateString.split('/');
+            if (parts.length === 3) {
+                const month = parseInt(parts[0]) - 1; // Months are 0-indexed in JavaScript
+                const day = parseInt(parts[1]);
+                const year = parseInt(parts[2]);
+                date = new Date(year, month, day);
+            }
+        }
+        // Try YYYY-MM-DD format
+        else if (dateString.includes('-')) {
+            date = new Date(dateString);
+        }
+        // Try other common formats
+        else {
+            date = new Date(dateString);
+        }
+        
+        if (isNaN(date.getTime())) {
+            return 'Invalid Date';
+        }
+        
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const shortDayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        
+        const dayIndex = date.getDay();
+        const dayName = shortDayNames[dayIndex];
+        
+        
+        return dayName;
+        
+    } catch (error) {
+        return 'Error';
+    }
+}
 
-            canvas.addEventListener('mouseleave', () => {
-                isPanning = false;
-                isDraggingTable = false;
-                draggedTableIndex = -1;
-            });
+function evaluateDateExpression(expression) {
+    try {
+        // For date expressions that result in strings (like day names), just return the evaluated string
+        if (expression.includes('"')) {
+            // This is a string result, evaluate and return
+            return eval(expression);
+        } else {
+            // For other date calculations, use eval
+            return eval(expression);
+        }
+    } catch (error) {
+        console.error('Error evaluating date expression:', expression, error);
+        return 'Error';
+    }
+}
 
-            // --- Initial Load ---
-            window.addEventListener('resize', resizeCanvas);
+function isDateColumn(columnName, config) {
+    if (config.columnConfiguration && config.columnConfiguration.selectedColumns) {
+        const columnConfig = config.columnConfiguration.selectedColumns.find(
+            col => col.col_name === columnName || col.alias_name === columnName
+        );
+        return columnConfig && columnConfig.data_type === 'date';
+    }
+    return false;
+}
+
+
+function populateTableHeader(tableHead, visibleColumns) {
+    tableHead.innerHTML = "";
+
+    const tr = document.createElement('tr');
+
+    visibleColumns.forEach(column => {
+        const th = document.createElement('th');
+        th.textContent = column.displayName;
+        tr.appendChild(th);
+    });
+
+    tableHead.appendChild(tr);
+}
+
+
+function populateTableData(tableBody, data, visibleColumns, conditionalFormatting, aliasToOriginalMap, config) {
+    if (data.length === 0) {
+        console.log('No data to display after processing');
+       //  populateTableHeader(tableBody, visibleColumns);
+        return;
+    }
+   console.log('data:>>>',data);
+  //  populateTableHeader(tableBody, visibleColumns);
+
+    data.forEach((row, rowIndex) => {
+        const tr = document.createElement('tr');
+        
+        visibleColumns.forEach(column => {
+            const td = document.createElement('td');
+            const value = row[column.displayName] !== undefined ? row[column.displayName] : '';
             
-            // ** PAGELOAD METHOD **
-            // const savedData = [
-            //     {
-            //         "name": "Initial Load Report",
-            //         "x": 50,
-            //         "y": 50,
-            //         "currentPage": 0,
-            //         "data": sampleData
-            //     }
-            // ];
+            // Format formula values to 2 decimal places if they're numbers
+            if (column.isFormula && value !== null && !isNaN(value) && value !== '') {
+                td.textContent = parseFloat(value).toFixed(2);
+            } else {
+                // Optional: Ensure null/undefined shows as empty string, not "null" text
+                td.textContent = (value === null || value === undefined || (typeof value === 'number' && isNaN(value))) ? '' : value;
+            }
+                        
+            td.setAttribute('data-column', column.originalName);
             
-           // loadReports(savedData); // Load reports on page load
-            resizeCanvas();
+            if (column.isFormula) {
+                td.classList.add('formula-cell');
+            }
+            
+            // Apply conditional formatting - pass the config parameter
+            applyConditionalFormattingToCell(td, row, column, conditionalFormatting, aliasToOriginalMap, config);
+            
+            tr.appendChild(td);
+        });
+        
+        tableBody.appendChild(tr);
+    });
+    
+    console.log(`  Populated ${data.length} rows in table.... `);
+}
+
+
+function optimizeTableForColumns(tableElement, columnCount) {
+    if (columnCount > 25) {
+        tableElement.classList.add('compact-table');
+    } else {
+        tableElement.classList.remove('compact-table');
+    }
+}
+
+function updateExistingTab(tabName, reportId, hotelId) {
+    const tabObj = window.UPDATE_TAB_DATA;
+    if (!tabObj) return;
+
+    console.log("🟡 Updating tab:", tabObj);
+
+    // ✅ Update JSON object
+    tabObj.tab_name = tabName;
+    tabObj.report_id = reportId;
+
+    // ✅ Update tab text in UI
+    const tabEl = document.querySelector(`.tab[data-tab="${tabObj.tab_id}"]`);
+    if (tabEl) {
+        tabEl.childNodes[0].textContent = tabName + " ";
+    }
+
+    console.log("🟢 Updated full JSON before save:", parsedTabsData);
+
+    // ✅ Save back to database (same MERGE process)
+    apex.server.process(
+        'AJX_MANAGE_REPORT_DASHBOARD',
+        {
+            x01: 'INSERT', // MERGE handles update
+            x02: hotelId,
+            x03: JSON.stringify(parsedTabsData)
+        },
+        {
+            success: function(pData) {
+                console.log("✅ Tab updated in DB:", pData);
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                console.error("❌ Error updating tab:", textStatus, errorThrown);
+            }
+        }
+    );
+
+    // ✅ Clear update mode
+    window.UPDATE_TAB_DATA = null;
+}
+
+// Code for hiding the select hotel lov ----
+document.addEventListener("DOMContentLoaded", function () {
+    document.getElementById("static-lov-hotel").style.display = "none";
+});
+
+
+

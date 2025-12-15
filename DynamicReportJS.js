@@ -676,6 +676,7 @@ console.time("AJAX_Execution_Time");
 
         // AUTOMATICALLY LOAD EXISTING REPORT DATA AND FILTERS
         if (selectedReport && selectedReport.ID) {
+            selectedreport_var = selectedReport.ID
             call_dashboard_data(selectedReport.ID); // load report data
         }
  
@@ -691,7 +692,7 @@ console.time("AJAX_Execution_Time");
  
 }
 
-
+let selectedreport_var;
 document.addEventListener("click", function(e) {
 
     
@@ -2600,18 +2601,18 @@ function handleSave() {
                 // console.log('AJAX Success:', data);
                 showSuccessMessage(`Column header updated to: ${newHeader} `);
                //  
-                
-                hideColumnPopup();
-                //loadDashboard(reporttblData);
-                 //recalculateAllFormulas();
-                 applyAggregations(); 
-                refreshTable();
-                updateCalculation();
-                loadSavedFormatters();
+                 call_dashboard_data(selectedreport_var);
+                 hideColumnPopup();
+                // //loadDashboard(reporttblData);
+                //  recalculateAllFormulas();
+                //  applyAggregations(); 
+                // refreshTable();
+                // updateCalculation();
+                // loadSavedFormatters();
                 
                 saveAllDataToJSON(); 
     
-                displayReportTable('handleSave');
+              //  displayReportTable('handleSave');
                // refreshTable(); 
                    
                     
@@ -3212,7 +3213,9 @@ function displayReportTable(callfrom) {
         } else {
             th.title = `Click to edit: ${fullColumnName}${displayName !== baseCol ? ` (Alias: ${displayName})` : ''}`;
         }
-
+        if(displayName==='PK_COL'){
+            return;
+        }
         columnHeaderRow.appendChild(th);
     });
     
@@ -3232,6 +3235,9 @@ function displayReportTable(callfrom) {
         orderedColumns.forEach(columnInfo => {
             const fullColumnName = columnInfo.fullColumnName;
             const td = document.createElement('td');
+            if(columnInfo.baseColumnName==='PK_COL'){
+                return;
+            }
             let displayValue = row[fullColumnName];
 
             const baseCol = columnInfo.baseColumnName;
@@ -3926,30 +3932,23 @@ function escapeRegExp(string) {
     return translatedExpression;
 }
 
+
+
 function loadConfigFromJSON(configData) {
     if (!configData || !configData.formulas || !configData.filters) {
         console.warn("No valid configuration data provided for loading formulas/filters.");
         return;
     }
     console.log('loadConfigFromJSON call:>>>');
+
     // 1. Load Formulas and Filters into global memory
     Object.assign(savedFormulas, configData.formulas);
     Object.assign(savedFilters, configData.filters);
-    
-    // --- CRITICAL FIX START: Persist and Refresh UI Lists ---
-    if (typeof saveFormulas === 'function') {
-        saveFormulas();
-    } else {
-        console.warn("saveFormulas function not found. Formula list will not update.");
-    }
-    
-    if (typeof saveFilters === 'function') {
-        saveFilters();
-    } else {
-        console.warn("saveFilters function not found. Filter list will not update.");
-    }
-    // --- CRITICAL FIX END ---
-    
+
+    // Update UI lists
+    if (typeof saveFormulas === 'function') saveFormulas();
+    if (typeof saveFilters === 'function') saveFilters();
+
     // 2. Update global column list (to include calculated columns)
     if (configData.columnMetadata) {
         configData.columnMetadata.forEach(meta => {
@@ -3958,117 +3957,172 @@ function loadConfigFromJSON(configData) {
             }
         });
     }
-    console.log('savedFormulas:>>>',savedFormulas);
-    // 3. Apply Formulas to the current data set (reporttblData.rows)
+
+    // 3. Apply all formulas
     for (const [calcName, formulaObj] of Object.entries(savedFormulas)) {
-    // Handle both formats: string (old) and object (new)
-    let formulaString = "";
-    let filterString = "";
 
-    if (typeof formulaObj === 'string') {
-        formulaString = formulaObj;
-    } else if (formulaObj && typeof formulaObj.formula === 'string') {
-        formulaString = formulaObj.formula;
-        filterString = formulaObj.filter || "";
-    } else {
-        console.warn(`Invalid formula format for ${calcName}:`, formulaObj);
-        continue;
-    }
+        let formulaString = "";
+        let filterString = "";
 
-    reporttblData.rows.forEach(row => {
-        let calculatedFormula = formulaString;
-        let conditionalExpression = filterString;
-        let isBooleanCalculation = false;
-
-        // --- 0. Replace DAY_OF_WEEK expressions first ---
-       calculatedFormula = replaceDayOfWeekExpressions(calculatedFormula, row);
-    conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
-    
-    // --- NEW STEP: Replace BETWEEN / DATE_RANGE expressions ---
-    conditionalExpression = replaceDateRangeExpressions(conditionalExpression, row);
-    // calculatedFormula usually won't have date range filter syntax, so we skip it.
-
-        // --- 1. Replace column references ---
-        tableColumns.forEach(col => {
-            const fullColName = col.name;
-            const colType = col.type ? col.type.toLowerCase() : 'number';
-            let rowValue = row[fullColName];
-
-            // Trim strings
-            if (typeof rowValue === 'string') rowValue = rowValue.trim();
-
-            // Default empty/null to 0 for numeric operations
-            if (rowValue === null || rowValue === "") rowValue = 0;
-
-            calculatedFormula = replaceColumnOccurrences(calculatedFormula, fullColName, colType, rowValue, 'formula');
-            conditionalExpression = replaceColumnOccurrences(conditionalExpression, fullColName, colType, rowValue, 'filter');
-        });
-
-        // --- 2. Normalize filter logical operators and spaces ---
-        if (conditionalExpression) {
-            conditionalExpression = conditionalExpression
-                .replace(/\bAND\b/gi, '&&')
-                .replace(/\bOR\b/gi, '||')
-                .replace(/\s+/g, ' ')
-                .trim();
+        if (typeof formulaObj === "string") {
+            formulaString = formulaObj;
+        } else if (formulaObj && typeof formulaObj.formula === "string") {
+            formulaString = formulaObj.formula;
+            filterString = formulaObj.filter || "";
+        } else {
+            console.warn(`Invalid formula format for ${calcName}:`, formulaObj);
+            continue;
         }
 
-        // --- 3. Evaluate filter condition ---
-        let conditionMet = true;
-        if (conditionalExpression) {
-            const trimmed = conditionalExpression.trim().toLowerCase();
-            if (trimmed === 'true') conditionMet = true;
-            else if (trimmed === 'false') conditionMet = false;
-            else {
-                try {
-                    conditionMet = new Function(`return (${conditionalExpression});`)();
-                } catch (error) {
-                    console.error(`Error evaluating filter condition for ${calcName}:`, conditionalExpression, error);
-                    conditionMet = false;
+        reporttblData.rows.forEach(row => {
+
+            let calculatedFormula = formulaString;
+            let conditionalExpression = filterString;
+            let isBooleanCalculation = false;
+
+            // --- SHIFT RESOLVER MUST RUN FIRST — BEFORE ANYTHING ELSE ---
+            tableColumns.forEach(col => {
+                const fullColName = col.name;
+                const currentPK = row["PK_COL"];
+                const shiftPattern = new RegExp(escapeRegExp(fullColName) + "\\{(-?\\d+)\\}", "g");
+
+                calculatedFormula = calculatedFormula.replace(shiftPattern, (match, shiftVal) => {
+                    const shift = parseInt(shiftVal, 10);
+                    let d = new Date(currentPK);
+                    d.setDate(d.getDate() + shift);
+
+                    let target = d.toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric'
+                    }).toUpperCase().replace(/ /g, '-');
+
+                    const found = reporttblData.rows.find(r => r.PK_COL === target);
+                   // return found ? (found[fullColName] ?? 0) : 0;
+               
+
+                    return (
+                            found &&
+                            found[fullColName] != null &&
+                            found[fullColName].toString().trim() !== ''
+                        )
+                            ? found[fullColName]
+                            : 'Calculation Issue';
+
+                  //  return found ? (found[fullColName] ?? 'Calculation Issue') : 'Calculation Issue';
+                });
+
+               // console.log('calculatedFormula:============>',calculatedFormula);
+
+                conditionalExpression = conditionalExpression.replace(shiftPattern, (match, shiftVal) => {
+                    const shift = parseInt(shiftVal, 10);
+                    let d = new Date(currentPK);
+                    d.setDate(d.getDate() + shift);
+
+                    let target = d.toLocaleDateString('en-GB', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric'
+                    }).toUpperCase().replace(/ /g, '-');
+
+                    const found = reporttblData.rows.find(r => r.PK_COL === target);
+                    //return found ? (found[fullColName] ?? 0) : 0;
+                    //return found ? (found[fullColName] ?? 'Calculation Issue') : 'Calculation Issue';
+                    return (
+                            found &&
+                            found[fullColName] != null &&
+                            found[fullColName].toString().trim() !== ''
+                        )
+                            ? found[fullColName]
+                            : 'Calculation Issue';
+                });
+            });
+            // --- END SHIFT RESOLVER ---
+
+
+            // DAY OF WEEK expanders
+            calculatedFormula = replaceDayOfWeekExpressions(calculatedFormula, row);
+            conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
+
+            // date ranges
+            conditionalExpression = replaceDateRangeExpressions(conditionalExpression, row);
+
+            // Fix Day() function
+            calculatedFormula = replaceDayFunction(calculatedFormula);
+            conditionalExpression = replaceDayFunction(conditionalExpression);
+            // --- Replace normal column references ---
+            tableColumns.forEach(col => {
+                const fullColName = col.name;
+                const colType = col.type ? col.type.toLowerCase() : 'number';
+                let rowValue = row[fullColName];
+
+                if (typeof rowValue === "string") rowValue = rowValue.trim();
+                if (rowValue === null || rowValue === "") rowValue = 'Calculation Issue';
+
+                calculatedFormula = replaceColumnOccurrences(calculatedFormula, fullColName, colType, rowValue, 'formula');
+                conditionalExpression = replaceColumnOccurrences(conditionalExpression, fullColName, colType, rowValue, 'filter');
+            });
+            // normalize AND/OR
+            if (conditionalExpression) {
+                conditionalExpression = conditionalExpression
+                    .replace(/\bAND\b/gi, "&&")
+                    .replace(/\bOR\b/gi, "||")
+                    .replace(/\s+/g, " ")
+                    .trim();
+            }
+
+            calculatedFormula = replaceDayFunction(calculatedFormula);
+            conditionalExpression = replaceDayFunction(conditionalExpression);
+
+            // --- Evaluate filter ---
+            let conditionMet = true;
+            
+            if (conditionalExpression) {
+                const trimmed = conditionalExpression.trim().toLowerCase();
+
+                if (trimmed === "true") conditionMet = true;
+                else if (trimmed === "false") conditionMet = false;
+                else {
+                    try {
+                        conditionMet = new Function(`return (${conditionalExpression});`)();
+                    } catch (error) {
+                        console.error(`Error evaluating filter condition for ${calcName}:`, conditionalExpression, error);
+                        conditionMet = false;
+                    }
                 }
             }
-        }
-
-        // --- 4. Evaluate the formula if filter passes ---
-        let result = null;
-        if (isBooleanCalculation) {
-            result = (String(calculatedFormula).trim().toLowerCase() === 'true');
-        } else if (conditionMet) {
-            try {
-                result = new Function(`return (${calculatedFormula});`)();
-            } catch (error) {
-                console.error(`Error applying formula for ${calcName}:`, calculatedFormula, error);
-                result = null;
+//console.log('calculatedFormula:>>>',calculatedFormula);
+            // --- Evaluate formula ---
+            let result = null;
+            if (isBooleanCalculation) {
+                result = (String(calculatedFormula).trim().toLowerCase() === "true");
+            } else if (conditionMet) {
+                try {
+                    result = new Function(`return (${calculatedFormula});`)();
+                } catch (error) {
+                  //  console.error(`Error applying formula for ${calcName}:`, calculatedFormula, error);
+                    result = 'Calculation Issue';
+                }
+            } else {
+                result = 'Calculation Issue';
             }
-        } else {
-            result = null; // filter failed
-        }
 
-        // --- 5. Assign result to row ---
-        row[calcName] = result;
-    });
-}
+            // assign result back to row
+            row[calcName] = result;
+        });
+    }
 
-
-    // 4. Apply the first available filter
+    // apply first filter
     const firstFilterName = Object.keys(savedFilters)[0];
     if (firstFilterName) {
-        const filterExpression = savedFilters[firstFilterName];
-        
-        // Temporarily set the builder's preview so applySavedFilter can read it
-      //  document.getElementById('filter-preview').value = filterExpression;
-      //  document.getElementById('filter-name-input').value = firstFilterName;
-
-        // Apply the filter using the robust function
-        applySavedFilter(false); 
+        applySavedFilter(false);
     } else {
-        // No filter to apply, just refresh table to show calculated columns
         displayReportTable('loadConfigFromJSON');
     }
-    
-    // 5. Refresh UI controls (dropdowns)
-    initializeControls(); 
+
+    initializeControls();
 }
+
  
 
 localStorage.clear();
@@ -4925,6 +4979,9 @@ function applyAggregations() {
             // --- 0. Replace DAY_OF_WEEK expressions first ---
             calculatedFormula = replaceDayOfWeekExpressions(calculatedFormula, row);
             conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
+// Fix Day() function
+calculatedFormula = replaceDayFunction(calculatedFormula);
+conditionalExpression = replaceDayFunction(conditionalExpression);
 
             // --- 1. Replace all column references ---
             tableColumns.forEach(col => {
@@ -5002,7 +5059,7 @@ function escapeRegExp(string) {
 
 // Parse M/D/YYYY or MM/DD/YYYY to YYYY-MM-DD (returns null if not matched)
 function parseMMDDYYYY(dateString) {
-    console.log('dateString:>>>>',dateString);
+   // console.log('dateString:>>>>',dateString);
     try{
     const match = dateString.match(/^(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})$/);
     if (match) {
@@ -5104,7 +5161,7 @@ function replaceColumnOccurrences(text, fullColName, colType, rowValue, context)
         substitution = jsStringLiteral(rowValue || '');
     } else { // number (default)
         const num = parseFloat(rowValue);
-        substitution = isNaN(num) ? 0 : num;
+        substitution = isNaN(num) ? 'Calculcation Issue' : num;
     }
 
     return text.replace(bracketedRegex, substitution).replace(plainRegex, substitution);
@@ -5129,8 +5186,8 @@ function replaceDayOfWeekExpressions(expr, row) {
 }
 
 // ---------------------- Main function ----------------------
+function addCalculation() { 
 
-function addCalculation() {
     const calcName = document.getElementById('calc-name').value.trim();
     const currentFormula = document.getElementById('formula-preview').value.trim(); // formula only
     const currentFilter = (document.getElementById('formulafilter-preview') && document.getElementById('formulafilter-preview').value.trim()) || ''; // filter only (WHERE condition)
@@ -5158,14 +5215,12 @@ function addCalculation() {
             // If formula itself contains date range or day_of_week, evaluate those first (they return "true"/"false")
             let dateRangeResult = parseDateRange(calculatedFormula, row);
             let dayOfWeekResult = parseDayOfWeek(calculatedFormula, row);
-            
-if (dayOfWeekResult !== null) {
-    calculatedFormula = dayOfWeekResult;
-    isBooleanCalculation = true;
-    ctype = "boolean";
-}
 
- 
+            if (dayOfWeekResult !== null) {
+                calculatedFormula = dayOfWeekResult;
+                isBooleanCalculation = true;
+                ctype = "boolean";
+            }
 
             if (dateRangeResult !== null) {
                 calculatedFormula = dateRangeResult; // "true" or "false"
@@ -5187,35 +5242,80 @@ if (dayOfWeekResult !== null) {
                 conditionalExpression = filterDayOfWeek;
             }
 
-calculatedFormula = replaceDayOfWeekExpressions(calculatedFormula, row);
-conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
+            // Replace Day(...) occurrences (important) BEFORE column replacements and evaluation
+            calculatedFormula = replaceDayFunction(calculatedFormula);
+            conditionalExpression = replaceDayFunction(conditionalExpression);
+
+            // If you also have a replaceDayOfWeekExpressions helper, keep using it
+            calculatedFormula = replaceDayOfWeekExpressions(calculatedFormula, row);
+            conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
+
+                        // Fix Day() function
+            calculatedFormula = replaceDayFunction(calculatedFormula);
+            conditionalExpression = replaceDayFunction(conditionalExpression);
+
+
             // --- Replace all column occurrences in both calculation formula and condition ---
             tableColumns.forEach(col => {
-                const fullColName = col.name;
-                const colType = col.type ? col.type.toLowerCase() : 'number';
-                const rowValue = row[fullColName];
+    const fullColName = col.name;
+    const colType = col.type ? col.type.toLowerCase() : 'number';
+    const rowValue = row[fullColName];
 
-                // Replace in formula
-                if (calculatedFormula && (new RegExp('\\b' + escapeRegExp(fullColName) + '\\b', 'i').test(calculatedFormula) ||
-                    new RegExp('\\[\\s*' + escapeRegExp(fullColName) + '\\s*\\]', 'i').test(calculatedFormula))) {
-                    calculatedFormula = replaceColumnOccurrences(calculatedFormula, fullColName, colType, rowValue, 'formula');
+    // ---------- NEW BLOCK: process {N} BEFORE anything else ----------
+    if (calculatedFormula) {
+        const shiftPattern = new RegExp(escapeRegExp(fullColName) + '\\{(-?\\d+)\\}', 'g');
 
-                    // Set ctype based on first non-boolean column type encountered
-                    if (!isBooleanCalculation) {
-                        if (colType === 'string') ctype = 'string';
-                        else if (colType === 'date') ctype = 'string';
-                        else ctype = 'number';
-                    }
-                }
+        calculatedFormula = calculatedFormula.replace(shiftPattern, (match, shiftVal) => {
+            const shift = parseInt(shiftVal, 10);
 
-                // Replace in conditionalExpression (filter)
-                if (conditionalExpression && (new RegExp('\\b' + escapeRegExp(fullColName) + '\\b', 'i').test(conditionalExpression) ||
-                    new RegExp('\\[\\s*' + escapeRegExp(fullColName) + '\\s*\\]', 'i').test(conditionalExpression))) {
-                    conditionalExpression = replaceColumnOccurrences(conditionalExpression, fullColName, colType, rowValue, 'filter');
-                }
-            });
- 
- 
+            let d = new Date(row.PK_COL);
+            d.setDate(d.getDate() + shift);
+
+            let target = d.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            }).toUpperCase().replace(/ /g, '-');
+
+            const found = reporttblData.rows.find(r => r.PK_COL === target);
+           // return found ? (found[fullColName] ?? 0) : 0;
+          //  return found ? (found[fullColName] ?? 'Calculation Issue') : 'Calculation Issue';
+            return (
+                found &&
+                found[fullColName] != null &&
+                found[fullColName].toString().trim() !== ''
+            )
+                ? found[fullColName]
+                : 'Calculation Issue';
+
+        });
+    }
+    // ---------- END NEW BLOCK ----------
+
+
+    // Replace column names
+    if (calculatedFormula && (
+        new RegExp('\\b' + escapeRegExp(fullColName) + '\\b', 'i').test(calculatedFormula) ||
+        new RegExp('\\[\\s*' + escapeRegExp(fullColName) + '\\s*\\]', 'i').test(calculatedFormula)
+    )) {
+        calculatedFormula = replaceColumnOccurrences(calculatedFormula, fullColName, colType, rowValue, 'formula');
+
+        if (!isBooleanCalculation) {
+            if (colType === 'string') ctype = 'string';
+            else if (colType === 'date') ctype = 'string';
+            else ctype = 'number';
+        }
+    }
+
+    // Filter condition replacement
+    if (conditionalExpression && (
+        new RegExp('\\b' + escapeRegExp(fullColName) + '\\b', 'i').test(conditionalExpression) ||
+        new RegExp('\\[\\s*' + escapeRegExp(fullColName) + '\\s*\\]', 'i').test(conditionalExpression)
+    )) {
+        conditionalExpression = replaceColumnOccurrences(conditionalExpression, fullColName, colType, rowValue, 'filter');
+    }
+});
+
 
             // --- Evaluate the condition (if provided) ---
             let conditionMet = true;
@@ -5246,11 +5346,11 @@ conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
                     // Evaluate numeric/string expressions
                     result = new Function(`return (${calculatedFormula});`)();
                 } catch (e) {
-                    console.error('Error evaluating calculated formula:', calculatedFormula, e);
-                    result = null;
+                   // console.error('Error evaluating calculated formula:', calculatedFormula, e);
+                    result = 'Calculation Issue';
                 }
             } else {
-                result = null;
+                result = 'Calculation Issue';
             }
 
             // Set result and coerce type for the column
@@ -5297,7 +5397,21 @@ conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
     displayReportTable('addCalculation');
 }
 
-        
+
+function replaceDayFunction(expr) {
+    if (!expr || typeof expr !== "string") return expr;
+
+    // For numeric day of month:
+  //  return expr.replace(/Day\s*\(\s*([^)]+?)\s*\)/gi, '(new Date($1).getDate())');
+
+    // If you want weekday names instead, use:
+     return expr.replace(/Day\s*\(\s*([^)]+?)\s*\)/gi,
+          "(['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][ new Date($1).getDay() ])");
+}
+
+
+
+
         let savedCalculationColumns = []; 
 
 
@@ -5375,6 +5489,37 @@ conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
 }
 
 
+
+function replaceShiftedColumn(formula, colName, currentPK) {
+    reporttblData_temp = reporttblData;
+    // Matches:  col1{1}, col1{-2}, col1{10}
+    const regex = new RegExp(`${escapeRegExp(colName)}\\{(-?\\d+)\\}`, 'g');
+
+    return formula.replace(regex, (match, shiftValue) => {
+        const shift = parseInt(shiftValue, 10);
+
+        // Convert PK_COL to Date
+        const baseDate = new Date(currentPK);
+        baseDate.setDate(baseDate.getDate() + shift);
+
+        // Format to match PK_COL values (DD-MMM-YYYY)
+        const target = baseDate.toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        }).toUpperCase().replace(/ /g, '-');
+
+        // Find matching row
+        const matchRow = reporttblData_temp.rows.find(r => r.PK_COL === target);
+
+        if (!matchRow) return 0;  // or null or keep original
+
+        return matchRow[colName] ?? 0;
+    });
+}
+
+
+
        function updateCalculation() {
     // Prevent action if disabled
     if (document.getElementById('update-calculation').getAttribute('aria-disabled') === 'true') {
@@ -5428,28 +5573,117 @@ conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
 calculatedFormula = replaceDayOfWeekExpressions(calculatedFormula, row);
 conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
 
+// Fix Day() function
+calculatedFormula = replaceDayFunction(calculatedFormula);
+conditionalExpression = replaceDayFunction(conditionalExpression);
+
+
             // --- Replace column references in formula & filter ---
             tableColumns.forEach(col => {
-                const fullColName = col.name;
-                const colType = col.type ? col.type.toLowerCase() : 'number';
-                const rowValue = row[fullColName];
+    const fullColName = col.name;
+    const colType = col.type ? col.type.toLowerCase() : 'number';
+    const rowValue = row[fullColName];
+    const currentPK = row["PK_COL"];
 
-                if (calculatedFormula && (new RegExp('\\b' + escapeRegExp(fullColName) + '\\b', 'i').test(calculatedFormula) ||
-                    new RegExp('\\[\\s*' + escapeRegExp(fullColName) + '\\s*\\]', 'i').test(calculatedFormula))) {
-                    calculatedFormula = replaceColumnOccurrences(calculatedFormula, fullColName, colType, rowValue, 'formula');
+    // ---------- NEW CODE: handle shifted references col{N} ----------
+    // pattern:   fullColName{N}
+    const shiftPattern = new RegExp(escapeRegExp(fullColName) + '\\{(-?\\d+)\\}', 'g');
 
-                    if (!isBooleanCalculation) {
-                        if (colType === 'string') ctype = 'string';
-                        else if (colType === 'date') ctype = 'string';
-                        else ctype = 'number';
-                    }
-                }
+    if (calculatedFormula) {
+        calculatedFormula = calculatedFormula.replace(shiftPattern, (match, shiftVal) => {
+            const shift = parseInt(shiftVal, 10);
 
-                if (conditionalExpression && (new RegExp('\\b' + escapeRegExp(fullColName) + '\\b', 'i').test(conditionalExpression) ||
-                    new RegExp('\\[\\s*' + escapeRegExp(fullColName) + '\\s*\\]', 'i').test(conditionalExpression))) {
-                    conditionalExpression = replaceColumnOccurrences(conditionalExpression, fullColName, colType, rowValue, 'filter');
-                }
-            });
+            let d = new Date(currentPK);
+            d.setDate(d.getDate() + shift);
+
+            let target = d.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            }).toUpperCase().replace(/ /g, '-');
+
+            const found = reporttblData.rows.find(r => r.PK_COL === target);
+            //return found ? (found[fullColName] ?? 0) : 0;
+           // return found ? (found[fullColName] ?? 'Calculation Issue') : 'Calculation Issue';
+            return (
+                found &&
+                found[fullColName] != null &&
+                found[fullColName].toString().trim() !== ''
+            )
+                ? found[fullColName]
+                : 'Calculation Issue';
+
+        });
+    }
+
+    if (conditionalExpression) {
+        conditionalExpression = conditionalExpression.replace(shiftPattern, (match, shiftVal) => {
+            const shift = parseInt(shiftVal, 10);
+
+            let d = new Date(currentPK);
+            d.setDate(d.getDate() + shift);
+
+            let target = d.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            }).toUpperCase().replace(/ /g, '-');
+
+            const found = reporttblData.rows.find(r => r.PK_COL === target);
+            //return found ? (found[fullColName] ?? 0) : 0;
+           // return found ? (found[fullColName] ?? 'Calculation Issue') : 'Calculation Issue';
+            return (
+                found &&
+                found[fullColName] != null &&
+                found[fullColName].toString().trim() !== ''
+            )
+                ? found[fullColName]
+                : 'Calculation Issue';
+
+
+        });
+    }
+    // ---------- END NEW CODE ----------------------------------------
+
+
+    // existing dynamic formula replacement
+    if (calculatedFormula && (
+        new RegExp('\\b' + escapeRegExp(fullColName) + '\\b', 'i').test(calculatedFormula) ||
+        new RegExp('\\[\\s*' + escapeRegExp(fullColName) + '\\s*\\]', 'i').test(calculatedFormula)
+    )) {
+
+        calculatedFormula = replaceColumnOccurrences(
+            calculatedFormula,
+            fullColName,
+            colType,
+            rowValue,
+            'formula'
+        );
+
+        if (!isBooleanCalculation) {
+            if (colType === 'string') ctype = 'string';
+            else if (colType === 'date') ctype = 'string';
+            else ctype = 'number';
+        }
+    }
+
+    if (conditionalExpression && (
+        new RegExp('\\b' + escapeRegExp(fullColName) + '\\b', 'i').test(conditionalExpression) ||
+        new RegExp('\\[\\s*' + escapeRegExp(fullColName) + '\\s*\\]', 'i').test(conditionalExpression)
+    )) {
+
+        conditionalExpression = replaceColumnOccurrences(
+            conditionalExpression,
+            fullColName,
+            colType,
+            rowValue,
+            'filter'
+        );
+    }
+
+  //  console.log('calculatedFormula:>>>>', calculatedFormula);
+});
+
 
  
 
@@ -5474,21 +5708,21 @@ conditionalExpression = replaceDayOfWeekExpressions(conditionalExpression, row);
                 try {
                     result = new Function(`return (${calculatedFormula});`)();
                 } catch (e) {
-                    console.error('Error evaluating formula:', calculatedFormula, e);
-                    result = null;
+                    //console.error('Error evaluating formula:', calculatedFormula, e);
+                    result = 'Calculation Issue';
                 }
             } else {
-                result = null;
+                result = 'Calculation Issue';
             }
 
             // --- Coerce type ---
             if (ctype === 'number' && result !== null && result !== undefined) {
                 const numeric = parseFloat(result);
-                row[currentFormulaName] = isNaN(numeric) ? null : numeric;
+                row[currentFormulaName] = isNaN(numeric) ? 'Calculation Issue' : numeric;
             } else if (ctype === 'boolean') {
                 row[currentFormulaName] = Boolean(result);
             } else {
-                row[currentFormulaName] = result === null || result === undefined ? null : String(result);
+                row[currentFormulaName] ='Calculation Issue';
             }
         });
 
