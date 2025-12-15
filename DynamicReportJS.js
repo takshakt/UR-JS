@@ -4419,10 +4419,15 @@ function loadConfigFromJSON(configData) {
                     let calculatedFormula = matchedSchedule.formula;
 
                     // Apply shift pattern processing
+                    // IMPORTANT: Shift patterns in multi-schedule use #columnName{N}# syntax
+                    let shiftPatternError = false;
                     tableColumns.forEach(col => {
                         const fullColName = col.name;
+                        const colType = col.type ? col.type.toLowerCase() : 'number';
                         const currentPK = row["PK_COL"];
-                        const shiftPattern = new RegExp(escapeRegExp(fullColName) + "\\{(-?\\d+)\\}", "g");
+
+                        // Match #columnName{N}# pattern (wrapped shift pattern)
+                        const shiftPattern = new RegExp('#' + escapeRegExp(fullColName) + "\\{(-?\\d+)\\}#", "g");
 
                         calculatedFormula = calculatedFormula.replace(shiftPattern, (match, shiftVal) => {
                             const shift = parseInt(shiftVal, 10);
@@ -4436,11 +4441,32 @@ function loadConfigFromJSON(configData) {
                             }).toUpperCase().replace(/ /g, '-');
 
                             const found = reporttblData.rows.find(r => r.PK_COL === target);
-                            return (found && found[fullColName] != null && found[fullColName].toString().trim() !== '')
-                                ? found[fullColName]
-                                : 'Calculation Issue';
+
+                            // Return the shifted value if found, otherwise mark as error
+                            if (found && found[fullColName] != null && found[fullColName].toString().trim() !== '') {
+                                // Type-aware replacement for shift pattern values
+                                if (colType === 'number') {
+                                    const numValue = parseFloat(found[fullColName]);
+                                    if (isNaN(numValue)) {
+                                        shiftPatternError = true;
+                                        return '0'; // Placeholder to prevent syntax error
+                                    }
+                                    return numValue;
+                                } else {
+                                    return `'${found[fullColName]}'`;
+                                }
+                            }
+                            // Missing data for shift pattern
+                            shiftPatternError = true;
+                            return '0'; // Placeholder to prevent syntax error
                         });
                     });
+
+                    // If shift pattern had errors, skip evaluation
+                    if (shiftPatternError) {
+                        row[calcName] = 'Calculation Issue';
+                        return; // Skip to next row
+                    }
 
                     // Replace column references using #column# syntax
                     let hasCalculationIssue = false;
@@ -5795,6 +5821,28 @@ function saveMultiSchedule() {
         type: schedules[0]?.type || 'number' // Use first schedule's type as default
     };
 
+    // Ensure the calculated column exists in tableColumns
+    const columnType = schedules[0]?.type || 'number';
+    if (!tableColumns.find(col => col.name === formulaName)) {
+        const newCalcColumn = { name: formulaName, type: columnType };
+        tableColumns.push(newCalcColumn);
+
+        // Also add to other metadata arrays if they exist
+        if (typeof report_expressions !== 'undefined' && report_expressions.columnMetadata) {
+            report_expressions.columnMetadata.push(newCalcColumn);
+        }
+        if (typeof savedCalculationColumns !== 'undefined') {
+            savedCalculationColumns.push(newCalcColumn);
+        }
+        if (typeof jsondata_details !== 'undefined' && jsondata_details.selectedColumns) {
+            jsondata_details.selectedColumns.push({
+                column_name: formulaName,
+                display_name: formulaName,
+                is_visible: 'Yes'
+            });
+        }
+    }
+
     // Save to localStorage
     saveFormulas();
 
@@ -5842,27 +5890,37 @@ function validateScheduleFormula(formula, scheduleName) {
 
     // Check if all wrapped tokens are valid column names
     for (const token of wrappedTokens) {
-        const columnName = token.slice(1, -1);
-        if (!validColumnNames.includes(columnName)) {
-            errors.push(`"${scheduleName}": Invalid column reference: "${token}". Column "${columnName}" does not exist in the report.`);
+        let columnName = token.slice(1, -1);
+
+        // SHIFT PATTERN SUPPORT: Strip {N} suffix if present (e.g., "Occupancy %{1}" -> "Occupancy %")
+        // Shift patterns like {1}, {2}, {-1} reference values from other dates
+        const baseColumnName = columnName.replace(/\{-?\d+\}$/, '');
+
+        // Check if base column (without shift pattern) exists
+        if (!validColumnNames.includes(baseColumnName)) {
+            errors.push(`"${scheduleName}": Invalid column reference: "${token}". Column "${baseColumnName}" does not exist in the report.`);
         }
     }
 
     // CRITICAL: Check if any unwrapped column names exist in formula
     // This ensures mandatory # wrapping
     for (const colName of validColumnNames) {
-        // Skip if column is already wrapped
-        if (wrappedColumnNames.includes(colName)) {
+        // Skip if column is already wrapped (plain or with shift pattern)
+        const isWrappedPlain = wrappedColumnNames.includes(colName);
+        const isWrappedWithShift = wrappedColumnNames.some(wrapped => wrapped.startsWith(colName + '{'));
+
+        if (isWrappedPlain || isWrappedWithShift) {
             continue;
         }
 
         // Create regex to find unwrapped column name
         // Must be word boundary to avoid partial matches
+        // Also check for shift pattern suffix like {1}, {2}, etc.
         const escapedColName = escapeRegExp(colName);
-        const unwrappedRegex = new RegExp(`(?<!#)\\b${escapedColName}\\b(?!#)`, 'g');
+        const unwrappedRegex = new RegExp(`(?<!#)\\b${escapedColName}(?:\\{-?\\d+\\})?\\b(?!#)`, 'g');
 
         if (unwrappedRegex.test(formula)) {
-            errors.push(`"${scheduleName}": Column "${colName}" must be wrapped in # symbols. Use: #${colName}#`);
+            errors.push(`"${scheduleName}": Column "${colName}" must be wrapped in # symbols. Use: #${colName}# or #${colName}{N}# for shift patterns`);
         }
     }
 
@@ -6709,6 +6767,7 @@ function jsStringLiteral(s) {
 function replaceColumnOccurrences(text, fullColName, colType, rowValue, context) {
     const escapedName = escapeRegExp(fullColName);
     const bracketedRegex = new RegExp('\\[\\s*' + escapedName + '\\s*\\]', 'gi');
+    const hashRegex = new RegExp('#' + escapedName + '#', 'g'); // NEW: Handle #column# syntax
     const plainRegex = new RegExp('\\b' + escapedName + '\\b', 'gi');
 
     let substitution;
@@ -6728,10 +6787,11 @@ function replaceColumnOccurrences(text, fullColName, colType, rowValue, context)
         substitution = jsStringLiteral(rowValue || '');
     } else { // number (default)
         const num = parseFloat(rowValue);
-        substitution = isNaN(num) ? 'Calculcation Issue' : num;
+        substitution = isNaN(num) ? 'Calculation Issue' : num;
     }
 
-    return text.replace(bracketedRegex, substitution).replace(plainRegex, substitution);
+    // Replace in order: #column#, [column], then plain column
+    return text.replace(hashRegex, substitution).replace(bracketedRegex, substitution).replace(plainRegex, substitution);
 }
 
 function replaceDayOfWeekExpressions(expr, row) {
@@ -6929,9 +6989,14 @@ function addCalculation() {
                         }
 
                         // Apply existing shift pattern processing
+                        // IMPORTANT: Shift patterns in multi-schedule use #columnName{N}# syntax
+                        let shiftPatternError = false;
                         tableColumns.forEach(col => {
                             const fullColName = col.name;
-                            const shiftPattern = new RegExp(escapeRegExp(fullColName) + '\\{(-?\\d+)\\}', 'g');
+                            const colType = col.type ? col.type.toLowerCase() : 'number';
+
+                            // Match #columnName{N}# pattern (wrapped shift pattern)
+                            const shiftPattern = new RegExp('#' + escapeRegExp(fullColName) + '\\{(-?\\d+)\\}#', 'g');
 
                             scheduleFormula = scheduleFormula.replace(shiftPattern, (match, shiftVal) => {
                                 const shift = parseInt(shiftVal, 10);
@@ -6942,10 +7007,32 @@ function addCalculation() {
                                 }).toUpperCase().replace(/ /g, '-');
 
                                 const found = reporttblData.rows.find(r => r.PK_COL === target);
-                                return (found && found[fullColName] != null && found[fullColName].toString().trim() !== '')
-                                    ? found[fullColName] : 'Calculation Issue';
+
+                                // Return the shifted value if found, otherwise mark as error
+                                if (found && found[fullColName] != null && found[fullColName].toString().trim() !== '') {
+                                    // Type-aware replacement for shift pattern values
+                                    if (colType === 'number') {
+                                        const numValue = parseFloat(found[fullColName]);
+                                        if (isNaN(numValue)) {
+                                            shiftPatternError = true;
+                                            return '0'; // Placeholder to prevent syntax error
+                                        }
+                                        return numValue;
+                                    } else {
+                                        return `'${found[fullColName]}'`;
+                                    }
+                                }
+                                // Missing data for shift pattern
+                                shiftPatternError = true;
+                                return '0'; // Placeholder to prevent syntax error
                             });
                         });
+
+                        // If shift pattern had errors, skip this row
+                        if (shiftPatternError) {
+                            row[calcName] = 'Calculation Issue';
+                            return; // Skip to next row
+                        }
 
                         // Replace column references with type-aware conversion
                         let hasCalculationIssue = false;
@@ -7256,9 +7343,14 @@ function replaceDayFunction(expr) {
                         let scheduleFormula = schedule.formula;
 
                         // Apply shift pattern processing
+                        // IMPORTANT: Shift patterns in multi-schedule use #columnName{N}# syntax
+                        let shiftPatternError = false;
                         tableColumns.forEach(col => {
                             const fullColName = col.name;
-                            const shiftPattern = new RegExp(escapeRegExp(fullColName) + '\\{(-?\\d+)\\}', 'g');
+                            const colType = col.type ? col.type.toLowerCase() : 'number';
+
+                            // Match #columnName{N}# pattern (wrapped shift pattern)
+                            const shiftPattern = new RegExp('#' + escapeRegExp(fullColName) + '\\{(-?\\d+)\\}#', 'g');
 
                             scheduleFormula = scheduleFormula.replace(shiftPattern, (match, shiftVal) => {
                                 const shift = parseInt(shiftVal, 10);
@@ -7269,10 +7361,32 @@ function replaceDayFunction(expr) {
                                 }).toUpperCase().replace(/ /g, '-');
 
                                 const found = reporttblData.rows.find(r => r.PK_COL === target);
-                                return (found && found[fullColName] != null && found[fullColName].toString().trim() !== '')
-                                    ? found[fullColName] : 'Calculation Issue';
+
+                                // Return the shifted value if found, otherwise mark as error
+                                if (found && found[fullColName] != null && found[fullColName].toString().trim() !== '') {
+                                    // Type-aware replacement for shift pattern values
+                                    if (colType === 'number') {
+                                        const numValue = parseFloat(found[fullColName]);
+                                        if (isNaN(numValue)) {
+                                            shiftPatternError = true;
+                                            return '0'; // Placeholder to prevent syntax error
+                                        }
+                                        return numValue;
+                                    } else {
+                                        return `'${found[fullColName]}'`;
+                                    }
+                                }
+                                // Missing data for shift pattern
+                                shiftPatternError = true;
+                                return '0'; // Placeholder to prevent syntax error
                             });
                         });
+
+                        // If shift pattern had errors, skip this row
+                        if (shiftPatternError) {
+                            row[calcName] = 'Calculation Issue';
+                            break; // Move to next schedule or formula
+                        }
 
                         // Replace column references with type-aware conversion
                         let hasCalculationIssue = false;
@@ -7365,44 +7479,53 @@ function replaceDayFunction(expr) {
             try {
                 let workingFormula = formula;
 
-                // Loop through all known columns
+                // Loop through all known columns - handle #column# syntax
                 tableColumns.forEach(col => {
                     const fullColName = col.name;
-                    if (workingFormula && workingFormula.includes(fullColName)) {
-                        const escaped = escapeRegExp(fullColName);
-                        const regex = new RegExp(escaped, "g");
+                    const colType = col.type ? col.type.toLowerCase() : 'number';
 
-                        if (col.type === "date" || type === "date") {
-                            const rawValue = row[fullColName];
-                            const dateObj = new Date(rawValue);
+                    // Check for #column# syntax first (new format)
+                    const escapedColName = escapeRegExp(fullColName);
+                    const wrappedRegex = new RegExp(`#${escapedColName}#`, 'g');
+                    const unwrappedRegex = new RegExp(`\\b${escapedColName}\\b`, 'g');
 
-                            if (isNaN(dateObj)) return;
+                    const hasWrappedRef = wrappedRegex.test(workingFormula);
+                    const hasUnwrappedRef = unwrappedRegex.test(workingFormula);
 
-                            if (/day/i.test(workingFormula)) {
-                                const dayName = dateObj.toLocaleDateString("en-GB", { weekday: "short" }).toUpperCase();
-                                result = dayName;
-                            } else if (/\+/.test(workingFormula) || /-/.test(workingFormula)) {
-                                const match = workingFormula.match(/([\+\-])\s*(\d+)/);
-                                if (match) {
-                                    const sign = match[1];
-                                    const num = parseInt(match[2]);
-                                    if (sign === "+") dateObj.setDate(dateObj.getDate() + num);
-                                    else dateObj.setDate(dateObj.getDate() - num);
-                                }
-                                result = dateObj.toLocaleDateString("en-GB", {
-                                    day: "2-digit",
-                                    month: "short",
-                                    year: "numeric"
-                                }).toUpperCase();
-                            } else {
-                                result = rawValue;
-                            }
+                    if (!hasWrappedRef && !hasUnwrappedRef) {
+                        return; // Column not used in formula
+                    }
 
-                            workingFormula = workingFormula.replace(regex, `"${result}"`);
+                    let rowValue = row[fullColName];
+
+                    // Check for missing/empty values
+                    if (rowValue === undefined || rowValue === null || rowValue === '') {
+                        if (colType === 'number') {
+                            rowValue = 0; // Default for legacy formulas
                         } else {
-                            const val = parseFloat(row[fullColName]) || 0;
-                            workingFormula = workingFormula.replace(regex, val);
+                            rowValue = '';
                         }
+                    }
+
+                    // Convert to appropriate type
+                    let replacementValue;
+                    if (colType === 'number') {
+                        const numValue = parseFloat(rowValue);
+                        replacementValue = isNaN(numValue) ? 0 : numValue;
+                    } else if (colType === 'date') {
+                        replacementValue = `'${rowValue}'`;
+                    } else {
+                        replacementValue = `'${rowValue}'`;
+                    }
+
+                    // Replace wrapped references (#column#)
+                    if (hasWrappedRef) {
+                        workingFormula = workingFormula.replace(new RegExp(`#${escapedColName}#`, 'g'), replacementValue);
+                    }
+
+                    // Replace unwrapped references (legacy support)
+                    if (hasUnwrappedRef && !hasWrappedRef) {
+                        workingFormula = workingFormula.replace(new RegExp(`\\b${escapedColName}\\b`, 'g'), replacementValue);
                     }
                 });
 
