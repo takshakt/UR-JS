@@ -1155,7 +1155,7 @@ const multiScheduleDialogHTML = `
 // Inject dialog into DOM
 document.body.insertAdjacentHTML('beforeend', multiScheduleDialogHTML);
 
-// Add hover styles for schedule controls
+// Add hover styles for schedule controls and hide Delete column header
 const scheduleControlStyles = `
 <style>
 .schedule-controls > div:hover {
@@ -1165,6 +1165,12 @@ const scheduleControlStyles = `
 .schedule-controls .delete-schedule:hover {
     background: #a33 !important;
     color: #fff !important;
+}
+
+/* Hide the Delete column header in saved formulas table */
+#saved-formulas-list thead th:nth-child(4),
+#saved-formulas-list thead th:last-child {
+    display: none !important;
 }
 </style>
 `;
@@ -5046,9 +5052,33 @@ function loadSavedFormulas() {
         let formulaDisplay, formulaType;
 
         if (formulaObj?.isMultiSchedule && formulaObj?.schedules) {
-            // Multi-schedule formula - show summary
+            // Multi-schedule formula - show all schedule formulas with filters
             const scheduleCount = formulaObj.schedules.length;
-            formulaDisplay = `Multi-Schedule (${scheduleCount} schedule${scheduleCount !== 1 ? 's' : ''})`;
+            const scheduleSummaries = formulaObj.schedules.map((schedule, idx) => {
+                let filters = [];
+
+                // Date range filter
+                if (schedule.filters?.dateRange) {
+                    filters.push(`${schedule.filters.dateRange.from} to ${schedule.filters.dateRange.to}`);
+                }
+
+                // Days of week filter
+                if (schedule.filters?.daysOfWeek?.length > 0) {
+                    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                    const days = schedule.filters.daysOfWeek.map(d => dayNames[d]).join(', ');
+                    filters.push(`Days: ${days}`);
+                }
+
+                // Custom filter
+                if (schedule.filters?.customFilter) {
+                    filters.push(`Filter: ${schedule.filters.customFilter}`);
+                }
+
+                const filterStr = filters.length > 0 ? ` [${filters.join(' | ')}]` : '';
+                return `<div style="margin-bottom: 4px;"><strong>${idx + 1}.</strong> ${schedule.formula}${filterStr}</div>`;
+            }).join('');
+
+            formulaDisplay = `<div style="font-size: 11px;">${scheduleSummaries}</div>`;
             formulaType = formulaObj.type || 'number';
         } else if (typeof formulaObj === 'string') {
             formulaDisplay = formulaObj;
@@ -5249,19 +5279,19 @@ function addScheduleBlock(scheduleData) {
                     </select>
                     <select class="form-input operator-select" style="flex: 1; padding: 5px; font-size: 12px;">
                         <option value="">-- Select Operator --</option>
+                        <option value="==">==</option>
+                        <option value="!=">!=</option>
+                        <option value=">">&gt;</option>
+                        <option value="<">&lt;</option>
+                        <option value=">=">&gt;=</option>
+                        <option value="<=">&lt;=</option>
+                        <option value="&&">&amp;&amp;</option>
+                        <option value="||">||</option>
                         <option value="+">+</option>
                         <option value="-">-</option>
                         <option value="*">*</option>
                         <option value="/">/</option>
                         <option value="%">%</option>
-                        <option value=">">&gt;</option>
-                        <option value="<">&lt;</option>
-                        <option value=">=">&gt;=</option>
-                        <option value="<=">&lt;=</option>
-                        <option value="==">==</option>
-                        <option value="!=">!=</option>
-                        <option value="&&">&amp;&amp;</option>
-                        <option value="||">||</option>
                         <option value="(">(</option>
                         <option value=")">)</option>
                     </select>
@@ -6245,13 +6275,13 @@ currentFormulaName = formulaName;
             const row = document.createElement('tr');
             row.className = 'formula-item';
             row.innerHTML = `
-                <td><strong>${name}</strong></td>
-                <td>${formulaDisplay}</td>
-                <td>
-                <div class="action-btn btn-info edit-formula" data-name="${name}" role="button">Edit</div>
-                </td>
-                <td>
-                <div class="action-btn btn-danger delete-formula" data-name="${name}" role="button">Delete</div>
+                <td style="width: 20%; white-space: nowrap;"><strong>${name}</strong></td>
+                <td style="width: 65%;">${formulaDisplay}</td>
+                <td style="width: 15%; white-space: nowrap;">
+                    <div style="display: flex; gap: 8px; justify-content: flex-start;">
+                        <div class="action-btn btn-info edit-formula" data-name="${name}" role="button" style="padding: 4px 10px; font-size: 12px;">Edit</div>
+                        <div class="action-btn btn-danger delete-formula" data-name="${name}" role="button" style="padding: 4px 10px; font-size: 12px;">Delete</div>
+                    </div>
                 </td>
             `;
 
@@ -8060,20 +8090,20 @@ $(document).on("change", "#column-lov", function () {
 
     // Default operator list
     let operators = [
-        { value: "+", label: "+ (Add)" },
-        { value: "-", label: "- (Subtract)" },
-        { value: "*", label: "* (Multiply)" },
-        { value: "/", label: "/ (Divide)" },
-        { value: "(", label: "(Open Paren)" },
-        { value: ")", label: ") (Close Paren)" }
+        { value: "+", label: "+" },
+        { value: "-", label: "-" },
+        { value: "*", label: "*" },
+        { value: "/", label: "/" },
+        { value: "(", label: "(" },
+        { value: ")", label: ")" }
     ];
 
     // If Date type → show only +, -, Day
     if (columnType === "date") {
         operators = [
-            { value: "+", label: "+ (Add)" },
-            { value: "-", label: "- (Subtract)" },
-            { value: "Day", label: "Day (Interval)" }
+            { value: "+", label: "+" },
+            { value: "-", label: "-" },
+            { value: "Day", label: "Day" }
         ];
     }
 
@@ -8213,26 +8243,26 @@ selectedValue = selectedValue.replace(/^\[(.*?)\]$/, '$1');
     const operatorLov = document.getElementById("filter-operator-lov");
 
     // Default operator list
-    let operators = [ 
-    { value: "===", label: "Equals (=)" },
-    { value: "!==", label: "Not Equals (!=)" },
-    { value: ">", label: "Greater Than (>)" },
-    { value: "<", label: "Less Than (<)" },
-    { value: ">=", label: "Greater Than or Equal (>=)" },
-    { value: "<=", label: "Less Than or Equal (<=)" },
-    { value: "&&", label: "AND (&&)" },
-    { value: "||", label: "OR (||)" },
-    { value: ".includes('VALUE')", label: "Contains (String)" },
-    { value: ".startsWith('VALUE')", label: "Starts With" },
-    { value: ".endsWith('VALUE')", label: "Ends With" },
+    let operators = [
+    { value: "===", label: "===" },
+    { value: "!==", label: "!==" },
+    { value: ">", label: ">" },
+    { value: "<", label: "<" },
+    { value: ">=", label: ">=" },
+    { value: "<=", label: "<=" },
+    { value: "&&", label: "&&" },
+    { value: "||", label: "||" },
+    { value: ".includes('VALUE')", label: ".includes('VALUE')" },
+    { value: ".startsWith('VALUE')", label: ".startsWith('VALUE')" },
+    { value: ".endsWith('VALUE')", label: ".endsWith('VALUE')" },
 
     // Arithmetic and Parenthesis Operators (from your existing list)
-    { value: "+", label: "+ (Add)" },
-    { value: "-", label: "- (Subtract)" },
-    { value: "*", label: "* (Multiply)" },
-    { value: "/", label: "/ (Divide)" },
-    { value: "(", label: "(Open Paren)" },
-    { value: ")", label: ") (Close Paren)" }
+    { value: "+", label: "+" },
+    { value: "-", label: "-" },
+    { value: "*", label: "*" },
+    { value: "/", label: "/" },
+    { value: "(", label: "(" },
+    { value: ")", label: ")" }
     ];
 
     const today = new Date();
@@ -8243,18 +8273,18 @@ selectedValue = selectedValue.replace(/^\[(.*?)\]$/, '$1');
 
     // If Date type → show only +, -, Day
     if (columnType === "date") {
-        operators = [ 
-    { value: "===", label: "Equals (=)" },
-    { value: "!==", label: "Not Equals (!=)" },
-    { value: ">", label: "Greater Than (>)" },
-    { value: "<", label: "Less Than (<)" },
-    { value: ">=", label: "Greater Than or Equal (>=)" },
-    { value: "<=", label: "Less Than or Equal (<=)" },
-    { value: "&&", label: "AND (&&)" }, 
-    { value: "+", label: "+ (Add)" },
-    { value: "-", label: "- (Subtract)" }, 
-    { value: "(", label: "(Open Paren)" },
-    { value: ")", label: ") (Close Paren)" },
+        operators = [
+    { value: "===", label: "===" },
+    { value: "!==", label: "!==" },
+    { value: ">", label: ">" },
+    { value: "<", label: "<" },
+    { value: ">=", label: ">=" },
+    { value: "<=", label: "<=" },
+    { value: "&&", label: "&&" },
+    { value: "+", label: "+" },
+    { value: "-", label: "-" },
+    { value: "(", label: "(" },
+    { value: ")", label: ")" },
     { value: todayStr, label: "SYSDATE" }
         ];
     }

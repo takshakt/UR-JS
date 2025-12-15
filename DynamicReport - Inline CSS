@@ -992,6 +992,13 @@
   border-right: none;
 }
 
+/* Hide the Delete column header (4th column) */
+.saved-formulas-table thead th:nth-child(4),
+#saved-formulas-list thead th:nth-child(4),
+#saved-formulas-list thead th:last-child {
+  display: none !important;
+}
+
 
 
 
