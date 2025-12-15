@@ -7000,6 +7000,195 @@ function jsStringLiteral(s) {
     return '"' + String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"') + '"';
 }
 
+// ============================================================================
+// VALIDATION UTILITY FUNCTIONS FOR FORMULA TYPE CHECKING
+// ============================================================================
+
+/**
+ * Validates if a value is valid for a number type column
+ * Returns true only if value is a finite number
+ */
+function isValidNumberValue(value) {
+    if (value === null || value === undefined || value === '') {
+        return false;
+    }
+
+    const num = typeof value === 'number' ? value : parseFloat(value);
+
+    // Reject NaN, Infinity, -Infinity
+    if (isNaN(num) || !isFinite(num)) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Validates if a value is valid for a date type column
+ * Accepts Date objects or valid date strings, rejects numbers
+ */
+function isValidDateValue(value) {
+    if (value === null || value === undefined || value === '') {
+        return false;
+    }
+
+    // Accept Date objects
+    if (value instanceof Date) {
+        return !isNaN(value.getTime());
+    }
+
+    // Accept date strings that can be parsed
+    if (typeof value === 'string') {
+        const dateObj = new Date(value);
+        return !isNaN(dateObj.getTime());
+    }
+
+    // Reject numbers - prevents "12345" from being treated as valid date
+    return false;
+}
+
+/**
+ * Validates if a value is valid for a text/string type column
+ * Text accepts anything except null/undefined
+ */
+function isValidTextValue(value) {
+    // Text accepts empty strings but not null/undefined
+    if (value === null || value === undefined) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Validates a formula evaluation result against its declared output type
+ * Returns the formatted value if valid, or 'Calculation Issue' if invalid
+ */
+function validateFormulaOutput(result, outputType, calcName) {
+    console.log(`[validateFormulaOutput] Validating result for ${calcName}:`, result, 'Type:', outputType);
+
+    // Edge cases: null, undefined - always invalid
+    if (result === null || result === undefined) {
+        console.log('[validateFormulaOutput] Result is null/undefined');
+        return 'Calculation Issue';
+    }
+
+    const type = (outputType || 'number').toLowerCase();
+
+    if (type === 'number') {
+        // NUMBER validation: Must be a finite number
+        if (typeof result === 'number') {
+            // Check for NaN, Infinity, -Infinity
+            if (isNaN(result) || !isFinite(result)) {
+                console.log('[validateFormulaOutput] Number is NaN or Infinity');
+                return 'Calculation Issue';
+            }
+            return result;
+        }
+
+        // Try parsing if it's a string
+        if (typeof result === 'string') {
+            const num = parseFloat(result);
+            if (isNaN(num) || !isFinite(num)) {
+                console.log('[validateFormulaOutput] String cannot be parsed as valid number');
+                return 'Calculation Issue';
+            }
+            return num;
+        }
+
+        console.log('[validateFormulaOutput] Result is not a number:', typeof result);
+        return 'Calculation Issue';
+
+    } else if (type === 'date') {
+        // DATE validation: Must be Date object or valid date string (NOT number)
+        if (!isValidDateValue(result)) {
+            console.log('[validateFormulaOutput] Result is not a valid date');
+            return 'Calculation Issue';
+        }
+
+        // Convert to UK format (DD-MMM-YYYY)
+        try {
+            const dateObj = result instanceof Date ? result : new Date(result);
+            if (isNaN(dateObj.getTime())) {
+                return 'Calculation Issue';
+            }
+
+            return dateObj.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            }).toUpperCase().replace(/ /g, '-');
+        } catch (e) {
+            console.error('[validateFormulaOutput] Date formatting error:', e);
+            return 'Calculation Issue';
+        }
+
+    } else {
+        // TEXT/STRING: Accept anything (dates and numbers are valid text)
+        // Empty string is valid for text
+        if (result === '') {
+            return '';
+        }
+        return String(result);
+    }
+}
+
+/**
+ * Validates that a column value is compatible with its declared column type
+ * Used for pre-formula validation
+ */
+function validateColumnValue(value, columnType, columnName) {
+    const colType = (columnType || 'number').toLowerCase();
+
+    if (colType === 'number') {
+        return isValidNumberValue(value);
+    } else if (colType === 'date') {
+        return isValidDateValue(value);
+    } else {
+        // text/string
+        return isValidTextValue(value);
+    }
+}
+
+/**
+ * Validates all column values used in a legacy formula before evaluation
+ * Returns true if all values are valid, false otherwise
+ */
+function validateLegacyFormulaInputs(formula, row, tableColumns) {
+    let isValid = true;
+
+    tableColumns.forEach(col => {
+        const fullColName = col.name;
+        const colType = col.type ? col.type.toLowerCase() : 'number';
+        const escapedName = escapeRegExp(fullColName);
+
+        // Check if column is used in formula (any syntax)
+        const hashRegex = new RegExp('#' + escapedName + '#', 'g');
+        const bracketRegex = new RegExp('\\[\\s*' + escapedName + '\\s*\\]', 'gi');
+        const plainRegex = new RegExp('\\b' + escapedName + '\\b', 'gi');
+
+        const isUsed = hashRegex.test(formula) || bracketRegex.test(formula) || plainRegex.test(formula);
+
+        if (!isUsed) {
+            return; // Column not used, skip
+        }
+
+        const rowValue = row[fullColName];
+
+        // Validate value matches column type
+        if (!validateColumnValue(rowValue, colType, fullColName)) {
+            console.log(`[Legacy] Invalid ${colType} value for column ${fullColName}:`, rowValue);
+            isValid = false;
+        }
+    });
+
+    return isValid;
+}
+
+// ============================================================================
+// END OF VALIDATION UTILITY FUNCTIONS
+// ============================================================================
+
 // Replace all occurrences (bracketed and plain) of a column name in a text snippet.
 // - text: string to replace inside
 // - fullColName: column name from tableColumns (could have spaces etc.)
@@ -7029,7 +7218,9 @@ function replaceColumnOccurrences(text, fullColName, colType, rowValue, context)
         substitution = jsStringLiteral(rowValue || '');
     } else { // number (default)
         const num = parseFloat(rowValue);
-        substitution = isNaN(num) ? 'Calculation Issue' : num;
+        // Use 0 as placeholder for invalid numbers - validation happens upstream
+        // This prevents "Calculation Issue" string injection into formulas
+        substitution = isNaN(num) ? 0 : num;
     }
 
     // Replace in order: #column#, [column], then plain column
@@ -7252,14 +7443,18 @@ function addCalculation() {
 
                                 // Return the shifted value if found, otherwise mark as error
                                 if (found && found[fullColName] != null && found[fullColName].toString().trim() !== '') {
+                                    // Validate shifted value matches column type
+                                    if (!validateColumnValue(found[fullColName], colType, fullColName)) {
+                                        console.log(`[Multi-Schedule] Invalid shifted ${colType} value for ${fullColName}{${shift}}:`, found[fullColName]);
+                                        shiftPatternError = true;
+                                        return '0'; // Placeholder to prevent syntax error
+                                    }
+
                                     // Type-aware replacement for shift pattern values
                                     if (colType === 'number') {
-                                        const numValue = parseFloat(found[fullColName]);
-                                        if (isNaN(numValue)) {
-                                            shiftPatternError = true;
-                                            return '0'; // Placeholder to prevent syntax error
-                                        }
-                                        return numValue;
+                                        return parseFloat(found[fullColName]); // Already validated
+                                    } else if (colType === 'date') {
+                                        return `'${found[fullColName]}'`;
                                     } else {
                                         return `'${found[fullColName]}'`;
                                     }
@@ -7291,8 +7486,9 @@ function addCalculation() {
                                 return; // Column not used in formula, skip
                             }
 
-                            // Check for missing/empty values
-                            if (rowValue === undefined || rowValue === null || rowValue === '') {
+                            // Validate column value matches its declared type
+                            if (!validateColumnValue(rowValue, colType, fullColName)) {
+                                console.log(`[Multi-Schedule] Invalid ${colType} value for column ${fullColName}:`, rowValue);
                                 hasCalculationIssue = true;
                                 return; // Mark as error and skip
                             }
@@ -7300,15 +7496,13 @@ function addCalculation() {
                             // Convert to appropriate type based on column type
                             let replacementValue;
                             if (colType === 'number') {
-                                // For number columns, parse as number
-                                const numValue = parseFloat(rowValue);
-                                if (isNaN(numValue)) {
-                                    hasCalculationIssue = true;
-                                    return; // Invalid number - mark as error
-                                }
-                                replacementValue = numValue;
+                                // Already validated as number, safe to parse
+                                replacementValue = parseFloat(rowValue);
+                            } else if (colType === 'date') {
+                                // For date columns, wrap in quotes for string comparison
+                                replacementValue = `'${rowValue}'`;
                             } else {
-                                // For string/other columns, wrap in quotes
+                                // For string/text columns, wrap in quotes
                                 replacementValue = `'${rowValue}'`;
                             }
 
@@ -7332,35 +7526,8 @@ function addCalculation() {
                             // Get the global formula output type
                             const outputType = savedFormulas[calcName].type || 'number';
 
-                            // Handle NaN results
-                            if (typeof result === 'number' && isNaN(result)) {
-                                row[calcName] = 'Calculation Issue';
-                            } else {
-                                // Apply type conversion based on formula output type
-                                if (outputType === 'number') {
-                                    const numValue = parseFloat(result);
-                                    row[calcName] = isNaN(numValue) ? 'Calculation Issue' : numValue;
-                                } else if (outputType === 'date') {
-                                    // Try to convert to UK date format (DD-MMM-YYYY)
-                                    try {
-                                        const dateObj = new Date(result);
-                                        if (isNaN(dateObj.getTime())) {
-                                            row[calcName] = 'Calculation Issue';
-                                        } else {
-                                            row[calcName] = dateObj.toLocaleDateString('en-GB', {
-                                                day: '2-digit',
-                                                month: 'short',
-                                                year: 'numeric'
-                                            }).toUpperCase().replace(/ /g, '-');
-                                        }
-                                    } catch (e) {
-                                        row[calcName] = 'Calculation Issue';
-                                    }
-                                } else {
-                                    // String/Text - display as-is
-                                    row[calcName] = String(result);
-                                }
-                            }
+                            // Use unified validation function
+                            row[calcName] = validateFormulaOutput(result, outputType, calcName);
                         } catch (e) {
                             console.error('[Multi-Schedule] Schedule formula error:', e, 'Formula:', scheduleFormula);
                             row[calcName] = 'Calculation Issue';
@@ -7453,16 +7620,28 @@ function addCalculation() {
             }).toUpperCase().replace(/ /g, '-');
 
             const found = reporttblData.rows.find(r => r.PK_COL === target);
-           // return found ? (found[fullColName] ?? 0) : 0;
-          //  return found ? (found[fullColName] ?? 'Calculation Issue') : 'Calculation Issue';
-            return (
-                found &&
-                found[fullColName] != null &&
-                found[fullColName].toString().trim() !== ''
-            )
-                ? found[fullColName]
-                : 'Calculation Issue';
 
+            // Validate shifted value if found
+            if (found && found[fullColName] != null && found[fullColName].toString().trim() !== '') {
+                // Validate that shifted value matches column type
+                if (!validateColumnValue(found[fullColName], colType, fullColName)) {
+                    console.log(`[Legacy] Invalid shifted ${colType} value for ${fullColName}{${shift}}:`, found[fullColName]);
+                    return 0; // Pre-validation will catch this
+                }
+
+                // Return value based on type
+                if (colType === 'number') {
+                    return parseFloat(found[fullColName]);
+                } else if (colType === 'date') {
+                    return `'${found[fullColName]}'`;
+                } else {
+                    return `'${found[fullColName]}'`;
+                }
+            }
+
+            // Missing shifted value - use placeholder
+            console.log(`[Legacy] Missing shifted value for ${fullColName}{${shift}}`);
+            return 0; // Pre-validation will catch this
         });
     }
     // ---------- END NEW BLOCK ----------
@@ -7512,30 +7691,32 @@ function addCalculation() {
                 }
             }
 
+            // --- Pre-validation: Check all input values ---
+            if (!validateLegacyFormulaInputs(calculatedFormula, row, tableColumns)) {
+                console.log('[Legacy] Pre-formula validation failed for row:', row.PK_COL);
+                row[calcName] = 'Calculation Issue';
+                return; // Skip to next row
+            }
+
             // --- Final evaluation of the formula ---
             if (isBooleanCalculation) {
                 // calculatedFormula should now be "true" or "false"
                 result = (String(calculatedFormula).trim().toLowerCase() === "true");
+                row[calcName] = Boolean(result);
             } else if (conditionMet) {
                 try {
                     // Evaluate numeric/string expressions
                     result = new Function(`return (${calculatedFormula});`)();
+
+                    // Validate result against expected output type
+                    const outputType = savedFormulas[calcName]?.type || ctype;
+                    row[calcName] = validateFormulaOutput(result, outputType, calcName);
                 } catch (e) {
-                   // console.error('Error evaluating calculated formula:', calculatedFormula, e);
-                    result = 'Calculation Issue';
+                    console.error('Error evaluating calculated formula:', calculatedFormula, e);
+                    row[calcName] = 'Calculation Issue';
                 }
             } else {
-                result = 'Calculation Issue';
-            }
-
-            // Set result and coerce type for the column
-            if (ctype === 'number' && result !== null && result !== undefined) {
-                const numeric = parseFloat(result);
-                row[calcName] = isNaN(numeric) ? null : numeric;
-            } else if (ctype === 'boolean') {
-                row[calcName] = Boolean(result);
-            } else { // string or fallback
-                row[calcName] = result === null || result === undefined ? null : String(result);
+                row[calcName] = 'Calculation Issue';
             }
         });
 
@@ -7632,14 +7813,18 @@ function replaceDayFunction(expr) {
 
                                 // Return the shifted value if found, otherwise mark as error
                                 if (found && found[fullColName] != null && found[fullColName].toString().trim() !== '') {
+                                    // Validate shifted value matches column type
+                                    if (!validateColumnValue(found[fullColName], colType, fullColName)) {
+                                        console.log(`[Multi-Schedule] Invalid shifted ${colType} value for ${fullColName}{${shift}}:`, found[fullColName]);
+                                        shiftPatternError = true;
+                                        return '0'; // Placeholder to prevent syntax error
+                                    }
+
                                     // Type-aware replacement for shift pattern values
                                     if (colType === 'number') {
-                                        const numValue = parseFloat(found[fullColName]);
-                                        if (isNaN(numValue)) {
-                                            shiftPatternError = true;
-                                            return '0'; // Placeholder to prevent syntax error
-                                        }
-                                        return numValue;
+                                        return parseFloat(found[fullColName]); // Already validated
+                                    } else if (colType === 'date') {
+                                        return `'${found[fullColName]}'`;
                                     } else {
                                         return `'${found[fullColName]}'`;
                                     }
@@ -7671,8 +7856,9 @@ function replaceDayFunction(expr) {
                                 return; // Column not used in formula, skip
                             }
 
-                            // Check for missing/empty values
-                            if (rowValue === undefined || rowValue === null || rowValue === '') {
+                            // Validate column value matches its declared type
+                            if (!validateColumnValue(rowValue, colType, fullColName)) {
+                                console.log(`[Multi-Schedule] Invalid ${colType} value for column ${fullColName}:`, rowValue);
                                 hasCalculationIssue = true;
                                 return; // Mark as error and skip
                             }
@@ -7680,15 +7866,13 @@ function replaceDayFunction(expr) {
                             // Convert to appropriate type based on column type
                             let replacementValue;
                             if (colType === 'number') {
-                                // For number columns, parse as number
-                                const numValue = parseFloat(rowValue);
-                                if (isNaN(numValue)) {
-                                    hasCalculationIssue = true;
-                                    return; // Invalid number - mark as error
-                                }
-                                replacementValue = numValue;
+                                // Already validated as number, safe to parse
+                                replacementValue = parseFloat(rowValue);
+                            } else if (colType === 'date') {
+                                // For date columns, wrap in quotes for string comparison
+                                replacementValue = `'${rowValue}'`;
                             } else {
-                                // For string/other columns, wrap in quotes
+                                // For string/text columns, wrap in quotes
                                 replacementValue = `'${rowValue}'`;
                             }
 
@@ -7710,35 +7894,8 @@ function replaceDayFunction(expr) {
                             // Get the global formula output type
                             const outputType = savedFormulas[calcName].type || 'number';
 
-                            // Handle NaN results
-                            if (typeof result === 'number' && isNaN(result)) {
-                                row[calcName] = 'Calculation Issue';
-                            } else {
-                                // Apply type conversion based on formula output type
-                                if (outputType === 'number') {
-                                    const numValue = parseFloat(result);
-                                    row[calcName] = isNaN(numValue) ? 'Calculation Issue' : numValue;
-                                } else if (outputType === 'date') {
-                                    // Try to convert to UK date format (DD-MMM-YYYY)
-                                    try {
-                                        const dateObj = new Date(result);
-                                        if (isNaN(dateObj.getTime())) {
-                                            row[calcName] = 'Calculation Issue';
-                                        } else {
-                                            row[calcName] = dateObj.toLocaleDateString('en-GB', {
-                                                day: '2-digit',
-                                                month: 'short',
-                                                year: 'numeric'
-                                            }).toUpperCase().replace(/ /g, '-');
-                                        }
-                                    } catch (e) {
-                                        row[calcName] = 'Calculation Issue';
-                                    }
-                                } else {
-                                    // String/Text - display as-is
-                                    row[calcName] = String(result);
-                                }
-                            }
+                            // Use unified validation function
+                            row[calcName] = validateFormulaOutput(result, outputType, calcName);
                             console.log('[recalculateAllFormulas] Result:', result);
                         } catch (e) {
                             console.error('[recalculateAllFormulas] Evaluation error:', e);
@@ -7823,14 +7980,22 @@ function replaceDayFunction(expr) {
                     }
                 });
 
+                // Evaluate if not already calculated
                 if (result === null && type !== 'date') {
-                    result = eval(`(${workingFormula})`);
+                    try {
+                        result = eval(`(${workingFormula})`);
+                        // Validate output against declared type
+                        row[calcName] = validateFormulaOutput(result, type, calcName);
+                    } catch (err) {
+                        console.error("Formula error:", err);
+                        row[calcName] = 'Calculation Issue';
+                    }
+                } else {
+                    row[calcName] = result;
                 }
-
-                row[calcName] = result;
             } catch (err) {
-                console.error("Formula error:", err);
-                row[calcName] = "ERR";
+                console.error("Formula error (outer):", err);
+                row[calcName] = 'Calculation Issue';
             }
         }
     });
