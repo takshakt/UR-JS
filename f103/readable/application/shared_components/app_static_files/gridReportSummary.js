@@ -745,6 +745,111 @@ function createCard(index, data) {
     }
 
     // ==========================================================================================
+    // MULTI-SCHEDULE HELPER FUNCTIONS
+    // ==========================================================================================
+
+    /**
+     * Build filter string from schedule filters (converts UI to expression format)
+     */
+    function buildFilterStringFromSchedule(schedule) {
+        const filters = [];
+
+        // Date range: Convert to DATE_RANGE() expression
+        if (schedule.filters?.dateRange) {
+            filters.push(`DATE_RANGE('${schedule.filters.dateRange.from}','${schedule.filters.dateRange.to}')`);
+        }
+
+        // Day of week: Convert to DAY_OF_WEEK() expression
+        if (schedule.filters?.daysOfWeek?.length > 0) {
+            const dayStr = schedule.filters.daysOfWeek.join(',');
+            filters.push(`DAY_OF_WEEK(${dayStr})`);
+        }
+
+        // Custom filter text
+        if (schedule.filters?.customFilter) {
+            filters.push(schedule.filters.customFilter);
+        }
+
+        return filters.length > 0 ? filters.join(' && ') : '';
+    }
+
+    /**
+     * Evaluate schedule filter (handles DATE_RANGE, DAY_OF_WEEK, and custom expressions)
+     */
+    function evaluateScheduleFilter(filterString, row) {
+        if (!filterString) return true;
+
+        let processedFilter = filterString;
+
+        // Replace column references with row values
+        for (const [colName, value] of Object.entries(row)) {
+            const regex = new RegExp(`#${colName}#`, 'g');
+            processedFilter = processedFilter.replace(regex,
+                typeof value === 'string' ? `'${value}'` : value
+            );
+        }
+
+        try {
+            // Handle DATE_RANGE
+            if (processedFilter.includes('DATE_RANGE')) {
+                const dateRangeMatch = processedFilter.match(/DATE_RANGE\('([^']+)','([^']+)'\)/);
+                if (dateRangeMatch) {
+                    const fromDate = new Date(dateRangeMatch[1]);
+                    const toDate = new Date(dateRangeMatch[2]);
+                    const pkCol = row.PK_COL || row.SDATE || row.STAY_DATE;
+
+                    if (pkCol) {
+                        let rowDate;
+                        // Try DD-MMM-YYYY format first
+                        const parts = pkCol.split('-');
+                        if (parts.length === 3) {
+                            const months = {'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
+                                          'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11};
+                            rowDate = new Date(parts[2], months[parts[1]], parts[0]);
+                        } else {
+                            rowDate = new Date(pkCol);
+                        }
+
+                        const inRange = rowDate >= fromDate && rowDate <= toDate;
+                        processedFilter = processedFilter.replace(/DATE_RANGE\('[^']+','[^']+'\)/, inRange);
+                    }
+                }
+            }
+
+            // Handle DAY_OF_WEEK
+            if (processedFilter.includes('DAY_OF_WEEK')) {
+                const dayOfWeekMatch = processedFilter.match(/DAY_OF_WEEK\(([^)]+)\)/);
+                if (dayOfWeekMatch) {
+                    const allowedDays = dayOfWeekMatch[1].split(',').map(d => parseInt(d.trim()));
+                    const pkCol = row.PK_COL || row.SDATE || row.STAY_DATE;
+
+                    if (pkCol) {
+                        let rowDate;
+                        const parts = pkCol.split('-');
+                        if (parts.length === 3) {
+                            const months = {'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
+                                          'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11};
+                            rowDate = new Date(parts[2], months[parts[1]], parts[0]);
+                        } else {
+                            rowDate = new Date(pkCol);
+                        }
+
+                        const dayOfWeek = rowDate.getDay();
+                        const dayMatches = allowedDays.includes(dayOfWeek);
+                        processedFilter = processedFilter.replace(/DAY_OF_WEEK\([^)]+\)/, dayMatches);
+                    }
+                }
+            }
+
+            // Evaluate the final expression
+            return eval(processedFilter);
+        } catch (e) {
+            console.error('Schedule filter evaluation error:', e);
+            return false;
+        }
+    }
+
+    // ==========================================================================================
     // 6. Process Formulas AFTER grouping (on the grouped/aggregated data)
     // ==========================================================================================
     const formulas = expressionJson?.formulas || {};
@@ -779,7 +884,86 @@ function createCard(index, data) {
         groupedData.forEach(row => {
             formulaKeys.forEach(fColKey => {
                 const formulaObj = formulas[fColKey];
-                
+
+                // ========== MULTI-SCHEDULE SUPPORT ==========
+                if (formulaObj?.isMultiSchedule && formulaObj?.schedules) {
+                    // Multi-schedule formula: evaluate with schedule logic
+                    let matchedSchedule = null;
+
+                    // Sequential evaluation: first match wins
+                    for (const schedule of formulaObj.schedules) {
+                        const filterString = buildFilterStringFromSchedule(schedule);
+
+                        if (evaluateScheduleFilter(filterString, row)) {
+                            matchedSchedule = schedule;
+                            break; // First match wins
+                        }
+                    }
+
+                    if (matchedSchedule) {
+                        // Use the matched schedule's formula
+                        let expr = matchedSchedule.formula;
+
+                        // Apply all the same transformations as single formula logic
+                        // Remove template suffixes
+                        if (expressionJson?.columnConfiguration?.selectedColumns) {
+                            expressionJson.columnConfiguration.selectedColumns.forEach(col => {
+                                if (col.temp_name) {
+                                    const suffixPattern = new RegExp(`\\s*-\\s*${col.temp_name}\\s*(\\+|\\-|\\*|\\/)?`, 'gi');
+                                    expr = expr.replace(suffixPattern, (match, operator) => {
+                                        return operator || '';
+                                    });
+                                }
+                            });
+                        }
+
+                        // Normalize spaces
+                        expr = expr.replace(/\s+/g, ' ').trim();
+
+                        // Convert original column names to alias names
+                        if (expressionJson?.columnConfiguration?.selectedColumns) {
+                            expressionJson.columnConfiguration.selectedColumns.forEach(col => {
+                                const original = col.col_name;
+                                const alias = col.alias_name;
+                                const regex1 = new RegExp(`\\b${original}\\b`, "g");
+                                const regex2 = new RegExp(`\\[${original}\\]`, "g");
+                                expr = expr.replace(regex1, alias);
+                                expr = expr.replace(regex2, alias);
+                                expr = expr.replace(new RegExp(`\\b${original}\\{`, "g"), `${alias}{`);
+                            });
+                        }
+
+                        // Replace tokens with actual values
+                        tokensToReplace.forEach(token => {
+                            if (expr.includes(token)) {
+                                const alias = nameToAliasMap[token];
+                                let val = row[alias];
+                                if (val === undefined || val === null || val === '') val = 0;
+                                else if (typeof val === 'string') {
+                                    const num = parseFloat(val.replace(/,/g, ''));
+                                    val = isNaN(num) ? 0 : num;
+                                }
+                                expr = expr.split(token).join(val);
+                            }
+                        });
+
+                        // Evaluate the expression
+                        try {
+                            row[fColKey] = eval(expr);
+                        } catch (err) {
+                            console.warn("Multi-schedule formula eval error:", err.message, "Expression:", expr);
+                            row[fColKey] = null;
+                        }
+                    } else {
+                        // No schedule matched
+                        row[fColKey] = null;
+                    }
+
+                    return; // Skip to next formula
+                }
+                // ========== END MULTI-SCHEDULE SUPPORT ==========
+
+                // LEGACY: Single formula logic
                 // Get Formula & Filter Strings
                 let expr = typeof formulaObj === 'object' ? formulaObj.formula : formulaObj;
                 let filterExpr = typeof formulaObj === 'object' ? formulaObj.filter : null;

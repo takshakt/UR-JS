@@ -2817,6 +2817,102 @@ function evaluateFilter(filter, row, aliasToOriginalMap, config) {
 
 
 
+// ========== MULTI-SCHEDULE HELPER FUNCTIONS ==========
+
+/**
+ * Build filter string from schedule filters (converts UI to expression format)
+ */
+function buildFilterStringFromSchedule(schedule) {
+    const filters = [];
+
+    // Date range: Convert to DATE_RANGE() expression
+    if (schedule.filters?.dateRange) {
+        filters.push(`DATE_RANGE('${schedule.filters.dateRange.from}','${schedule.filters.dateRange.to}')`);
+    }
+
+    // Day of week: Convert to DAY_OF_WEEK() expression
+    if (schedule.filters?.daysOfWeek?.length > 0) {
+        const dayStr = schedule.filters.daysOfWeek.join(',');
+        filters.push(`DAY_OF_WEEK(${dayStr})`);
+    }
+
+    // Custom filter text
+    if (schedule.filters?.customFilter) {
+        filters.push(schedule.filters.customFilter);
+    }
+
+    return filters.length > 0 ? filters.join(' && ') : '';
+}
+
+/**
+ * Evaluate schedule filter (handles DATE_RANGE, DAY_OF_WEEK, and custom expressions)
+ */
+function evaluateScheduleFilter(filterString, row) {
+    if (!filterString) return true;
+
+    let processedFilter = filterString;
+
+    // Replace column references with row values
+    for (const [colName, value] of Object.entries(row)) {
+        const regex = new RegExp(`#${colName}#`, 'g');
+        processedFilter = processedFilter.replace(regex,
+            typeof value === 'string' ? `'${value}'` : value
+        );
+    }
+
+    try {
+        // Handle DATE_RANGE - simplified for this context
+        if (processedFilter.includes('DATE_RANGE')) {
+            // Extract dates from DATE_RANGE('from','to')
+            const dateRangeMatch = processedFilter.match(/DATE_RANGE\('([^']+)','([^']+)'\)/);
+            if (dateRangeMatch) {
+                const fromDate = new Date(dateRangeMatch[1]);
+                const toDate = new Date(dateRangeMatch[2]);
+                const pkCol = row.PK_COL || row.SDATE;
+
+                if (pkCol) {
+                    // Parse DD-MMM-YYYY format
+                    const parts = pkCol.split('-');
+                    const months = {'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
+                                  'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11};
+                    const rowDate = new Date(parts[2], months[parts[1]], parts[0]);
+
+                    const inRange = rowDate >= fromDate && rowDate <= toDate;
+                    processedFilter = processedFilter.replace(/DATE_RANGE\('[^']+','[^']+'\)/, inRange);
+                }
+            }
+        }
+
+        // Handle DAY_OF_WEEK
+        if (processedFilter.includes('DAY_OF_WEEK')) {
+            const dayOfWeekMatch = processedFilter.match(/DAY_OF_WEEK\(([^)]+)\)/);
+            if (dayOfWeekMatch) {
+                const allowedDays = dayOfWeekMatch[1].split(',').map(d => parseInt(d.trim()));
+                const pkCol = row.PK_COL || row.SDATE;
+
+                if (pkCol) {
+                    const parts = pkCol.split('-');
+                    const months = {'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
+                                  'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11};
+                    const rowDate = new Date(parts[2], months[parts[1]], parts[0]);
+                    const dayOfWeek = rowDate.getDay();
+
+                    const dayMatches = allowedDays.includes(dayOfWeek);
+                    processedFilter = processedFilter.replace(/DAY_OF_WEEK\([^)]+\)/, dayMatches);
+                }
+            }
+        }
+
+        // Evaluate the final expression
+        return eval(processedFilter);
+    } catch (e) {
+        console.error('Schedule filter evaluation error:', e);
+        return false;
+    }
+}
+
+// ========== END MULTI-SCHEDULE HELPER FUNCTIONS ==========
+
 function applyFormulas(data, formulas, aliasToOriginalMap, config) {
 
     console.log('data:>>>>',data);
@@ -2937,6 +3033,129 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
 
     finalFormulaEntries.forEach(([formulaName, formulaObj]) => { // Use finalFormulaEntries
 
+        // ========== MULTI-SCHEDULE SUPPORT ==========
+        if (formulaObj?.isMultiSchedule && formulaObj?.schedules) {
+            // Multi-schedule formula: evaluate each row with schedule logic
+            data.forEach(row => {
+                try {
+                    let matchedSchedule = null;
+
+                    // Sequential evaluation: first match wins
+                    for (const schedule of formulaObj.schedules) {
+                        const filterString = buildFilterStringFromSchedule(schedule);
+
+                        if (evaluateScheduleFilter(filterString, row)) {
+                            matchedSchedule = schedule;
+                            break; // First match wins
+                        }
+                    }
+
+                    if (matchedSchedule) {
+                        // Use the matched schedule's formula
+                        let currentExpression = matchedSchedule.formula;
+
+                        // Apply column name renaming (same as single formula logic)
+                        for (const [dbName, aliasName] of Object.entries(dbToAliasMap)) {
+                            const dbNameRegex = new RegExp(`(\\[|\\b)${dbName}(\\]|\\b)`, 'g');
+                            const replacementFn = (match, prefix, suffix) => {
+                                return prefix + aliasName + suffix;
+                            };
+                            currentExpression = currentExpression.replace(dbNameRegex, replacementFn);
+                        }
+
+                        // Remove template suffixes
+                        if (config.columnConfiguration?.selectedColumns) {
+                            config.columnConfiguration.selectedColumns.forEach(col => {
+                                if (col.temp_name) {
+                                    const suffixPattern = new RegExp(`\\s*-\\s*${col.temp_name}\\s*(\\+|\\-|\\*|\\/)?`, 'gi');
+                                    currentExpression = currentExpression.replace(suffixPattern, (match, operator) => {
+                                        return operator || '';
+                                    });
+                                }
+                            });
+                        }
+
+                        // Normalize spaces
+                        currentExpression = currentExpression.replace(/\s+/g, ' ').trim();
+
+                        // Handle {n} offset column references
+                        const offsetColumnRegex = /(\[?\b[A-Z_][A-Z0-9_]*\b\]?)\{(\d+)\}/gi;
+                        let match;
+                        const offsetReplacements = {};
+
+                        while ((match = offsetColumnRegex.exec(currentExpression)) !== null) {
+                            const fullMatch = match[0];
+                            const columnRef = match[1].replace(/[\[\]]/g, '');
+                            const offset = parseInt(match[2]);
+                            const currentDate = row.PK_COL || row.SDATE;
+
+                            if (currentDate) {
+                                const targetDate = addDays(currentDate, offset);
+                                const offsetValue = findValueInCleanedData(targetDate, columnRef);
+                                offsetReplacements[fullMatch] = offsetValue !== null ? offsetValue : null;
+                            } else {
+                                offsetReplacements[fullMatch] = null;
+                            }
+                        }
+
+                        // Replace offset column references
+                        Object.entries(offsetReplacements).forEach(([pattern, value]) => {
+                            let replacementValue;
+                            if (value === null || value === undefined || value === '') {
+                                replacementValue = '0';
+                            } else if (!isNaN(value) && value !== null) {
+                                replacementValue = parseFloat(value);
+                            } else {
+                                replacementValue = `"${value}"`;
+                            }
+                            currentExpression = currentExpression.replace(pattern, replacementValue);
+                        });
+
+                        // Replace column references with row values
+                        const columnMatches = currentExpression.match(/\[(.*?)\]/g) || [];
+                        const simpleColumnMatches = currentExpression.match(/\b[A-Z_][A-Z0-9_]*\b/gi) || [];
+                        const allColumnNames = [
+                            ...columnMatches.map(match => match.replace(/[\[\]]/g, '')),
+                            ...simpleColumnMatches.filter(word => !['AND', 'OR', 'NOT', 'Day', 'Date', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].includes(word))
+                        ];
+                        const uniqueColumnNames = [...new Set(allColumnNames)];
+
+                        uniqueColumnNames.forEach(col => {
+                            let value = row[col];
+                            if (columnDataTypes[col] === 'date' && value != null && value !== '') {
+                                value = `"${value}"`;
+                            } else if (!isNaN(value) && value !== '' && value !== null) {
+                                value = parseFloat(value);
+                            } else {
+                                value = `"${value}"`;
+                            }
+                            currentExpression = currentExpression.replace(new RegExp(`\\[${col}\\]`, 'g'), value);
+                            currentExpression = currentExpression.replace(new RegExp(`\\b${col}\\b`, 'g'), value);
+                        });
+
+                        // Evaluate
+                        currentExpression = replaceDayNameFunction(currentExpression);
+                        const result = eval(currentExpression);
+                        if (typeof result === 'number' && isNaN(result)) {
+                            row[formulaName] = null;
+                        } else {
+                            row[formulaName] = result;
+                        }
+                    } else {
+                        // No schedule matched
+                        row[formulaName] = null;
+                    }
+                } catch (error) {
+                    console.error(`Error processing multi-schedule formula ${formulaName}: ${error.message}`);
+                    row[formulaName] = 'Error';
+                }
+            });
+
+            return; // Skip to next formula
+        }
+        // ========== END MULTI-SCHEDULE SUPPORT ==========
+
+        // LEGACY: Single formula logic
         let expression = formulaObj.formula;
         let filter = formulaObj.filter;
         let formulaType = formulaObj.type;

@@ -730,6 +730,424 @@ document.addEventListener("click", function(e) {
   }
 });
 
+// ========== MULTI-SCHEDULE DIALOG CSS ==========
+// Add schedule-specific styles
+const multiScheduleCSS = `
+<style>
+/* Schedule Block Styles */
+.schedule-block {
+    background-color: #2a2a2a;
+    border: 1px solid #444;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.schedule-block.collapsed .schedule-content {
+    display: none;
+}
+
+.schedule-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #333;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s ease;
+}
+
+.schedule-header:hover {
+    background: #3a3a3a;
+}
+
+.schedule-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
+.toggle-icon {
+    color: #4a9eff;
+    font-size: 14px;
+    transition: transform 0.2s ease;
+    width: 16px;
+    text-align: center;
+}
+
+.schedule-block.collapsed .toggle-icon {
+    transform: rotate(-90deg);
+}
+
+.schedule-sequence {
+    font-weight: bold;
+    color: #4a9eff;
+    font-size: 16px;
+    min-width: 30px;
+}
+
+.schedule-title-display {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.schedule-title-input {
+    background: #1a1a1a;
+    border: 1px solid #4a9eff;
+    color: #ccc;
+    padding: 4px 8px;
+    font-size: 14px;
+    border-radius: 3px;
+    width: 300px;
+}
+
+.schedule-title-input:focus {
+    outline: none;
+    border-color: #6ba3ff;
+}
+
+.schedule-controls {
+    display: flex;
+    gap: 6px;
+}
+
+.schedule-controls button {
+    background: transparent;
+    border: 1px solid #555;
+    color: #ccc;
+    padding: 5px 10px;
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.schedule-controls button:hover:not(:disabled) {
+    background: #444;
+    border-color: #666;
+    color: #fff;
+}
+
+.schedule-controls button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.schedule-content {
+    padding: 20px;
+    background: #1e1e1e;
+}
+
+/* Section Styles */
+.schedule-section {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: #252525;
+    border-radius: 6px;
+    border: 1px solid #333;
+}
+
+.section-title {
+    font-weight: 600;
+    color: #4a9eff;
+    margin-bottom: 12px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Field Container Styles */
+.field-container {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.field-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.field-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.field-label {
+    color: #ccc;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    user-select: none;
+}
+
+.field-content {
+    margin-left: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.field-content.hidden {
+    display: none;
+}
+
+/* Input Styles */
+.field-content input[type="date"],
+.field-content input[type="number"],
+.field-content input[type="text"],
+.field-content textarea {
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #ccc;
+    padding: 8px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.field-content input:focus,
+.field-content textarea:focus {
+    outline: none;
+    border-color: #4a9eff;
+    background: #222;
+}
+
+.field-content textarea {
+    min-height: 80px;
+    resize: vertical;
+    font-family: 'Courier New', monospace;
+}
+
+/* Date Range Styles */
+.date-range-inputs {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.date-range-inputs label {
+    color: #999;
+    font-size: 12px;
+    min-width: 40px;
+}
+
+.date-range-inputs input[type="date"] {
+    flex: 1;
+}
+
+/* Checkbox Group Styles */
+.checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.checkbox-group label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #ccc;
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-group input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
+/* Formula Textarea */
+.formula-textarea {
+    width: 100%;
+    min-height: 100px;
+    background: #1a1a1a;
+    border: 1px solid #444;
+    color: #4a9eff;
+    padding: 10px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    resize: vertical;
+}
+
+.formula-textarea:focus {
+    outline: none;
+    border-color: #4a9eff;
+    background: #222;
+}
+
+/* Button Styles */
+.validate-formula-btn {
+    background: #2d5f8d;
+    border: 1px solid #4a9eff;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.validate-formula-btn:hover {
+    background: #3d6f9d;
+    border-color: #6ba3ff;
+}
+
+/* Validation Messages */
+.schedule-validation-message {
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+.schedule-validation-message.error {
+    background: #4a1c1c;
+    border: 1px solid #a33;
+    color: #faa;
+}
+
+.schedule-validation-message.success {
+    background: #1c4a1c;
+    border: 1px solid #3a3;
+    color: #afa;
+}
+
+/* Dialog Footer Styles */
+.dialog-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.button-group-right {
+    display: flex;
+    gap: 10px;
+}
+
+/* Utility Classes */
+.hidden {
+    display: none !important;
+}
+
+/* Autocomplete dropdown */
+.formula-autocomplete {
+    position: fixed;
+    background: #2a2a2a;
+    border: 1px solid #4a9eff;
+    border-radius: 4px;
+    max-height: 250px;
+    max-width: 400px;
+    min-width: 200px;
+    overflow-y: auto;
+    z-index: 99999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    display: none;
+}
+
+.autocomplete-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    color: #ccc;
+    font-size: 13px;
+    border-bottom: 1px solid #333;
+    transition: background 0.15s ease;
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
+}
+
+.autocomplete-item:hover {
+    background: #3a3a3a !important;
+    color: #fff;
+}
+
+/* Scrollbar styling for autocomplete */
+.formula-autocomplete::-webkit-scrollbar {
+    width: 8px;
+}
+
+.formula-autocomplete::-webkit-scrollbar-track {
+    background: #1a1a1a;
+    border-radius: 4px;
+}
+
+.formula-autocomplete::-webkit-scrollbar-thumb {
+    background: #4a9eff;
+    border-radius: 4px;
+}
+
+.formula-autocomplete::-webkit-scrollbar-thumb:hover {
+    background: #5ab3ff;
+}
+</style>
+`;
+
+// Inject CSS into head
+document.head.insertAdjacentHTML('beforeend', multiScheduleCSS);
+// ========== END MULTI-SCHEDULE DIALOG CSS ==========
+
+// ========== MULTI-SCHEDULE DIALOG HTML ==========
+// Create and inject multi-schedule dialog
+const multiScheduleDialogHTML = `
+<div id="multi-schedule-formula-dialog" class="formula-dialog" style="display: none;">
+  <div class="dialog-content" style="max-width: 1000px; width: 95%; max-height: 90vh; overflow-y: auto;">
+    <div class="control-panel-header" style="margin-bottom: 20px;">
+      <h2 style="color: #fff; margin: 0; display: flex; justify-content: space-between; align-items: center;">
+        <span>Multi-Schedule Formula: <span id="formula-name-display" style="color: #4a9eff;"></span></span>
+        <span class="collapse-btn" id="close-multi-schedule" style="cursor: pointer; font-size: 1.5rem;">×</span>
+      </h2>
+    </div>
+
+    <!-- Schedule List Container -->
+    <div id="schedule-container" style="margin-bottom: 20px;">
+      <!-- Dynamically added schedule blocks will go here -->
+    </div>
+
+    <!-- Add Schedule Button -->
+    <div style="text-align: center; margin: 20px 0;">
+      <div class="action-btn" id="add-schedule-btn" style="display: inline-block; background-color: #528e54;">
+        + Add Schedule
+      </div>
+    </div>
+
+    <!-- Dialog Footer -->
+    <div class="dialog-footer" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #444;">
+      <div class="action-btn btn-secondary" id="cancel-multi-schedule">Cancel</div>
+      <div class="button-group-right">
+        <div class="action-btn btn-info" id="validate-schedules-btn">Validate</div>
+        <div class="action-btn" id="save-multi-schedule" style="background-color: #007bff;">Save All Schedules</div>
+      </div>
+    </div>
+
+    <!-- Validation Messages -->
+    <div id="validation-messages" style="display: none; background: #4a1c1c; border: 1px solid #a33; border-radius: 4px; padding: 10px; margin-top: 15px;">
+      <strong style="color: #faa;">Validation Errors:</strong>
+      <ul id="validation-errors-list" style="margin: 10px 0 0 20px; color: #faa;"></ul>
+    </div>
+  </div>
+</div>
+`;
+
+// Inject dialog into DOM
+document.body.insertAdjacentHTML('beforeend', multiScheduleDialogHTML);
+
+// Create global autocomplete div (separate from schedule blocks for proper z-index layering)
+const globalAutocompleteHTML = `<div id="global-formula-autocomplete" class="formula-autocomplete"></div>`;
+document.body.insertAdjacentHTML('beforeend', globalAutocompleteHTML);
+// ========== END MULTI-SCHEDULE DIALOG HTML ==========
+
 // varun test code start --------------------
 document.addEventListener("DOMContentLoaded", function () {
     // Initial population on page load
@@ -3807,6 +4225,7 @@ let tableColumns ; // Use the explicit object
 // Global list to store saved formulas
 let savedFormulas = {};
 let currentFormulaName = '';
+let scheduleCounter = 0;  // Track schedule IDs for multi-schedule formulas
  
 function initializeControls() {
 
@@ -3942,7 +4361,25 @@ function loadConfigFromJSON(configData) {
     console.log('loadConfigFromJSON call:>>>');
 
     // 1. Load Formulas and Filters into global memory
-    Object.assign(savedFormulas, configData.formulas);
+    // Handle both single formula and multi-schedule formats
+    savedFormulas = {};
+    for (const [name, formulaData] of Object.entries(configData.formulas || {})) {
+        if (formulaData.isMultiSchedule && formulaData.schedules) {
+            // NEW: Multi-schedule format
+            savedFormulas[name] = {
+                isMultiSchedule: true,
+                schedules: formulaData.schedules,
+                type: formulaData.type || 'number'
+            };
+        } else {
+            // LEGACY: Single formula format
+            savedFormulas[name] = {
+                formula: formulaData.formula || formulaData,
+                filter: formulaData.filter || '',
+                type: formulaData.type || 'number'
+            };
+        }
+    }
     Object.assign(savedFilters, configData.filters);
 
     // Update UI lists
@@ -3961,6 +4398,120 @@ function loadConfigFromJSON(configData) {
     // 3. Apply all formulas
     for (const [calcName, formulaObj] of Object.entries(savedFormulas)) {
 
+        // ========== MULTI-SCHEDULE SUPPORT ==========
+        if (formulaObj?.isMultiSchedule && formulaObj?.schedules) {
+            // Multi-schedule formula: evaluate each row with schedule logic
+            reporttblData.rows.forEach(row => {
+                let matchedSchedule = null;
+
+                // Sequential evaluation: first match wins
+                for (const schedule of formulaObj.schedules) {
+                    const filterString = buildFilterStringFromSchedule(schedule);
+
+                    if (evaluateScheduleFilter(filterString, row)) {
+                        matchedSchedule = schedule;
+                        break; // First match wins
+                    }
+                }
+
+                if (matchedSchedule) {
+                    // Apply the matched schedule's formula
+                    let calculatedFormula = matchedSchedule.formula;
+
+                    // Apply shift pattern processing
+                    tableColumns.forEach(col => {
+                        const fullColName = col.name;
+                        const currentPK = row["PK_COL"];
+                        const shiftPattern = new RegExp(escapeRegExp(fullColName) + "\\{(-?\\d+)\\}", "g");
+
+                        calculatedFormula = calculatedFormula.replace(shiftPattern, (match, shiftVal) => {
+                            const shift = parseInt(shiftVal, 10);
+                            let d = new Date(currentPK);
+                            d.setDate(d.getDate() + shift);
+
+                            let target = d.toLocaleDateString('en-GB', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric'
+                            }).toUpperCase().replace(/ /g, '-');
+
+                            const found = reporttblData.rows.find(r => r.PK_COL === target);
+                            return (found && found[fullColName] != null && found[fullColName].toString().trim() !== '')
+                                ? found[fullColName]
+                                : 'Calculation Issue';
+                        });
+                    });
+
+                    // Replace column references using #column# syntax
+                    let hasCalculationIssue = false;
+                    tableColumns.forEach(col => {
+                        const fullColName = col.name;
+                        let rowValue = row[fullColName];
+                        const colType = col.type ? col.type.toLowerCase() : 'number';
+
+                        // Check if this formula uses this column
+                        const escapedColName = escapeRegExp(fullColName);
+                        const regex = new RegExp(`#${escapedColName}#`, 'g');
+
+                        if (!calculatedFormula.match(regex)) {
+                            return; // Column not used in formula, skip
+                        }
+
+                        // Check for missing/empty values
+                        if (rowValue === undefined || rowValue === null || rowValue === '') {
+                            hasCalculationIssue = true;
+                            return; // Mark as error and skip
+                        }
+
+                        // Convert to appropriate type based on column type
+                        let replacementValue;
+                        if (colType === 'number') {
+                            // For number columns, parse as number
+                            const numValue = parseFloat(rowValue);
+                            if (isNaN(numValue)) {
+                                hasCalculationIssue = true;
+                                return; // Invalid number - mark as error
+                            }
+                            replacementValue = numValue;
+                        } else {
+                            // For string/other columns, wrap in quotes
+                            replacementValue = `'${rowValue}'`;
+                        }
+
+                        calculatedFormula = calculatedFormula.replace(regex, replacementValue);
+                    });
+
+                    // If any column had missing/invalid values, show error
+                    if (hasCalculationIssue) {
+                        row[calcName] = 'Calculation Issue';
+                        return; // Skip formula evaluation
+                    }
+
+                    // Evaluate formula
+                    try {
+                        let result = new Function(`return (${calculatedFormula});`)();
+
+                        // Handle NaN results
+                        if (typeof result === 'number' && isNaN(result)) {
+                            row[calcName] = 'Calculation Issue';
+                        } else {
+                            row[calcName] = matchedSchedule.type === 'number' ? parseFloat(result) : result;
+                        }
+                    } catch (error) {
+                        console.error(`Error applying multi-schedule formula for ${calcName}:`, calculatedFormula, error);
+                        row[calcName] = 'Calculation Issue';
+                    }
+                } else {
+                    // No schedule matched
+                    row[calcName] = null;
+                }
+            });
+
+            continue; // Skip to next formula
+        }
+        // ========== END MULTI-SCHEDULE SUPPORT ==========
+
+        // LEGACY: Single formula logic
         let formulaString = "";
         let filterString = "";
 
@@ -4438,10 +4989,15 @@ function loadSavedFormulas() {
     
     // Display saved formulas
     for (const [name, formulaObj] of Object.entries(savedFormulas)) {
-        // Handle both formats: string (old) and object (new)
+        // Handle multiple formats: string (old), object with formula (standard), multi-schedule (new)
         let formulaDisplay, formulaType;
-        
-        if (typeof formulaObj === 'string') {
+
+        if (formulaObj?.isMultiSchedule && formulaObj?.schedules) {
+            // Multi-schedule formula - show summary
+            const scheduleCount = formulaObj.schedules.length;
+            formulaDisplay = `Multi-Schedule (${scheduleCount} schedule${scheduleCount !== 1 ? 's' : ''})`;
+            formulaType = formulaObj.type || 'number';
+        } else if (typeof formulaObj === 'string') {
             formulaDisplay = formulaObj;
             formulaType = 'number'; // Default type for old format
         } else if (formulaObj && typeof formulaObj.formula === 'string') {
@@ -4451,7 +5007,7 @@ function loadSavedFormulas() {
             console.warn(`Invalid formula format for ${name}:`, formulaObj);
             continue;
         }
-        
+
 
 renderSavedFormula(name, "", formulaDisplay);
     }
@@ -4463,7 +5019,14 @@ renderSavedFormula(name, "", formulaDisplay);
             useFormula(formulaName);
         });
     });
-    
+
+    document.querySelectorAll('.advanced-formula').forEach(div => {
+        div.addEventListener('click', function() {
+            const formulaName = this.getAttribute('data-name');
+            openMultiScheduleDialog(formulaName);
+        });
+    });
+
     document.querySelectorAll('.delete-formula').forEach(div => {
         div.addEventListener('click', function() {
             const formulaName = this.getAttribute('data-name');
@@ -4471,7 +5034,1008 @@ renderSavedFormula(name, "", formulaDisplay);
         });
     });
 }
-        
+
+// ========== MULTI-SCHEDULE MANAGEMENT FUNCTIONS ==========
+
+/**
+ * Open multi-schedule dialog for a specific formula
+ */
+function openMultiScheduleDialog(formulaName) {
+    currentFormulaName = formulaName;
+    const dialog = document.getElementById('multi-schedule-formula-dialog');
+    const nameDisplay = document.getElementById('formula-name-display');
+    const container = document.getElementById('schedule-container');
+
+    nameDisplay.textContent = formulaName;
+    container.innerHTML = '';
+
+    // Load existing schedules or create first empty one
+    const formulaConfig = savedFormulas[formulaName];
+
+    if (formulaConfig?.isMultiSchedule && formulaConfig.schedules) {
+        // Load existing multi-schedule formulas
+        formulaConfig.schedules.forEach(scheduleData => {
+            addScheduleBlock(scheduleData);
+        });
+    } else {
+        // First time: create one empty schedule
+        addScheduleBlock(null);
+    }
+
+    dialog.style.display = 'flex';
+}
+
+/**
+ * Close multi-schedule dialog
+ */
+function closeMultiScheduleDialog() {
+    const dialog = document.getElementById('multi-schedule-formula-dialog');
+    dialog.style.display = 'none';
+    currentFormulaName = '';
+
+    // Clear validation messages
+    const validationDiv = document.getElementById('validation-messages');
+    validationDiv.style.display = 'none';
+}
+
+/**
+ * Add a new schedule block to the UI
+ */
+function addScheduleBlock(scheduleData) {
+    scheduleCounter++;
+    const scheduleId = `schedule-${scheduleCounter}`;
+    const container = document.getElementById('schedule-container');
+    const sequence = container.children.length + 1;
+
+    const scheduleHTML = `
+    <div class="control-panel-region schedule-block" id="${scheduleId}" data-sequence="${sequence}" style="margin-bottom: 15px; position: relative;">
+        <div class="control-panel-header rule-header" style="cursor: pointer; padding: 15px; background: #2d2d2d; border-radius: 8px 8px 0 0;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-grow: 1;">
+                <span class="toggle-icon" style="transition: transform 0.2s;">▼</span>
+                <span class="schedule-sequence" style="font-weight: bold; color: #4a9eff;">${sequence}.</span>
+                <span class="title-display" style="font-weight: 600; color: #fff; cursor: pointer;">${scheduleData?.name || `Schedule ${sequence}`}</span>
+                <input type="text" class="title-input form-input" value="${scheduleData?.name || `Schedule ${sequence}`}" style="display: none; width: 200px; padding: 5px;">
+            </div>
+            <div class="schedule-controls" style="display: flex; gap: 8px;">
+                <div class="action-btn btn-info copy-schedule" title="Copy Schedule" style="padding: 5px 10px; font-size: 0.85rem;">📋</div>
+                <div class="action-btn btn-info move-up" title="Move Up" style="padding: 5px 10px; font-size: 0.85rem;">▲</div>
+                <div class="action-btn btn-info move-down" title="Move Down" style="padding: 5px 10px; font-size: 0.85rem;">▼</div>
+                <div class="action-btn btn-danger delete-schedule" title="Delete Schedule" style="padding: 5px 10px; font-size: 0.85rem;">×</div>
+            </div>
+        </div>
+
+        <div class="schedule-content" style="padding: 20px; background: #1a1a1a; border-radius: 0 0 8px 8px; border: 1px solid #333; border-top: none;">
+            <!-- Filters Section -->
+            <div class="form-group" style="margin-bottom: 20px; padding: 15px; background: #0c0c0c; border-radius: 6px;">
+                <label class="form-label" style="font-size: 14px; color: #4a9eff; margin-bottom: 15px; display: block; font-weight: bold;">Filters (WHERE Clause)</label>
+
+                <!-- Date Range Filter -->
+                <div class="field-container" style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 10px; color: #ccc;">
+                        <input type="checkbox" class="field-checkbox filter-date-range-checkbox" style="cursor: pointer;">
+                        <span style="font-weight: 600;">Date Range</span>
+                    </label>
+                    <div class="field-content filter-date-range-content" style="display: none; margin-left: 30px; margin-top: 10px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <div>
+                                <label style="font-size: 12px; color: #999; margin-bottom: 3px; display: block;">From Date</label>
+                                <input type="date" class="form-input date-from" style="width: 100%;">
+                            </div>
+                            <div>
+                                <label style="font-size: 12px; color: #999; margin-bottom: 3px; display: block;">To Date</label>
+                                <input type="date" class="form-input date-to" style="width: 100%;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Days of Week Filter -->
+                <div class="field-container" style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 10px; color: #ccc;">
+                        <input type="checkbox" class="field-checkbox filter-days-checkbox" style="cursor: pointer;">
+                        <span style="font-weight: 600;">Days of Week</span>
+                    </label>
+                    <div class="field-content filter-days-content" style="display: none; margin-left: 30px; margin-top: 10px;">
+                        <div class="checkbox-group" style="display: flex; gap: 12px; flex-wrap: wrap;">
+                            <label style="display: flex; align-items: center; gap: 5px; color: #ccc; cursor: pointer;"><input type="checkbox" value="0" class="day-checkbox"> Sun</label>
+                            <label style="display: flex; align-items: center; gap: 5px; color: #ccc; cursor: pointer;"><input type="checkbox" value="1" class="day-checkbox"> Mon</label>
+                            <label style="display: flex; align-items: center; gap: 5px; color: #ccc; cursor: pointer;"><input type="checkbox" value="2" class="day-checkbox"> Tue</label>
+                            <label style="display: flex; align-items: center; gap: 5px; color: #ccc; cursor: pointer;"><input type="checkbox" value="3" class="day-checkbox"> Wed</label>
+                            <label style="display: flex; align-items: center; gap: 5px; color: #ccc; cursor: pointer;"><input type="checkbox" value="4" class="day-checkbox"> Thu</label>
+                            <label style="display: flex; align-items: center; gap: 5px; color: #ccc; cursor: pointer;"><input type="checkbox" value="5" class="day-checkbox"> Fri</label>
+                            <label style="display: flex; align-items: center; gap: 5px; color: #ccc; cursor: pointer;"><input type="checkbox" value="6" class="day-checkbox"> Sat</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Filter Text -->
+                <div class="field-container">
+                    <label style="display: flex; align-items: center; gap: 10px; color: #ccc;">
+                        <input type="checkbox" class="field-checkbox filter-custom-checkbox" style="cursor: pointer;">
+                        <span style="font-weight: 600;">Custom Filter Expression</span>
+                    </label>
+                    <div class="field-content filter-custom-content" style="display: none; margin-left: 30px; margin-top: 10px;">
+                        <textarea class="form-input custom-filter-text" rows="2" placeholder="e.g., #COLUMN_NAME# > 100" style="font-family: monospace; font-size: 13px;"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formula Section -->
+            <div class="form-group" style="padding: 15px; background: #0c0c0c; border-radius: 6px;">
+                <label class="form-label" style="font-size: 14px; color: #4a9eff; margin-bottom: 10px; display: block; font-weight: bold;">Formula Expression</label>
+
+                <!-- Column and Operator Selection -->
+                <div style="margin-bottom: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Insert Column</label>
+                        <select class="form-input column-select" style="width: 100%; padding: 6px; font-size: 13px;">
+                            <option value="">-- Select Column --</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1; min-width: 150px;">
+                        <label style="font-size: 12px; color: #aaa; display: block; margin-bottom: 4px;">Insert Operator</label>
+                        <select class="form-input operator-select" style="width: 100%; padding: 6px; font-size: 13px;">
+                            <option value="">-- Select Operator --</option>
+                            <option value="+">+ (Add)</option>
+                            <option value="-">- (Subtract)</option>
+                            <option value="*">* (Multiply)</option>
+                            <option value="/">\u00F7 (Divide)</option>
+                            <option value="%">% (Modulo)</option>
+                            <option value="(">) (Greater Than)</option>
+                            <option value="<">< (Less Than)</option>
+                            <option value=">=">>= (Greater or Equal)</option>
+                            <option value="<="><= (Less or Equal)</option>
+                            <option value="==">== (Equal)</option>
+                            <option value="!=">!= (Not Equal)</option>
+                            <option value="&&">&& (AND)</option>
+                            <option value="||">|| (OR)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <textarea class="form-input formula-textarea" rows="4" placeholder="Type # to see column autocomplete, or select from dropdowns above. All columns must be wrapped as #Column Name#" style="font-family: monospace; font-size: 13px; background: #1e1e1e; color: #0f0;"></textarea>
+
+                <div style="margin-top: 10px; display: flex; gap: 10px;">
+                    <div class="action-btn btn-info validate-formula-btn" style="font-size: 0.85rem; padding: 6px 12px;">Validate Formula</div>
+                    <select class="form-input formula-type-select" style="width: auto; padding: 6px 12px;">
+                        <option value="number" ${scheduleData?.type === 'number' ? 'selected' : ''}>Number</option>
+                        <option value="string" ${scheduleData?.type === 'string' ? 'selected' : ''}>String</option>
+                        <option value="boolean" ${scheduleData?.type === 'boolean' ? 'selected' : ''}>Boolean</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
+
+    container.insertAdjacentHTML('beforeend', scheduleHTML);
+    const scheduleElement = container.lastElementChild;
+
+    // Populate data if provided
+    if (scheduleData) {
+        populateSchedule(scheduleElement, scheduleData);
+    }
+
+    // Setup event listeners for this schedule
+    setupScheduleEventListeners(scheduleElement);
+    updateScheduleSequence();
+}
+
+/**
+ * Setup event listeners for a schedule block
+ */
+function setupScheduleEventListeners(scheduleElement) {
+    const scheduleId = scheduleElement.id;
+
+    // Toggle collapse/expand
+    const header = scheduleElement.querySelector('.control-panel-header');
+    const content = scheduleElement.querySelector('.schedule-content');
+    const toggleIcon = scheduleElement.querySelector('.toggle-icon');
+
+    header.addEventListener('click', (e) => {
+        // Don't toggle if clicking on buttons
+        if (e.target.closest('.schedule-controls') || e.target.closest('.title-input')) return;
+
+        content.style.display = content.style.display === 'none' ? 'block' : 'none';
+        toggleIcon.textContent = content.style.display === 'none' ? '▶' : '▼';
+        scheduleElement.classList.toggle('collapsed');
+    });
+
+    // Editable title
+    const titleDisplay = scheduleElement.querySelector('.title-display');
+    const titleInput = scheduleElement.querySelector('.title-input');
+
+    titleDisplay.addEventListener('dblclick', () => {
+        titleDisplay.style.display = 'none';
+        titleInput.style.display = 'inline-block';
+        titleInput.focus();
+        titleInput.select();
+    });
+
+    titleInput.addEventListener('blur', () => {
+        titleDisplay.textContent = titleInput.value.trim() || `Schedule ${scheduleElement.dataset.sequence}`;
+        titleDisplay.style.display = 'inline';
+        titleInput.style.display = 'none';
+    });
+
+    titleInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            titleInput.blur();
+        }
+    });
+
+    // Filter checkbox toggles
+    scheduleElement.querySelector('.filter-date-range-checkbox').addEventListener('change', (e) => {
+        scheduleElement.querySelector('.filter-date-range-content').style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    scheduleElement.querySelector('.filter-days-checkbox').addEventListener('change', (e) => {
+        scheduleElement.querySelector('.filter-days-content').style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    scheduleElement.querySelector('.filter-custom-checkbox').addEventListener('change', (e) => {
+        scheduleElement.querySelector('.filter-custom-content').style.display = e.target.checked ? 'block' : 'none';
+    });
+
+    // Copy schedule
+    scheduleElement.querySelector('.copy-schedule').addEventListener('click', (e) => {
+        e.stopPropagation();
+        copySchedule(scheduleElement);
+    });
+
+    // Move up
+    scheduleElement.querySelector('.move-up').addEventListener('click', (e) => {
+        e.stopPropagation();
+        moveSchedule(scheduleElement, 'up');
+    });
+
+    // Move down
+    scheduleElement.querySelector('.move-down').addEventListener('click', (e) => {
+        e.stopPropagation();
+        moveSchedule(scheduleElement, 'down');
+    });
+
+    // Delete schedule
+    scheduleElement.querySelector('.delete-schedule').addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteSchedule(scheduleElement);
+    });
+
+    // NEW: Populate column dropdown with available columns
+    const columnSelect = scheduleElement.querySelector('.column-select');
+
+    // Add base table columns (exclude current formula being edited)
+    if (tableColumns && Array.isArray(tableColumns)) {
+        tableColumns.forEach(col => {
+            const columnName = col.name || col.column_name;
+
+            // Skip if this is the current formula being edited
+            if (columnName === currentFormulaName) {
+                return;
+            }
+
+            if (columnName) {
+                const option = document.createElement('option');
+                option.value = columnName;
+                option.textContent = columnName;
+                columnSelect.appendChild(option);
+            }
+        });
+    }
+
+    // Add other calculated formulas (exclude current formula)
+    if (savedFormulas) {
+        for (const formulaName in savedFormulas) {
+            if (formulaName !== currentFormulaName) {
+                const option = document.createElement('option');
+                option.value = formulaName;
+                option.textContent = `${formulaName} (calculated)`;
+                columnSelect.appendChild(option);
+            }
+        }
+    }
+
+    // NEW: Column selection - insert wrapped column name
+    columnSelect.addEventListener('change', (e) => {
+        if (e.target.value) {
+            const textarea = scheduleElement.querySelector('.formula-textarea');
+            const columnName = e.target.value;
+            const wrappedColumn = `#${columnName}#`;
+
+            // Insert at cursor position
+            const cursorPos = textarea.selectionStart;
+            const textBefore = textarea.value.substring(0, cursorPos);
+            const textAfter = textarea.value.substring(textarea.selectionEnd);
+
+            textarea.value = textBefore + wrappedColumn + textAfter;
+            textarea.focus();
+
+            // Set cursor after inserted text
+            const newCursorPos = cursorPos + wrappedColumn.length;
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+
+            // Reset select
+            e.target.value = '';
+        }
+    });
+
+    // NEW: Operator selection - insert operator
+    const operatorSelect = scheduleElement.querySelector('.operator-select');
+    operatorSelect.addEventListener('change', (e) => {
+        if (e.target.value) {
+            const textarea = scheduleElement.querySelector('.formula-textarea');
+            const operator = e.target.value;
+
+            // Insert at cursor position with spaces
+            const cursorPos = textarea.selectionStart;
+            const textBefore = textarea.value.substring(0, cursorPos);
+            const textAfter = textarea.value.substring(textarea.selectionEnd);
+
+            // Add spaces around operator for readability
+            const operatorWithSpaces = ` ${operator} `;
+
+            textarea.value = textBefore + operatorWithSpaces + textAfter;
+            textarea.focus();
+
+            // Set cursor after inserted text
+            const newCursorPos = cursorPos + operatorWithSpaces.length;
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+
+            // Reset select
+            e.target.value = '';
+        }
+    });
+
+    // NEW: Autocomplete on # keypress (based on algojs.js pattern)
+    const textarea = scheduleElement.querySelector('.formula-textarea');
+
+    textarea.addEventListener('input', () => {
+        const cursorPos = textarea.selectionStart;
+        const text = textarea.value;
+
+        // Check if user just typed #
+        if (text.charAt(cursorPos - 1) === '#') {
+            // Build combined list of available columns (exclude current formula)
+            const availableColumns = [];
+
+            // Add base table columns
+            if (tableColumns && Array.isArray(tableColumns)) {
+                tableColumns.forEach(col => {
+                    const columnName = col.name || col.column_name;
+                    if (columnName && columnName !== currentFormulaName) {
+                        availableColumns.push({ name: columnName, type: 'base' });
+                    }
+                });
+            }
+
+            // Add other calculated formulas
+            if (savedFormulas) {
+                for (const formulaName in savedFormulas) {
+                    if (formulaName !== currentFormulaName) {
+                        availableColumns.push({ name: formulaName, type: 'calculated' });
+                    }
+                }
+            }
+
+            showAutocomplete(scheduleElement, availableColumns, 'column');
+        } else if (text.charAt(cursorPos - 1) === '=') {
+            // Show operator list on = keypress
+            const operators = [
+                { name: '==', description: 'Equal to' },
+                { name: '!=', description: 'Not equal to' },
+                { name: '>', description: 'Greater than' },
+                { name: '<', description: 'Less than' },
+                { name: '>=', description: 'Greater or equal' },
+                { name: '<=', description: 'Less or equal' }
+            ];
+            showAutocomplete(scheduleElement, operators, 'operator');
+        } else {
+            // Hide autocomplete if typing other characters
+            hideAutocomplete(scheduleElement);
+        }
+    });
+
+    // Hide autocomplete when clicking outside
+    textarea.addEventListener('blur', () => {
+        setTimeout(() => hideAutocomplete(scheduleElement), 200);
+    });
+}
+
+/**
+ * Show autocomplete dropdown for columns or operators
+ * Based on algojs.js showAutocomplete pattern (lines 692-728)
+ */
+function showAutocomplete(scheduleElement, items, type) {
+    const textarea = scheduleElement.querySelector('.formula-textarea');
+    const autocompleteDiv = document.getElementById('global-formula-autocomplete');
+
+    if (!items || items.length === 0) {
+        hideAutocomplete(scheduleElement);
+        return;
+    }
+
+    // Store reference to current textarea for later use
+    autocompleteDiv.dataset.currentTextarea = scheduleElement.id;
+
+    // Clear previous items
+    autocompleteDiv.innerHTML = '';
+
+    // Create list items
+    if (type === 'column') {
+        items.forEach(col => {
+            // Handle both old format (tableColumns) and new format (with type property)
+            const columnName = col.name || col.column_name;
+            const columnType = col.type || 'base'; // 'base' or 'calculated'
+
+            if (!columnName) return; // Skip if no valid name
+
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+
+            // Show label with indicator for calculated columns
+            if (columnType === 'calculated') {
+                item.innerHTML = `<span style="color: #ccc;">${columnName}</span> <span style="color: #888; font-size: 11px;">(calculated)</span>`;
+            } else {
+                item.textContent = columnName;
+            }
+
+            item.style.padding = '8px 12px';
+            item.style.cursor = 'pointer';
+            item.style.color = '#ccc';
+            item.style.fontSize = '13px';
+
+            item.addEventListener('mouseenter', () => {
+                item.style.background = '#3a3a3a';
+            });
+
+            item.addEventListener('mouseleave', () => {
+                item.style.background = 'transparent';
+            });
+
+            item.addEventListener('click', () => {
+                insertAutocompleteItem(scheduleElement, columnName, type);
+            });
+
+            autocompleteDiv.appendChild(item);
+        });
+    } else if (type === 'operator') {
+        items.forEach(op => {
+            const item = document.createElement('div');
+            item.className = 'autocomplete-item';
+            item.innerHTML = `<span style="color: #4a9eff; font-weight: bold;">${op.name}</span> <span style="color: #888; font-size: 11px;">${op.description}</span>`;
+            item.style.padding = '8px 12px';
+            item.style.cursor = 'pointer';
+            item.style.fontSize = '13px';
+
+            item.addEventListener('mouseenter', () => {
+                item.style.background = '#3a3a3a';
+            });
+
+            item.addEventListener('mouseleave', () => {
+                item.style.background = 'transparent';
+            });
+
+            item.addEventListener('click', () => {
+                insertAutocompleteItem(scheduleElement, op.name, type);
+            });
+
+            autocompleteDiv.appendChild(item);
+        });
+    }
+
+    // Position autocomplete below textarea using fixed positioning
+    const textareaRect = textarea.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+
+    // Calculate position
+    let top = textareaRect.bottom + 2; // 2px below textarea
+    let left = textareaRect.left;
+    let width = Math.min(textareaRect.width, 400);
+
+    // Check if it would go off the bottom of the screen
+    const estimatedHeight = Math.min(items.length * 40, 250); // Estimate dropdown height
+    if (top + estimatedHeight > viewportHeight) {
+        // Show above textarea instead
+        top = textareaRect.top - estimatedHeight - 2;
+    }
+
+    // Check if it would go off the right of the screen
+    if (left + width > viewportWidth) {
+        left = viewportWidth - width - 10;
+    }
+
+    // Apply positioning
+    autocompleteDiv.style.display = 'block';
+    autocompleteDiv.style.top = `${top}px`;
+    autocompleteDiv.style.left = `${left}px`;
+    autocompleteDiv.style.width = `${width}px`;
+}
+
+/**
+ * Hide autocomplete dropdown
+ */
+function hideAutocomplete(scheduleElement) {
+    const autocompleteDiv = document.getElementById('global-formula-autocomplete');
+    if (autocompleteDiv) {
+        autocompleteDiv.style.display = 'none';
+        autocompleteDiv.innerHTML = '';
+        delete autocompleteDiv.dataset.currentTextarea;
+    }
+}
+
+/**
+ * Insert selected item from autocomplete into formula textarea
+ */
+function insertAutocompleteItem(scheduleElement, itemName, type) {
+    const textarea = scheduleElement.querySelector('.formula-textarea');
+    const cursorPos = textarea.selectionStart;
+    const text = textarea.value;
+
+    // Find the trigger character (# or =) before cursor
+    let triggerPos = cursorPos - 1;
+    const triggerChar = type === 'column' ? '#' : '=';
+
+    while (triggerPos >= 0 && text.charAt(triggerPos) !== triggerChar) {
+        triggerPos--;
+    }
+
+    if (triggerPos >= 0) {
+        const textBefore = text.substring(0, triggerPos);
+        const textAfter = text.substring(cursorPos);
+
+        let insertText;
+        if (type === 'column') {
+            // Insert as #ColumnName#
+            insertText = `#${itemName}#`;
+        } else {
+            // Insert operator (replace the = with the full operator)
+            insertText = itemName;
+        }
+
+        textarea.value = textBefore + insertText + textAfter;
+        textarea.focus();
+
+        // Set cursor after inserted text
+        const newCursorPos = textBefore.length + insertText.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }
+
+    hideAutocomplete(scheduleElement);
+}
+
+/**
+ * Get schedule data from DOM element
+ */
+function getScheduleData(scheduleElement) {
+    const data = {
+        id: scheduleElement.id,
+        name: scheduleElement.querySelector('.title-display').textContent.trim(),
+        sequence: parseInt(scheduleElement.dataset.sequence, 10),
+        filters: {},
+        formula: scheduleElement.querySelector('.formula-textarea').value.trim(),
+        type: scheduleElement.querySelector('.formula-type-select').value
+    };
+
+    // Date range
+    if (scheduleElement.querySelector('.filter-date-range-checkbox').checked) {
+        data.filters.dateRange = {
+            from: scheduleElement.querySelector('.date-from').value,
+            to: scheduleElement.querySelector('.date-to').value
+        };
+    }
+
+    // Days of week
+    if (scheduleElement.querySelector('.filter-days-checkbox').checked) {
+        const checkedDays = Array.from(
+            scheduleElement.querySelectorAll('.day-checkbox:checked')
+        ).map(cb => parseInt(cb.value, 10));
+        if (checkedDays.length > 0) {
+            data.filters.daysOfWeek = checkedDays;
+        }
+    }
+
+    // Custom filter
+    if (scheduleElement.querySelector('.filter-custom-checkbox').checked) {
+        const customText = scheduleElement.querySelector('.custom-filter-text').value.trim();
+        if (customText) {
+            data.filters.customFilter = customText;
+        }
+    }
+
+    return data;
+}
+
+/**
+ * Populate schedule DOM element with data
+ */
+function populateSchedule(scheduleElement, scheduleData) {
+    // Set title
+    scheduleElement.querySelector('.title-display').textContent = scheduleData.name;
+    scheduleElement.querySelector('.title-input').value = scheduleData.name;
+
+    // Set formula
+    scheduleElement.querySelector('.formula-textarea').value = scheduleData.formula || '';
+    scheduleElement.querySelector('.formula-type-select').value = scheduleData.type || 'number';
+
+    // Populate date range
+    if (scheduleData.filters?.dateRange) {
+        scheduleElement.querySelector('.filter-date-range-checkbox').checked = true;
+        scheduleElement.querySelector('.filter-date-range-content').style.display = 'block';
+        scheduleElement.querySelector('.date-from').value = scheduleData.filters.dateRange.from;
+        scheduleElement.querySelector('.date-to').value = scheduleData.filters.dateRange.to;
+    }
+
+    // Populate days of week
+    if (scheduleData.filters?.daysOfWeek && scheduleData.filters.daysOfWeek.length > 0) {
+        scheduleElement.querySelector('.filter-days-checkbox').checked = true;
+        scheduleElement.querySelector('.filter-days-content').style.display = 'block';
+        scheduleData.filters.daysOfWeek.forEach(day => {
+            const checkbox = scheduleElement.querySelector(`.day-checkbox[value="${day}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+    }
+
+    // Populate custom filter
+    if (scheduleData.filters?.customFilter) {
+        scheduleElement.querySelector('.filter-custom-checkbox').checked = true;
+        scheduleElement.querySelector('.filter-custom-content').style.display = 'block';
+        scheduleElement.querySelector('.custom-filter-text').value = scheduleData.filters.customFilter;
+    }
+}
+
+/**
+ * Copy a schedule
+ */
+function copySchedule(originalElement) {
+    const scheduleData = getScheduleData(originalElement);
+    scheduleData.name += ` - Copy ${new Date().toLocaleTimeString()}`;
+    scheduleData.id = null;
+
+    addScheduleBlock(scheduleData);
+
+    // Insert after original
+    const newElement = document.getElementById('schedule-container').lastElementChild;
+    originalElement.after(newElement);
+    updateScheduleSequence();
+}
+
+/**
+ * Move schedule up or down
+ */
+function moveSchedule(scheduleElement, direction) {
+    const parent = scheduleElement.parentNode;
+
+    if (direction === 'up' && scheduleElement.previousElementSibling) {
+        parent.insertBefore(scheduleElement, scheduleElement.previousElementSibling);
+    } else if (direction === 'down' && scheduleElement.nextElementSibling) {
+        parent.insertBefore(scheduleElement.nextElementSibling, scheduleElement);
+    }
+
+    updateScheduleSequence();
+}
+
+/**
+ * Delete a schedule
+ */
+function deleteSchedule(scheduleElement) {
+    const scheduleName = scheduleElement.querySelector('.title-display').textContent;
+
+    if (!confirm(`Delete schedule "${scheduleName}"?`)) return;
+
+    scheduleElement.remove();
+    updateScheduleSequence();
+
+    // If no schedules left, add one empty one
+    if (document.getElementById('schedule-container').children.length === 0) {
+        addScheduleBlock(null);
+    }
+}
+
+/**
+ * Update schedule sequence numbers and move button states
+ */
+function updateScheduleSequence() {
+    const schedules = document.querySelectorAll('.schedule-block');
+    const total = schedules.length;
+
+    schedules.forEach((el, index) => {
+        const sequence = index + 1;
+        el.dataset.sequence = sequence;
+        el.querySelector('.schedule-sequence').textContent = `${sequence}.`;
+
+        // Update move button states
+        const moveUpBtn = el.querySelector('.move-up');
+        const moveDownBtn = el.querySelector('.move-down');
+
+        if (total === 1) {
+            moveUpBtn.style.opacity = '0.5';
+            moveUpBtn.style.pointerEvents = 'none';
+            moveDownBtn.style.opacity = '0.5';
+            moveDownBtn.style.pointerEvents = 'none';
+        } else {
+            moveUpBtn.style.opacity = sequence === 1 ? '0.5' : '1';
+            moveUpBtn.style.pointerEvents = sequence === 1 ? 'none' : 'auto';
+            moveDownBtn.style.opacity = sequence === total ? '0.5' : '1';
+            moveDownBtn.style.pointerEvents = sequence === total ? 'none' : 'auto';
+        }
+    });
+}
+
+// ========== MULTI-SCHEDULE SAVE & VALIDATION FUNCTIONS ==========
+
+/**
+ * Save multi-schedule configuration
+ */
+function saveMultiSchedule() {
+    const formulaName = currentFormulaName;
+
+    if (!formulaName) {
+        alert('No formula selected');
+        return;
+    }
+
+    // Collect all schedule data
+    const schedules = [];
+    document.querySelectorAll('.schedule-block').forEach(el => {
+        schedules.push(getScheduleData(el));
+    });
+
+    // Validate
+    const { isValid, errors } = validateSchedules(schedules);
+    if (!isValid) {
+        showValidationErrors(errors);
+        return;
+    }
+
+    // Update savedFormulas
+    savedFormulas[formulaName] = {
+        isMultiSchedule: true,
+        schedules: schedules,
+        type: schedules[0]?.type || 'number' // Use first schedule's type as default
+    };
+
+    // Save to localStorage
+    saveFormulas();
+
+    // Save to backend
+    saveAllDataToJSON();
+    handleSave();
+
+    // Recalculate with new schedules
+    recalculateAllFormulas();
+    displayReportTable('saveMultiSchedule');
+
+    // Close dialog
+    closeMultiScheduleDialog();
+
+    alert(`Multi-schedule formula "${formulaName}" saved successfully with ${schedules.length} schedule(s)!`);
+}
+
+/**
+ * Validate formula syntax - ensure all column references are wrapped in #
+ * Based on algojs.js validateSingleExpression pattern
+ */
+function validateScheduleFormula(formula, scheduleName) {
+    const errors = [];
+
+    if (!formula || formula.trim() === '') {
+        errors.push(`"${scheduleName}": Formula cannot be empty`);
+        return { isValid: false, errors };
+    }
+
+    // Get valid column names from tableColumns (uses 'name' property)
+    const validColumnNames = tableColumns ? tableColumns.map(col => col.name || col.column_name).filter(Boolean) : [];
+
+    // Add calculated formulas (exclude current formula being edited)
+    if (savedFormulas) {
+        for (const formulaName in savedFormulas) {
+            if (formulaName !== currentFormulaName) {
+                validColumnNames.push(formulaName);
+            }
+        }
+    }
+
+    // Extract all tokens wrapped in #
+    const wrappedTokens = formula.match(/#[^#]+#/g) || [];
+    const wrappedColumnNames = wrappedTokens.map(token => token.slice(1, -1)); // Remove # symbols
+
+    // Check if all wrapped tokens are valid column names
+    for (const token of wrappedTokens) {
+        const columnName = token.slice(1, -1);
+        if (!validColumnNames.includes(columnName)) {
+            errors.push(`"${scheduleName}": Invalid column reference: "${token}". Column "${columnName}" does not exist in the report.`);
+        }
+    }
+
+    // CRITICAL: Check if any unwrapped column names exist in formula
+    // This ensures mandatory # wrapping
+    for (const colName of validColumnNames) {
+        // Skip if column is already wrapped
+        if (wrappedColumnNames.includes(colName)) {
+            continue;
+        }
+
+        // Create regex to find unwrapped column name
+        // Must be word boundary to avoid partial matches
+        const escapedColName = escapeRegExp(colName);
+        const unwrappedRegex = new RegExp(`(?<!#)\\b${escapedColName}\\b(?!#)`, 'g');
+
+        if (unwrappedRegex.test(formula)) {
+            errors.push(`"${scheduleName}": Column "${colName}" must be wrapped in # symbols. Use: #${colName}#`);
+        }
+    }
+
+    return { isValid: errors.length === 0, errors };
+}
+
+/**
+ * Validate all schedules
+ */
+function validateSchedules(schedules) {
+    const errors = [];
+
+    if (schedules.length === 0) {
+        errors.push('At least one schedule is required');
+        return { isValid: false, errors };
+    }
+
+    // Check each schedule
+    schedules.forEach((schedule, index) => {
+        const num = index + 1;
+        const scheduleName = schedule.name || `Schedule ${num}`;
+
+        // Check formula exists
+        if (!schedule.formula || schedule.formula.trim() === '') {
+            errors.push(`Schedule ${num} ("${scheduleName}"): Formula cannot be empty`);
+        } else {
+            // NEW: Validate formula syntax (mandatory # wrapping)
+            const formulaValidation = validateScheduleFormula(schedule.formula, scheduleName);
+            if (!formulaValidation.isValid) {
+                errors.push(...formulaValidation.errors);
+            }
+        }
+
+        // NOTE: Filters are optional - no filters means apply to ALL dates
+
+        // Validate date range (if provided)
+        if (schedule.filters?.dateRange) {
+            const from = schedule.filters.dateRange.from;
+            const to = schedule.filters.dateRange.to;
+
+            if (!from || !to) {
+                errors.push(`Schedule ${num} ("${scheduleName}"): Both From and To dates are required`);
+            } else {
+                const fromDate = new Date(from);
+                const toDate = new Date(to);
+                if (fromDate > toDate) {
+                    errors.push(`Schedule ${num} ("${scheduleName}"): From date must be before or equal to To date`);
+                }
+            }
+        }
+
+        // Validate days of week
+        if (schedule.filters?.daysOfWeek) {
+            if (schedule.filters.daysOfWeek.length === 0) {
+                errors.push(`Schedule ${num} ("${schedule.name}"): Select at least one day of week`);
+            }
+        }
+    });
+
+    // Optional: Check for overlaps (warning only, don't block)
+    const overlaps = detectOverlaps(schedules);
+    if (overlaps.length > 0) {
+        console.warn('Schedule overlaps detected:', overlaps);
+        // For MVP: warn in console but don't block save
+    }
+
+    return {
+        isValid: errors.length === 0,
+        errors: errors
+    };
+}
+
+/**
+ * Detect overlapping schedules (basic date range overlap check)
+ */
+function detectOverlaps(schedules) {
+    const overlaps = [];
+
+    for (let i = 0; i < schedules.length - 1; i++) {
+        for (let j = i + 1; j < schedules.length; j++) {
+            const s1 = schedules[i];
+            const s2 = schedules[j];
+
+            if (s1.filters?.dateRange && s2.filters?.dateRange) {
+                const from1 = new Date(s1.filters.dateRange.from);
+                const to1 = new Date(s1.filters.dateRange.to);
+                const from2 = new Date(s2.filters.dateRange.from);
+                const to2 = new Date(s2.filters.dateRange.to);
+
+                // Check if ranges overlap
+                if (from1 <= to2 && from2 <= to1) {
+                    overlaps.push(`Schedules ${i + 1} ("${s1.name}") and ${j + 1} ("${s2.name}") have overlapping date ranges`);
+                }
+            }
+        }
+    }
+
+    return overlaps;
+}
+
+/**
+ * Show validation errors in UI
+ */
+function showValidationErrors(errors) {
+    const validationDiv = document.getElementById('validation-messages');
+    const errorsList = document.getElementById('validation-errors-list');
+
+    errorsList.innerHTML = '';
+    errors.forEach(error => {
+        const li = document.createElement('li');
+        li.textContent = error;
+        errorsList.appendChild(li);
+    });
+
+    validationDiv.style.display = 'block';
+
+    // Scroll to validation messages
+    validationDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ========== MULTI-SCHEDULE DIALOG EVENT LISTENERS ==========
+
+// Setup dialog event listeners when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Close button
+    const closeBtn = document.getElementById('close-multi-schedule');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeMultiScheduleDialog);
+    }
+
+    // Cancel button
+    const cancelBtn = document.getElementById('cancel-multi-schedule');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', closeMultiScheduleDialog);
+    }
+
+    // Add schedule button
+    const addBtn = document.getElementById('add-schedule-btn');
+    if (addBtn) {
+        addBtn.addEventListener('click', () => {
+            addScheduleBlock(null);
+        });
+    }
+
+    // Save button
+    const saveBtn = document.getElementById('save-multi-schedule');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', saveMultiSchedule);
+    }
+
+    // Validate button
+    const validateBtn = document.getElementById('validate-schedules-btn');
+    if (validateBtn) {
+        validateBtn.addEventListener('click', () => {
+            const schedules = [];
+            document.querySelectorAll('.schedule-block').forEach(el => {
+                schedules.push(getScheduleData(el));
+            });
+
+            const { isValid, errors } = validateSchedules(schedules);
+
+            if (isValid) {
+                alert(`✓ All ${schedules.length} schedule(s) validated successfully!`);
+                document.getElementById('validation-messages').style.display = 'none';
+            } else {
+                showValidationErrors(errors);
+            }
+        });
+    }
+});
+
+// ========== END MULTI-SCHEDULE SAVE & VALIDATION FUNCTIONS ==========
+
         // Use a saved formula
        function useFormula(formulaName) {
             if (!savedFormulas[formulaName]) {
@@ -4530,7 +6094,10 @@ currentFormulaName = formulaName;
                 <td><strong>${name}</strong></td>
                 <td>${formulaDisplay}</td>
                 <td>
-                <div class="action-btn btn-secondary use-formula" data-name="${name}" role="button">Update</div> 
+                <div class="action-btn btn-secondary use-formula" data-name="${name}" role="button">Update</div>
+                </td>
+                <td>
+                <div class="action-btn btn-info advanced-formula" data-name="${name}" role="button">Advanced</div>
                 </td>
                 <td>
                 <div class="action-btn btn-danger delete-formula" data-name="${name}" role="button">Delete</div>
@@ -5185,6 +6752,139 @@ function replaceDayOfWeekExpressions(expr, row) {
     });
 }
 
+// ---------------------- Multi-Schedule Helper Functions ----------------------
+
+/**
+ * Build filter string from schedule filters (converts UI to expression format)
+ * Converts multi-schedule UI filters to DATE_RANGE/DAY_OF_WEEK expressions
+ */
+function buildFilterStringFromSchedule(schedule) {
+    const filters = [];
+
+    // Date range: Convert to DATE_RANGE() expression (REUSES existing parseDateRange)
+    if (schedule.filters?.dateRange) {
+        filters.push(`DATE_RANGE('${schedule.filters.dateRange.from}','${schedule.filters.dateRange.to}')`);
+    }
+
+    // Day of week: Convert to DAY_OF_WEEK() expression (REUSES existing parseDayOfWeek)
+    if (schedule.filters?.daysOfWeek?.length > 0) {
+        const dayStr = schedule.filters.daysOfWeek.join(',');
+        filters.push(`DAY_OF_WEEK(${dayStr})`);
+    }
+
+    // Lead time: Custom filter (NEW feature)
+    if (schedule.filters?.leadTimeRange) {
+        filters.push(`LEAD_TIME >= ${schedule.filters.leadTimeRange.min} && LEAD_TIME <= ${schedule.filters.leadTimeRange.max}`);
+    }
+
+    // Custom filter text (if user enters advanced filter)
+    if (schedule.filters?.customFilter) {
+        filters.push(schedule.filters.customFilter);
+    }
+
+    return filters.length > 0 ? filters.join(' && ') : '';
+}
+
+/**
+ * Evaluate schedule filter (REUSES existing parseDateRange/parseDayOfWeek)
+ * Returns true if row matches the schedule's filter conditions
+ */
+function evaluateScheduleFilter(filterString, row) {
+    if (!filterString) return true; // No filter = always match
+
+    console.log('[evaluateScheduleFilter] Input filter:', filterString);
+    console.log('[evaluateScheduleFilter] Row PK_COL:', row.PK_COL || row.COLUMN_COL);
+
+    let processedFilter = filterString;
+
+    // Handle DATE_RANGE('from','to') - convert to date comparison
+    if (processedFilter.includes('DATE_RANGE')) {
+        const dateRangeMatch = processedFilter.match(/DATE_RANGE\('([^']+)','([^']+)'\)/);
+        if (dateRangeMatch) {
+            const fromDate = new Date(dateRangeMatch[1]);
+            const toDate = new Date(dateRangeMatch[2]);
+
+            // Get the date column (PK_COL or COLUMN_COL)
+            const dateCol = row.PK_COL || row.COLUMN_COL || row.SDATE;
+            console.log('[evaluateScheduleFilter] Date column value:', dateCol);
+
+            if (dateCol) {
+                // Parse the date - handle DD-MMM-YYYY format
+                let rowDate;
+                if (dateCol.includes('-') && dateCol.length > 8) {
+                    // DD-MMM-YYYY format like "01-NOV-2025"
+                    const parts = dateCol.split('-');
+                    const months = {'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
+                                  'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11};
+                    rowDate = new Date(parseInt(parts[2]), months[parts[1]], parseInt(parts[0]));
+                } else {
+                    rowDate = new Date(dateCol);
+                }
+
+                console.log('[evaluateScheduleFilter] Parsed dates - From:', fromDate, 'To:', toDate, 'Row:', rowDate);
+
+                const inRange = rowDate >= fromDate && rowDate <= toDate;
+                console.log('[evaluateScheduleFilter] Date range result:', inRange);
+
+                // Replace the DATE_RANGE expression with the result
+                processedFilter = processedFilter.replace(/DATE_RANGE\('[^']+','[^']+'\)/, inRange);
+            } else {
+                console.warn('[evaluateScheduleFilter] No date column found');
+                processedFilter = processedFilter.replace(/DATE_RANGE\('[^']+','[^']+'\)/, false);
+            }
+        }
+    }
+
+    // Handle DAY_OF_WEEK(0,1,2,...) - convert to day comparison
+    if (processedFilter.includes('DAY_OF_WEEK')) {
+        const dayOfWeekMatch = processedFilter.match(/DAY_OF_WEEK\(([^)]+)\)/);
+        if (dayOfWeekMatch) {
+            const allowedDays = dayOfWeekMatch[1].split(',').map(d => parseInt(d.trim()));
+
+            const dateCol = row.PK_COL || row.COLUMN_COL || row.SDATE;
+            if (dateCol) {
+                let rowDate;
+                if (dateCol.includes('-') && dateCol.length > 8) {
+                    const parts = dateCol.split('-');
+                    const months = {'JAN': 0, 'FEB': 1, 'MAR': 2, 'APR': 3, 'MAY': 4, 'JUN': 5,
+                                  'JUL': 6, 'AUG': 7, 'SEP': 8, 'OCT': 9, 'NOV': 10, 'DEC': 11};
+                    rowDate = new Date(parseInt(parts[2]), months[parts[1]], parseInt(parts[0]));
+                } else {
+                    rowDate = new Date(dateCol);
+                }
+
+                const dayOfWeek = rowDate.getDay();
+                const dayMatches = allowedDays.includes(dayOfWeek);
+                console.log('[evaluateScheduleFilter] Day of week - Row day:', dayOfWeek, 'Allowed:', allowedDays, 'Match:', dayMatches);
+
+                processedFilter = processedFilter.replace(/DAY_OF_WEEK\([^)]+\)/, dayMatches);
+            } else {
+                processedFilter = processedFilter.replace(/DAY_OF_WEEK\([^)]+\)/, false);
+            }
+        }
+    }
+
+    // Replace column references
+    for (const [colName, value] of Object.entries(row)) {
+        const regex = new RegExp(`#${colName}#`, 'g');
+        processedFilter = processedFilter.replace(regex,
+            typeof value === 'string' ? `'${value}'` : value
+        );
+    }
+
+    console.log('[evaluateScheduleFilter] Final processed filter:', processedFilter);
+
+    // Evaluate the final boolean expression
+    try {
+        const result = eval(processedFilter);
+        console.log('[evaluateScheduleFilter] Evaluation result:', result);
+        return result;
+    } catch (e) {
+        console.error('[evaluateScheduleFilter] Evaluation error:', e, 'Filter:', processedFilter);
+        return false;
+    }
+}
+
 // ---------------------- Main function ----------------------
 function addCalculation() { 
 
@@ -5206,6 +6906,126 @@ function addCalculation() {
         let ctype = 'number';
         // Work on a deep copy? We'll mutate pristineReportData rows directly like before
         pristineReportData.forEach(row => {
+            // ========== MULTI-SCHEDULE SUPPORT ==========
+            // Check if this formula is configured as multi-schedule
+            if (savedFormulas[calcName]?.isMultiSchedule && savedFormulas[calcName]?.schedules) {
+                const schedules = savedFormulas[calcName].schedules;
+                console.log('[Multi-Schedule] Evaluating formula:', calcName, 'with', schedules.length, 'schedules');
+
+                // Sequential evaluation: first match wins
+                for (const schedule of schedules) {
+                    const filterString = buildFilterStringFromSchedule(schedule);
+                    console.log('[Multi-Schedule] Schedule:', schedule.name, 'Filter:', filterString, 'Formula:', schedule.formula);
+
+                    if (evaluateScheduleFilter(filterString, row)) {
+                        console.log('[Multi-Schedule] Schedule matched! Row PK_COL:', row.PK_COL);
+                        // Found matching schedule - use its formula
+                        let scheduleFormula = schedule.formula;
+
+                        if (!scheduleFormula || scheduleFormula.trim() === '') {
+                            console.error('[Multi-Schedule] Empty formula for schedule:', schedule.name);
+                            row[calcName] = 'ERR';
+                            return;
+                        }
+
+                        // Apply existing shift pattern processing
+                        tableColumns.forEach(col => {
+                            const fullColName = col.name;
+                            const shiftPattern = new RegExp(escapeRegExp(fullColName) + '\\{(-?\\d+)\\}', 'g');
+
+                            scheduleFormula = scheduleFormula.replace(shiftPattern, (match, shiftVal) => {
+                                const shift = parseInt(shiftVal, 10);
+                                let d = new Date(row.PK_COL);
+                                d.setDate(d.getDate() + shift);
+                                let target = d.toLocaleDateString('en-GB', {
+                                    day: '2-digit', month: 'short', year: 'numeric'
+                                }).toUpperCase().replace(/ /g, '-');
+
+                                const found = reporttblData.rows.find(r => r.PK_COL === target);
+                                return (found && found[fullColName] != null && found[fullColName].toString().trim() !== '')
+                                    ? found[fullColName] : 'Calculation Issue';
+                            });
+                        });
+
+                        // Replace column references with type-aware conversion
+                        let hasCalculationIssue = false;
+                        tableColumns.forEach(col => {
+                            const fullColName = col.name;
+                            let rowValue = row[fullColName];
+                            const colType = col.type ? col.type.toLowerCase() : 'number';
+
+                            // Check if this formula uses this column
+                            const escapedColName = escapeRegExp(fullColName);
+                            const regex = new RegExp(`#${escapedColName}#`, 'g');
+
+                            if (!scheduleFormula.match(regex)) {
+                                return; // Column not used in formula, skip
+                            }
+
+                            // Check for missing/empty values
+                            if (rowValue === undefined || rowValue === null || rowValue === '') {
+                                hasCalculationIssue = true;
+                                return; // Mark as error and skip
+                            }
+
+                            // Convert to appropriate type based on column type
+                            let replacementValue;
+                            if (colType === 'number') {
+                                // For number columns, parse as number
+                                const numValue = parseFloat(rowValue);
+                                if (isNaN(numValue)) {
+                                    hasCalculationIssue = true;
+                                    return; // Invalid number - mark as error
+                                }
+                                replacementValue = numValue;
+                            } else {
+                                // For string/other columns, wrap in quotes
+                                replacementValue = `'${rowValue}'`;
+                            }
+
+                            scheduleFormula = scheduleFormula.replace(regex, replacementValue);
+                        });
+
+                        console.log('[Multi-Schedule] Final formula to evaluate:', scheduleFormula);
+
+                        // If any column had missing/invalid values, show error
+                        if (hasCalculationIssue) {
+                            console.log('[Multi-Schedule] Calculation Issue - missing or invalid values');
+                            row[calcName] = 'Calculation Issue';
+                            return; // Skip to next row
+                        }
+
+                        // Evaluate and assign
+                        try {
+                            let result = eval(scheduleFormula);
+                            console.log('[Multi-Schedule] Evaluation result:', result);
+
+                            // Handle NaN results
+                            if (typeof result === 'number' && isNaN(result)) {
+                                row[calcName] = 'Calculation Issue';
+                            } else {
+                                row[calcName] = schedule.type === 'number' ? parseFloat(result) : result;
+                            }
+                        } catch (e) {
+                            console.error('[Multi-Schedule] Schedule formula error:', e, 'Formula:', scheduleFormula);
+                            row[calcName] = 'ERR';
+                        }
+
+                        // First match wins - stop evaluating and skip legacy code
+                        return;
+                    } else {
+                        console.log('[Multi-Schedule] Schedule did NOT match for row PK_COL:', row.PK_COL);
+                    }
+                }
+
+                // No schedule matched - leave empty
+                console.log('[Multi-Schedule] No schedules matched for row PK_COL:', row.PK_COL);
+                row[calcName] = null;
+                return;
+            }
+            // ========== END MULTI-SCHEDULE SUPPORT ==========
+
+            // LEGACY: Single formula logic (existing code unchanged)
             let calculatedFormula = currentFormula;   // text to replace col references and evaluate
             let conditionalExpression = currentFilter; // text to replace col refs and evaluate to boolean
             let result = null;
@@ -5423,9 +7243,124 @@ function replaceDayFunction(expr) {
         pristineReportData = reporttblData.rows;
     pristineReportData.forEach(row => {
         for (const [calcName, meta] of Object.entries(savedFormulas)) {
+            // ========== MULTI-SCHEDULE SUPPORT ==========
+            if (meta?.isMultiSchedule && meta?.schedules) {
+                console.log('[recalculateAllFormulas] Multi-schedule formula:', calcName);
+
+                // Sequential evaluation: first match wins
+                for (const schedule of meta.schedules) {
+                    const filterString = buildFilterStringFromSchedule(schedule);
+
+                    if (evaluateScheduleFilter(filterString, row)) {
+                        console.log('[recalculateAllFormulas] Schedule matched:', schedule.name);
+                        let scheduleFormula = schedule.formula;
+
+                        // Apply shift pattern processing
+                        tableColumns.forEach(col => {
+                            const fullColName = col.name;
+                            const shiftPattern = new RegExp(escapeRegExp(fullColName) + '\\{(-?\\d+)\\}', 'g');
+
+                            scheduleFormula = scheduleFormula.replace(shiftPattern, (match, shiftVal) => {
+                                const shift = parseInt(shiftVal, 10);
+                                let d = new Date(row.PK_COL);
+                                d.setDate(d.getDate() + shift);
+                                let target = d.toLocaleDateString('en-GB', {
+                                    day: '2-digit', month: 'short', year: 'numeric'
+                                }).toUpperCase().replace(/ /g, '-');
+
+                                const found = reporttblData.rows.find(r => r.PK_COL === target);
+                                return (found && found[fullColName] != null && found[fullColName].toString().trim() !== '')
+                                    ? found[fullColName] : 'Calculation Issue';
+                            });
+                        });
+
+                        // Replace column references with type-aware conversion
+                        let hasCalculationIssue = false;
+                        tableColumns.forEach(col => {
+                            const fullColName = col.name;
+                            let rowValue = row[fullColName];
+                            const colType = col.type ? col.type.toLowerCase() : 'number';
+
+                            // Check if this formula uses this column
+                            const escapedColName = escapeRegExp(fullColName);
+                            const regex = new RegExp(`#${escapedColName}#`, 'g');
+
+                            if (!scheduleFormula.match(regex)) {
+                                return; // Column not used in formula, skip
+                            }
+
+                            // Check for missing/empty values
+                            if (rowValue === undefined || rowValue === null || rowValue === '') {
+                                hasCalculationIssue = true;
+                                return; // Mark as error and skip
+                            }
+
+                            // Convert to appropriate type based on column type
+                            let replacementValue;
+                            if (colType === 'number') {
+                                // For number columns, parse as number
+                                const numValue = parseFloat(rowValue);
+                                if (isNaN(numValue)) {
+                                    hasCalculationIssue = true;
+                                    return; // Invalid number - mark as error
+                                }
+                                replacementValue = numValue;
+                            } else {
+                                // For string/other columns, wrap in quotes
+                                replacementValue = `'${rowValue}'`;
+                            }
+
+                            scheduleFormula = scheduleFormula.replace(regex, replacementValue);
+                        });
+
+                        console.log('[recalculateAllFormulas] Evaluating formula:', scheduleFormula);
+
+                        // If any column had missing/invalid values, show error
+                        if (hasCalculationIssue) {
+                            console.log('[recalculateAllFormulas] Calculation Issue - missing or invalid values');
+                            row[calcName] = 'Calculation Issue';
+                            break; // Skip to next formula
+                        }
+
+                        try {
+                            let result = eval(scheduleFormula);
+
+                            // Handle NaN results
+                            if (typeof result === 'number' && isNaN(result)) {
+                                row[calcName] = 'Calculation Issue';
+                            } else {
+                                row[calcName] = schedule.type === 'number' ? parseFloat(result) : result;
+                            }
+                            console.log('[recalculateAllFormulas] Result:', result);
+                        } catch (e) {
+                            console.error('[recalculateAllFormulas] Evaluation error:', e);
+                            row[calcName] = 'ERR';
+                        }
+
+                        // First match wins - go to next formula
+                        break;
+                    }
+                }
+
+                // If no schedule matched, set to null
+                if (row[calcName] === undefined) {
+                    row[calcName] = null;
+                }
+
+                continue; // Skip legacy code for this formula
+            }
+            // ========== END MULTI-SCHEDULE SUPPORT ==========
+
+            // LEGACY: Single formula support (unchanged)
             const formula = typeof meta === 'object' ? meta.formula : meta;
             const type = typeof meta === 'object' ? meta.type : 'number';
             let result = null;
+
+            // Skip if formula is undefined or empty (shouldn't happen, but safety check)
+            if (!formula || formula.trim() === '') {
+                console.warn('[recalculateAllFormulas] Skipping empty formula:', calcName);
+                continue;
+            }
 
             try {
                 let workingFormula = formula;
@@ -5433,7 +7368,7 @@ function replaceDayFunction(expr) {
                 // Loop through all known columns
                 tableColumns.forEach(col => {
                     const fullColName = col.name;
-                    if (workingFormula.includes(fullColName)) {
+                    if (workingFormula && workingFormula.includes(fullColName)) {
                         const escaped = escapeRegExp(fullColName);
                         const regex = new RegExp(escaped, "g");
 
