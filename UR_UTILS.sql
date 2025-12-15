@@ -5079,7 +5079,19 @@ PROCEDURE date_parser(
             append_debug('Parsed successfully: ' || TO_CHAR(v_date, 'YYYY-MM-DD'));
         ELSE
             -- Try stripping day name if present
-            v_date := fn_try_date(strip_day_name(v_preprocessed), p_format);
+            -- WORKAROUND: For DY/DAY formats with year, also strip day name from format mask
+            IF (p_format LIKE '%DY%' OR p_format LIKE '%DAY%') AND (p_format LIKE '%YYYY%' OR p_format LIKE '%RR%') THEN
+                -- Strip day name from value AND format mask
+                v_date := fn_try_date(
+                    strip_day_name(v_preprocessed),
+                    -- Remove DY, DAY from format mask
+                    REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(p_format, 'DY, ', ''), 'DY ', ''), 'DAY, ', ''), 'DAY ', ''), ',  ', ' ')
+                );
+            ELSE
+                -- Original logic for other formats
+                v_date := fn_try_date(strip_day_name(v_preprocessed), p_format);
+            END IF;
+
             IF v_date IS NOT NULL THEN
                 p_result_date := v_date;
                 p_message := 'Parsed (after stripping day name) to ' || TO_CHAR(v_date, 'YYYY-MM-DD');
