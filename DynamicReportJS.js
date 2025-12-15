@@ -696,16 +696,9 @@ let selectedreport_var;
 document.addEventListener("click", function(e) {
 
     
-  // 1️⃣ Add New Formula
+  // 1️⃣ Add New Formula - Now opens multi-schedule dialog
   if (e.target && e.target.id === "open-formula-dialog") {
-    const dialog = document.getElementById("formula-dialog");
-    clearFormula();
-    dialog.style.display = "flex";
-    const addButton = document.getElementById('add-calculation');
-    if (addButton) {
-        addButton.style.display = 'inline-block'; 
-    }  
-
+    openMultiScheduleDialog(null); // null = create new formula
   }
 
   // 2️⃣ Close Dialog
@@ -1105,9 +1098,22 @@ const multiScheduleDialogHTML = `
   <div class="dialog-content" style="max-width: 1000px; width: 95%; max-height: 90vh; overflow-y: auto;">
     <div class="control-panel-header" style="margin-bottom: 20px;">
       <h2 style="color: #fff; margin: 0; display: flex; justify-content: space-between; align-items: center;">
-        <span>Multi-Schedule Formula: <span id="formula-name-display" style="color: #4a9eff;"></span></span>
+        <span>Multi-Schedule Formula</span>
         <span class="collapse-btn" id="close-multi-schedule" style="cursor: pointer; font-size: 1.5rem;">×</span>
       </h2>
+    </div>
+
+    <!-- Formula Name Input -->
+    <div style="margin-bottom: 20px;">
+      <label for="multi-schedule-formula-name" style="display: block; color: #ccc; margin-bottom: 8px; font-weight: bold;">
+        Formula Name <span style="color: #f88;">*</span>
+      </label>
+      <input
+        type="text"
+        id="multi-schedule-formula-name"
+        placeholder="Enter formula name (e.g., Dynamic_Pricing)"
+        style="width: 100%; padding: 8px; background: #1a1a1a; border: 1px solid #444; color: #ccc; border-radius: 4px; font-size: 14px;"
+      />
     </div>
 
     <!-- Schedule List Container -->
@@ -5039,14 +5045,7 @@ renderSavedFormula(name, "", formulaDisplay);
     }
     
     // Add event listeners to formula buttons (now divs)
-    document.querySelectorAll('.use-formula').forEach(div => {
-        div.addEventListener('click', function() {
-            const formulaName = this.getAttribute('data-name');
-            useFormula(formulaName);
-        });
-    });
-
-    document.querySelectorAll('.advanced-formula').forEach(div => {
+    document.querySelectorAll('.edit-formula').forEach(div => {
         div.addEventListener('click', function() {
             const formulaName = this.getAttribute('data-name');
             openMultiScheduleDialog(formulaName);
@@ -5064,27 +5063,52 @@ renderSavedFormula(name, "", formulaDisplay);
 // ========== MULTI-SCHEDULE MANAGEMENT FUNCTIONS ==========
 
 /**
- * Open multi-schedule dialog for a specific formula
+ * Open multi-schedule dialog for a specific formula (existing) or new formula (null)
  */
 function openMultiScheduleDialog(formulaName) {
-    currentFormulaName = formulaName;
     const dialog = document.getElementById('multi-schedule-formula-dialog');
-    const nameDisplay = document.getElementById('formula-name-display');
+    const nameInput = document.getElementById('multi-schedule-formula-name');
     const container = document.getElementById('schedule-container');
 
-    nameDisplay.textContent = formulaName;
     container.innerHTML = '';
 
-    // Load existing schedules or create first empty one
-    const formulaConfig = savedFormulas[formulaName];
+    if (formulaName) {
+        // EDIT MODE: Editing existing formula
+        currentFormulaName = formulaName;
+        nameInput.value = formulaName;
+        nameInput.setAttribute('readonly', 'readonly');
+        nameInput.style.opacity = '0.7';
+        nameInput.style.cursor = 'not-allowed';
 
-    if (formulaConfig?.isMultiSchedule && formulaConfig.schedules) {
-        // Load existing multi-schedule formulas
-        formulaConfig.schedules.forEach(scheduleData => {
-            addScheduleBlock(scheduleData);
-        });
+        // Load existing schedules
+        const formulaConfig = savedFormulas[formulaName];
+
+        if (formulaConfig?.isMultiSchedule && formulaConfig.schedules) {
+            // Load existing multi-schedule formulas
+            formulaConfig.schedules.forEach(scheduleData => {
+                addScheduleBlock(scheduleData);
+            });
+        } else if (formulaConfig) {
+            // Convert legacy single formula to multi-schedule format
+            addScheduleBlock({
+                name: 'Schedule 1',
+                formula: formulaConfig.formula || formulaConfig,
+                filters: {},
+                type: formulaConfig.type || 'number'
+            });
+        } else {
+            // No existing formula found - create empty schedule
+            addScheduleBlock(null);
+        }
     } else {
-        // First time: create one empty schedule
+        // NEW MODE: Creating new formula
+        currentFormulaName = '';
+        nameInput.value = '';
+        nameInput.removeAttribute('readonly');
+        nameInput.style.opacity = '1';
+        nameInput.style.cursor = 'text';
+
+        // Create one empty schedule
         addScheduleBlock(null);
     }
 
@@ -5794,11 +5818,21 @@ function updateScheduleSequence() {
  * Save multi-schedule configuration
  */
 function saveMultiSchedule() {
-    const formulaName = currentFormulaName;
+    // Get formula name from input
+    const nameInput = document.getElementById('multi-schedule-formula-name');
+    const formulaName = nameInput.value.trim();
 
     if (!formulaName) {
-        alert('No formula selected');
+        alert('Please enter a formula name');
+        nameInput.focus();
         return;
+    }
+
+    // Check if this is a new formula and name already exists
+    if (!currentFormulaName && savedFormulas[formulaName]) {
+        if (!confirm(`Formula "${formulaName}" already exists. Do you want to overwrite it?`)) {
+            return;
+        }
     }
 
     // Collect all schedule data
@@ -6152,10 +6186,7 @@ currentFormulaName = formulaName;
                 <td><strong>${name}</strong></td>
                 <td>${formulaDisplay}</td>
                 <td>
-                <div class="action-btn btn-secondary use-formula" data-name="${name}" role="button">Update</div>
-                </td>
-                <td>
-                <div class="action-btn btn-info advanced-formula" data-name="${name}" role="button">Advanced</div>
+                <div class="action-btn btn-info edit-formula" data-name="${name}" role="button">Edit</div>
                 </td>
                 <td>
                 <div class="action-btn btn-danger delete-formula" data-name="${name}" role="button">Delete</div>
