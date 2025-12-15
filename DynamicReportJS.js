@@ -1134,12 +1134,12 @@ const multiScheduleDialogHTML = `
     <!-- Dialog Footer -->
     <div class="dialog-footer" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #444; display: flex; justify-content: space-between; align-items: center;">
       <div style="display: flex; gap: 10px;">
-        <div class="action-btn btn-secondary" id="cancel-multi-schedule">Cancel</div>
-        <div class="action-btn" id="add-schedule-btn" style="background-color: #528e54;">+ Add Schedule</div>
+        <button class="action-btn btn-secondary" id="cancel-multi-schedule" style="padding: 8px 16px; font-size: 14px; border-radius: 4px; cursor: pointer; border: none;">Cancel</button>
+        <button class="action-btn btn-success" id="add-schedule-btn" style="padding: 8px 16px; font-size: 14px; border-radius: 4px; cursor: pointer; border: none; background-color: #28a745; color: white;">+ Add Schedule</button>
       </div>
       <div style="display: flex; gap: 10px;">
-        <div class="action-btn btn-info" id="validate-schedules-btn">Validate</div>
-        <div class="action-btn" id="save-multi-schedule" style="background-color: #007bff;">Save All Schedules</div>
+        <button class="action-btn btn-info" id="validate-schedules-btn" style="padding: 8px 16px; font-size: 14px; border-radius: 4px; cursor: pointer; border: none; background-color: #17a2b8; color: white;">Validate</button>
+        <button class="action-btn btn-primary" id="save-multi-schedule" style="padding: 8px 16px; font-size: 14px; border-radius: 4px; cursor: pointer; border: none; background-color: #007bff; color: white;">Save All Schedules</button>
       </div>
     </div>
 
@@ -5249,26 +5249,28 @@ function addScheduleBlock(scheduleData) {
                     </select>
                     <select class="form-input operator-select" style="flex: 1; padding: 5px; font-size: 12px;">
                         <option value="">-- Select Operator --</option>
-                        <option value="+">+ (Add)</option>
-                        <option value="-">- (Subtract)</option>
-                        <option value="*">* (Multiply)</option>
-                        <option value="/">\u00F7 (Divide)</option>
-                        <option value="%">% (Modulo)</option>
-                        <option value="(">) (Greater Than)</option>
-                        <option value="<">< (Less Than)</option>
-                        <option value=">=">>= (Greater or Equal)</option>
-                        <option value="<="><= (Less or Equal)</option>
-                        <option value="==">== (Equal)</option>
-                        <option value="!=">!= (Not Equal)</option>
-                        <option value="&&">&& (AND)</option>
-                        <option value="||">|| (OR)</option>
+                        <option value="+">+</option>
+                        <option value="-">-</option>
+                        <option value="*">*</option>
+                        <option value="/">/</option>
+                        <option value="%">%</option>
+                        <option value=">">&gt;</option>
+                        <option value="<">&lt;</option>
+                        <option value=">=">&gt;=</option>
+                        <option value="<=">&lt;=</option>
+                        <option value="==">==</option>
+                        <option value="!=">!=</option>
+                        <option value="&&">&amp;&amp;</option>
+                        <option value="||">||</option>
+                        <option value="(">(</option>
+                        <option value=")">)</option>
                     </select>
                 </div>
 
                 <textarea class="form-input formula-textarea" rows="3" placeholder="Type # to see autocomplete. All columns must be wrapped as #Column Name#" style="font-family: monospace; font-size: 12px; background: #1a1a1a; color: #0f0; padding: 8px;"></textarea>
 
                 <div style="margin-top: 8px;">
-                    <div class="action-btn btn-info validate-formula-btn" style="font-size: 0.8rem; padding: 5px 10px;">Validate</div>
+                    <button class="action-btn btn-info validate-formula-btn" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; cursor: pointer; border: none; background-color: #17a2b8; color: white;">Validate</button>
                 </div>
             </div>
         </div>
@@ -5675,25 +5677,42 @@ function insertAutocompleteItem(scheduleElement, itemName, type) {
  * Get schedule data from DOM element
  */
 function getScheduleData(scheduleElement) {
+    const titleDisplay = scheduleElement.querySelector('.title-display');
+    const formulaTextarea = scheduleElement.querySelector('.formula-textarea');
+
+    if (!titleDisplay || !formulaTextarea) {
+        console.error('getScheduleData: Missing required elements', {
+            titleDisplay: !!titleDisplay,
+            formulaTextarea: !!formulaTextarea
+        });
+        return null;
+    }
+
     const data = {
         id: scheduleElement.id,
-        name: scheduleElement.querySelector('.title-display').textContent.trim(),
+        name: titleDisplay.textContent.trim(),
         sequence: parseInt(scheduleElement.dataset.sequence, 10),
         filters: {},
-        formula: scheduleElement.querySelector('.formula-textarea').value.trim(),
-        type: scheduleElement.querySelector('.formula-type-select').value
+        formula: formulaTextarea.value.trim()
+        // Note: type is now global (formula-output-type), not per-schedule
     };
 
     // Date range
-    if (scheduleElement.querySelector('.filter-date-range-checkbox').checked) {
-        data.filters.dateRange = {
-            from: scheduleElement.querySelector('.date-from').value,
-            to: scheduleElement.querySelector('.date-to').value
-        };
+    const dateRangeCheckbox = scheduleElement.querySelector('.filter-date-range-checkbox');
+    if (dateRangeCheckbox && dateRangeCheckbox.checked) {
+        const dateFrom = scheduleElement.querySelector('.date-from');
+        const dateTo = scheduleElement.querySelector('.date-to');
+        if (dateFrom && dateTo) {
+            data.filters.dateRange = {
+                from: dateFrom.value,
+                to: dateTo.value
+            };
+        }
     }
 
     // Days of week
-    if (scheduleElement.querySelector('.filter-days-checkbox').checked) {
+    const daysCheckbox = scheduleElement.querySelector('.filter-days-checkbox');
+    if (daysCheckbox && daysCheckbox.checked) {
         const checkedDays = Array.from(
             scheduleElement.querySelectorAll('.day-checkbox:checked')
         ).map(cb => parseInt(cb.value, 10));
@@ -5703,10 +5722,11 @@ function getScheduleData(scheduleElement) {
     }
 
     // Custom filter
-    if (scheduleElement.querySelector('.filter-custom-checkbox').checked) {
-        const customText = scheduleElement.querySelector('.custom-filter-text').value.trim();
-        if (customText) {
-            data.filters.customFilter = customText;
+    const customCheckbox = scheduleElement.querySelector('.filter-custom-checkbox');
+    if (customCheckbox && customCheckbox.checked) {
+        const customText = scheduleElement.querySelector('.custom-filter-text');
+        if (customText && customText.value.trim()) {
+            data.filters.customFilter = customText.value.trim();
         }
     }
 
@@ -5723,7 +5743,7 @@ function populateSchedule(scheduleElement, scheduleData) {
 
     // Set formula
     scheduleElement.querySelector('.formula-textarea').value = scheduleData.formula || '';
-    scheduleElement.querySelector('.formula-type-select').value = scheduleData.type || 'number';
+    // Note: type is now global (formula-output-type), not per-schedule
 
     // Populate date range
     if (scheduleData.filters?.dateRange) {
@@ -5856,8 +5876,18 @@ function saveMultiSchedule() {
     // Collect all schedule data
     const schedules = [];
     document.querySelectorAll('.schedule-block').forEach(el => {
-        schedules.push(getScheduleData(el));
+        const scheduleData = getScheduleData(el);
+        if (scheduleData) {
+            schedules.push(scheduleData);
+        } else {
+            console.error('Failed to get schedule data from element:', el);
+        }
     });
+
+    if (schedules.length === 0) {
+        alert('No valid schedules found. Please add at least one schedule with a formula.');
+        return;
+    }
 
     // Validate
     const { isValid, errors } = validateSchedules(schedules);
