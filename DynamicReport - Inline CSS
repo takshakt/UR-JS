@@ -455,6 +455,49 @@
     background: #4caf50;
 }
 
+ 
+
+/* Ensure btn-primary styles are used for action buttons */
+#generateJson.action-btnSave {
+    background-color: #007bff; /* Standard Blue */
+     width: auto;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s, opacity 0.3s;
+    font-weight: 600;
+    display: inline-block;  
+    text-align: center; 
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+    white-space: nowrap;
+    color: white;
+}
+
+/* Ensure the hover effect also uses a slightly different blue */
+#generateJson.action-btnSave:hover {
+    background-color: #0056b3; /* Darker Blue on hover */
+     width: auto;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s, opacity 0.3s;
+    font-weight: 600;
+    display: inline-block;  
+    text-align: center; 
+    justify-content: center;
+    align-items: center;
+    user-select: none;
+    white-space: nowrap;
+    color: white;
+}
+
+
+
+
 #generateJson.action-btn:hover {
     background: #45a049;
 }
@@ -641,23 +684,23 @@
 
 .data-dashboard-wrapper .description {
     font-size: 1.1rem;
-    max-width: 800px;
+    max-width: 100%;
     margin: 0 auto;
     color: rgba(255, 255, 255, 0.9);
 }
 
 /* Panel Layout */
 .data-dashboard-wrapper .panels-container {
-    display: grid;
+    /* display: grid; */
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
+    gap: 0px;
     margin-bottom: 30px;
 }
 
 /* Control Panels (the boxes) */
 .data-dashboard-wrapper .control-panel {
     background-color: #1e1e1e;
-    padding: 20px;
+    padding: 0px;
     border-radius: 10px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
     margin-bottom: 20px;
@@ -667,6 +710,7 @@
 .data-dashboard-wrapper .control-panel h2 {
     margin-bottom: 15px;
     color: #ffffff;
+     padding: 10px;
     padding-bottom: 10px;
     border-bottom: 2px solid #333;
     display: flex;
@@ -716,15 +760,15 @@
 /* Base Styles for ALL Div Buttons */
 .data-dashboard-wrapper .collapse-btn, 
 .data-dashboard-wrapper .action-btn { 
-    width: 100%;
+    width: auto;
     padding: 10px;
     border: none;
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s, opacity 0.3s;
     font-weight: 600;
-    text-align: center;
-    display: flex;
+    display: inline-block;  
+    text-align: center; 
     justify-content: center;
     align-items: center;
     user-select: none;
@@ -780,9 +824,43 @@
 /* Formula Builder Specific Layout */
 .data-dashboard-wrapper .formula-builder {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    /* Defines 4 columns: 2 equal-width selects, a fixed-width color picker (40px), and an auto-width button */
+    grid-template-columns: 1fr 1fr 40px auto; 
     gap: 10px;
     margin-bottom: 15px;
+    align-items: center; /* Ensures vertical alignment */
+}
+
+/* Styling for the custom color picker control */
+.color-picker-control {
+    /* Critical to override default input behavior in the grid layout */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    
+    /* Set dimensions for a visible circle */
+    width: 35px;
+    height: 35px;
+    padding: 0;
+    margin: 0;
+    
+    /* Make it round */
+    border-radius: 50%;
+    
+    /* Style border to match controls */
+    border: 2px solid #555;
+    cursor: pointer;
+    overflow: hidden; /* Important for clean circle look */
+}
+
+/* Ensure the color value is reflected inside */
+.color-picker-control::-webkit-color-swatch {
+    border: none;
+    border-radius: 50%;
+}
+.color-picker-control::-moz-color-swatch {
+    border: none;
+    border-radius: 50%;
 }
 
 .data-dashboard-wrapper .formula-actions {
@@ -807,7 +885,7 @@
 }
 
 /* Saved Formulas List */
-.data-dashboard-wrapper .saved-formulas {
+/* .data-dashboard-wrapper .saved-formulas {
     margin-top: 20px;
 }
 
@@ -827,12 +905,104 @@
     gap: 5px;
 }
 
-/* Smaller buttons for Use/Delete within saved list */
 .data-dashboard-wrapper .formula-item-buttons .action-btn {
     width: auto;
     padding: 5px 10px;
     font-size: 0.9rem;
+} */
+
+
+/* Saved Formulas Container */
+.saved-formulas {
+  margin-top: 20px;
+  color: #eee;
+  background-color: transparent;
 }
+
+/* Table */
+.saved-formulas-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #111;
+  border: 1px solid #333;
+  border-radius: 5px;
+  overflow: hidden;
+  table-layout: auto;
+}
+
+/* Header */
+.saved-formulas-table th {
+  background-color: #222;
+  color: #ccc;
+  text-align: left;
+  padding: 10px;
+  font-weight: 600;
+  border-bottom: 1px solid #333;
+}
+
+/* Table cells */
+.saved-formulas-table td {
+   
+  padding: 10px;
+  border-bottom: 1px solid #333;
+  color: #eee;
+  vertical-align: middle;
+  word-break: break-word;
+}
+
+/* Row hover */
+.saved-formulas-table tr:hover td {
+  background-color: #252525;
+}
+
+
+/* Action buttons */
+.action-btn {
+    width: auto; 
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #fff;
+  margin-right: 5px;
+}
+
+.btn-info { background-color: #17a2b8; }
+.btn-primary { background-color: #007bff; }
+.btn-danger { background-color: #dc3545; }
+
+.btn-info:hover,
+.btn-primary:hover,
+.btn-danger:hover {
+  opacity: 0.85;
+}
+
+/* Table border fix for dark theme */
+.saved-formulas-table th:first-child,
+.saved-formulas-table td:first-child {
+  border-left: none;
+}
+.saved-formulas-table th,
+.saved-formulas-table td {
+  border-right: 1px solid #333;
+}
+.saved-formulas-table th:last-child,
+.saved-formulas-table td:last-child {
+  border-right: none;
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* Table Styles */
 .data-dashboard-wrapper .table-container {
@@ -886,7 +1056,7 @@
 }
 
 /* Media Queries for Responsiveness */
-@media (max-width: 992px) {
+@media (max-width: 100%) {
     .data-dashboard-wrapper .panels-container {
         grid-template-columns: 1fr;
     }
@@ -942,13 +1112,14 @@
     border-radius: 8px;
     padding: 20px;
     margin-top: 20px;
+    
 }
 
 .control-panel-header h2 {
     color: #fff;
     border-bottom: 1px solid #444;
     padding-bottom: 10px;
-    margin-bottom: 15px;
+    margin-bottom: 15px; 
 }
 
 /* Ensure buttons added via JavaScript are also styled as divs */
@@ -965,3 +1136,140 @@
 
 
  
+/* Ensure the dialog content has a maximum height and scrolls if needed */
+.formula-dialog .dialog-content {
+    /* Retain existing styles (e.g., background, padding, width) */
+    
+    /* ADD these two properties: */
+    max-height: 90vh; /* Limits the dialog height to 90% of the viewport height */
+    overflow-y: auto; /* Adds a vertical scrollbar if content exceeds max-height */
+}
+
+/* Optional: Add slight padding to the bottom of the content to ensure the last element isn't touching the scrollbar */
+.formula-dialog .dialog-content > :last-child {
+    padding-bottom: 5px;
+}
+
+
+.formula-dialog {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  /* Changed from 0.4 to 0.7 for a darker, less transparent overlay */
+  background: rgba(0, 0, 0, 0.7); 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+}
+
+.dialog-content {
+  /* Changed from rgba(0, 0, 0, 0.3) to solid white */
+  background: #3c3737; 
+  padding: 20px;
+  border-radius: 10px;
+  width: 600px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.dialog-footer {
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+    width: 100%;
+    margin-top: 15px; 
+}
+
+/* 2. Style the new wrapper to keep the right buttons grouped */
+.button-group-right {
+    display: flex;
+    gap: 10px; /* Space between Add Rule and Save buttons */
+    align-items: center;
+}
+.action-btn {
+  display: inline-block;
+  padding: 6px 12px;
+  margin: 3px;
+  background-color: #007bff;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-danger { background-color: #dc3545; }
+.btn-info { background-color: #17a2b8; }
+.btn-secondary {
+    width: auto;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s, opacity 0.3s;
+    font-weight: 600;
+    display: inline-block;
+    text-align: center;
+ 
+    user-select: none;
+    white-space: nowrap;
+    background-color: #6c757d; 
+    margin-left: 0; 
+}
+
+ 
+
+.rule-header {
+    display: flex;
+    /* Pushes the first item (Label) to the start and the last item (Button) to the end */
+    justify-content: space-between; 
+    /* Vertically aligns the items in the center */
+    align-items: center; 
+    /* Ensures the header takes the full width available */
+    width: 100%; 
+    margin-bottom: 10px; 
+}
+
+/* 2. Constrain the size of the Delete Button */
+.delete-rule-btn {
+    /* Prevents the button from stretching */
+    flex-shrink: 0;
+    
+    /* Make the button look smaller than the main action buttons */
+    padding: 4px 8px !important; /* Use !important if needed to override global .action-btn padding */
+    font-size: 0.8rem;
+    cursor: pointer;
+    
+    /* Set specific background color */
+    background-color: #dc3545; 
+}
+
+/* 3. Ensure the parent .form-group isn't trying to do its own conflicting layout */
+/* If you use the .form-group CSS below, it might be pushing the button down: */
+/* #formatter-dialog .form-group { display: flex; flex-direction: column; } */
+
+/* If your delete button is still breaking, you might need to force the label to stay on one line */
+.rule-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+ 
+ 
+.radio-group {
+    /* Force all content inside this container to remain on a single line */
+    white-space: nowrap; 
+}
+
+/* Ensure btn-primary styles are used for action buttons */
+.action-btn.btn-primarySave {
+    background-color: #007bff; /* Standard Blue */
+}
+
+/* Ensure the hover effect also uses a slightly different blue */
+.action-btn.btn-primarySave:hover {
+    background-color: #0056b3; /* Darker Blue on hover */
+}
+

@@ -1,0 +1,357 @@
+ 
+/* .container {
+  /* display: flex; */
+  /* Add other flex properties as needed for the layout of its direct children (e.g., .row) */
+  /* flex-direction: row; */ /* or column */
+  /* justify-content: center; */ /* or space-between, flex-start, etc. */
+  /* align-items: center; */ /* or flex-start, stretch, etc. */
+  /* gap: 10px; */ /* for spacing between items */
+/* } */ 
+/* MAIN DARK-MODE OVERRIDES */
+html.dark .my-dashboard-scope {
+    --bg-color: #1a202c;
+    --text-color: #e2e8f0;
+    --card-bg: #2d3748;
+    --border-color: #4a5568;
+    --accent-color: #63b3ed;
+    --scrollbar-thumb: #4a5568;
+    --scrollbar-track: #2d3748;
+}
+
+/* Apply dark mode background + text globally */
+html.dark .my-dashboard-scope body,
+html.dark .my-dashboard-scope {
+    /* --text-color: #000000;  */
+    background-color: var(--bg-color) !important; 
+    color: var(--text-color) !important;
+}
+
+/* Cards (your actual dashboard widgets) */
+html.dark .my-dashboard-scope .table-card {
+    background-color: var(--card-bg) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Table preview backgrounds */
+html.dark .my-dashboard-scope .preview-table thead {
+    background-color: #374151 !important; /* darker header */
+}
+
+html.dark .my-dashboard-scope .preview-table tbody tr:hover {
+    background-color: rgba(255,255,255,0.05) !important;
+}
+
+
+/* Modal background */
+html.dark #dataModal .modal-content {
+    background-color: var(--card-bg) !important;
+    color: var(--text-color) !important;
+}
+
+/* Scrollbars */
+html.dark .my-dashboard-scope .custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb) !important;
+}
+html.dark .my-dashboard-scope .custom-scrollbar::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-track) !important;
+}
+
+ 
+ /* LIGHT MODE (default) */
+ 
+.my-dashboard-scope {
+    --bg-color: #ffffff;
+    --text-color: #1f2937;
+    --card-bg: #ffffff;
+    --border-color: #e5e7eb;
+    --accent-color: #2563eb;
+    --scrollbar-thumb: #cbd5e1;
+    --scrollbar-track: #f1f5f9;
+}
+
+/* Apply to entire dashboard */
+.my-dashboard-scope,
+.my-dashboard-scope body {
+    background-color: var(--bg-color) !important;
+    color: var(--text-color) !important;
+}
+
+/* Cards */
+.my-dashboard-scope .table-card {
+    background-color: var(--card-bg) !important;
+    border-color: var(--border-color) !important; 
+}
+
+
+
+/* Example: elements inside your scope reacting to APEX dark mode */
+html.dark .my-dashboard-scope .card {
+    background-color: rgb(31 41 55 / var(--tw-bg-opacity)); /* slate-800 */
+    color: #f8fafc; /* slate-50 */
+}
+
+html.dark .my-dashboard-scope header {
+    background: #1f2937; /* slate-800 */
+}
+
+  /* Tailwind CSS Core */
+       .my-dashboard-scope *, 
+.my-dashboard-scope *::before, 
+.my-dashboard-scope *::after {
+    box-sizing: border-box;
+}
+       .my-dashboard-scope html{line-height:1.5;-webkit-text-size-adjust:100%;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica Neue,Arial,Noto Sans,sans-serif;font-feature-settings:normal;font-variation-settings:normal}
+       .my-dashboard-scope body{margin:0;line-height:inherit}
+        .my-dashboard-scope .hidden{display:none}
+        .my-dashboard-scope .flex{display:flex}
+        .my-dashboard-scope .flex-col{flex-direction:column}
+        .my-dashboard-scope .flex-row{flex-direction:row}
+        .my-dashboard-scope .relative{position:relative}
+        .my-dashboard-scope .absolute{position:absolute}
+        .my-dashboard-scope .sticky{position:sticky}
+        .my-dashboard-scope .fixed{position:fixed}
+        .my-dashboard-scope .top-0{top:0}
+        .my-dashboard-scope .right-0{right:0}
+        .my-dashboard-scope .right-4{right:1rem}
+        .my-dashboard-scope .bottom-4{bottom:1rem}
+        .my-dashboard-scope .z-10{z-index:10}
+        .my-dashboard-scope .z-40{z-index:40}
+        .my-dashboard-scope .z-50{z-index:50}
+        .my-dashboard-scope .m-0{margin:0}
+        .my-dashboard-scope .mt-2{margin-top:0.5rem}
+        .my-dashboard-scope .mt-3{margin-top:0.75rem}
+        .my-dashboard-scope .mt-4{margin-top:1rem;  --text-color: #000000;  }
+
+        .my-dashboard-scope .w-24{color:#1f2937 }
+        .my-dashboard-scope .w-full{color:#080707 }
+        
+        .my-dashboard-scope .mt-6{margin-top:1.5rem}
+        .my-dashboard-scope .mb-2{margin-bottom:0.5rem}
+        .my-dashboard-scope .mb-3{margin-bottom:0.75rem}
+        .my-dashboard-scope .mb-4{margin-bottom:1rem}
+        .my-dashboard-scope .mb-6{margin-bottom:1.5rem}
+        .my-dashboard-scope .p-2{padding:0.5rem}
+        .my-dashboard-scope .p-3{padding:0.75rem}
+        .my-dashboard-scope .p-4{padding:1rem}
+        .my-dashboard-scope .px-2{padding-left:0.5rem;padding-right:0.5rem}
+        .my-dashboard-scope .px-4{padding-left:1rem;padding-right:1rem}
+        .my-dashboard-scope .px-6{padding-left:1.5rem;padding-right:1.5rem}
+        .my-dashboard-scope .py-1{padding-top:0.25rem;padding-bottom:0.25rem}
+        .my-dashboard-scope .py-2{padding-top:0.5rem;padding-bottom:0.5rem}
+        .my-dashboard-scope .py-3{padding-top:0.75rem;padding-bottom:0.75rem}
+        .my-dashboard-scope .py-4{padding-top:1rem;padding-bottom:1rem}
+        .my-dashboard-scope .w-6{width:1.5rem}
+        .my-dashboard-scope .w-24{width:6rem}
+        .my-dashboard-scope .w-full{width:100%}
+        .my-dashboard-scope .h-6{height:1.5rem}
+        .my-dashboard-scope .h-full{height:100%}
+        .my-dashboard-scope .min-h-screen{min-height:100vh}
+        .my-dashboard-scope .text-xs{font-size:0.75rem;line-height:1rem}
+        .my-dashboard-scope .text-sm{font-size:0.875rem;line-height:1.25rem}
+        .my-dashboard-scope .text-lg{font-size:1.125rem;line-height:1.75rem}
+        .my-dashboard-scope .text-xl{font-size:1.25rem;line-height:1.75rem}
+        .my-dashboard-scope .text-2xl{font-size:1.5rem;line-height:2rem}
+        .my-dashboard-scope .text-3xl{font-size:1.875rem;line-height:2.25rem}
+        .my-dashboard-scope .font-medium{font-weight:500}
+        .my-dashboard-scope .font-semibold{font-weight:600}
+        .my-dashboard-scope .font-bold{font-weight:700}
+        .my-dashboard-scope font-extrabold{font-weight:800}
+        .my-dashboard-scope .uppercase{text-transform:uppercase}
+        .my-dashboard-scope .truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .my-dashboard-scope .text-left{text-align:left}
+        .my-dashboard-scope .text-center{text-align:center}
+        .my-dashboard-scope .text-white{color:#fff}
+        .my-dashboard-scope .text-gray-400{color:#9ca3af}
+        .my-dashboard-scope .text-gray-500{color:#6b7280}
+        .my-dashboard-scope .text-gray-700{color:#374151}
+        .my-dashboard-scope .text-gray-800{color:#1f2937}
+        .my-dashboard-scope .text-blue-600{color:#2563eb}
+        .my-dashboard-scope .text-indigo-400{color:#818cf8}
+        .my-dashboard-scope .text-yellow-500{color:#eab308}
+        .my-dashboard-scope .bg-white{background-color:#fff}
+        .my-dashboard-scope .bg-gray-50{background-color:#f9fafb}
+        .my-dashboard-scope .bg-gray-100{background-color:#f3f4f6}
+        .my-dashboard-scope .bg-gray-200{background-color:#e5e7eb}
+        .my-dashboard-scope .bg-gray-800{background-color:#1f2937}
+        .my-dashboard-scope .bg-blue-500{background-color:#3b82f6}
+        .my-dashboard-scope .bg-green-500{background-color:#10b981}
+        .my-dashboard-scope .bg-red-500{background-color:#ef4444}
+        .my-dashboard-scope .bg-purple-500{background-color:#8b5cf6}
+        .my-dashboard-scope .bg-indigo-500{background-color:#6366f1}
+        .my-dashboard-scope .hover\\:bg-gray-100:hover{background-color:#f3f4f6}
+        .my-dashboard-scope .hover\\:bg-gray-200:hover{background-color:#e5e7eb}
+        .my-dashboard-scope .hover\\:bg-gray-300:hover{background-color:#d1d5db}
+        .my-dashboard-scope .hover\\:bg-blue-600:hover{background-color:#2563eb}
+       .my-dashboard-scope .hover\\:bg-green-600:hover{background-color:#059669}
+        .my-dashboard-scope .hover\\:bg-red-600:hover{background-color:#dc2626}
+        .my-dashboard-scope .hover\\:bg-purple-600:hover{background-color:#7c3aed}
+        .my-dashboard-scope .hover\\:bg-gray-900:hover{background-color:#111827}
+        .my-dashboard-scope .border{border-width:1px}
+        .my-dashboard-scope .border-b{border-bottom-width:1px}
+        .my-dashboard-scope .border-gray-200{border-color:#e5e7eb}
+        .my-dashboard-scope .border-gray-300{border-color:#d1d5db}
+        .my-dashboard-scope .rounded{border-radius:0.25rem}
+        .my-dashboard-scope .rounded-lg{border-radius:0.5rem}
+.my-dashboard-scope .rounded-xl{border-radius:0.75rem}
+.my-dashboard-scope .rounded-full{border-radius:9999px}
+.my-dashboard-scope .shadow-md{box-shadow:0 4px 6px -1px rgba(0,0,0,0.1),0 2px 4px -1px rgba(0,0,0,0.06)}
+.my-dashboard-scope .shadow-xl{box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 10px 10px -5px rgba(0,0,0,0.04)}
+.my-dashboard-scope .transition{transition-property:background-color,border-color,color,fill,stroke,opacity,box-shadow,transform;transition-timing-function:cubic-bezier(0.4,0,0.2,1);transition-duration:150ms}
+.my-dashboard-scope .duration-150{transition-duration:150ms}
+.my-dashboard-scope .duration-300{transition-duration:300ms}
+.my-dashboard-scope .transform{transform:var(--tw-transform)}
+.my-dashboard-scope .hover\\:scale-105:hover{--tw-scale-x:1.05;--tw-scale-y:1.05;transform:scale(1.05)}
+.my-dashboard-scope .opacity-0{opacity:0}
+.my-dashboard-scope .opacity-40{opacity:0.4}
+.my-dashboard-scope .overflow-auto{overflow:auto}
+.my-dashboard-scope .overflow-hidden{overflow:hidden}
+.my-dashboard-scope .flex-wrap{flex-wrap:wrap}
+.my-dashboard-scope .items-center{align-items:center}
+.my-dashboard-scope .items-end{align-items:flex-end}
+.my-dashboard-scope .justify-between{justify-content:space-between}
+.my-dashboard-scope .justify-end{justify-content:flex-end}
+.my-dashboard-scope .justify-center{justify-content:center}
+.my-dashboard-scope .flex-grow{flex-grow:1}
+.my-dashboard-scope .gap-4{gap:1rem}
+.my-dashboard-scope .space-x-3>:not([hidden])~:not([hidden]){margin-left:0.75rem}
+        
+        /* Button Simulation Classes */
+        .my-dashboard-scope .cursor-pointer{cursor:pointer}
+        .my-dashboard-scope .select-none{-webkit-user-select:none;-moz-user-select:none;user-select:none}
+        .my-dashboard-scope .inline-flex{display:inline-flex}
+        
+        .my-dashboard-scope .focus\\:ring-blue-500:focus{box-shadow:0 0 0 3px rgba(59,130,246,0.5)}
+        .my-dashboard-scope .focus\\:border-blue-500:focus{border-color:#3b82f6}
+        .my-dashboard-scope .focus\\:outline-none:focus{outline:2px solid transparent}
+
+        /* Custom scrollbar */
+        .my-dashboard-scope .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+        .my-dashboard-scope .custom-scrollbar::-webkit-scrollbar-thumb { background-color: var(--scrollbar-thumb); border-radius: 4px; }
+        .my-dashboard-scope .custom-scrollbar::-webkit-scrollbar-track { background-color: var(--scrollbar-track); }
+
+        /* Theme variables */
+        .my-dashboard-scope :root {
+            --bg-color: #f7fafc; --text-color: #1a202c; --card-bg: #ffffff; --border-color: #e2e8f0;
+            --accent-color: #4299e1; --scrollbar-thumb: #cbd5e0; --scrollbar-track: #f7fafc;
+        }
+        .my-dashboard-scope .dark-mode {
+            --bg-color: #1a202c; --text-color: #e2e8f0; --card-bg: #2d3748; --border-color: #4a5568;
+            --accent-color: #63b3ed; --scrollbar-thumb: #4a5568; --scrollbar-track: #2d3748;
+        }
+
+        .my-dashboard-scope body { background-color: var(--bg-color); color: var(--text-color); transition: background-color 0.3s, color 0.3s; min-height: 100vh; font-family: ui-sans-serif, system-ui, sans-serif; overflow: auto; }
+        
+        .my-dashboard-scope .table-card {
+            background-color: var(--card-bg); border: 1px solid var(--border-color);
+            transition: background-color 0.3s, border-color 0.3s;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            height: auto; min-height: 100px; flex: 0 0 auto;
+        }
+
+        .my-dashboard-scope .table-cardsData {
+            background-color: var(--card-bg); border: 1px solid var(--border-color);
+            transition: background-color 0.3s, border-color 0.3s;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            max-height: 580px; min-height: 100px; flex: 0 0 auto;
+        }
+
+        .my-dashboard-scope .drag-over { outline: 3px dashed var(--accent-color); background-color: rgba(99,179,237,0.1); }
+        
+        /* Flex Layout */
+        .my-dashboard-scope .main-container { width: 100%; min-width: 100%; }
+        .my-dashboard-scope .dashboard-content { display: flex; flex-direction: column; gap: 1.5rem; padding: 1rem; width: max-content; min-width: 100%; }
+        .my-dashboard-scope .dashboard-row { display: flex; flex-direction: row; gap: 1.5rem; width: 100%; }
+        
+        .my-dashboard-scope .col-count-badge { position: absolute; top: 0.5rem; right: 0.5rem; background: rgba(66,153,225,0.9); color: white; border-radius: 0.25rem; padding: 0.125rem 0.5rem; font-size: 0.75rem; font-weight: 600; }
+        
+        .my-dashboard-scope header { position: sticky; top: 0; left: 0; z-index: 40; background-color: var(--bg-color); padding: 1.5rem 0; width: 100vw; margin-left: calc(-50vw + 50%); border-bottom: 1px solid var(--border-color); }
+        
+        .my-dashboard-scope .card-content { width: 100%; height: 100%; display: flex; flex-direction: column; }
+        .my-dashboard-scope .preview-table { width: 100%; table-layout: auto; }
+        .my-dashboard-scope .preview-table th, .preview-table td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+         padding: 0.5rem; max-width: 200px; color: #e2e8f0;}
+        .my-dashboard-scope .table-container { min-width: 0; overflow-x: auto; }
+
+        .my-dashboard-scope .preview-table tfoot th, .preview-table tfoot td {
+     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+         padding: 0.5rem; max-width: 200px; color: #000000;
+}
+
+
+
+        /* Dynamic Widths */
+        .my-dashboard-scope .card-min { width: 300px; }
+        .my-dashboard-scope .card-2-col { width: 350px; }
+        .my-dashboard-scope .card-3-col { width: 400px; }
+        .my-dashboard-scope .card-4-col { width: 500px; }
+        .my-dashboard-scope .card-5-col { width: 600px; }
+        .my-dashboard-scope .card-6-col { width: 700px; }
+        .my-dashboard-scope .card-7-col { width: 800px; }
+        .my-dashboard-scope .card-8-col { width: 900px; }
+        .my-dashboard-scope .card-large { width: 2000px; }
+
+        /* Modal - INCREASED Z-INDEX FOR APEX */
+        .my-dashboard-scope .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.5); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 1rem; }
+        .my-dashboard-scope .modal-overlay.active { display: flex; }
+        .my-dashboard-scope .modal-content { background-color: var(--card-bg); border-radius: 0.75rem; padding: 1.5rem; width: 100%; max-width: 56rem; max-height: 90vh; overflow-y: auto; position: relative; }
+
+        /* Dark mode helpers */
+        .my-dashboard-scope .dark-mode .dark\\:bg-gray-700 { background-color: #374151; }
+        .my-dashboard-scope .dark-mode .dark\\:text-gray-100 { color: #f3f4f6; }
+        .my-dashboard-scope .dark-mode .dark\\:text-gray-300 { color: #d1d5db; }
+        .my-dashboard-scope .dark-mode .dark\\:border-gray-600 { border-color: #4b5563; }
+
+
+
+ 
+
+
+ .my-dashboard-scope .preview-table {
+    position: relative;
+}
+
+.my-dashboard-scope .preview-table thead th {
+    position: sticky;
+    top: 0;
+    background: inherit;
+}
+
+.my-dashboard-scope .preview-table tfoot td {
+    position: sticky;
+    bottom: 0;
+    background: inherit;
+}
+ 
+
+
+ 
+
+
+
+ /* Table text colors for light and dark mode */
+.my-dashboard-scope .preview-table {
+    color: var(--text-color);
+}
+
+.my-dashboard-scope .preview-table th,
+.my-dashboard-scope .preview-table td {
+    color: inherit;
+}
+
+.my-dashboard-scope .preview-table thead th {
+    color: var(--text-color);
+}
+
+.my-dashboard-scope .preview-table tbody td {
+    color: var(--text-color);
+}
+
+ 
+
+
+
+/* Conditional formatting should still work in dark mode */
+html.dark .my-dashboard-scope .preview-table tbody td[style*="color:"] {
+    /* Keep the conditional formatting colors but ensure they're visible */
+    opacity: 0.9;
+}
