@@ -1,13 +1,16 @@
 DECLARE
     l_hotel_id VARCHAR2(255) := apex_application.g_x01;
+    l_current_algo_id VARCHAR2(255) := apex_util.get_session_state('P1050_ALGO_LIST');
 BEGIN
-    INSERT INTO debug_log(message) VALUES('--- GET_LOV_DATA for hotel_id: ' || l_hotel_id);
-    
+    INSERT INTO debug_log(message) VALUES('--- GET_LOV_DATA for hotel_id: ' || l_hotel_id || ', current_algo_id: ' || l_current_algo_id);
+
     apex_json.initialize_clob_output;
     apex_json.open_object; -- Start the main JSON object
 
-    -- Fetch Attributes as {id, name} pairs
+    -- Fetch Attributes as {id, name} pairs (includes regular attributes AND strategies)
     apex_json.open_array('attributes');
+
+    -- Regular attributes
     FOR rec IN (
         -- MODIFICATION: Select the ID from the attributes table
         SELECT
@@ -28,6 +31,27 @@ BEGIN
         apex_json.write('name', rec.name);
         apex_json.close_object;
     END LOOP;
+
+    -- Strategies (appended to same array - Strategy template, empty qualifier)
+    FOR rec IN (
+        SELECT
+            a.id,
+            a.name || ' (Strategy||Strategy)' AS name
+        FROM
+            ur_algos a
+        WHERE
+            a.hotel_id = l_hotel_id
+            AND a.id != NVL(l_current_algo_id, '-1')  -- Exclude current strategy
+            -- AND v.is_active = 'Y'                      -- Active versions only
+        ORDER BY
+            a.name
+    ) LOOP
+        apex_json.open_object;
+        apex_json.write('id', 'STRAT_' || rec.id);  -- Prefix for backend identification
+        apex_json.write('name', rec.name);
+        apex_json.close_object;
+    END LOOP;
+
     apex_json.close_array;
 
     -- Fetch Property Types as {id, name} pairs

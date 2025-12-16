@@ -133,7 +133,7 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
 
     -- Step 1: Find all rank attributes in the expression, track unique ranks
     LOOP
-      l_attr_in_expr := REGEXP_SUBSTR(p_expression, '#[A-F0-9]+#', 1, l_pos);
+      l_attr_in_expr := REGEXP_SUBSTR(p_expression, '#[A-Z0-9_]+#', 1, l_pos);
       EXIT WHEN l_attr_in_expr IS NULL;
       l_attr_id := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '');
       l_rank_num := get_rank_number_from_attr_id(l_attr_id);
@@ -235,7 +235,7 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
         IF l_occ_attr_raw IS NOT NULL THEN l_unique_attrs(REGEXP_REPLACE(l_occ_attr_raw, '^#|#$', '')) := TRUE; END IF;
         IF l_pr_template IS NOT NULL THEN DECLARE l_pr_attr VARCHAR2(255); BEGIN l_pr_attr := get_attribute_id_from_template(l_pr_template); IF l_pr_attr IS NOT NULL THEN l_unique_attrs(l_pr_attr) := TRUE; END IF; END; END IF;
         l_pos := 1;
-        LOOP l_attr_in_expr := REGEXP_SUBSTR(l_expr_raw, '#[A-F0-9]+#', l_pos); EXIT WHEN l_attr_in_expr IS NULL; l_unique_attrs(REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '')) := TRUE; l_pos := INSTR(l_expr_raw, l_attr_in_expr, l_pos) + LENGTH(l_attr_in_expr); END LOOP;
+        LOOP l_attr_in_expr := REGEXP_SUBSTR(l_expr_raw, '#[A-Z0-9_]+#', l_pos); EXIT WHEN l_attr_in_expr IS NULL; l_unique_attrs(REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '')) := TRUE; l_pos := INSTR(l_expr_raw, l_attr_in_expr, l_pos) + LENGTH(l_attr_in_expr); END LOOP;
       END LOOP;
       l_attr_collection.DELETE;
       DECLARE l_key VARCHAR2(255); BEGIN l_key := l_unique_attrs.FIRST; WHILE l_key IS NOT NULL LOOP l_attr_collection.EXTEND; l_attr_collection(l_attr_collection.COUNT) := l_key; l_key := l_unique_attrs.NEXT(l_key); END LOOP; END;
@@ -366,7 +366,7 @@ FUNCTION EVALUATE(
         -- Only extract attributes from expression if it's NOT free text (not wrapped in ~text~)
         IF NOT REGEXP_LIKE(rec.expr, '^~.*~$') THEN
           LOOP
-            l_attr_in_expr := REGEXP_SUBSTR(rec.expr, '#[A-F0-9]+#', l_pos);
+            l_attr_in_expr := REGEXP_SUBSTR(rec.expr, '#[A-Z0-9_]+#', l_pos);
             EXIT WHEN l_attr_in_expr IS NULL;
             l_clean_attr := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '');
             IF NOT l_aliases.EXISTS(l_clean_attr) THEN l_aliases(l_clean_attr) := l_clean_attr; END IF;
@@ -434,13 +434,35 @@ FUNCTION EVALUATE(
       log_debug('Starting data load for ' || l_aliases.COUNT || ' attributes...'); -- (new log line)
       l_current_id := l_aliases.FIRST;
       WHILE l_current_id IS NOT NULL LOOP
-        log_debug('Loading data for attribute: ' || l_current_id); -- (new log line)
-        SELECT stay_date, TO_NUMBER(attribute_value), NULL BULK COLLECT INTO l_staged_data(l_current_id) FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id)) WHERE attribute_value IS NOT NULL;
-        log_debug('... Loaded ' || l_staged_data(l_current_id).COUNT || ' rows into staged data.'); -- (new log line)
+        -- Check if this is a strategy reference (STRAT_ prefix)
+        IF SUBSTR(l_current_id, 1, 6) = 'STRAT_' THEN
+          DECLARE
+            l_strategy_id VARCHAR2(255);
+          BEGIN
+            l_strategy_id := SUBSTR(l_current_id, 7); -- Remove STRAT_ prefix
+            log_debug('Loading strategy data: ' || l_strategy_id);
 
-        FOR rec IN (SELECT stay_date FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id))) LOOP
-          l_date_set(TO_CHAR(rec.stay_date, 'YYYY-MM-DD')) := TRUE;
-        END LOOP;
+            -- Bulk load strategy evaluation results into staged_data (same as attributes)
+            SELECT stay_date, evaluated_price, NULL
+            BULK COLLECT INTO l_staged_data(l_current_id)
+            FROM TABLE(ALGO_EVALUATOR_PKG.EVALUATE(l_strategy_id, NULL));
+
+            log_debug('... Loaded ' || l_staged_data(l_current_id).COUNT || ' rows from strategy evaluation.');
+
+            -- Add strategy dates to the date set
+            FOR rec IN (SELECT stay_date FROM TABLE(ALGO_EVALUATOR_PKG.EVALUATE(l_strategy_id, NULL))) LOOP
+              l_date_set(TO_CHAR(rec.stay_date, 'YYYY-MM-DD')) := TRUE;
+            END LOOP;
+          END;
+        ELSE
+          log_debug('Loading data for attribute: ' || l_current_id); -- (new log line)
+          SELECT stay_date, TO_NUMBER(attribute_value), NULL BULK COLLECT INTO l_staged_data(l_current_id) FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id)) WHERE attribute_value IS NOT NULL;
+          log_debug('... Loaded ' || l_staged_data(l_current_id).COUNT || ' rows into staged data.'); -- (new log line)
+
+          FOR rec IN (SELECT stay_date FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id))) LOOP
+            l_date_set(TO_CHAR(rec.stay_date, 'YYYY-MM-DD')) := TRUE;
+          END LOOP;
+        END IF;
 
         l_current_id := l_aliases.NEXT(l_current_id);
       END LOOP;
@@ -765,10 +787,10 @@ FUNCTION EVALUATE(
 
                       l_eval_copy := l_raw_expr; l_attr_json := '{'; l_attr_counter := 0; l_pos := 1;
                       LOOP
-                        l_attr_in_expr := REGEXP_SUBSTR(l_raw_expr, '#[A-F0-9]+#', 1, l_pos);
+                        l_attr_in_expr := REGEXP_SUBSTR(l_raw_expr, '#[A-Z0-9_]+#', 1, l_pos);
                         EXIT WHEN l_attr_in_expr IS NULL;
                         l_current_id := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '');
-                        -- Safely get attribute value, handling missing data
+                        -- Safely get attribute/strategy value, handling missing data
                         IF l_staged_data.EXISTS(l_current_id) THEN
                           l_attr_val := TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date));
                         ELSE
@@ -836,10 +858,10 @@ FUNCTION EVALUATE(
 
                     l_eval_copy := l_raw_expr; l_attr_json := '{'; l_attr_counter := 0; l_pos := 1;
                     LOOP
-                      l_attr_in_expr := REGEXP_SUBSTR(l_raw_expr, '#[A-F0-9]+#', 1, l_pos);
+                      l_attr_in_expr := REGEXP_SUBSTR(l_raw_expr, '#[A-Z0-9_]+#', 1, l_pos);
                       EXIT WHEN l_attr_in_expr IS NULL;
                       l_current_id := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '');
-                      -- Safely get attribute value, handling missing data
+                      -- Safely get attribute/strategy value, handling missing data
                       IF l_staged_data.EXISTS(l_current_id) THEN
                         l_attr_val := TO_CHAR(get_value_for_date(l_staged_data(l_current_id), v_stay_date));
                       ELSE
