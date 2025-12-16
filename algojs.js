@@ -52,11 +52,10 @@ document.addEventListener('DOMContentLoaded', function() {
 function load_data_expression() {
     const algoListVal = apex.item("P1050_ALGO_LIST").getValue();
     const versionVal = apex.item("P1050_VERSION").getValue();
-    // const beforeParen = versionVal ? versionVal.split("(")[0].trim() : "";
-    console.log(algoListVal);
-    console.log(versionVal);
-    // console.log(beforeParen);
-    
+    const hotelId = apex.item("P1050_HOTEL_LIST").getValue();
+
+    console.log('load_data_expression called - Algo:', algoListVal, 'Version:', versionVal, 'Hotel:', hotelId);
+
 
 
     if (!algoListVal) {
@@ -71,7 +70,7 @@ function load_data_expression() {
         { x01: 'SELECT', x02: algoListVal, x03: versionVal },
         {
             success: function(data) {
-                console.log(data);
+                console.log('AJX_MANAGE_ALGO response:', data);
 
                 // Check if server returned an error response
                 if (data.success === false) {
@@ -87,6 +86,7 @@ function load_data_expression() {
                     };
 
                     loadFromJSON(null);
+                    lSpinner$.remove();
                     return;
                 }
 
@@ -99,17 +99,40 @@ function load_data_expression() {
                     } catch (e) {
                         console.error("Failed to parse JSON data:", e);
                         apex.message.alert("The selected configuration is invalid.");
+                        lSpinner$.remove();
+                        return;
                     }
                 }
-                loadFromJSON(savedData);
+
+                // CRITICAL FIX: Ensure attributes are loaded BEFORE parsing expressions
+                // This prevents race condition where strategies in expressions can't be resolved
+                if (hotelId && (!dynamicData.attributes || dynamicData.attributes.length === 0)) {
+                    console.warn('dynamicData.attributes not loaded yet - fetching before loadFromJSON');
+
+                    fetchAndApplyLovData(hotelId).then(() => {
+                        console.log('Attributes loaded, now loading JSON with', dynamicData.attributes.length, 'attributes');
+                        loadFromJSON(savedData);
+                        lSpinner$.remove();
+                    }).catch((error) => {
+                        console.error('Failed to fetch attributes:', error);
+                        apex.message.alert("Failed to load attribute data. Expression conversion may not work correctly.");
+                        loadFromJSON(savedData);
+                        lSpinner$.remove();
+                    });
+                } else {
+                    console.log('dynamicData.attributes already loaded (', dynamicData.attributes ? dynamicData.attributes.length : 0, 'attributes), proceeding with loadFromJSON');
+                    loadFromJSON(savedData);
+                    lSpinner$.remove();
+                }
             },
             error: function(jqXHR, textStatus, errorThrown) {
                 console.log(errorThrown);
                 console.error('AJAX Error loading strategy:', errorThrown);
                 apex.message.alert("An error occurred while fetching the configuration.");
+                lSpinner$.remove();
             }
         }
-    ).always(() => lSpinner$.remove());
+    );
 }
 
 function fetchAndApplyLovData(hotelId) {
@@ -212,33 +235,41 @@ function updateAllDropdowns() {
         populateSelect(el, dynamicData.propertyTypes, 'Select Type');
     });
 
-    // Handle occupancy attribute - set hidden input and update availability state
+    // Handle occupancy attribute - inject/update content and manage availability state
     if (dynamicData.occupancyAttributes && dynamicData.occupancyAttributes.length > 0) {
-        // Use first (and only) attribute in array
-        document.querySelectorAll('.occupancy-attribute-id').forEach(el => {
-            el.value = dynamicData.occupancyAttributes[0].id;
-        });
+        const occupancyAttr = dynamicData.occupancyAttributes[0];
 
-        document.querySelectorAll('.occupancy-info').forEach(el => {
-            el.textContent = `Using: ${dynamicData.occupancyAttributes[0].name}`;
-        });
-
-        // Enable checkboxes and remove "Unavailable" badges
         document.querySelectorAll('[id$="-occupancy-threshold"]').forEach(checkbox => {
-            checkbox.disabled = false;
-
             const fieldContainer = checkbox.closest('.field-container');
-            if (fieldContainer) {
-                fieldContainer.classList.remove('disabled-field');
-            }
+            if (!fieldContainer) return;
 
-            // Remove the "Unavailable" badge from the label
-            const label = fieldContainer ? fieldContainer.querySelector('label[for="' + checkbox.id + '"]') : null;
+            // Enable checkbox and remove disabled styling
+            checkbox.disabled = false;
+            fieldContainer.classList.remove('disabled-field');
+
+            // Remove "Unavailable" badge from label
+            const label = fieldContainer.querySelector('label[for="' + checkbox.id + '"]');
             if (label) {
                 const badge = label.querySelector('.unavailable-badge');
-                if (badge) {
-                    badge.remove();
-                }
+                if (badge) badge.remove();
+            }
+
+            // Inject or update field-content
+            const fieldContent = fieldContainer.querySelector('.field-content');
+            if (!fieldContent) return;
+
+            const hasContent = fieldContent.querySelector('.occupancy-attribute-id');
+
+            if (!hasContent) {
+                // INJECT: Empty field-content (legacy conditions created before data loaded)
+                fieldContent.innerHTML = generateOccupancyFieldContent(true);
+            } else {
+                // UPDATE: Existing structure with new values
+                const attrIdInput = fieldContent.querySelector('.occupancy-attribute-id');
+                const infoSpan = fieldContent.querySelector('.occupancy-info');
+
+                if (attrIdInput) attrIdInput.value = occupancyAttr.id;
+                if (infoSpan) infoSpan.textContent = `Using: ${occupancyAttr.name}`;
             }
         });
     } else {
@@ -269,6 +300,35 @@ function updateAllDropdowns() {
         });
     }
 
+}
+
+/**
+ * Generates HTML content for occupancy threshold field-content div.
+ * Used both for initial creation and dynamic injection.
+ * @param {boolean} hasData - Whether occupancy data is available
+ * @returns {string} HTML string for field-content
+ */
+function generateOccupancyFieldContent(hasData = false) {
+    if (!hasData) {
+        return `
+            <input type="hidden" class="occupancy-attribute-id" value="">
+            <select class="operator-select occupancy-operator">
+                ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
+            </select>
+            <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
+            <span class="occupancy-info">Loading...</span>
+        `;
+    }
+
+    const occupancyAttr = dynamicData.occupancyAttributes[0];
+    return `
+        <input type="hidden" class="occupancy-attribute-id" value="${occupancyAttr.id}">
+        <select class="operator-select occupancy-operator">
+            ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
+        </select>
+        <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
+        <span class="occupancy-info">Using: ${occupancyAttr.name}</span>
+    `;
 }
 
 /**
@@ -847,12 +907,7 @@ function addCondition(regionId) {
                         ${!dynamicData.occupancyAttributes || dynamicData.occupancyAttributes.length === 0 ? '<span class="unavailable-badge">Unavailable</span>' : ''}
                     </label>
                     <div class="field-content hidden">
-                        ${dynamicData.occupancyAttributes && dynamicData.occupancyAttributes.length > 0 ? `
-                            <input type="hidden" class="occupancy-attribute-id" value="${dynamicData.occupancyAttributes[0].id}">
-                            <select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
-                            <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
-                            <span class="occupancy-info">Using: ${dynamicData.occupancyAttributes[0].name}</span>
-                        ` : ''}
+                        ${generateOccupancyFieldContent(dynamicData.occupancyAttributes && dynamicData.occupancyAttributes.length > 0)}
                     </div>
                 </div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${(dynamicData.propertyTypes || []).map(type => `<option value="${type.id}">${type.name}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div>
@@ -1860,6 +1915,12 @@ function populateCondition(conditionElement, conditionData) {
                     return; // Skip loading this condition
                 }
 
+                // Ensure field-content has structure before loading values
+                if (fieldContent && !fieldContent.querySelector('.occupancy-attribute-id')) {
+                    console.warn('Occupancy field structure missing - injecting now');
+                    fieldContent.innerHTML = generateOccupancyFieldContent(true);
+                }
+
                 // Validate that saved attribute matches current CALCULATED_OCCUPANCY
                 const savedAttrId = data.attribute.replace(/#/g, '');
                 const currentAttrId = fieldContent.querySelector('.occupancy-attribute-id')?.value;
@@ -1927,24 +1988,51 @@ function convertExpressionNamesToIds(expression) {
 /**
  * Converts an expression string with attribute IDs to one with attribute names.
  * e.g., "#ATTR_101# + 10" becomes "#Comp Set Rate# + 10"
+ * e.g., "#STRAT_123# + 10" becomes "#Strategy Name (Strategy||Strategy)# + 10"
  * @param {string} expression - The expression string with IDs.
  * @returns {string} The expression string with names.
  */
 function convertExpressionIdsToNames(expression) {
-    if (!expression || !dynamicData.attributes) return expression;
+    if (!expression) return expression;
 
     // Skip conversion for plain text
     if (expression.startsWith('~') && expression.endsWith('~') && !expression.startsWith('~~')) {
         return expression;
     }
 
+    // If dynamicData.attributes is not loaded yet, return as-is with warning
+    if (!dynamicData.attributes || dynamicData.attributes.length === 0) {
+        console.warn('convertExpressionIdsToNames: dynamicData.attributes not loaded yet, returning expression as-is:', expression);
+        return expression;
+    }
+
     // Create a quick lookup map of ID -> Name
     const idToNameMap = new Map(dynamicData.attributes.map(attr => [attr.id, attr.name]));
 
-    return expression.replace(/#([^#]+)#/g, (match, attributeId) => {
+    // Debug logging for strategy references
+    const hasStrategyRef = expression.includes('STRAT_');
+    if (hasStrategyRef) {
+        console.log('Converting expression with strategy reference:', expression);
+        console.log('Available attribute IDs:', Array.from(idToNameMap.keys()));
+    }
+
+    const result = expression.replace(/#([^#]+)#/g, (match, attributeId) => {
         const foundName = idToNameMap.get(attributeId);
-        return foundName ? `#${foundName}#` : match; // If not found, leave it as is
+
+        if (!foundName) {
+            console.warn(`convertExpressionIdsToNames: Could not find name for ID "${attributeId}" in dynamicData.attributes`);
+            console.warn('Available IDs:', Array.from(idToNameMap.keys()).join(', '));
+            return match; // Leave as-is if not found
+        }
+
+        return `#${foundName}#`;
     });
+
+    if (hasStrategyRef) {
+        console.log('Conversion result:', result);
+    }
+
+    return result;
 }
 
 
