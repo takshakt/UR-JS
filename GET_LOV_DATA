@@ -32,6 +32,28 @@ BEGIN
         apex_json.close_object;
     END LOOP;
 
+        -- Global attributes
+    FOR rec IN (
+        -- MODIFICATION: Select the ID from the attributes table
+        SELECT
+            a.id,
+            a.name || ' (Global Attributes' || '||' || a.ATTRIBUTE_QUALIFIER || ')' AS name
+        FROM
+            ur_algo_attributes a
+        WHERE
+            a.hotel_id = l_hotel_id
+            -- and a.template_id = null
+            and a.type = 'C'
+        ORDER BY
+            name
+    ) LOOP
+        -- MODIFICATION: Write an object instead of a string for each record
+        apex_json.open_object;
+        apex_json.write('id', rec.id);
+        apex_json.write('name', rec.name);
+        apex_json.close_object;
+    END LOOP;
+
     -- Strategies (appended to same array - Strategy template, empty qualifier)
     FOR rec IN (
         SELECT
