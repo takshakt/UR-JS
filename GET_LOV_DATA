@@ -43,6 +43,7 @@ BEGIN
         WHERE
             a.hotel_id = l_hotel_id
             -- and a.template_id = null
+            and a.attribute_qualifier like 'PRICE_OVERRIDE%'
             and a.type = 'C'
         ORDER BY
             name
