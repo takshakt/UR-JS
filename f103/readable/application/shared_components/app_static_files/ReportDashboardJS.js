@@ -2847,7 +2847,7 @@ function buildFilterStringFromSchedule(schedule) {
 /**
  * Evaluate schedule filter (handles DATE_RANGE, DAY_OF_WEEK, and custom expressions)
  */
-function evaluateScheduleFilter(filterString, row) {
+function evaluateScheduleFilter(filterString, row, columnDataTypes) {
     if (!filterString) return true;
 
     let processedFilter = filterString;
@@ -2865,10 +2865,22 @@ function evaluateScheduleFilter(filterString, row) {
         if (processedFilter.includes('DATE_RANGE')) {
             // Extract dates from DATE_RANGE('from','to')
             const dateRangeMatch = processedFilter.match(/DATE_RANGE\('([^']+)','([^']+)'\)/);
+
             if (dateRangeMatch) {
                 const fromDate = new Date(dateRangeMatch[1]);
                 const toDate = new Date(dateRangeMatch[2]);
-                const pkCol = row.PK_COL || row.SDATE;
+
+                // Find the first date column in row data
+                let pkCol = row.PK_COL || row.SDATE;
+                if (!pkCol && columnDataTypes) {
+                    // Look for the first column with DATE type
+                    for (const [colName, colType] of Object.entries(columnDataTypes)) {
+                        if (colType && colType.toUpperCase() === 'DATE' && row[colName]) {
+                            pkCol = row[colName];
+                            break;
+                        }
+                    }
+                }
 
                 if (pkCol) {
                     // Parse DD-MMM-YYYY format
@@ -2878,7 +2890,18 @@ function evaluateScheduleFilter(filterString, row) {
                     const rowDate = new Date(parts[2], months[parts[1]], parts[0]);
 
                     const inRange = rowDate >= fromDate && rowDate <= toDate;
-                    processedFilter = processedFilter.replace(/DATE_RANGE\('[^']+','[^']+'\)/, inRange);
+
+                    // Log only when we find a match in the date range
+                    if (inRange) {
+                        console.log(`[Schedule Filter] ✓ MATCH FOUND - Row date ${pkCol} is in range ${dateRangeMatch[1]} to ${dateRangeMatch[2]}`);
+                        console.log(`[Schedule Filter] Row data:`, row);
+                    }
+
+                    // Replace with proper escaping of parentheses
+                    processedFilter = processedFilter.replace(/DATE_RANGE\('[^']+','[^']+'\)/g, inRange);
+                } else {
+                    // If no date column, replace with false
+                    processedFilter = processedFilter.replace(/DATE_RANGE\('[^']+','[^']+'\)/g, 'false');
                 }
             }
         }
@@ -2888,7 +2911,17 @@ function evaluateScheduleFilter(filterString, row) {
             const dayOfWeekMatch = processedFilter.match(/DAY_OF_WEEK\(([^)]+)\)/);
             if (dayOfWeekMatch) {
                 const allowedDays = dayOfWeekMatch[1].split(',').map(d => parseInt(d.trim()));
-                const pkCol = row.PK_COL || row.SDATE;
+
+                // Find the first date column in row data (same logic as DATE_RANGE)
+                let pkCol = row.PK_COL || row.SDATE;
+                if (!pkCol && columnDataTypes) {
+                    for (const [colName, colType] of Object.entries(columnDataTypes)) {
+                        if (colType && colType.toUpperCase() === 'DATE' && row[colName]) {
+                            pkCol = row[colName];
+                            break;
+                        }
+                    }
+                }
 
                 if (pkCol) {
                     const parts = pkCol.split('-');
@@ -2913,6 +2946,172 @@ function evaluateScheduleFilter(filterString, row) {
 
 // ========== END MULTI-SCHEDULE HELPER FUNCTIONS ==========
 
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Escapes special regex characters in a string
+ * Used for building regex patterns from user-provided column names
+ */
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// ============================================================================
+// VALIDATION UTILITY FUNCTIONS FOR FORMULA TYPE CHECKING
+// ============================================================================
+
+/**
+ * Validates if a value is valid for a number type column
+ * Returns true only if value is a finite number
+ */
+function isValidNumberValue(value) {
+    if (value === null || value === undefined || value === '') {
+        return false;
+    }
+
+    const num = typeof value === 'number' ? value : parseFloat(value);
+
+    // Reject NaN, Infinity, -Infinity
+    if (isNaN(num) || !isFinite(num)) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Validates if a value is valid for a date type column
+ * Accepts Date objects or valid date strings, rejects numbers
+ */
+function isValidDateValue(value) {
+    if (value === null || value === undefined || value === '') {
+        return false;
+    }
+
+    // Accept Date objects
+    if (value instanceof Date) {
+        return !isNaN(value.getTime());
+    }
+
+    // Accept date strings that can be parsed
+    if (typeof value === 'string') {
+        const dateObj = new Date(value);
+        return !isNaN(dateObj.getTime());
+    }
+
+    // Reject numbers - prevents "12345" from being treated as valid date
+    return false;
+}
+
+/**
+ * Validates if a value is valid for a text/string type column
+ * Text accepts anything except null/undefined
+ */
+function isValidTextValue(value) {
+    // Text accepts empty strings but not null/undefined
+    if (value === null || value === undefined) {
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Validates a formula evaluation result against its declared output type
+ * Returns the formatted value if valid, or 'Calculation Issue' if invalid
+ */
+function validateFormulaOutput(result, outputType, calcName) {
+    console.log(`[validateFormulaOutput] Validating result for ${calcName}:`, result, 'Type:', outputType);
+
+    // Edge cases: null, undefined - always invalid
+    if (result === null || result === undefined) {
+        console.log('[validateFormulaOutput] Result is null/undefined');
+        return 'Calculation Issue';
+    }
+
+    const type = (outputType || 'number').toLowerCase();
+
+    if (type === 'number') {
+        // NUMBER validation: Must be a finite number
+        if (typeof result === 'number') {
+            // Check for NaN, Infinity, -Infinity
+            if (isNaN(result) || !isFinite(result)) {
+                console.log('[validateFormulaOutput] Number is NaN or Infinity');
+                return 'Calculation Issue';
+            }
+            return result;
+        }
+
+        // Try parsing if it's a string
+        if (typeof result === 'string') {
+            const num = parseFloat(result);
+            if (isNaN(num) || !isFinite(num)) {
+                console.log('[validateFormulaOutput] String cannot be parsed as valid number');
+                return 'Calculation Issue';
+            }
+            return num;
+        }
+
+        console.log('[validateFormulaOutput] Result is not a number:', typeof result);
+        return 'Calculation Issue';
+
+    } else if (type === 'date') {
+        // DATE validation: Must be Date object or valid date string (NOT number)
+        if (!isValidDateValue(result)) {
+            console.log('[validateFormulaOutput] Result is not a valid date');
+            return 'Calculation Issue';
+        }
+
+        // Convert to UK format (DD-MMM-YYYY)
+        try {
+            const dateObj = result instanceof Date ? result : new Date(result);
+            if (isNaN(dateObj.getTime())) {
+                return 'Calculation Issue';
+            }
+
+            return dateObj.toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+            }).toUpperCase().replace(/ /g, '-');
+        } catch (e) {
+            console.error('[validateFormulaOutput] Date formatting error:', e);
+            return 'Calculation Issue';
+        }
+
+    } else {
+        // TEXT/STRING: Accept anything (dates and numbers are valid text)
+        // Empty string is valid for text
+        if (result === '') {
+            return '';
+        }
+        return String(result);
+    }
+}
+
+/**
+ * Validates that a column value is compatible with its declared column type
+ * Used for pre-formula validation
+ */
+function validateColumnValue(value, columnType, columnName) {
+    const colType = (columnType || 'number').toLowerCase();
+
+    if (colType === 'number') {
+        return isValidNumberValue(value);
+    } else if (colType === 'date') {
+        return isValidDateValue(value);
+    } else {
+        // text/string
+        return isValidTextValue(value);
+    }
+}
+
+// ============================================================================
+// END OF VALIDATION UTILITY FUNCTIONS
+// ============================================================================
+
 function applyFormulas(data, formulas, aliasToOriginalMap, config) {
 
     console.log('data:>>>>',data);
@@ -2929,23 +3128,58 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
     const dbToAliasMap = {};
     if (config.columnConfiguration && config.columnConfiguration.selectedColumns) {
         config.columnConfiguration.selectedColumns.forEach(col => {
-            // Only map if col_name and alias_name are different.
-            if (col.col_name !== col.alias_name) {
+            // Only map if both col_name and alias_name are defined and different
+            if (col.col_name && col.alias_name && col.col_name !== col.alias_name) {
                 dbToAliasMap[col.col_name] = col.alias_name;
             }
         });
     }
 
+    console.log('[Formula Processing] dbToAliasMap:', dbToAliasMap);
+
     // Process all formulas to replace 'col_name' with 'alias_name'
     const processedFormulas = {};
     for (const [formulaName, formulaObj] of formulaEntries) {
-        // Handle both string and object formats
-        let expression = typeof formulaObj === 'object' ? formulaObj.formula : formulaObj;
-        
-        // FIX for TypeError: Ensure filter is a string (formulaObj.filter || '')
-        let filter = typeof formulaObj === 'object' ? (formulaObj.filter || '') : ''; 
-        
+        console.log(`[Formula Processing] Formula: ${formulaName}`);
+        console.log(`[Formula Processing] FormulaObj:`, formulaObj);
+        console.log(`[Formula Processing] FormulaObj type:`, typeof formulaObj);
+        console.log(`[Formula Processing] FormulaObj keys:`, typeof formulaObj === 'object' ? Object.keys(formulaObj) : 'N/A');
+
+        // Extract type first (before error handling)
         let formulaType = typeof formulaObj === 'object' ? formulaObj.type : 'number';
+
+        // Check if this is a multi-schedule formula
+        if (formulaObj?.isMultiSchedule && formulaObj?.schedules) {
+            console.log(`[Formula Processing] Multi-schedule formula detected, skipping column renaming (handled in evaluation)`);
+            // Multi-schedule formulas are processed differently - pass through as-is
+            processedFormulas[formulaName] = formulaObj;
+            continue;
+        }
+
+        // Handle both string and object formats
+        // Try multiple possible property names: formula, expression, calc, calculation
+        let expression = typeof formulaObj === 'object' ?
+            (formulaObj.formula || formulaObj.expression || formulaObj.calc || formulaObj.calculation) :
+            formulaObj;
+
+        console.log(`[Formula Processing] Extracted expression:`, expression);
+
+        // Skip this formula if expression is still undefined
+        if (!expression) {
+            console.error(`[Formula Processing] ERROR: No expression found for formula "${formulaName}"`);
+            console.error(`[Formula Processing] Available properties:`, typeof formulaObj === 'object' ? Object.keys(formulaObj) : 'N/A');
+            console.error(`[Formula Processing] Full object:`, JSON.stringify(formulaObj, null, 2));
+            // Set a placeholder that will result in "Calculation Issue"
+            processedFormulas[formulaName] = {
+                formula: undefined,
+                filter: '',
+                type: formulaType
+            };
+            continue; // Skip to next formula
+        }
+
+        // FIX for TypeError: Ensure filter is a string (formulaObj.filter || '')
+        let filter = typeof formulaObj === 'object' ? (formulaObj.filter || '') : '';
 
         // 1. Rename column names (e.g., MOXY_YORK -> MOXY) in both formula and filter
         for (const [dbName, aliasName] of Object.entries(dbToAliasMap)) {
@@ -3044,7 +3278,7 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
                     for (const schedule of formulaObj.schedules) {
                         const filterString = buildFilterStringFromSchedule(schedule);
 
-                        if (evaluateScheduleFilter(filterString, row)) {
+                        if (evaluateScheduleFilter(filterString, row, columnDataTypes)) {
                             matchedSchedule = schedule;
                             break; // First match wins
                         }
@@ -3053,30 +3287,42 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
                     if (matchedSchedule) {
                         // Use the matched schedule's formula
                         let currentExpression = matchedSchedule.formula;
+                        console.log('[Multi-Schedule DEBUG] Step 1 - Original formula:', currentExpression);
 
                         // Apply column name renaming (same as single formula logic)
                         for (const [dbName, aliasName] of Object.entries(dbToAliasMap)) {
+                            console.log(`[Multi-Schedule DEBUG] Step 2 - Replacing ${dbName} with ${aliasName}`);
                             const dbNameRegex = new RegExp(`(\\[|\\b)${dbName}(\\]|\\b)`, 'g');
                             const replacementFn = (match, prefix, suffix) => {
                                 return prefix + aliasName + suffix;
                             };
+                            const before = currentExpression;
                             currentExpression = currentExpression.replace(dbNameRegex, replacementFn);
+                            if (before !== currentExpression) {
+                                console.log(`[Multi-Schedule DEBUG] After replacement: ${currentExpression}`);
+                            }
                         }
+                        console.log('[Multi-Schedule DEBUG] Step 3 - After all db->alias replacements:', currentExpression);
 
                         // Remove template suffixes
                         if (config.columnConfiguration?.selectedColumns) {
                             config.columnConfiguration.selectedColumns.forEach(col => {
                                 if (col.temp_name) {
                                     const suffixPattern = new RegExp(`\\s*-\\s*${col.temp_name}\\s*(\\+|\\-|\\*|\\/)?`, 'gi');
+                                    const before = currentExpression;
                                     currentExpression = currentExpression.replace(suffixPattern, (match, operator) => {
                                         return operator || '';
                                     });
+                                    if (before !== currentExpression) {
+                                        console.log(`[Multi-Schedule DEBUG] Step 4 - Removed suffix "${col.temp_name}": ${currentExpression}`);
+                                    }
                                 }
                             });
                         }
 
                         // Normalize spaces
                         currentExpression = currentExpression.replace(/\s+/g, ' ').trim();
+                        console.log('[Multi-Schedule DEBUG] Step 5 - After normalization:', currentExpression);
 
                         // Handle {n} offset column references
                         const offsetColumnRegex = /(\[?\b[A-Z_][A-Z0-9_]*\b\]?)\{(\d+)\}/gi;
@@ -3098,10 +3344,21 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
                             }
                         }
 
-                        // Replace offset column references
+                        // Replace offset column references with validation
+                        let shiftPatternError = false;
                         Object.entries(offsetReplacements).forEach(([pattern, value]) => {
                             let replacementValue;
-                            if (value === null || value === undefined || value === '') {
+
+                            // Get column name from pattern (remove {N})
+                            const colName = pattern.replace(/\{.*?\}/, '').replace(/[\[\]]/g, '');
+                            const colType = columnDataTypes[colName] || 'number';
+
+                            // Validate shifted value matches column type
+                            if (!validateColumnValue(value, colType, colName)) {
+                                console.log(`[Multi-Schedule] Invalid shifted ${colType} value for ${pattern}:`, value);
+                                shiftPatternError = true;
+                                replacementValue = '0'; // Placeholder
+                            } else if (value === null || value === undefined || value === '') {
                                 replacementValue = '0';
                             } else if (!isNaN(value) && value !== null) {
                                 replacementValue = parseFloat(value);
@@ -3111,36 +3368,91 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
                             currentExpression = currentExpression.replace(pattern, replacementValue);
                         });
 
+                        // If shift pattern had errors, skip this row
+                        if (shiftPatternError) {
+                            row[formulaName] = 'Calculation Issue';
+                            return;
+                        }
+
                         // Replace column references with row values
+                        // Extract column names from hash-delimited references: #ColumnName#
+                        const hashMatches = currentExpression.match(/#([^#]+)#/g) || [];
                         const columnMatches = currentExpression.match(/\[(.*?)\]/g) || [];
-                        const simpleColumnMatches = currentExpression.match(/\b[A-Z_][A-Z0-9_]*\b/gi) || [];
                         const allColumnNames = [
-                            ...columnMatches.map(match => match.replace(/[\[\]]/g, '')),
-                            ...simpleColumnMatches.filter(word => !['AND', 'OR', 'NOT', 'Day', 'Date', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].includes(word))
+                            ...hashMatches.map(match => match.replace(/#/g, '')),
+                            ...columnMatches.map(match => match.replace(/[\[\]]/g, ''))
                         ];
                         const uniqueColumnNames = [...new Set(allColumnNames)];
 
+                        console.log('[Multi-Schedule DEBUG] Step 6 - Extracted column names:', uniqueColumnNames);
+                        console.log('[Multi-Schedule DEBUG] Step 6 - Row keys:', Object.keys(row));
+
+                        // PRE-FORMULA VALIDATION: Check all input values before evaluation
+                        let hasInvalidInput = false;
+                        for (const col of uniqueColumnNames) {
+                            const value = row[col];
+                            const colType = columnDataTypes[col] || 'number';
+
+                            console.log(`[Pre-Validation] Checking column "${col}" (type: ${colType}) with value:`, value);
+
+                            // Check if column value is valid for its declared type
+                            if (!validateColumnValue(value, colType, col)) {
+                                console.warn(`[Pre-Validation] ✗ VALIDATION FAILED: Column "${col}" has invalid value for type "${colType}"`);
+                                hasInvalidInput = true;
+                                break;
+                            } else {
+                                console.log(`[Pre-Validation] ✓ Column "${col}" validation passed`);
+                            }
+                        }
+
+                        // If any input is invalid, return "Calculation Issue" immediately
+                        if (hasInvalidInput) {
+                            console.log('[Pre-Validation] Formula has invalid inputs - returning "Calculation Issue"');
+                            row[formulaName] = 'Calculation Issue';
+                            return;
+                        }
+
+                        console.log('[Pre-Validation] All input values validated successfully');
+
+                        // Now replace column references with values
                         uniqueColumnNames.forEach(col => {
                             let value = row[col];
-                            if (columnDataTypes[col] === 'date' && value != null && value !== '') {
+                            console.log(`[Multi-Schedule DEBUG] Step 7 - Replacing column "${col}" with value:`, value);
+
+                            const colType = columnDataTypes[col] || 'number';
+
+                            if (colType.toLowerCase() === 'date' && value !== '') {
                                 value = `"${value}"`;
-                            } else if (!isNaN(value) && value !== '' && value !== null) {
+                            } else if (colType.toLowerCase() === 'number') {
                                 value = parseFloat(value);
                             } else {
                                 value = `"${value}"`;
                             }
-                            currentExpression = currentExpression.replace(new RegExp(`\\[${col}\\]`, 'g'), value);
-                            currentExpression = currentExpression.replace(new RegExp(`\\b${col}\\b`, 'g'), value);
+
+                            // Replace hash-delimited references
+                            const hashPattern = new RegExp(`#${escapeRegExp(col)}#`, 'g');
+                            currentExpression = currentExpression.replace(hashPattern, value);
+
+                            // Replace bracket-delimited references
+                            const bracketPattern = new RegExp(`\\[${escapeRegExp(col)}\\]`, 'g');
+                            currentExpression = currentExpression.replace(bracketPattern, value);
                         });
 
                         // Evaluate
                         currentExpression = replaceDayNameFunction(currentExpression);
+                        console.log(`[Multi-Schedule DEBUG] Formula: ${formulaName}`);
+                        console.log(`[Multi-Schedule DEBUG] Expression: ${currentExpression}`);
                         const result = eval(currentExpression);
-                        if (typeof result === 'number' && isNaN(result)) {
-                            row[formulaName] = null;
-                        } else {
-                            row[formulaName] = result;
-                        }
+                        console.log(`[Multi-Schedule DEBUG] Raw Result:`, result, `(type: ${typeof result})`);
+
+                        // Get the formula output type
+                        const outputType = formulaObj.type || 'number';
+                        console.log(`[Multi-Schedule DEBUG] Expected Output Type: ${outputType}`);
+
+                        // Use unified validation function
+                        const validatedResult = validateFormulaOutput(result, outputType, formulaName);
+                        console.log(`[Multi-Schedule DEBUG] Validated Result:`, validatedResult);
+                        row[formulaName] = validatedResult;
                     } else {
                         // No schedule matched
                         row[formulaName] = null;
@@ -3156,9 +3468,22 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
         // ========== END MULTI-SCHEDULE SUPPORT ==========
 
         // LEGACY: Single formula logic
-        let expression = formulaObj.formula;
+        let expression = formulaObj.formula || formulaObj.expression;
         let filter = formulaObj.filter;
         let formulaType = formulaObj.type;
+
+        console.log(`[Legacy Formula Setup] Formula: ${formulaName}`);
+        console.log(`[Legacy Formula Setup] FormulaObj:`, formulaObj);
+        console.log(`[Legacy Formula Setup] Expression:`, expression);
+
+        // Guard against undefined expression
+        if (!expression) {
+            console.error(`[Legacy Formula Setup] No expression found for formula: ${formulaName}`);
+            data.forEach(row => {
+                row[formulaName] = 'Calculation Issue';
+            });
+            return; // Skip this formula
+        }
 
         data.forEach(row => {
             try {
@@ -3237,11 +3562,21 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
                 }
 
                 // Replace all offset column references with their values
+                let shiftPatternError = false;
                 Object.entries(offsetReplacements).forEach(([pattern, value]) => {
                     // Handle the value based on its type
                     let replacementValue;
-                    
-                    if (value === null || value === undefined || value === '') {
+
+                    // Get column name from pattern (remove {N})
+                    const colName = pattern.replace(/\{.*?\}/, '').replace(/[\[\]]/g, '');
+                    const colType = columnDataTypes[colName] || 'number';
+
+                    // Validate shifted value matches column type
+                    if (!validateColumnValue(value, colType, colName)) {
+                        console.log(`[Legacy] Invalid shifted ${colType} value for ${pattern}:`, value);
+                        shiftPatternError = true;
+                        replacementValue = '0'; // Placeholder
+                    } else if (value === null || value === undefined || value === '') {
                         // For missing values, use 0 for numeric operations
                         replacementValue = '0';
                     } else if (!isNaN(value) && value !== null) {
@@ -3255,6 +3590,12 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
                     // Replace the pattern in the expression
                     currentExpression = currentExpression.replace(pattern, replacementValue);
                 });
+
+                // If shift pattern had errors, skip this row
+                if (shiftPatternError) {
+                    row[formulaName] = 'Calculation Issue';
+                    return;
+                }
 
                 // 4. Find all remaining column references (should now only be alias names like 'MOXY')
                 const columnMatches = currentExpression.match(/\[(.*?)\]/g) || [];
@@ -3288,20 +3629,27 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
                 });
 
                 // 6. Evaluate
-                
+
                 //console.log('currentExpression:>>>>>>>>>>>>>>>',currentExpression);
                 currentExpression = replaceDayNameFunction(currentExpression);
 
+                console.log(`[Legacy DEBUG] Formula: ${formulaName}`);
+                console.log(`[Legacy DEBUG] Expression: ${currentExpression}`);
                 const result = eval(currentExpression);
-                if (typeof result === 'number' && isNaN(result)) {
-                    row[formulaName] = null;
-                } else {
-                    row[formulaName] = result;
-                }
+                console.log(`[Legacy DEBUG] Raw Result:`, result, `(type: ${typeof result})`);
+
+                // Get the formula output type
+                const outputType = formulaObj.type || formulaType || 'number';
+                console.log(`[Legacy DEBUG] Expected Output Type: ${outputType}`);
+
+                // Use unified validation function
+                const validatedResult = validateFormulaOutput(result, outputType, formulaName);
+                console.log(`[Legacy DEBUG] Validated Result:`, validatedResult);
+                row[formulaName] = validatedResult;
 
             } catch (error) {
                 console.error(`Error processing formula ${formulaName}: ${error.message}`);
-                row[formulaName] = 'Error';
+                row[formulaName] = 'Calculation Issue';
             }
         });
 
