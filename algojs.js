@@ -212,33 +212,41 @@ function updateAllDropdowns() {
         populateSelect(el, dynamicData.propertyTypes, 'Select Type');
     });
 
-    // Handle occupancy attribute - set hidden input and update availability state
+    // Handle occupancy attribute - inject/update content and manage availability state
     if (dynamicData.occupancyAttributes && dynamicData.occupancyAttributes.length > 0) {
-        // Use first (and only) attribute in array
-        document.querySelectorAll('.occupancy-attribute-id').forEach(el => {
-            el.value = dynamicData.occupancyAttributes[0].id;
-        });
+        const occupancyAttr = dynamicData.occupancyAttributes[0];
 
-        document.querySelectorAll('.occupancy-info').forEach(el => {
-            el.textContent = `Using: ${dynamicData.occupancyAttributes[0].name}`;
-        });
-
-        // Enable checkboxes and remove "Unavailable" badges
         document.querySelectorAll('[id$="-occupancy-threshold"]').forEach(checkbox => {
-            checkbox.disabled = false;
-
             const fieldContainer = checkbox.closest('.field-container');
-            if (fieldContainer) {
-                fieldContainer.classList.remove('disabled-field');
-            }
+            if (!fieldContainer) return;
 
-            // Remove the "Unavailable" badge from the label
-            const label = fieldContainer ? fieldContainer.querySelector('label[for="' + checkbox.id + '"]') : null;
+            // Enable checkbox and remove disabled styling
+            checkbox.disabled = false;
+            fieldContainer.classList.remove('disabled-field');
+
+            // Remove "Unavailable" badge from label
+            const label = fieldContainer.querySelector('label[for="' + checkbox.id + '"]');
             if (label) {
                 const badge = label.querySelector('.unavailable-badge');
-                if (badge) {
-                    badge.remove();
-                }
+                if (badge) badge.remove();
+            }
+
+            // Inject or update field-content
+            const fieldContent = fieldContainer.querySelector('.field-content');
+            if (!fieldContent) return;
+
+            const hasContent = fieldContent.querySelector('.occupancy-attribute-id');
+
+            if (!hasContent) {
+                // INJECT: Empty field-content (legacy conditions created before data loaded)
+                fieldContent.innerHTML = generateOccupancyFieldContent(true);
+            } else {
+                // UPDATE: Existing structure with new values
+                const attrIdInput = fieldContent.querySelector('.occupancy-attribute-id');
+                const infoSpan = fieldContent.querySelector('.occupancy-info');
+
+                if (attrIdInput) attrIdInput.value = occupancyAttr.id;
+                if (infoSpan) infoSpan.textContent = `Using: ${occupancyAttr.name}`;
             }
         });
     } else {
@@ -269,6 +277,35 @@ function updateAllDropdowns() {
         });
     }
 
+}
+
+/**
+ * Generates HTML content for occupancy threshold field-content div.
+ * Used both for initial creation and dynamic injection.
+ * @param {boolean} hasData - Whether occupancy data is available
+ * @returns {string} HTML string for field-content
+ */
+function generateOccupancyFieldContent(hasData = false) {
+    if (!hasData) {
+        return `
+            <input type="hidden" class="occupancy-attribute-id" value="">
+            <select class="operator-select occupancy-operator">
+                ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
+            </select>
+            <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
+            <span class="occupancy-info">Loading...</span>
+        `;
+    }
+
+    const occupancyAttr = dynamicData.occupancyAttributes[0];
+    return `
+        <input type="hidden" class="occupancy-attribute-id" value="${occupancyAttr.id}">
+        <select class="operator-select occupancy-operator">
+            ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
+        </select>
+        <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
+        <span class="occupancy-info">Using: ${occupancyAttr.name}</span>
+    `;
 }
 
 /**
@@ -847,12 +884,7 @@ function addCondition(regionId) {
                         ${!dynamicData.occupancyAttributes || dynamicData.occupancyAttributes.length === 0 ? '<span class="unavailable-badge">Unavailable</span>' : ''}
                     </label>
                     <div class="field-content hidden">
-                        ${dynamicData.occupancyAttributes && dynamicData.occupancyAttributes.length > 0 ? `
-                            <input type="hidden" class="occupancy-attribute-id" value="${dynamicData.occupancyAttributes[0].id}">
-                            <select class="operator-select occupancy-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select>
-                            <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
-                            <span class="occupancy-info">Using: ${dynamicData.occupancyAttributes[0].name}</span>
-                        ` : ''}
+                        ${generateOccupancyFieldContent(dynamicData.occupancyAttributes && dynamicData.occupancyAttributes.length > 0)}
                     </div>
                 </div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${(dynamicData.propertyTypes || []).map(type => `<option value="${type.id}">${type.name}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div>
@@ -1858,6 +1890,12 @@ function populateCondition(conditionElement, conditionData) {
                     checkbox.checked = false;
                     checkbox.disabled = true;
                     return; // Skip loading this condition
+                }
+
+                // Ensure field-content has structure before loading values
+                if (fieldContent && !fieldContent.querySelector('.occupancy-attribute-id')) {
+                    console.warn('Occupancy field structure missing - injecting now');
+                    fieldContent.innerHTML = generateOccupancyFieldContent(true);
                 }
 
                 // Validate that saved attribute matches current CALCULATED_OCCUPANCY
