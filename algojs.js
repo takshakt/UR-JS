@@ -266,10 +266,8 @@ function updateAllDropdowns() {
             } else {
                 // UPDATE: Existing structure with new values
                 const attrIdInput = fieldContent.querySelector('.occupancy-attribute-id');
-                const infoSpan = fieldContent.querySelector('.occupancy-info');
 
                 if (attrIdInput) attrIdInput.value = occupancyAttr.id;
-                if (infoSpan) infoSpan.textContent = `Using: ${occupancyAttr.name}`;
             }
         });
     } else {
@@ -277,6 +275,70 @@ function updateAllDropdowns() {
         document.querySelectorAll('[id$="-occupancy-threshold"]').forEach(checkbox => {
             if (checkbox.checked) {
                 console.warn('Disabling occupancy threshold condition - not available for selected hotel');
+            }
+            checkbox.checked = false;
+            checkbox.disabled = true;
+
+            const fieldContainer = checkbox.closest('.field-container');
+            if (fieldContainer) {
+                fieldContainer.classList.add('disabled-field');
+            }
+
+            // Add "Unavailable" badge if not present
+            const label = fieldContainer ? fieldContainer.querySelector('label[for="' + checkbox.id + '"]') : null;
+            if (label) {
+                const existingBadge = label.querySelector('.unavailable-badge');
+                if (!existingBadge) {
+                    const badge = document.createElement('span');
+                    badge.className = 'unavailable-badge';
+                    badge.textContent = 'Unavailable';
+                    label.appendChild(badge);
+                }
+            }
+        });
+    }
+
+    // Handle price override attribute - inject/update content and manage availability state
+    const priceOverrideAttr = getPriceOverrideAttribute();
+    if (priceOverrideAttr) {
+        document.querySelectorAll('[id$="-price-override"]').forEach(checkbox => {
+            const fieldContainer = checkbox.closest('.field-container');
+            if (!fieldContainer) return;
+
+            // Enable checkbox and remove disabled styling
+            checkbox.disabled = false;
+            fieldContainer.classList.remove('disabled-field');
+
+            // Remove "Unavailable" badge from label
+            const label = fieldContainer.querySelector('label[for="' + checkbox.id + '"]');
+            if (label) {
+                const badge = label.querySelector('.unavailable-badge');
+                if (badge) badge.remove();
+            }
+
+            // Inject or update field-content
+            const fieldContent = fieldContainer.querySelector('.field-content');
+            if (!fieldContent) return;
+
+            const hasContent = fieldContent.querySelector('.price-override-attribute-id');
+
+            if (!hasContent) {
+                // INJECT: Empty field-content (legacy regions created before data loaded)
+                fieldContent.innerHTML = generatePriceOverrideFieldContent(true);
+            } else {
+                // UPDATE: Set the hardcoded attribute ID
+                const hiddenInput = fieldContent.querySelector('.price-override-attribute-id');
+
+                if (hiddenInput) {
+                    hiddenInput.value = priceOverrideAttr.id;
+                }
+            }
+        });
+    } else {
+        // Disable all price override checkboxes when array is empty
+        document.querySelectorAll('[id$="-price-override"]').forEach(checkbox => {
+            if (checkbox.checked) {
+                console.warn('Disabling price override - not available for selected hotel');
             }
             checkbox.checked = false;
             checkbox.disabled = true;
@@ -316,7 +378,6 @@ function generateOccupancyFieldContent(hasData = false) {
                 ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
             </select>
             <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
-            <span class="occupancy-info">Loading...</span>
         `;
     }
 
@@ -327,8 +388,43 @@ function generateOccupancyFieldContent(hasData = false) {
             ${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}
         </select>
         <input type="number" class="value-input occupancy-value" value="80" min="0" max="100">
-        <span class="occupancy-info">Using: ${occupancyAttr.name}</span>
     `;
+}
+
+/**
+ * Gets the PRICE_OVERRIDE_PUBLIC attribute if it exists
+ * @returns {Object|null} The price override attribute or null if not found
+ */
+function getPriceOverrideAttribute() {
+    if (!dynamicData.attributes || dynamicData.attributes.length === 0) {
+        return null;
+    }
+
+    return dynamicData.attributes.find(attr => {
+        // Parse qualifier from name format: "Name (Template||Qualifier)"
+        const match = attr.name.match(/\((.+?)\|\|(.+?)\)$/);
+        if (match) {
+            const qualifier = match[2].trim();
+            return qualifier === 'PRICE_OVERRIDE_PUBLIC';
+        }
+        return false;
+    });
+}
+
+/**
+ * Generates HTML content for price override field-content div.
+ * Hardcoded to use PRICE_OVERRIDE_PUBLIC qualifier - no user selection needed.
+ * @param {boolean} hasData - Whether price override attribute is available
+ * @returns {string} HTML string for field-content
+ */
+function generatePriceOverrideFieldContent(hasData = false) {
+    const priceOverrideAttr = getPriceOverrideAttribute();
+
+    if (!hasData || !priceOverrideAttr) {
+        return `<input type="hidden" class="price-override-attribute-id" value="">`;
+    }
+
+    return `<input type="hidden" class="price-override-attribute-id" value="${priceOverrideAttr.id}">`;
 }
 
 /**
@@ -850,7 +946,12 @@ function addFilterRegion() {
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-load-time" data-validates="leadTime"><label for="${regionId}-load-time">Lead Time</label><div class="field-content hidden">
                         <select class="load-time-select"><option value="">Select Type</option><option value="date_range">Date Range</option><option value="days">Day(s)</option><option value="weeks">Week(s)</option><option value="months">Month(s)</option></select><div class="lead-time-inputs" style="margin-left: 10px; display: inline-flex; align-items: center; gap: 8px;"></div><div class="lead-time-exclude-container" style="margin-left: 15px; display: inline-flex; align-items: center; gap: 5px;"><label for="${regionId}-lead-time-exclude">Exclusive</label><input type="checkbox" class="lead-time-exclude-checkbox" id="${regionId}-lead-time-exclude"></div></div></div>
                 <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-days-of-week" data-validates="daysOfWeek"><label for="${regionId}-days-of-week">Day of Week</label><div class="field-content hidden"><div class="checkbox-group">${['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].map(day => `<div class="checkbox-item"><input type="checkbox" id="${regionId}-${day}" class="day-checkbox"><label for="${regionId}-${day}">${day.toUpperCase()}</label></div>`).join('')}</div></div></div>
-                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-minimum-rate" data-validates="minimumRate"><label for="${regionId}-minimum-rate">Minimum Rate</label><div class="field-content hidden"><input type="number" value="4" min="0" class="minimum-rate-input"></div></div>
+                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${regionId}-minimum-rate" data-validates="minimumRate"><label for="${regionId}-minimum-rate">Minimum Rate</label><div class="field-content hidden"><input type="number" value="75" min="0" class="minimum-rate-input"></div></div>
+                <div class="field-container ${!getPriceOverrideAttribute() ? 'disabled-field' : ''}">
+                    <input type="checkbox" class="field-checkbox" id="${regionId}-price-override" data-validates="priceOverride" ${!getPriceOverrideAttribute() ? 'disabled' : ''}>
+                    <label for="${regionId}-price-override">Price Override ${!getPriceOverrideAttribute() ? '<span class="unavailable-badge">Unavailable</span>' : ''}</label>
+                    <div class="field-content hidden">${generatePriceOverrideFieldContent(!!getPriceOverrideAttribute())}</div>
+                </div>
             </div>
             <div class="section">
                 <div class="section-title">
@@ -1104,6 +1205,7 @@ function setupRegionEventListeners(regionElement) {
             }
         });
     }
+
 }
 
 // --- UTILITY FUNCTIONS ---
@@ -1386,6 +1488,20 @@ function validateRegion(regionElement) {
         stayWindowCheckbox.closest('.field-container').classList.add('invalid-field');
     }
 
+    // Validate Price Override
+    const priceOverrideCheckbox = filterContainer.querySelector(`#${regionId}-price-override`);
+    if (priceOverrideCheckbox?.checked && !priceOverrideCheckbox.disabled) {
+        const priceOverrideAttrId = filterContainer.querySelector('.price-override-attribute-id')?.value;
+
+        if (!priceOverrideAttrId) {
+            errors.push(`${regionName}: Price Override is enabled but no attribute is available.`);
+            priceOverrideCheckbox.closest('.field-container').classList.add('invalid-field');
+        } else {
+            const signaturePart = `priceOverride:${priceOverrideAttrId}`;
+            individualFilterSignatures.push(signaturePart);
+        }
+    }
+
     if (checkedFilters.length > 0) {
         signatures.push({ signature: individualFilterSignatures.sort().join('|'), element: filterContainer, type: 'filter' });
     } else {
@@ -1520,6 +1636,14 @@ function getRegionData(regionElement) {
             data.filters.daysOfWeek = Array.from(filtersSection.querySelectorAll('.day-checkbox:checked')).map(cb => dayMap[cb.id.split('-').pop()]).sort((a, b) => a - b);
         }
         if (filtersSection.querySelector(`#${regionId}-minimum-rate`)?.checked) data.filters.minimumRate = parseFloat(filtersSection.querySelector('.minimum-rate-input')?.value);
+        if (filtersSection.querySelector(`#${regionId}-price-override`)?.checked) {
+            const priceOverrideAttrId = filtersSection.querySelector('.price-override-attribute-id')?.value;
+            if (priceOverrideAttrId) {
+                data.filters.priceOverride = {
+                    attribute: `#${priceOverrideAttrId}#`
+                };
+            }
+        }
     }
     regionElement.querySelectorAll('.condition-group').forEach(cond => {
         const isActive = !!cond.querySelector('.field-checkbox:checked') || cond.querySelector('.expression-textarea').value.trim() !== '';
@@ -1871,6 +1995,17 @@ function populateRegion(regionElement, regionData) {
                 });
             } else if (filterKey === 'minimumRate') {
                 regionElement.querySelector('.minimum-rate-input').value = filterValue;
+            } else if (filterKey === 'priceOverride') {
+                const priceOverrideAttrId = filterValue.attribute.replace(/#/g, '');
+                const fieldContent = regionElement.querySelector(`#${regionId}-price-override`).closest('.field-container').querySelector('.field-content');
+
+                if (fieldContent) {
+                    const hiddenInput = fieldContent.querySelector('.price-override-attribute-id');
+
+                    if (hiddenInput) {
+                        hiddenInput.value = priceOverrideAttrId;
+                    }
+                }
             }
         }
     }

@@ -299,6 +299,8 @@ FUNCTION EVALUATE(
     l_hotel_id ur_algos.hotel_id%TYPE;
     TYPE t_event_score_map IS TABLE OF NUMBER INDEX BY VARCHAR2(10);
     l_event_scores t_event_score_map;
+    TYPE t_price_override_map IS TABLE OF BOOLEAN INDEX BY VARCHAR2(255);
+    l_price_override_attrs t_price_override_map;
 
     -- ++ NEW VARIABLES
     l_algo_name         ur_algos.name%TYPE;
@@ -418,6 +420,25 @@ FUNCTION EVALUATE(
       log_debug('No ranking template detected in algorithm');
     END IF;
 
+    -- Extract price override attribute from filters (if exists)
+    -- Track them in a map so we don't add their dates to the date set
+    DECLARE
+      l_price_override_attr VARCHAR2(255);
+    BEGIN
+      FOR po_rec IN (
+        SELECT JSON_VALUE(region_json, '$.filters.priceOverride.attribute') as po_attr
+        FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (region_json CLOB FORMAT JSON PATH '$'))
+        WHERE JSON_VALUE(region_json, '$.filters.priceOverride.attribute') IS NOT NULL
+      ) LOOP
+        l_price_override_attr := REGEXP_REPLACE(NVL(po_rec.po_attr, ''), '^#|#$', '');
+        IF l_price_override_attr IS NOT NULL AND NOT l_aliases.EXISTS(l_price_override_attr) THEN
+          l_aliases(l_price_override_attr) := l_price_override_attr;
+          l_price_override_attrs(l_price_override_attr) := TRUE;
+          log_debug('Found price override attribute: ' || l_price_override_attr);
+        END IF;
+      END LOOP;
+    END;
+
     log_debug('Alias parsing complete. Found ' || l_aliases.COUNT || ' unique attributes.'); -- (new log line)
 
     -- Load event scores (needed regardless of attributes)
@@ -459,18 +480,26 @@ FUNCTION EVALUATE(
           SELECT stay_date, TO_NUMBER(attribute_value), NULL BULK COLLECT INTO l_staged_data(l_current_id) FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id)) WHERE attribute_value IS NOT NULL;
           log_debug('... Loaded ' || l_staged_data(l_current_id).COUNT || ' rows into staged data.'); -- (new log line)
 
-          FOR rec IN (SELECT stay_date FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id))) LOOP
-            l_date_set(TO_CHAR(rec.stay_date, 'YYYY-MM-DD')) := TRUE;
-          END LOOP;
+          -- Only add dates to date_set if this is NOT a price override attribute
+          -- Price override should only replace values for dates already in the evaluation set
+          IF NOT l_price_override_attrs.EXISTS(l_current_id) THEN
+            FOR rec IN (SELECT stay_date FROM TABLE(ur_utils.GET_ATTRIBUTE_VALUE(p_attribute_id => l_current_id, p_hotel_id => l_hotel_id))) LOOP
+              l_date_set(TO_CHAR(rec.stay_date, 'YYYY-MM-DD')) := TRUE;
+            END LOOP;
+          ELSE
+            log_debug('... Skipping date collection for price override attribute (dates determined by other filters)');
+          END IF;
         END IF;
 
         l_current_id := l_aliases.NEXT(l_current_id);
       END LOOP;
       log_debug('Data loading complete. Total unique dates found: ' || l_date_set.COUNT); -- (new log line)
-    ELSE
-      -- No attributes found - likely all free text expressions
-      -- Generate dates from stay windows in regions
-      log_debug('No attributes found. Generating dates from stay windows for free text expressions...'); -- (new log line)
+    END IF;
+
+    -- If no dates were collected (e.g., only price override attributes exist, or all free text expressions)
+    -- Generate dates from stay windows in regions
+    IF l_date_set.COUNT = 0 THEN
+      log_debug('No dates found from attributes. Generating dates from stay windows...'); -- (new log line)
       FOR sw_rec IN (
         SELECT stay_from, stay_to
         FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (
@@ -510,7 +539,7 @@ FUNCTION EVALUATE(
 
         <<regions_loop>>
         FOR region_rec IN (
-          SELECT region_name, stay_from, stay_to, conditions, days_of_week, minimum_rate, sequence, lead_type, lead_from_val, lead_to_val, lead_value, lead_exclude
+          SELECT region_name, stay_from, stay_to, conditions, days_of_week, minimum_rate, sequence, lead_type, lead_from_val, lead_to_val, lead_value, lead_exclude, price_override_attr
           FROM JSON_TABLE(l_rules_json, '$.regions[*]' COLUMNS (
             region_name  VARCHAR2(255) PATH '$.name', stay_from DATE PATH '$.filters.stayWindow.from', stay_to DATE PATH '$.filters.stayWindow.to',
             conditions   CLOB FORMAT JSON PATH '$.conditions', days_of_week VARCHAR2(100) FORMAT JSON PATH '$.filters.daysOfWeek',
@@ -518,7 +547,8 @@ FUNCTION EVALUATE(
             lead_type VARCHAR2(50) PATH '$.filters.leadTime.type',
             lead_from_val  DATE PATH '$.filters.leadTime.from', lead_to_val DATE PATH '$.filters.leadTime.to',
             lead_value     NUMBER PATH '$.filters.leadTime.value',
-            lead_exclude   VARCHAR2(10) PATH '$.filters.leadTime.exclude'
+            lead_exclude   VARCHAR2(10) PATH '$.filters.leadTime.exclude',
+            price_override_attr VARCHAR2(255) PATH '$.filters.priceOverride.attribute'
           )) ORDER BY sequence
         ) LOOP
           DECLARE
@@ -728,8 +758,44 @@ FUNCTION EVALUATE(
                         || ', "result":"' || REPLACE(l_text_result,'"','\"') || '"'
                         || '}';
 
-                      PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), l_text_result, l_applied_rule_json));
-                      log_debug('... PIPED ROW (free text) for date ' || TO_CHAR(v_stay_date, 'YYYY-MM-DD')); -- (new log line)
+                      -- Check for price override before outputting result
+                      DECLARE
+                        l_price_override_attr_id VARCHAR2(255);
+                        l_price_override_value NUMBER := NULL;
+                        l_final_price VARCHAR2(50);
+                        l_final_json CLOB;
+                      BEGIN
+                        l_price_override_attr_id := region_rec.price_override_attr;
+                        l_final_price := l_text_result;
+                        l_final_json := l_applied_rule_json;
+
+                        IF l_price_override_attr_id IS NOT NULL THEN
+                          l_price_override_attr_id := REGEXP_REPLACE(l_price_override_attr_id, '^#|#$', '');
+
+                          IF l_staged_data.EXISTS(l_price_override_attr_id) THEN
+                            l_price_override_value := get_value_for_date(
+                              l_staged_data(l_price_override_attr_id),
+                              v_stay_date
+                            );
+
+                            IF l_price_override_value IS NOT NULL THEN
+                              l_final_price := TO_CHAR(ROUND(l_price_override_value));
+                              -- Update JSON to include price override info
+                              l_final_json := REGEXP_REPLACE(l_final_json, '"result_type":"text"', '"result_type":"numeric"');
+                              l_final_json := REGEXP_REPLACE(l_final_json, '"result":"[^"]*"}$',
+                                '"result":' || TO_CHAR(ROUND(l_price_override_value)) ||
+                                ', "price_override_applied":true' ||
+                                ', "price_override_attribute":"' || l_price_override_attr_id || '"' ||
+                                ', "price_override_value":' || TO_CHAR(ROUND(l_price_override_value)) ||
+                                ', "original_result":"' || REPLACE(l_text_result,'"','\"') || '"}');
+                              log_debug('............ Price Override applied: ' || l_final_price || ' (original: ' || l_text_result || ')');
+                            END IF;
+                          END IF;
+                        END IF;
+
+                        PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), l_final_price, l_final_json));
+                        log_debug('... PIPED ROW (free text' || CASE WHEN l_price_override_value IS NOT NULL THEN ' with price override' ELSE '' END || ') for date ' || TO_CHAR(v_stay_date, 'YYYY-MM-DD'));
+                      END;
 
                     ELSE
                       -- Handle Mathematical Expression (existing logic)
@@ -811,21 +877,84 @@ FUNCTION EVALUATE(
 
                       log_debug('............ Final parsable expression: ' || l_eval_copy); -- (new log line)
 
+                      -- Step 1: Evaluate expression
                       EXECUTE IMMEDIATE 'SELECT ' || l_eval_copy || ' FROM DUAL' INTO l_expr_outcome;
-                      -- Round to nearest integer for numeric results
                       l_eval_result := ROUND(l_expr_outcome);
 
-                      log_debug('............ Expression result - Original: ' || l_expr_outcome || ', Rounded: ' || l_eval_result); -- (new log line)
+                      log_debug('............ Expression result - Original: ' || l_expr_outcome || ', Rounded: ' || l_eval_result);
 
-                      l_applied_rule_json := '{' || '"region":"' || REPLACE(region_rec.region_name,'"','\"') || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"') || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD') || '", "filters":{' || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"' || ', "lead_time":' || l_lead_time_json || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END || CASE WHEN region_rec.minimum_rate IS NOT NULL THEN ', "minimum_rate":' || TO_CHAR(region_rec.minimum_rate) ELSE '' END || '}' || ', "occupancy":' || CASE WHEN cond_rec.occ_attr IS NOT NULL THEN '{"attr":"' || REPLACE(cond_rec.occ_attr,'#','') || '", "actual":' || NVL(TO_CHAR(l_actual_occ_val),'null') || ', "operator":"' || cond_rec.occ_op || '", "threshold":' || TO_CHAR(cond_rec.occ_val) || ', "failed":' || CASE WHEN l_occ_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "property_ranking":' || CASE WHEN cond_rec.pr_type IS NOT NULL THEN '{"attr":"' || NVL(l_pr_attr_id,'') || '", "actual":' || NVL(TO_CHAR(l_actual_pr_val),'null') || ', "operator":"' || cond_rec.pr_op || '", "threshold":' || TO_CHAR(cond_rec.pr_val) || ', "failed":' || CASE WHEN l_pr_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "event_score":' || CASE WHEN cond_rec.es_val IS NOT NULL THEN '{"actual":' || NVL(TO_CHAR(l_actual_event_score),'null') || ', "operator":"' || cond_rec.es_op || '", "threshold":' || TO_CHAR(cond_rec.es_val) || ', "failed":' || CASE WHEN l_ev_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"') || '", "expression_values":' || l_attr_json || ', "original_result":' || NVL(TO_CHAR(l_expr_outcome),'null');
+                      -- Step 2: Check for price override in region filters
+                      DECLARE
+                        l_price_override_attr_id VARCHAR2(255);
+                        l_price_override_value NUMBER := NULL;
+                      BEGIN
+                        -- Extract price override attribute ID from region filters
+                        l_price_override_attr_id := region_rec.price_override_attr;
 
-                      IF region_rec.minimum_rate IS NOT NULL AND l_eval_result < region_rec.minimum_rate THEN
-                        l_applied_rule_json := l_applied_rule_json || ', "note":"min_rate_applied"';
-                        l_eval_result := region_rec.minimum_rate;
-                        log_debug('............ Applying minimum rate: ' || l_eval_result); -- (new log line)
-                      END IF;
+                        IF l_price_override_attr_id IS NOT NULL THEN
+                          l_price_override_attr_id := REGEXP_REPLACE(l_price_override_attr_id, '^#|#$', '');
 
-                      l_applied_rule_json := l_applied_rule_json || ', "result_type":"numeric", "result":' || TO_CHAR(l_eval_result) || '}';
+                          -- Get price override value for this date
+                          IF l_staged_data.EXISTS(l_price_override_attr_id) THEN
+                            l_price_override_value := get_value_for_date(
+                              l_staged_data(l_price_override_attr_id),
+                              v_stay_date
+                            );
+                          END IF;
+
+                          -- If override value exists, use it (overrides expression and min rate)
+                          IF l_price_override_value IS NOT NULL THEN
+                            l_eval_result := ROUND(l_price_override_value);
+                            log_debug('............ Price Override applied: ' || l_eval_result ||
+                                      ' (original expression: ' || l_expr_outcome || ')');
+                          ELSE
+                            -- No override value, apply minimum rate to expression result
+                            IF region_rec.minimum_rate IS NOT NULL AND l_eval_result < region_rec.minimum_rate THEN
+                              l_eval_result := region_rec.minimum_rate;
+                              log_debug('............ Applying minimum rate: ' || l_eval_result);
+                            END IF;
+                          END IF;
+                        ELSE
+                          -- No price override configured, apply minimum rate to expression result
+                          IF region_rec.minimum_rate IS NOT NULL AND l_eval_result < region_rec.minimum_rate THEN
+                            l_eval_result := region_rec.minimum_rate;
+                            log_debug('............ Applying minimum rate: ' || l_eval_result);
+                          END IF;
+                        END IF;
+
+                        -- Build applied rule JSON
+                        l_applied_rule_json := '{'
+                          || '"region":"' || REPLACE(region_rec.region_name,'"','\"')
+                          || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"')
+                          || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD')
+                          || '", "filters":{'
+                          || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"'
+                          || ', "lead_time":' || l_lead_time_json
+                          || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END
+                          || CASE WHEN region_rec.minimum_rate IS NOT NULL THEN ', "minimum_rate":' || TO_CHAR(region_rec.minimum_rate) ELSE '' END
+                          || CASE WHEN region_rec.price_override_attr IS NOT NULL
+                             THEN ', "price_override":{"attribute":"' || REGEXP_REPLACE(region_rec.price_override_attr, '^#|#$', '') || '"}'
+                             ELSE '' END
+                          || '}'
+                          || ', "occupancy":' || CASE WHEN cond_rec.occ_attr IS NOT NULL THEN '{"attr":"' || REPLACE(cond_rec.occ_attr,'#','') || '", "actual":' || NVL(TO_CHAR(l_actual_occ_val),'null') || ', "operator":"' || cond_rec.occ_op || '", "threshold":' || TO_CHAR(cond_rec.occ_val) || ', "failed":' || CASE WHEN l_occ_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END
+                          || ', "property_ranking":' || CASE WHEN cond_rec.pr_type IS NOT NULL THEN '{"attr":"' || NVL(l_pr_attr_id,'') || '", "actual":' || NVL(TO_CHAR(l_actual_pr_val),'null') || ', "operator":"' || cond_rec.pr_op || '", "threshold":' || TO_CHAR(cond_rec.pr_val) || ', "failed":' || CASE WHEN l_pr_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END
+                          || ', "event_score":' || CASE WHEN cond_rec.es_val IS NOT NULL THEN '{"actual":' || NVL(TO_CHAR(l_actual_event_score),'null') || ', "operator":"' || cond_rec.es_op || '", "threshold":' || TO_CHAR(cond_rec.es_val) || ', "failed":' || CASE WHEN l_ev_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END
+                          || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"')
+                          || '", "expression_values":' || l_attr_json
+                          || ', "original_expression_result":' || NVL(TO_CHAR(l_expr_outcome),'null');
+
+                        -- Add price override specific fields if it was applied
+                        IF l_price_override_attr_id IS NOT NULL AND l_price_override_value IS NOT NULL THEN
+                          l_applied_rule_json := l_applied_rule_json
+                            || ', "price_override_applied":true'
+                            || ', "price_override_attribute":"' || l_price_override_attr_id || '"'
+                            || ', "price_override_value":' || TO_CHAR(l_eval_result);
+                        ELSIF region_rec.minimum_rate IS NOT NULL AND ROUND(l_expr_outcome) < region_rec.minimum_rate THEN
+                          l_applied_rule_json := l_applied_rule_json || ', "note":"min_rate_applied"';
+                        END IF;
+
+                        l_applied_rule_json := l_applied_rule_json || ', "result_type":"numeric", "result":' || TO_CHAR(l_eval_result) || '}';
+                      END;
 
                       PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), TO_CHAR(l_eval_result), l_applied_rule_json));
                       log_debug('... PIPED ROW (numeric) for date ' || TO_CHAR(v_stay_date, 'YYYY-MM-DD')); -- (new log line)
