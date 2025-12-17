@@ -29,6 +29,12 @@ let modalFilterState = {
     searchText: ''
 };
 
+// Race condition protection for load_data_expression
+let currentLoadRequest = null;      // Track current AJAX request for cancellation
+let loadDebounceTimer = null;       // Debounce timer ID
+let lastLoadedAlgoVersion = null;   // Track last successfully loaded algo+version
+const LOAD_DEBOUNCE_MS = 200;       // Wait 200ms before making request
+
 document.addEventListener('DOMContentLoaded', function() {
     autocompleteContainer = document.createElement('div');
     autocompleteContainer.id = 'expression-autocomplete';
@@ -56,21 +62,84 @@ function load_data_expression() {
 
     console.log('load_data_expression called - Algo:', algoListVal, 'Version:', versionVal, 'Hotel:', hotelId);
 
+    // Clear any pending debounced call
+    if (loadDebounceTimer) {
+        console.log('Clearing pending debounce timer');
+        clearTimeout(loadDebounceTimer);
+        loadDebounceTimer = null;
+    }
 
-
+    // Early exit for empty algo - no need to debounce
     if (!algoListVal) {
         loadFromJSON(null);
         return;
     }
 
+    // Early exit if version is not yet selected (cascade still in progress)
+    if (!versionVal) {
+        console.log('Version not yet selected, waiting for cascade to complete');
+        return;
+    }
+
+    // Skip if this exact algo+version is already loaded
+    const currentKey = `${algoListVal}:${versionVal}`;
+    if (lastLoadedAlgoVersion === currentKey) {
+        console.log('Already loaded this algo+version, skipping duplicate request');
+        return;
+    }
+
+    // Debounce: Wait for APEX cascading events to settle
+    loadDebounceTimer = setTimeout(() => {
+        executeLoadRequest(algoListVal, versionVal, hotelId);
+    }, LOAD_DEBOUNCE_MS);
+}
+
+function executeLoadRequest(capturedAlgo, capturedVersion, capturedHotelId) {
+    // Re-validate: Check if values changed during debounce period
+    const currentAlgo = apex.item("P1050_ALGO_LIST").getValue();
+    const currentVersion = apex.item("P1050_VERSION").getValue();
+
+    if (currentAlgo !== capturedAlgo || currentVersion !== capturedVersion) {
+        console.warn('RACE CONDITION PREVENTED: Parameters changed during debounce.',
+            'Captured:', capturedAlgo, capturedVersion,
+            'Current:', currentAlgo, currentVersion);
+        return;
+    }
+
+    // Abort any in-flight request
+    if (currentLoadRequest && typeof currentLoadRequest.abort === 'function') {
+        console.log('Aborting previous in-flight request');
+        try {
+            currentLoadRequest.abort();
+        } catch (e) {
+            console.warn('Failed to abort previous request:', e);
+        }
+        currentLoadRequest = null;
+    }
+
+    console.log('Executing load request - Algo:', capturedAlgo, 'Version:', capturedVersion);
 
     var lSpinner$ = apex.util.showSpinner();
-    apex.server.process(
+
+    currentLoadRequest = apex.server.process(
         'AJX_MANAGE_ALGO',
-        { x01: 'SELECT', x02: algoListVal, x03: versionVal },
+        { x01: 'SELECT', x02: capturedAlgo, x03: capturedVersion },
         {
             success: function(data) {
+                currentLoadRequest = null; // Clear request reference
                 console.log('AJX_MANAGE_ALGO response:', data);
+
+                // CRITICAL: Stale response check
+                const nowAlgo = apex.item("P1050_ALGO_LIST").getValue();
+                const nowVersion = apex.item("P1050_VERSION").getValue();
+
+                if (nowAlgo !== capturedAlgo || nowVersion !== capturedVersion) {
+                    console.warn('STALE RESPONSE IGNORED: UI has moved on.',
+                        'Response for:', capturedAlgo, capturedVersion,
+                        'Current UI:', nowAlgo, nowVersion);
+                    lSpinner$.remove();
+                    return;
+                }
 
                 // Check if server returned an error response
                 if (data.success === false) {
@@ -90,7 +159,6 @@ function load_data_expression() {
                     return;
                 }
 
-                // const savedJsonString = data && data[0] ? data[0].l_payload : null;
                 const savedJsonString = data && data.data && data.data[0] ? data.data[0].l_payload : null;
                 let savedData = null;
                 if (savedJsonString && savedJsonString.trim() !== '') {
@@ -106,11 +174,19 @@ function load_data_expression() {
 
                 // CRITICAL FIX: Ensure attributes are loaded BEFORE parsing expressions
                 // This prevents race condition where strategies in expressions can't be resolved
-                if (hotelId && (!dynamicData.attributes || dynamicData.attributes.length === 0)) {
+                if (capturedHotelId && (!dynamicData.attributes || dynamicData.attributes.length === 0)) {
                     console.warn('dynamicData.attributes not loaded yet - fetching before loadFromJSON');
 
-                    fetchAndApplyLovData(hotelId).then(() => {
+                    fetchAndApplyLovData(capturedHotelId).then(() => {
+                        // Final stale check before loading
+                        const finalAlgo = apex.item("P1050_ALGO_LIST").getValue();
+                        if (finalAlgo !== capturedAlgo) {
+                            console.warn('Selection changed during attribute fetch, aborting load');
+                            lSpinner$.remove();
+                            return;
+                        }
                         console.log('Attributes loaded, now loading JSON with', dynamicData.attributes.length, 'attributes');
+                        lastLoadedAlgoVersion = `${capturedAlgo}:${capturedVersion}`;
                         loadFromJSON(savedData);
                         lSpinner$.remove();
                     }).catch((error) => {
@@ -121,12 +197,21 @@ function load_data_expression() {
                     });
                 } else {
                     console.log('dynamicData.attributes already loaded (', dynamicData.attributes ? dynamicData.attributes.length : 0, 'attributes), proceeding with loadFromJSON');
+                    lastLoadedAlgoVersion = `${capturedAlgo}:${capturedVersion}`;
                     loadFromJSON(savedData);
                     lSpinner$.remove();
                 }
             },
             error: function(jqXHR, textStatus, errorThrown) {
-                console.log(errorThrown);
+                currentLoadRequest = null;
+
+                // Ignore aborted requests (not an error)
+                if (textStatus === 'abort') {
+                    console.log('Request was aborted (expected during rapid selection changes)');
+                    lSpinner$.remove();
+                    return;
+                }
+
                 console.error('AJAX Error loading strategy:', errorThrown);
                 apex.message.alert("An error occurred while fetching the configuration.");
                 lSpinner$.remove();
@@ -140,6 +225,9 @@ function fetchAndApplyLovData(hotelId) {
     console.warn('fetchAndApplyLovData() was called. See trace below.');
     console.trace();
     // --- END TRACE ---
+
+    // Reset loaded state when hotel changes (forces reload of strategy data)
+    lastLoadedAlgoVersion = null;
 
     return new Promise((resolve, reject) => {
         if (!hotelId) {
