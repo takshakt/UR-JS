@@ -1174,8 +1174,19 @@ ELSIF l_attribute_rec.TYPE = 'S' THEN
                                         l_ref_value := l_attr_data(l_ref_key)('__CONSTANT__');
                                     ELSIF l_date_str IS NOT NULL AND l_attr_data(l_ref_key).EXISTS(l_date_str) THEN
                                         l_ref_value := l_attr_data(l_ref_key)(l_date_str);
+                                        -- Handle NULL values for OUT_OF_ORDER_ROOMS - default to 0
+                                        IF l_ref_value IS NULL AND UPPER(l_ref_key) = 'OUT_OF_ORDER_ROOMS' THEN
+                                            l_ref_value := 0;
+                                            append_debug('Attribute ' || l_ref_key || ' has NULL value for ' || l_date_str || ', defaulting to 0');
+                                        END IF;
                                     ELSE
-                                        l_ref_value := NULL;
+                                        -- Date not found in attribute data
+                                        IF UPPER(l_ref_key) = 'OUT_OF_ORDER_ROOMS' THEN
+                                            l_ref_value := 0;  -- Default to 0 when date not found
+                                            append_debug('Attribute ' || l_ref_key || ' has no data for ' || l_date_str || ', defaulting to 0');
+                                        ELSE
+                                            l_ref_value := NULL;
+                                        END IF;
                                     END IF;
                                 ELSE
                                     -- Missing attribute case
