@@ -312,6 +312,13 @@ FUNCTION EVALUATE(
     l_valid_comp_count_attr_id VARCHAR2(255);  -- Attribute ID for VALID_COMP_COUNT
     l_ranking_template_id VARCHAR2(255);       -- Template ID for ranking attributes
     -- / RANK SHIFTING VARIABLES
+
+    -- ++ STRATEGY TEXT RESULTS VARIABLES
+    -- Stores text results from strategies (e.g., "Override Test" from free text expressions)
+    -- Key format: 'STRAT_xxx|YYYY-MM-DD' -> text value
+    TYPE t_strat_text_map IS TABLE OF VARCHAR2(4000) INDEX BY VARCHAR2(300);
+    l_strat_text_results t_strat_text_map;
+    -- / STRATEGY TEXT RESULTS VARIABLES
   BEGIN
     log_debug('EVALUATE START: p_algo_id=' || p_algo_id || ', p_version_id=' || p_version_id || ', p_stay_date=' || TO_CHAR(p_stay_date, 'YYYY-MM-DD')); -- (new log line)
 
@@ -459,21 +466,46 @@ FUNCTION EVALUATE(
         IF SUBSTR(l_current_id, 1, 6) = 'STRAT_' THEN
           DECLARE
             l_strategy_id VARCHAR2(255);
+            l_strat_key VARCHAR2(300);
+            l_numeric_val NUMBER;
           BEGIN
             l_strategy_id := SUBSTR(l_current_id, 7); -- Remove STRAT_ prefix
             log_debug('Loading strategy data: ' || l_strategy_id);
 
-            -- Bulk load strategy evaluation results into staged_data (same as attributes)
-            SELECT stay_date, evaluated_price, NULL
-            BULK COLLECT INTO l_staged_data(l_current_id)
-            FROM TABLE(ALGO_EVALUATOR_PKG.EVALUATE(l_strategy_id, NULL));
+            -- Load strategy results - store numeric values in staged_data, text values in strat_text_results
+            FOR strat_rec IN (
+              SELECT stay_date, evaluated_price
+              FROM TABLE(ALGO_EVALUATOR_PKG.EVALUATE(l_strategy_id, NULL))
+              WHERE stay_date IS NOT NULL
+            ) LOOP
+              -- Add date to date set
+              l_date_set(TO_CHAR(strat_rec.stay_date, 'YYYY-MM-DD')) := TRUE;
 
-            log_debug('... Loaded ' || l_staged_data(l_current_id).COUNT || ' rows from strategy evaluation.');
-
-            -- Add strategy dates to the date set
-            FOR rec IN (SELECT stay_date FROM TABLE(ALGO_EVALUATOR_PKG.EVALUATE(l_strategy_id, NULL))) LOOP
-              l_date_set(TO_CHAR(rec.stay_date, 'YYYY-MM-DD')) := TRUE;
+              -- Try to convert to number
+              BEGIN
+                l_numeric_val := TO_NUMBER(strat_rec.evaluated_price);
+                -- Numeric value - store in staged_data
+                IF NOT l_staged_data.EXISTS(l_current_id) THEN
+                  l_staged_data(l_current_id) := t_result_tab();
+                END IF;
+                l_staged_data(l_current_id).EXTEND;
+                l_staged_data(l_current_id)(l_staged_data(l_current_id).COUNT).stay_date := strat_rec.stay_date;
+                l_staged_data(l_current_id)(l_staged_data(l_current_id).COUNT).evaluated_price := l_numeric_val;
+              EXCEPTION
+                WHEN VALUE_ERROR OR INVALID_NUMBER THEN
+                  -- Text value - store in strat_text_results map
+                  l_strat_key := l_current_id || '|' || TO_CHAR(strat_rec.stay_date, 'YYYY-MM-DD');
+                  l_strat_text_results(l_strat_key) := strat_rec.evaluated_price;
+                  log_debug('... Stored text result for ' || l_strat_key || ': ' || strat_rec.evaluated_price);
+              END;
             END LOOP;
+
+            -- Initialize empty collection if no numeric values found
+            IF NOT l_staged_data.EXISTS(l_current_id) THEN
+              l_staged_data(l_current_id) := t_result_tab();
+            END IF;
+
+            log_debug('... Loaded ' || l_staged_data(l_current_id).COUNT || ' numeric rows from strategy evaluation.');
           END;
         ELSE
           log_debug('Loading data for attribute: ' || l_current_id); -- (new log line)
@@ -800,6 +832,69 @@ FUNCTION EVALUATE(
                     ELSE
                       -- Handle Mathematical Expression (existing logic)
                       l_raw_expr := cond_rec.expr;
+
+                      -- ++ CHECK FOR STRATEGY TEXT PASS-THROUGH
+                      -- If expression contains any strategy reference that returned text for this date,
+                      -- pass through the text value instead of trying to evaluate mathematically
+                      DECLARE
+                        l_strat_ref VARCHAR2(255);
+                        l_strat_text_key VARCHAR2(300);
+                        l_strat_text_value VARCHAR2(4000);
+                        l_strat_pos PLS_INTEGER := 1;
+                        l_found_text_strat BOOLEAN := FALSE;
+                      BEGIN
+                        -- Find all strategy references in the expression
+                        LOOP
+                          l_strat_ref := REGEXP_SUBSTR(l_raw_expr, '#STRAT_[A-Z0-9]+#', 1, l_strat_pos);
+                          EXIT WHEN l_strat_ref IS NULL;
+
+                          -- Check if this strategy returned text for this date
+                          l_strat_ref := REGEXP_REPLACE(l_strat_ref, '^#|#$', '');
+                          l_strat_text_key := l_strat_ref || '|' || TO_CHAR(v_stay_date, 'YYYY-MM-DD');
+
+                          IF l_strat_text_results.EXISTS(l_strat_text_key) THEN
+                            -- Strategy returned text for this date - pass it through
+                            l_strat_text_value := l_strat_text_results(l_strat_text_key);
+                            l_found_text_strat := TRUE;
+                            log_debug('............ Strategy ' || l_strat_ref || ' returned text for this date: ' || l_strat_text_value);
+                            EXIT; -- Exit loop, we found a text result
+                          END IF;
+
+                          l_strat_pos := l_strat_pos + 1;
+                        END LOOP;
+
+                        IF l_found_text_strat THEN
+                          log_debug('............ Strategy text pass-through: ' || l_strat_text_value);
+
+                          -- Build JSON output for strategy text pass-through
+                          l_attr_json := '{"' || l_strat_ref || '":"' || REPLACE(l_strat_text_value,'"','\"') || '"}';
+                          l_applied_rule_json := '{'
+                            || '"region":"' || REPLACE(region_rec.region_name,'"','\"')
+                            || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"')
+                            || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD')
+                            || '", "filters":{'
+                            || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"'
+                            || ', "lead_time":' || l_lead_time_json
+                            || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END
+                            || '}'
+                            || ', "occupancy":null'
+                            || ', "property_ranking":null'
+                            || ', "event_score":null'
+                            || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"')
+                            || '", "expression_values":' || l_attr_json
+                            || ', "evaluated_outcome":null'
+                            || ', "result_type":"text"'
+                            || ', "result":"' || REPLACE(l_strat_text_value,'"','\"') || '"'
+                            || ', "note":"strategy_text_passthrough"'
+                            || '}';
+
+                          PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), l_strat_text_value, l_applied_rule_json));
+                          log_debug('... PIPED ROW (strategy text pass-through) for date ' || TO_CHAR(v_stay_date, 'YYYY-MM-DD'));
+                          v_any_rule_matched_for_date := TRUE;
+                          GOTO end_date_processing;
+                        END IF;
+                      END;
+                      -- / CHECK FOR STRATEGY TEXT PASS-THROUGH
 
                       -- ++ RANK SHIFTING: Apply rank shifting if we have ranking data
                       DECLARE
