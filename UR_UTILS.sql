@@ -3812,14 +3812,14 @@ BEGIN
         v_sql := v_sql || 'apex_data_parser.parse(' ||
                  'p_content => :blob, ' ||
                  'p_file_name => :fname, ' ||
-                 'p_skip_rows => :skip, ' ||
+                 'p_skip_rows => :skip + 1, ' || -- Skipping header as well to keep date detection clean
                  'p_xlsx_sheet_name => :sheet, ' ||
                  'p_max_rows => 366))';
     ELSE
         v_sql := v_sql || 'apex_data_parser.parse(' ||
                  'p_content => :blob, ' ||
                  'p_file_name => :fname, ' ||
-                 'p_skip_rows => :skip, ' ||
+                 'p_skip_rows => :skip + 1, ' || -- -- Skipping header as well to keep date detection clean
                  'p_max_rows => 366))';
     END IF;
 
