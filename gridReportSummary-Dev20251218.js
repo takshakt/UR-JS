@@ -790,29 +790,30 @@ function createCard(index, data) {
 
 
 
-                // Now handle {1} functionality for offset column references
-                // Find column references with {n} pattern (now should be just column names like "MOXY_YORK{1}")
-                const offsetColumnRegex =  /(\[?[A-Za-z_][A-Za-z0-9_% ]*[A-Za-z0-9_%]\]?){(\d+)}/g;
+                // Now handle {n} functionality for offset column references (supports both positive and negative offsets)
+                // Find column references with {n} pattern (now should be just column names like "MOXY_YORK{1}" or "MOXY_YORK{-1}")
+                const offsetColumnRegex = /(\[?[A-Za-z_][A-Za-z0-9_% ]*[A-Za-z0-9_%]\]?)\{(-?\d+)\}/g;
                 let match;
 
                 // Create a map to store offset column replacements
                 const offsetReplacements = {};
-                
+                let hasOffsetError = false;
+
                 while ((match = offsetColumnRegex.exec(expr)) !== null) {
                     const fullMatch = match[0];
                     const columnRef = match[1].replace(/[\[\]]/g, ''); // Remove brackets if present
-                    const offset = parseInt(match[2]);
-                    
+                    const offset = parseInt(match[2], 10);
+
                     // Get current row's PK_COL date
                     const currentDate = row.PK_COL;
-                    
+
                     if (currentDate) {
                         // Calculate target date by adding offset
                         const targetDate = addDays(currentDate, offset);
-                        
+
                         // Find the value in originalData
                         const offsetValue = findValueInOriginalData(targetDate, columnRef);
-                        
+
                         if (offsetValue !== null) {
                             // Store the replacement value
                             offsetReplacements[fullMatch] = offsetValue;
@@ -829,13 +830,11 @@ function createCard(index, data) {
                 Object.entries(offsetReplacements).forEach(([pattern, value]) => {
                     // Handle the value based on its type
                     let replacementValue;
-                    
-                    if (value === null || value === undefined || value === '') {
-                        // For missing values, use 0 for numeric operations
-                        replacementValue = 'Calculation Issue';
 
-                        expr= 'Calculation Issue';
-                        return;
+                    if (value === null || value === undefined || value === '') {
+                        // For missing values, use 0 for numeric operations instead of breaking entire formula
+                        hasOffsetError = true;
+                        replacementValue = 0;
                     } else if (!isNaN(value) && value !== null) {
                         // Convert numeric strings to actual numbers
                         replacementValue = parseFloat(value);
@@ -843,10 +842,16 @@ function createCard(index, data) {
                         // For non-numeric values, use them as-is with quotes
                         replacementValue = `"${value}"`;
                     }
-                    
+
                     // Replace the pattern in the expression
                     expr = expr.replace(pattern, replacementValue);
                 });
+
+                // If all offset lookups failed, mark as Calculation Issue
+                if (hasOffsetError && Object.keys(offsetReplacements).length > 0 &&
+                    Object.values(offsetReplacements).every(v => v === null || v === undefined || v === '')) {
+                    expr = 'Calculation Issue';
+                }
 
                // console.log('After {1} replacement expr:', expr);
 
@@ -861,13 +866,42 @@ function createCard(index, data) {
                 ];
                 const uniqueColumnNames = [...new Set(allColumnNames)];
 
+                // Track if date arithmetic is involved
+                let hasDateArithmetic = false;
+                const formulaHasArithmetic = /[\+\-]/.test(expr);
+
+                // Helper to parse date string to Date object
+                function parseDateStr(dateStr) {
+                    const months = { JAN:0,FEB:1,MAR:2,APR:3,MAY:4,JUN:5,JUL:6,AUG:7,SEP:8,OCT:9,NOV:10,DEC:11 };
+                    const parts = dateStr.split('-');
+                    if (parts.length === 3) return new Date(parseInt(parts[2],10), months[parts[1].toUpperCase()], parseInt(parts[0],10));
+                    return null;
+                }
+
+                // Helper to format Date to DD-MON-YYYY
+                function formatDateStr(date) {
+                    const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+                    return `${date.getDate().toString().padStart(2,'0')}-${months[date.getMonth()]}-${date.getFullYear()}`;
+                }
+
                 // Safe replacements for numeric values
                 uniqueColumnNames.forEach(col => {
                     // 'col' is the ALIAS (e.g., 'MOXY_YORK'), which is the row key.
                     let value = row[col]; // Direct lookup by alias/row key
 
                     if (dataTypeMap[col] === 'date' && value != null && value !== '') {
-                        value = `"${value}"`; // keep quotes for JS eval
+                        // Check if date column is used with arithmetic
+                        if (formulaHasArithmetic) {
+                            const dateObj = parseDateStr(value);
+                            if (dateObj) {
+                                value = dateObj.getTime();
+                                hasDateArithmetic = true;
+                            } else {
+                                value = `"${value}"`;
+                            }
+                        } else {
+                            value = `"${value}"`; // keep quotes for JS eval
+                        }
                     } else if (!isNaN(value) && value !== '' && value !== null) {
                         value = parseFloat(value);
                     } else {
@@ -879,13 +913,32 @@ function createCard(index, data) {
                     expr = expr.replace(new RegExp(`\\b${col}\\b`, 'g'), value);
                 });
 
+                // If date arithmetic is involved, convert day offsets to milliseconds
+                if (hasDateArithmetic) {
+                    expr = expr.replace(/(\d{10,})\s*([\+\-])\s*(\d+)(?!\d)/g, (match, timestamp, op, days) => {
+                        const dayValue = parseInt(days, 10);
+                        if (dayValue >= 1 && dayValue <= 365) {
+                            return `${timestamp} ${op} (${dayValue} * 86400000)`;
+                        }
+                        return match;
+                    });
+                }
+
                 //console.log('Final expr before eval:', expr);
-                
+
                 expr = replaceDayNameFunction(expr);
 
                 try {
                     let result = eval(expr);
-                    
+
+                    // If date arithmetic was involved, convert timestamp back to formatted date
+                    if (hasDateArithmetic && typeof result === 'number' && result > 1e10) {
+                        const d = new Date(result);
+                        if (!isNaN(d.getTime())) {
+                            result = formatDateStr(d);
+                        }
+                    }
+
                     // NAN CHECK: Force NaN to null
                     if (typeof result === 'number' && isNaN(result)) {
                         row[fColKey] = 'Calculation Issue';
@@ -994,7 +1047,7 @@ if (filterKeys.length > 0) {
     selectedColumns.forEach(col => {
         if (col.data_type?.toUpperCase() === 'DATE' && col.aggregation && col.aggregation !== 'none') {
             groupByColumn = col;
-            groupByAlias = col.alias_name;
+            groupByAlias = col.alias_name || col.col_name;
         }
     });
 
@@ -1067,23 +1120,25 @@ if (filterKeys.length > 0) {
 
             // For each column, apply aggregation based on data type and aggregation setting
             selectedColumns.forEach(col => {
-    const alias = col.alias_name;
+    const alias = col.alias_name || col.col_name;
 
     if (alias === groupByAlias) return;
     if (col.visibility !== 'show') return;
 
     const dataType = col.data_type?.toUpperCase();
-    // 1. If aggregation is 'none' or missing, treat it as 'sum' for NUMBERS
-    let aggregation = (col.aggregation && col.aggregation !== 'none') ? col.aggregation.toLowerCase() : 'sum';
+    const hasExplicitAggregation = col.aggregation && col.aggregation !== 'none';
+    let aggregation = hasExplicitAggregation ? col.aggregation.toLowerCase() : null;
 
     if (dataType === 'NUMBER') {
+        // NUMBER columns: Auto-sum if no explicit aggregation
+        if (!aggregation) aggregation = 'sum';
+
         const values = groupRows.map(row => {
             let value = row[alias];
             if (value === undefined || value === null || value === '') return 0;
-            
+
             if (typeof value === 'string') {
-                // 2. Ignore non-numeric characters: 
-                // This regex removes everything except numbers, dots, and minus signs
+                // Ignore non-numeric characters
                 value = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
             }
             return typeof value === 'number' ? value : 0;
@@ -1108,15 +1163,23 @@ if (filterKeys.length > 0) {
                 aggregatedRow[alias] = values.length;
                 break;
             default:
-                // 3. Fallback to sum if aggregation is unrecognized
+                // Fallback to sum if aggregation is unrecognized
                 aggregatedRow[alias] = values.reduce((sum, val) => sum + val, 0);
         }
 
         if (typeof aggregatedRow[alias] === 'number' && !Number.isInteger(aggregatedRow[alias])) {
             aggregatedRow[alias] = parseFloat(aggregatedRow[alias].toFixed(2));
         }
+    } else if (dataType === 'DATE') {
+        // DATE columns: Show "Calculation Issue" unless explicit aggregation is set
+        if (hasExplicitAggregation) {
+            aggregatedRow[alias] = groupRows[0]?.[alias] || '';
+        } else {
+            aggregatedRow[alias] = 'Calculation Issue';
+        }
     } else {
-        aggregatedRow[alias] = groupRows[0]?.[alias] || '-';
+        // TEXT/STRING columns: Show "Calculation Issue" when grouping
+        aggregatedRow[alias] = 'Calculation Issue';
     }
 });
 
@@ -1269,7 +1332,7 @@ Object.keys(conditionalRules).forEach(targetLongName => {
 
             try {
                 if (eval(exprToEval)) {
-                    cellStyles[`${rowIndex}:${targetAlias}`] = `color: ${color}; font-weight: bold;`;
+                    cellStyles[`${rowIndex}:${targetAlias}`] = `background-color: ${color}; color: #ffffff; font-weight: bold;`;
                 }
             } catch (err) {
                 console.warn('Conditional formatting eval error:', err, exprToEval);

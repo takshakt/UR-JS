@@ -1663,7 +1663,37 @@ function create_report(sqldata) {
              console.log('sqldata:>'+sqldata);
              console.log('hotelLov.options[hotelLov.selectedIndex].value:>'+hotelLov.options[hotelLov.selectedIndex].value);
              console.log('$(#New-Report).val():>'+$('#New-Report').val());
-            jsondata_details =  JSON.parse((JSON.stringify(jsondata_main)));
+
+            // Preserve existing aggregation, visibility, and alias settings from jsondata_details
+            const existingSettings = {};
+            if (jsondata_details && jsondata_details.selectedColumns) {
+                jsondata_details.selectedColumns.forEach(col => {
+                    const key = `${col.col_name}|${col.temp_name}`;
+                    existingSettings[key] = {
+                        aggregation: col.aggregation,
+                        visibility: col.visibility,
+                        alias_name: col.alias_name,
+                        data_type: col.data_type
+                    };
+                });
+            }
+
+            // Create new jsondata_details from jsondata_main
+            jsondata_details = JSON.parse(JSON.stringify(jsondata_main));
+
+            // Restore preserved settings
+            if (jsondata_details.selectedColumns && Object.keys(existingSettings).length > 0) {
+                jsondata_details.selectedColumns.forEach(col => {
+                    const key = `${col.col_name}|${col.temp_name}`;
+                    if (existingSettings[key]) {
+                        col.aggregation = existingSettings[key].aggregation || col.aggregation;
+                        col.visibility = existingSettings[key].visibility || col.visibility;
+                        col.alias_name = existingSettings[key].alias_name || col.alias_name;
+                        col.data_type = existingSettings[key].data_type || col.data_type;
+                    }
+                });
+            }
+
             apex.server.process(
                 'AJX_MANAGE_REPORT_VIEW',
                 { x01: sqldata
@@ -2123,11 +2153,11 @@ function call_dashboard_data(selectedReport_Id){
             savedFormulas = {};
             savedFilters = {};
             localStorage.removeItem('savedFilters');
-            localStorage.removeItem('savedFormulas');  
+            localStorage.removeItem('savedFormulas');
             document.getElementById('filter-preview').value = '';
             document.getElementById('filter-name-input').value = '';
             loadSavedFilters();
-            localStorage.clear(); 
+            // localStorage.clear(); // REMOVED: Already cleared specific items above
             forceShowDashboard();
             
             // console.log('TEMP_FORMATTING_JSON:', TEMP_FORMATTING_JSON);
@@ -2340,6 +2370,11 @@ function parseColumnName(fullColumnName) {
         if (index !== -1) {
         col_name = fullColumnName.substring(0, index).trim();
         temp_name = fullColumnName.substring(index + 3).trim(); // +3 to skip ' - '
+        } else {
+            // No ' - ' separator - check if this is a formula column
+            if (typeof savedFormulas !== 'undefined' && savedFormulas && savedFormulas[fullColumnName]) {
+                temp_name = 'calc'; // Formula columns use 'calc' as temp_name
+            }
         }
 
         return {
@@ -2424,8 +2459,19 @@ function showColumnPopup(columnName) {
    // }
     
     // CRITICAL FIX LOGIC: This ensures formula columns show the LOV
+    // Check if existingColumn has temp_name === 'calc', OR if the column name exists in savedFormulas
     if (existingColumn && existingColumn.temp_name === 'calc') {
-        columnDataType = 'number'; 
+        columnDataType = 'number';
+    } else if (!columnDataType && typeof savedFormulas !== 'undefined' && savedFormulas && savedFormulas[columnInfo.col_name]) {
+        // Formula column identified via savedFormulas - get type from formula metadata or default to number
+        const formulaMeta = savedFormulas[columnInfo.col_name];
+        columnDataType = (typeof formulaMeta === 'object' && formulaMeta.type) ? formulaMeta.type : 'number';
+    } else if (columnInfo.temp_name === '' || columnInfo.temp_name === 'calc') {
+        // Column name without ' - ' separator might be a formula column - check savedFormulas
+        if (typeof savedFormulas !== 'undefined' && savedFormulas && savedFormulas[columnInfo.col_name]) {
+            const formulaMeta = savedFormulas[columnInfo.col_name];
+            columnDataType = (typeof formulaMeta === 'object' && formulaMeta.type) ? formulaMeta.type : 'number';
+        }
     }
 
     document.getElementById('newHeader').value = currentAlias;
@@ -2443,17 +2489,40 @@ function showColumnPopup(columnName) {
     }
 
 
-    if (columnDataType === 'number') {
-        aggregationGroup.style.display = 'flex'; 
-        numericSelect.style.display = 'block'; 
-        numericSelect.value = existingColumn ? existingColumn.aggregation || 'none' : 'none';
-    } else if (columnDataType === 'date') {
+    // SIMPLIFIED AGGREGATION RULES:
+    // 1. Date aggregation (week/month/year) ONLY on PK_COL (Stay_Date)
+    // 2. Number aggregation ONLY visible when PK_COL already has date aggregation
+    // 3. No aggregation on other fields
+
+    // Check if this is the PK_COL (Stay_Date) column
+    const isPkCol = columnInfo.col_name === 'PK_COL' || columnInfo.col_name === 'COLUMN_COL' ||
+                    (existingColumn && (existingColumn.col_name === 'PK_COL' || existingColumn.col_name === 'COLUMN_COL'));
+
+    // Check if PK_COL has aggregation applied
+    const pkColHasAggregation = jsondata_details?.selectedColumns?.some(col =>
+        (col.col_name === 'PK_COL' || col.col_name === 'COLUMN_COL') &&
+        col.aggregation && col.aggregation !== 'none' &&
+        ['week', 'month', 'year'].includes(col.aggregation.toLowerCase())
+    );
+
+    if (isPkCol && columnDataType === 'date') {
+        // PK_COL - show date aggregation options (week/month/year)
         aggregationGroup.style.display = 'flex';
         dateSelect.style.display = 'block';
+        numericSelect.style.display = 'none';
         dateSelect.value = existingColumn ? existingColumn.aggregation || 'none' : 'none';
+    } else if (columnDataType === 'number' && pkColHasAggregation) {
+        // Number column AND PK_COL has aggregation - show number aggregation options
+        aggregationGroup.style.display = 'flex';
+        numericSelect.style.display = 'block';
+        dateSelect.style.display = 'none';
+        numericSelect.value = existingColumn ? existingColumn.aggregation || 'none' : 'none';
     } else {
+        // All other cases - hide aggregation
         aggregationGroup.style.display = 'none';
-        if (existingColumn) existingColumn.aggregation = 'none';
+        numericSelect.style.display = 'none';
+        dateSelect.style.display = 'none';
+        // Don't reset aggregation if it's already set (preserve existing)
     }
     
     document.getElementById('columnPopup').style.display = 'flex';
@@ -3247,8 +3316,9 @@ function displayReportTable(callfrom) {
             // Find the existing column configuration
             let existingColumn = findColwithTemp(baseCol, template);
             
-            // Format dates
-            if (existingColumn && existingColumn.data_type === 'date' && displayValue) {
+            // Format dates (case-insensitive check)
+            const existingColType = existingColumn?.data_type?.toLowerCase();
+            if (existingColType === 'date' && displayValue) {
                 displayValue = formatDate(displayValue);
             }
 
@@ -3266,15 +3336,25 @@ function displayReportTable(callfrom) {
             }
 
             // Round number fields only based on existingColumn data_type or calculated columns
-            if (existingColumn && existingColumn.data_type === 'number') {
+            if (existingColType === 'number') {
                 const num = typeof displayValue === 'number' ? displayValue : parseFloat(displayValue);
                 if (!isNaN(num) && isFinite(num)) {
                     displayValue = num.toFixed(2);
                 }
             } else if (template === CALCULATED_GROUP_NAME) {
-                const num = typeof displayValue === 'number' ? displayValue : parseFloat(displayValue);
-                if (!isNaN(num) && isFinite(num)) {
-                    displayValue = num.toFixed(2);
+                // For formula columns, check if it's a date type formula
+                if (existingColType === 'date') {
+                    // Already handled above, but if value is a timestamp, convert it
+                    const ts = parseFloat(displayValue);
+                    if (!isNaN(ts) && ts > 1e10) {
+                        displayValue = formatDate(new Date(ts).toISOString());
+                    }
+                } else {
+                    // Default to number formatting for formula columns
+                    const num = typeof displayValue === 'number' ? displayValue : parseFloat(displayValue);
+                    if (!isNaN(num) && isFinite(num)) {
+                        displayValue = num.toFixed(2);
+                    }
                 }
             } else if (displayValue === null || displayValue === undefined || displayValue === '') {
                 displayValue = '-';
@@ -4015,7 +4095,9 @@ function loadConfigFromJSON(configData) {
             let isBooleanCalculation = false;
 
             // --- SHIFT RESOLVER MUST RUN FIRST — BEFORE ANYTHING ELSE ---
-            tableColumns.forEach(col => {
+            // Sort columns by name length (longest first) to avoid partial matches
+            const sortedColumns = [...tableColumns].sort((a, b) => b.name.length - a.name.length);
+            sortedColumns.forEach(col => {
                 const fullColName = col.name;
                 const currentPK = row["PK_COL"];
                 const shiftPattern = new RegExp(escapeRegExp(fullColName) + "\\{(-?\\d+)\\}", "g");
@@ -4085,7 +4167,8 @@ function loadConfigFromJSON(configData) {
             calculatedFormula = replaceDayFunction(calculatedFormula);
             conditionalExpression = replaceDayFunction(conditionalExpression);
             // --- Replace normal column references ---
-            tableColumns.forEach(col => {
+            // Use sortedColumns (sorted by length, longest first) to avoid partial matches
+            sortedColumns.forEach(col => {
                 const fullColName = col.name;
                 const colType = col.type ? col.type.toLowerCase() : 'number';
                 let rowValue = row[fullColName];
@@ -4146,6 +4229,12 @@ function loadConfigFromJSON(configData) {
         });
     }
 
+    // Update pristineReportData with formula values so aggregation can use them
+    pristineReportData = JSON.parse(JSON.stringify(reporttblData.rows));
+
+    // Re-apply aggregations now that formulas have been calculated
+    applyAggregations();
+
     // apply first filter
     const firstFilterName = Object.keys(savedFilters)[0];
     if (firstFilterName) {
@@ -4157,15 +4246,44 @@ function loadConfigFromJSON(configData) {
     initializeControls();
 }
 
- 
 
-localStorage.clear();
 
- 
+// localStorage.clear(); // REMOVED: This was clearing all saved filters/formulas on page load
+
+
 
 // Converts date literals (e.g., '1/1/2025' - 10) into milliseconds
 function replaceDateLiterals(expr) {
-    return expr.replace(/(['"])(\d{1,2}\/\d{1,2}\/\d{2,4})\1\s*([+-])?\s*(\d+)?/g, (match, quote, dateStr, op, days) => {
+    const monthMap = {
+        JAN: 0, FEB: 1, MAR: 2, APR: 3,
+        MAY: 4, JUN: 5, JUL: 6, AUG: 7,
+        SEP: 8, OCT: 9, NOV: 10, DEC: 11
+    };
+
+    // First handle DD-MMM-YYYY format (e.g., '01-Dec-2025')
+    expr = expr.replace(/(['"])(\d{1,2})-([A-Za-z]{3})-(\d{4})\1\s*([+-])?\s*(\d+)?/g, (match, quote, dd, mon, yyyy, op, days) => {
+        const m = monthMap[mon.toUpperCase()];
+        if (m === undefined) {
+            console.warn('Invalid month in date literal:', mon);
+            return match; // Return original if month not recognized
+        }
+
+        const d = new Date(Number(yyyy), m, Number(dd), 0, 0, 0, 0);
+        if (isNaN(d.getTime())) {
+            console.warn('Invalid date literal in expression:', match);
+            return 0;
+        }
+
+        let ms = d.getTime();
+        if (op && days) {
+            ms += (op === '+' ? 1 : -1) * parseInt(days, 10) * 24 * 60 * 60 * 1000;
+        }
+
+        return ms;
+    });
+
+    // Then handle MM/DD/YYYY format (US format)
+    expr = expr.replace(/(['"])(\d{1,2}\/\d{1,2}\/\d{2,4})\1\s*([+-])?\s*(\d+)?/g, (match, quote, dateStr, op, days) => {
         const d = new Date(dateStr);
         if (isNaN(d.getTime())) {
             console.warn('Invalid date literal in expression:', dateStr);
@@ -4179,6 +4297,8 @@ function replaceDateLiterals(expr) {
 
         return ms;
     });
+
+    return expr;
 }
 
 function checkDateComparison(executableFilter, dateColumns) {
@@ -4241,6 +4361,17 @@ function applySavedFilter(clearFlag = false) {
             map[col.name] = col.type;
             return map;
         }, {});
+
+        // Also include formula columns from savedFormulas with their types
+        if (typeof savedFormulas !== 'undefined' && savedFormulas) {
+            for (const [formulaName, formulaObj] of Object.entries(savedFormulas)) {
+                if (!columnMap[formulaName]) {
+                    // Get type from formula metadata, default to 'number'
+                    const formulaType = typeof formulaObj === 'object' ? (formulaObj.type || 'number') : 'number';
+                    columnMap[formulaName] = formulaType;
+                }
+            }
+        }
 
         let validatedFilterTemplate;
         try {
@@ -4788,26 +4919,24 @@ function loadDashboard(pData, configData = INITIAL_CONFIG_JSON) { // Added confi
     roundAllNumbersInRows(pData.rows);
 
     // 2. Update Global Data (this will be transformed by aggregations)
-    reporttblData.rows = JSON.parse(JSON.stringify(pData.rows)); 
-    originalReportData = [...pData.rows]; 
-     
-  
-    
-    // 4. Apply any saved aggregations before displaying
-    applyAggregations();
-    
+    reporttblData.rows = JSON.parse(JSON.stringify(pData.rows));
+    originalReportData = [...pData.rows];
+    pristineReportData = JSON.parse(JSON.stringify(pData.rows));
+
     // 5. Initialize Control Dropdowns & Setup UI
-    
-    setupCollapseButtons(); 
- 
-    displayReportTable('loadDashboard');
-    initializeControls();
-  // 3. Load Formulas/Filters from JSON and APPLY them
-  console.log('configData:>>>>',configData);
+    setupCollapseButtons();
+
+    // 3. Load Formulas/Filters from JSON and APPLY them (this will also apply aggregations)
+    console.log('configData:>>>>',configData);
     console.log('jsondata_details:>>>>',report_expressions);
     console.log('report_expressions:>>>>',report_expressions);
     if (configData) {
         loadConfigFromJSON(configData);
+    } else {
+        // Only apply aggregations here if there's no config (no formulas to load)
+        applyAggregations();
+        displayReportTable('loadDashboard');
+        initializeControls();
     }
     console.log('after loadconfig reporttblData:>',reporttblData);
 
@@ -4879,25 +5008,44 @@ function applyAggregations() {
         return applyDefaultBehavior();
     }
 
-    const groupDateKey = `${groupDateColumn.col_name} - ${groupDateColumn.temp_name}`;
+    const groupDateKey = getColumnDataKey(groupDateColumn);
     const groupingFormat = groupDateColumn.aggregation;
     const groupedData = {};
-    
+
     const tempJsondataDetails = JSON.parse(JSON.stringify(jsondata_details));
+
+    // Add formula columns to selectedColumns for aggregation processing
+    if (typeof savedFormulas !== 'undefined' && savedFormulas) {
+        Object.entries(savedFormulas).forEach(([formulaName, formulaObj]) => {
+            const formulaType = (typeof formulaObj === 'object' && formulaObj.type) ? formulaObj.type : 'number';
+            // Check if formula column already exists in selectedColumns
+            const exists = tempJsondataDetails.selectedColumns.some(col => col.col_name === formulaName && col.temp_name === 'calc');
+            if (!exists) {
+                tempJsondataDetails.selectedColumns.push({
+                    col_name: formulaName,
+                    temp_name: 'calc',
+                    data_type: formulaType,
+                    aggregation: formulaType === 'number' ? 'sum' : 'none',
+                    visibility: 'show'
+                });
+            }
+        });
+    }
 
     // 3. APPLY VISIBILITY AND AGGREGATION RULES FOR GROUPING
     tempJsondataDetails.selectedColumns.forEach(col => {
         const fullKey = getColumnDataKey(col); // Use helper here too!
-        
-        if (col.data_type === 'string') {
+        const colType = (col.data_type || '').toLowerCase(); // Normalize to lowercase
+
+        if (colType === 'string' || colType === 'text') {
             col.visibility = 'hide';
             col.aggregation = 'none';
-        } else if (col.data_type === 'number') {
+        } else if (colType === 'number') {
             if (col.aggregation === 'none' || !col.aggregation) {
                 col.aggregation = 'sum';
             }
             col.visibility = 'show';
-        } else if (col.data_type === 'date' && fullKey !== groupDateKey) {
+        } else if (colType === 'date' && fullKey !== groupDateKey) {
             col.visibility = 'hide';
             col.aggregation = 'none';
         } else if (fullKey === groupDateKey) {
@@ -4910,14 +5058,15 @@ function applyAggregations() {
     // 4. Perform the Grouping and Accumulation
     pristineReportData.forEach(row => {
         const groupKey = getGroupKey(row[groupDateKey], groupingFormat);
-        
+
         if (!groupedData[groupKey]) {
             groupedData[groupKey] = {};
             groupedData[groupKey][groupDateKey] = groupKey;
-            
-            jsondata_details.selectedColumns.forEach(col => { 
+
+            jsondata_details.selectedColumns.forEach(col => {
                 const fullKey = getColumnDataKey(col); // Use helper here too!
-                if (col.data_type === 'number') {
+                const colType = (col.data_type || '').toLowerCase();
+                if (colType === 'number') {
                     groupedData[groupKey][fullKey] = {
                         sum: 0,
                         count: 0,
@@ -4928,13 +5077,24 @@ function applyAggregations() {
                 }
             });
         }
-        
+
         // Accumulate numeric values based on their aggregation type
         jsondata_details.selectedColumns.forEach(col => {
             const fullKey = getColumnDataKey(col); // Use helper here too!
-            if (col.data_type === 'number') {
+            const colType = (col.data_type || '').toLowerCase();
+            if (colType === 'number') {
                 const val = parseFloat(row[fullKey]);
                 if (!isNaN(val)) {
+                    // Safety check: ensure groupItem exists (may be missing for formula columns added later)
+                    if (!groupedData[groupKey][fullKey]) {
+                        groupedData[groupKey][fullKey] = {
+                            sum: 0,
+                            count: 0,
+                            min: Infinity,
+                            max: -Infinity,
+                            finalValue: 0
+                        };
+                    }
                     const groupItem = groupedData[groupKey][fullKey];
                     groupItem.sum += val;
                     groupItem.count++;
@@ -4952,15 +5112,23 @@ function applyAggregations() {
 
         jsondata_details.selectedColumns.forEach(col => {
             const fullKey = getColumnDataKey(col); // Use helper here too!
-            if (col.data_type === 'number') {
+            const colType = (col.data_type || '').toLowerCase();
+            if (colType === 'number') {
                 const aggData = groupedRow[fullKey];
-                let finalValue = null;
+                let finalValue = 0; // Default to 0 instead of null
+
+                // Safety check - if aggData doesn't exist, skip
+                if (!aggData) {
+                    finalRow[fullKey] = 0;
+                    return;
+                }
 
                 switch (col.aggregation) {
                     case 'sum':
-                        finalValue = aggData.sum;
+                        finalValue = aggData.sum || 0;
                         break;
                     case 'average':
+                    case 'avg':
                         finalValue = aggData.count > 0 ? aggData.sum / aggData.count : 0;
                         break;
                     case 'min':
@@ -4970,12 +5138,16 @@ function applyAggregations() {
                         finalValue = aggData.max === -Infinity ? 0 : aggData.max;
                         break;
                     case 'count':
-                        finalValue = aggData.count;
+                    case 'cnt':
+                        finalValue = aggData.count || 0;
                         break;
+                    default:
+                        // Default to sum if no aggregation specified
+                        finalValue = aggData.sum || 0;
                 }
                 finalRow[fullKey] = finalValue;
-            } else if (col.data_type !== 'date') {
-                finalRow[fullKey] = groupedRow[fullKey]; 
+            } else if (colType !== 'date') {
+                finalRow[fullKey] = groupedRow[fullKey];
             }
         });
         return finalRow;
@@ -5210,7 +5382,10 @@ function jsStringLiteral(s) {
 function replaceColumnOccurrences(text, fullColName, colType, rowValue, context) {
     const escapedName = escapeRegExp(fullColName);
     const bracketedRegex = new RegExp('\\[\\s*' + escapedName + '\\s*\\]', 'gi');
-    const plainRegex = new RegExp('\\b' + escapedName + '\\b', 'gi');
+    // For column names with spaces/hyphens, we need special handling
+    // Match at start of string, after whitespace, or after opening bracket/paren
+    // And before end of string, whitespace, operator, or closing bracket/paren
+    const plainRegex = new RegExp('(^|[\\s\\(\\[])(' + escapedName + ')(?=[\\s\\)\\]\\+\\-\\*\\/\\,]|$)', 'gi');
 
     let substitution;
 
@@ -5232,7 +5407,43 @@ function replaceColumnOccurrences(text, fullColName, colType, rowValue, context)
         substitution = isNaN(num) ? 'Calculcation Issue' : num;
     }
 
-    return text.replace(bracketedRegex, substitution).replace(plainRegex, substitution);
+    // Replace bracketed occurrences first
+    let result = text.replace(bracketedRegex, substitution);
+
+    // For plain regex, we need to preserve the prefix (group 1) and replace group 2
+    result = result.replace(plainRegex, (match, prefix, colName) => {
+        return prefix + substitution;
+    });
+
+    return result;
+}
+
+// Convert day offsets in date arithmetic to milliseconds
+// E.g., "(timestamp) + 2" becomes "(timestamp) + (2 * 86400000)"
+function convertDayOffsetsToMs(formula) {
+    // Match patterns like: ) + N or ) - N where N is a small integer (days)
+    // Also match patterns where getTime() is followed by +/- N
+    let result = formula;
+
+    // Pattern 1: Match after closing parenthesis: ) + 2 or ) - 2
+    result = result.replace(/(\)\s*)([\+\-])\s*(\d+)(?!\s*\*\s*86400000)(?!\d)/g, (match, prefix, operator, num) => {
+        const dayValue = parseInt(num, 10);
+        if (dayValue >= 1 && dayValue <= 365) {
+            return `${prefix}${operator} (${dayValue} * 86400000)`;
+        }
+        return match;
+    });
+
+    // Pattern 2: Match standalone number at end after operator: ... + 2 (end of string)
+    result = result.replace(/([\+\-])\s*(\d+)\s*$/g, (match, operator, num) => {
+        const dayValue = parseInt(num, 10);
+        if (dayValue >= 1 && dayValue <= 365) {
+            return `${operator} (${dayValue} * 86400000)`;
+        }
+        return match;
+    });
+
+    return result;
 }
 
 function replaceDayOfWeekExpressions(expr, row) {
@@ -5272,12 +5483,18 @@ function addCalculation() {
 
     try {
         let ctype = 'number';
+        let isDateArithmetic = false; // Track if date column is involved in arithmetic
+
+        // Check if formula involves date arithmetic (date column + or - number)
+        const formulaHasArithmetic = /[\+\-]/.test(currentFormula);
+
         // Work on a deep copy? We'll mutate pristineReportData rows directly like before
         pristineReportData.forEach(row => {
             let calculatedFormula = currentFormula;   // text to replace col references and evaluate
             let conditionalExpression = currentFilter; // text to replace col refs and evaluate to boolean
             let result = null;
             let isBooleanCalculation = false;
+            let rowHasDateArithmetic = false; // Per-row tracking
 
             // --- Handle complex date functions that may transform the formula into "true"/"false" ---
             // If formula itself contains date range or day_of_week, evaluate those first (they return "true"/"false")
@@ -5324,7 +5541,10 @@ function addCalculation() {
 
 
             // --- Replace all column occurrences in both calculation formula and condition ---
-            tableColumns.forEach(col => {
+            // Sort columns by name length (longest first) to avoid partial matches
+            // e.g., "COLUMN_COL - Taj Test 1" should be matched before "COLUMN_COL"
+            const sortedColumns = [...tableColumns].sort((a, b) => b.name.length - a.name.length);
+            sortedColumns.forEach(col => {
     const fullColName = col.name;
     const colType = col.type ? col.type.toLowerCase() : 'number';
     const rowValue = row[fullColName];
@@ -5362,24 +5582,29 @@ function addCalculation() {
 
 
     // Replace column names
-    if (calculatedFormula && (
-        new RegExp('\\b' + escapeRegExp(fullColName) + '\\b', 'i').test(calculatedFormula) ||
-        new RegExp('\\[\\s*' + escapeRegExp(fullColName) + '\\s*\\]', 'i').test(calculatedFormula)
-    )) {
+    // Use regex that handles column names with spaces/hyphens
+    const escapedColName = escapeRegExp(fullColName);
+    const bracketedCheck = new RegExp('\\[\\s*' + escapedColName + '\\s*\\]', 'i');
+    const plainCheck = new RegExp('(^|[\\s\\(\\[])' + escapedColName + '(?=[\\s\\)\\]\\+\\-\\*\\/\\,]|$)', 'i');
+
+    if (calculatedFormula && (bracketedCheck.test(calculatedFormula) || plainCheck.test(calculatedFormula))) {
+        // Track if this is date arithmetic (date column with +/- operators)
+        if (colType === 'date' && formulaHasArithmetic) {
+            rowHasDateArithmetic = true;
+            isDateArithmetic = true;
+        }
+
         calculatedFormula = replaceColumnOccurrences(calculatedFormula, fullColName, colType, rowValue, 'formula');
 
         if (!isBooleanCalculation) {
             if (colType === 'string') ctype = 'string';
-            else if (colType === 'date') ctype = 'string';
+            else if (colType === 'date') ctype = 'date'; // Any formula referencing date column is treated as date
             else ctype = 'number';
         }
     }
 
-    // Filter condition replacement
-    if (conditionalExpression && (
-        new RegExp('\\b' + escapeRegExp(fullColName) + '\\b', 'i').test(conditionalExpression) ||
-        new RegExp('\\[\\s*' + escapeRegExp(fullColName) + '\\s*\\]', 'i').test(conditionalExpression)
-    )) {
+    // Filter condition replacement - use same regex patterns
+    if (conditionalExpression && (bracketedCheck.test(conditionalExpression) || plainCheck.test(conditionalExpression))) {
         conditionalExpression = replaceColumnOccurrences(conditionalExpression, fullColName, colType, rowValue, 'filter');
     }
 });
@@ -5411,7 +5636,11 @@ function addCalculation() {
                 result = (String(calculatedFormula).trim().toLowerCase() === "true");
             } else if (conditionMet) {
               try {
-                    
+                    // If date arithmetic is involved, convert day offsets to milliseconds
+                    if (rowHasDateArithmetic) {
+                        calculatedFormula = convertDayOffsetsToMs(calculatedFormula);
+                    }
+
                     result = new Function(`return (${calculatedFormula});`)() ;
                     
                     // Check if result is valid number
@@ -5428,7 +5657,28 @@ function addCalculation() {
             }
 
             // Set result and coerce type for the column
-           if (ctype === 'number') {
+           if (ctype === 'date') {
+                // For date formulas, check if result is a timestamp and convert to formatted date
+                const timestamp = parseFloat(result);
+                if (!isNaN(timestamp) && timestamp > 1e10) {
+                    // Result is a timestamp - convert to DD-Mon-YYYY
+                    const d = new Date(timestamp);
+                    if (!isNaN(d.getTime())) {
+                        const dd = String(d.getDate()).padStart(2, '0');
+                        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                        const mon = monthNames[d.getMonth()];
+                        const yyyy = d.getFullYear();
+                        row[calcName] = `${dd}-${mon}-${yyyy}`;
+                    } else {
+                        row[calcName] = 'Calculation Issue';
+                    }
+                } else if (typeof result === 'string' && result !== 'Calculation Issue') {
+                    // Result is already a date string, keep it
+                    row[calcName] = result;
+                } else {
+                    row[calcName] = 'Calculation Issue';
+                }
+            } else if (ctype === 'number') {
                 const numeric = parseFloat(result);
                 row[calcName] = isNaN(numeric) ? 'Calculation Issue' : numeric;
             } else if (ctype === 'boolean') {
@@ -6042,53 +6292,64 @@ selectedValue = selectedValue.replace(/^\[(.*?)\]$/, '$1');
 
     const operatorLov = document.getElementById("filter-operator-lov");
 
-    // Default operator list
-    let operators = [ 
-    { value: "===", label: "Equals (=)" },
-    { value: "!==", label: "Not Equals (!=)" },
-    { value: ">", label: "Greater Than (>)" },
-    { value: "<", label: "Less Than (<)" },
-    { value: ">=", label: "Greater Than or Equal (>=)" },
-    { value: "<=", label: "Less Than or Equal (<=)" },
-    { value: "&&", label: "AND (&&)" },
-    { value: "||", label: "OR (||)" },
-    { value: ".includes('VALUE')", label: "Contains (String)" },
-    { value: ".startsWith('VALUE')", label: "Starts With" },
-    { value: ".endsWith('VALUE')", label: "Ends With" },
+    // Build SYSDATE value
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const mon = monthNames[today.getMonth()];
+    const todayStr = `'${dd}-${mon}-${yyyy}'`;
 
-    // Arithmetic and Parenthesis Operators (from your existing list)
-    { value: "+", label: "+ (Add)" },
-    { value: "-", label: "- (Subtract)" },
-    { value: "*", label: "* (Multiply)" },
-    { value: "/", label: "/ (Divide)" },
-    { value: "(", label: "(Open Paren)" },
-    { value: ")", label: ") (Close Paren)" }
-    ];
+    // Default operator list - used for NUMBER type columns
+    let operators = [];
 
-const today = new Date();
-const yyyy = today.getFullYear();
-const dd = String(today.getDate()).padStart(2, '0');
-
-const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const mon = monthNames[today.getMonth()]; // month index 0-11
-
-const todayStr = `'${dd}-${mon}-${yyyy}'`;
-
-    // If Date type → show only +, -, Day
     if (columnType === "date") {
-        operators = [ 
-    { value: "===", label: "Equals (=)" },
-    { value: "!==", label: "Not Equals (!=)" },
-    { value: ">", label: "Greater Than (>)" },
-    { value: "<", label: "Less Than (<)" },
-    { value: ">=", label: "Greater Than or Equal (>=)" },
-    { value: "<=", label: "Less Than or Equal (<=)" },
-    { value: "&&", label: "AND (&&)" }, 
-    { value: "+", label: "+ (Add)" },
-    { value: "-", label: "- (Subtract)" }, 
-    { value: "(", label: "(Open Paren)" },
-    { value: ")", label: ") (Close Paren)" },
-    { value: todayStr, label: "SYSDATE" }
+        // DATE columns: comparison, logical, arithmetic (for date math), SYSDATE
+        operators = [
+            { value: "===", label: "Equals (=)" },
+            { value: "!==", label: "Not Equals (!=)" },
+            { value: ">", label: "Greater Than (>)" },
+            { value: "<", label: "Less Than (<)" },
+            { value: ">=", label: "Greater Than or Equal (>=)" },
+            { value: "<=", label: "Less Than or Equal (<=)" },
+            { value: "&&", label: "AND (&&)" },
+            { value: "||", label: "OR (||)" },
+            { value: "+", label: "+ (Add Days)" },
+            { value: "-", label: "- (Subtract Days)" },
+            { value: "(", label: "( Open Paren" },
+            { value: ")", label: ") Close Paren" },
+            { value: todayStr, label: "SYSDATE" }
+        ];
+    } else if (columnType === "string" || columnType === "text" || columnType === "varchar" || columnType === "varchar2") {
+        // TEXT columns: equality, string operations, logical
+        operators = [
+            { value: "===", label: "Equals (=)" },
+            { value: "!==", label: "Not Equals (!=)" },
+            { value: ".includes('VALUE')", label: "Contains" },
+            { value: ".startsWith('VALUE')", label: "Starts With" },
+            { value: ".endsWith('VALUE')", label: "Ends With" },
+            { value: "&&", label: "AND (&&)" },
+            { value: "||", label: "OR (||)" },
+            { value: "(", label: "( Open Paren" },
+            { value: ")", label: ") Close Paren" }
+        ];
+    } else {
+        // NUMBER columns (default): comparison, arithmetic, logical
+        operators = [
+            { value: "===", label: "Equals (=)" },
+            { value: "!==", label: "Not Equals (!=)" },
+            { value: ">", label: "Greater Than (>)" },
+            { value: "<", label: "Less Than (<)" },
+            { value: ">=", label: "Greater Than or Equal (>=)" },
+            { value: "<=", label: "Less Than or Equal (<=)" },
+            { value: "&&", label: "AND (&&)" },
+            { value: "||", label: "OR (||)" },
+            { value: "+", label: "+ (Add)" },
+            { value: "-", label: "- (Subtract)" },
+            { value: "*", label: "* (Multiply)" },
+            { value: "/", label: "/ (Divide)" },
+            { value: "(", label: "( Open Paren" },
+            { value: ")", label: ") Close Paren" }
         ];
     }
  

@@ -2027,7 +2027,7 @@ function groupAndAggregateTableData(tableData, formula_filterJSON, aliasMap = {}
     );
 
    // console.log('dateAggCol:>>>>>>',dateAggCol);
-    const dateKey = dateAggCol ? (dateAggCol.alias_name) : null;
+    const dateKey = dateAggCol ? (dateAggCol.alias_name || dateAggCol.col_name) : null;
     const dateAggType = dateAggCol ? dateAggCol.aggregation.toLowerCase() : null;
 
     // Helper to format date by aggregation
@@ -2092,24 +2092,42 @@ Object.keys(grouped).forEach(groupKey => {
     aggRow[dateKey] = groupKey;
  console.log('groupRows:>>>>>>>>>>>>',groupRows);
     selectedColumns.forEach(col => {
-        const key = col.alias_name ;
+        const key = col.alias_name || col.col_name;
         if (key === dateKey) return;
         const type = (col.data_type || "").toLowerCase();
-        const aggType = (col.aggregation || "none").toLowerCase();
+        const hasExplicitAggregation = col.aggregation && col.aggregation !== 'none';
+        const aggType = hasExplicitAggregation ? col.aggregation.toLowerCase() : null;
 
-        if (type === "text") return;
+        if (type === "text" || type === "string" || type === "varchar" || type === "varchar2") {
+            // TEXT columns: Show "Calculation Issue" when grouping
+            aggRow[key] = 'Calculation Issue';
+            return;
+        }
 
+        if (type === "date") {
+            // DATE columns: Show "Calculation Issue" unless explicit aggregation
+            if (hasExplicitAggregation) {
+                aggRow[key] = groupRows[0]?.[key] || '';
+            } else {
+                aggRow[key] = 'Calculation Issue';
+            }
+            return;
+        }
+
+        // NUMBER columns: Auto-sum if no explicit aggregation
         const values = groupRows.map(r => parseFloat(r[key])).filter(v => !isNaN(v));
         if (!values.length) {
             aggRow[key] = null;
             return;
         }
-        
-        switch (aggType) {
+
+        const effectiveAggType = aggType || 'sum'; // Default to sum for numbers
+        switch (effectiveAggType) {
             case "avg": aggRow[key] = values.reduce((a,b)=>a+b,0)/values.length; break;
             case "min": aggRow[key] = Math.min(...values); break;
             case "max": aggRow[key] = Math.max(...values); break;
-            case "cnt": aggRow[key] = values.length; break;
+            case "cnt":
+            case "count": aggRow[key] = values.length; break;
             default: aggRow[key] = values.reduce((a,b)=>a+b,0); // sum
         }
     });
@@ -3105,15 +3123,16 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
                     patterns.forEach(rgx => currentExpression = currentExpression.replace(rgx, alias));
                 });
                 
-                // 5. HANDLE {n} OFFSET COLUMNS
-                const offsetColumnRegex = /([A-Za-z_][A-Za-z0-9_]*)\{(\d+)\}/g;
+                // 5. HANDLE {n} OFFSET COLUMNS (supports both positive and negative offsets)
+                const offsetColumnRegex = /([A-Za-z_][A-Za-z0-9_]*)\{(-?\d+)\}/g;
                 let match;
                 const offsetReplacements = {};
+                let hasOffsetError = false;
 
                 while ((match = offsetColumnRegex.exec(currentExpression)) !== null) {
                     const fullMatch = match[0];
                     const columnRef = match[1];
-                    const offset = parseInt(match[2],10);
+                    const offset = parseInt(match[2], 10);
                     const currentDate = row.PK_COL;
                     const targetDate = currentDate ? addDays(currentDate, offset) : null;
                     const offsetValue = targetDate ? findValueInCleanedData(targetDate, columnRef) : null;
@@ -3122,36 +3141,60 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
 
                 Object.entries(offsetReplacements).forEach(([pattern, value]) => {
                     if (value === null || value === undefined || value === '') {
-                        currentExpression = 'Calculation Issue';
-                        return;
+                        hasOffsetError = true;
+                        // Replace with 0 for arithmetic expressions instead of breaking entire formula
+                        currentExpression = currentExpression.replace(pattern, '0');
+                    } else {
+                        const replacementValue = !isNaN(value) ? parseFloat(value) : `"${value}"`;
+                        currentExpression = currentExpression.replace(pattern, replacementValue);
                     }
-                    const replacementValue = !isNaN(value) ? parseFloat(value) : `"${value}"`;
-                    currentExpression = currentExpression.replace(pattern, replacementValue);
                 });
+
+                // If all offset lookups failed, mark as Calculation Issue
+                if (hasOffsetError && Object.keys(offsetReplacements).length > 0 &&
+                    Object.values(offsetReplacements).every(v => v === null || v === undefined || v === '')) {
+                    currentExpression = 'Calculation Issue';
+                }
                 console.log(' before currentExpression:>>>>>',currentExpression);
                 // 6. REPLACE REMAINING ALIAS COLUMNS
                 const columnMatches = currentExpression.match(/\b[A-Z_][A-Z0-9_]*\b/gi) || [];
                 const excludedWords = ['AND','OR','NOT','Day','Date','MON','TUE','WED','THU','FRI','SAT','SUN'];
                 const uniqueColumns = [...new Set(columnMatches.filter(word => !excludedWords.includes(word)))];
 
+                // Track if date arithmetic is involved
+                let hasDateArithmetic = false;
+                const formulaHasArithmetic = /[\+\-]/.test(currentExpression);
+
                 uniqueColumns.forEach(col => {
                     let value = row[col];
-                    
+
                     // 1. Handle Dates
                     if (columnDataTypes[col] === 'date' && value != null && value !== '') {
-                        value = `"${value}"`;
-                    } 
+                        // Check if date column is used with arithmetic
+                        if (formulaHasArithmetic) {
+                            // Convert date to timestamp for arithmetic
+                            const dateObj = parseDate(value);
+                            if (dateObj) {
+                                value = dateObj.getTime();
+                                hasDateArithmetic = true;
+                            } else {
+                                value = `"${value}"`;
+                            }
+                        } else {
+                            value = `"${value}"`;
+                        }
+                    }
                     // 2. Handle Numbers
                     else if (value !== '' && value !== null && !isNaN(value)) {
                         value = parseFloat(value);
-                    } 
+                    }
                     // 3. Handle NULLS/Empty (The fix)
                     else if (value === null || value === '') {
                         // Option A: Use 0 so math like (null + 10) becomes (0 + 10)
-                        value = 'Calculation Issue'; 
-                        
+                        value = 'Calculation Issue';
+
                         // Option B: If you prefer it to stay null, use the keyword null without quotes:
-                        // value = null; 
+                        // value = null;
                     }
                     // 4. Handle Strings
                     else {
@@ -3161,12 +3204,33 @@ function applyFormulas(data, formulas, aliasToOriginalMap, config) {
                     currentExpression = currentExpression.replace(new RegExp(`\\b${col}\\b`, 'g'), value);
                 });
 
+                // If date arithmetic is involved, convert day offsets to milliseconds
+                if (hasDateArithmetic) {
+                    // Convert patterns like "(timestamp) + 2" to "(timestamp) + (2 * 86400000)"
+                    currentExpression = currentExpression.replace(/(\d{10,})\s*([\+\-])\s*(\d+)(?!\d)/g, (match, timestamp, op, days) => {
+                        const dayValue = parseInt(days, 10);
+                        if (dayValue >= 1 && dayValue <= 365) {
+                            return `${timestamp} ${op} (${dayValue} * 86400000)`;
+                        }
+                        return match;
+                    });
+                }
+
                 // 7. FINAL EVALUATION
-                
+
                 currentExpression = replaceDayNameFunction(currentExpression); // optional custom function
 
                 console.log('before eval currentExpression:>>>>>>',currentExpression);
-                const result = eval(currentExpression);
+                let result = eval(currentExpression);
+
+                // If date arithmetic was involved, convert timestamp result back to formatted date
+                if (hasDateArithmetic && typeof result === 'number' && result > 1e10) {
+                    const d = new Date(result);
+                    if (!isNaN(d.getTime())) {
+                        result = formatDate(d);
+                    }
+                }
+
                 row[formulaName] = (typeof result === 'number' && isNaN(result)) ? 'Calculation Issue' : result;
 
             } catch (error) {
