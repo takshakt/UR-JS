@@ -699,6 +699,10 @@ FUNCTION EVALUATE(
                   -- Variables for free text expression support
                   l_is_free_text BOOLEAN := FALSE;
                   l_text_result VARCHAR2(4000);
+                  -- Variables for NULL/non-numeric attribute detection
+                  l_has_invalid_attr BOOLEAN := FALSE;
+                  l_invalid_attr_id VARCHAR2(255) := NULL;
+                  l_invalid_reason VARCHAR2(50) := NULL;
                 BEGIN
                   log_debug('...... Checking Condition: ' || cond_rec.cond_name); -- (new log line)
 
@@ -958,6 +962,28 @@ FUNCTION EVALUATE(
                           l_attr_val := NULL;
                           log_debug('............ WARNING: Attribute ' || l_current_id || ' not found in staged data');
                         END IF;
+                        -- Check for NULL value
+                        IF l_attr_val IS NULL THEN
+                          l_has_invalid_attr := TRUE;
+                          IF l_invalid_attr_id IS NULL THEN
+                            l_invalid_attr_id := l_current_id;
+                            l_invalid_reason := 'null';
+                          END IF;
+                        ELSE
+                          -- Check if value is non-numeric
+                          DECLARE
+                            l_test_num NUMBER;
+                          BEGIN
+                            l_test_num := TO_NUMBER(l_attr_val);
+                          EXCEPTION
+                            WHEN VALUE_ERROR OR INVALID_NUMBER THEN
+                              l_has_invalid_attr := TRUE;
+                              IF l_invalid_attr_id IS NULL THEN
+                                l_invalid_attr_id := l_current_id;
+                                l_invalid_reason := 'non_numeric';
+                              END IF;
+                          END;
+                        END IF;
                         l_eval_copy := REPLACE(l_eval_copy, '#' || l_current_id || '#', NVL(l_attr_val, '0'));
                         IF l_attr_counter > 0 THEN l_attr_json := l_attr_json || ','; END IF;
                         l_attr_json := l_attr_json || '"' || l_current_id || '":' || NVL(l_attr_val, 'null');
@@ -965,6 +991,31 @@ FUNCTION EVALUATE(
                         l_attr_counter := l_attr_counter + 1;
                       END LOOP;
                       l_attr_json := l_attr_json || '}';
+
+                      -- Check if any attribute value was NULL or non-numeric - return Manual Override Required
+                      IF l_has_invalid_attr THEN
+                        log_debug('............ Invalid attribute detected: ' || l_invalid_attr_id || ' (' || l_invalid_reason || '). Returning Manual Override Required.');
+                        l_applied_rule_json := '{'
+                          || '"region":"' || REPLACE(region_rec.region_name,'"','\"')
+                          || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"')
+                          || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD')
+                          || '", "filters":{'
+                          || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"'
+                          || ', "lead_time":' || l_lead_time_json
+                          || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END
+                          || '}'
+                          || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"')
+                          || '", "expression_values":' || l_attr_json
+                          || ', "invalid_attribute":"' || l_invalid_attr_id || '"'
+                          || ', "invalid_reason":"' || l_invalid_reason || '"'
+                          || ', "result_type":"text"'
+                          || ', "result":"Manual Override Required"'
+                          || ', "note":"invalid_attribute_value"'
+                          || '}';
+                        PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), 'Manual Override Required', l_applied_rule_json));
+                        v_any_rule_matched_for_date := TRUE;
+                        GOTO end_date_processing;
+                      END IF;
 
                       log_debug('............ Expression with values: ' || l_eval_copy); -- (new log line)
 
