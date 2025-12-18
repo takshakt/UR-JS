@@ -5839,7 +5839,7 @@ END test_date_parser;
             created_by, updated_by, created_on, updated_on
         ) VALUES (
             SYS_GUID(), NULL, p_hotel_id,
-            'Occupancy %',
+            'Occupancy',
             v_key_prefix || '.OCCUPANCY',
             'NUMBER',
             'Daily occupancy percentage (rooms sold / available rooms)',
