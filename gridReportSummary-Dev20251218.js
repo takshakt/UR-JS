@@ -480,7 +480,6 @@ function getDateFromISOWeek(wStr) {
 }
 
 
-
 function createCard(index, data) {
    // console.log('data:>>>>', data);
     let expressionJson = data?.expressionJson;
@@ -586,151 +585,7 @@ function createCard(index, data) {
     });
 
     // ==========================================================================================
-    // 4. GROUP BY LOGIC (FIRST)
-    // ==========================================================================================
-    let groupedData = rowsArray;
-    let groupByColumn = null;
-    let groupByAlias = null;
-
-    // Find the date column with aggregation (week, month, monthly, year, yearly, etc.)
-    selectedColumns.forEach(col => {
-        if (col.data_type?.toUpperCase() === 'DATE' && col.aggregation && col.aggregation !== 'none') {
-            groupByColumn = col;
-            groupByAlias = col.alias_name;
-        }
-    });
-
-    // If we have a group by column, perform grouping
-    if (groupByColumn && groupByAlias) {
-        const groups = {};
-
-        rowsArray.forEach(row => {
-            const dateValue = row[groupByAlias];
-            if (!dateValue) return;
-
-            let groupKey;
-            const date = new Date(dateValue);
-
-            switch (groupByColumn.aggregation) {
-               case 'week':
-                    // Group by week starting Sunday (Sunday to Saturday)
-                    const year = date.getFullYear();
-                    
-                    // Find the Sunday of this week
-                    const sunday = new Date(date);
-                    const day = sunday.getDay(); // 0 = Sunday, 1 = Monday, etc.
-                    if (day !== 0) {
-                        sunday.setDate(sunday.getDate() - day); // Go back to Sunday
-                    }
-                    
-                    // Format: YYYY-MM-DD (the Sunday date)
-                    const sundayStr = `${sunday.getFullYear()}-${(sunday.getMonth() + 1).toString().padStart(2, '0')}-${sunday.getDate().toString().padStart(2, '0')}`;
-                    groupKey = `${year}-W${sundayStr}`;
-                    break;
-                case 'month':
-               case 'monthly':
-                    // Format: 'January-25' (Month name followed by last 2 digits of year)
-                    const monthNames = [
-                        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
-                    ];
-                    const monthName = monthNames[date.getMonth()];
-                    const shortYear = date.getFullYear().toString().slice(-2); // Get last 2 digits of year
-                    groupKey = `${monthName}-${shortYear}`;
-                    break;
-                case 'year':
-                case 'yearly':
-                    // Format: '2025'
-                    groupKey = date.getFullYear().toString();
-                    break;
-                case 'quarter':
-                    // Format: '2025-Q1'
-                    const quarter = Math.floor(date.getMonth() / 3) + 1;
-                    groupKey = `${date.getFullYear()}-Q${quarter}`;
-                    break;
-                default:
-                    groupKey = dateValue; // Use original date value
-            }
-
-            if (!groups[groupKey]) {
-                groups[groupKey] = [];
-            }
-            groups[groupKey].push(row);
-        });
-
-        // Aggregate each group
-        groupedData = Object.keys(groups).map(groupKey => {
-            const groupRows = groups[groupKey];
-            const aggregatedRow = {
-                [groupByAlias]: groupKey
-            }; // Set the grouped date value
-
-            // For each column, apply aggregation based on data type and aggregation setting
-            selectedColumns.forEach(col => {
-                const alias = col.alias_name;
-
-                // Skip the group by column (already set)
-                if (alias === groupByAlias) return;
-
-                // Skip if column is not visible
-                if (col.visibility !== 'show') return;
-
-                const dataType = col.data_type?.toUpperCase();
-                let aggregation = col.aggregation || 'none';
-
-                if ((dataType === 'NUMBER') && aggregation !== 'none') {
-                    // Get all values for this column in the group
-                    const values = groupRows.map(row => {
-                        let value = row[alias];
-                        if (value === undefined || value === null) return 0;
-                        if (typeof value === 'string') {
-                            value = parseFloat(value.replace(/,/g, '')) || 0;
-                        }
-                        return value;
-                    }).filter(val => !isNaN(val));
-
-                    // Apply aggregation function
-                    switch (aggregation) {
-                        case 'sum':
-                            aggregatedRow[alias] = values.reduce((sum, val) => sum + val, 0);
-                            break;
-                        case 'avg':
-                            aggregatedRow[alias] = values.length > 0 ? values.reduce((sum, val) => sum + val, 0) / values.length : 0;
-                            break;
-                        case 'min':
-                            aggregatedRow[alias] = values.length > 0 ? Math.min(...values) : 0;
-                            break;
-                        case 'max':
-                            aggregatedRow[alias] = values.length > 0 ? Math.max(...values) : 0;
-                            break;
-                        case 'count':
-                            aggregatedRow[alias] = values.length;
-                            break;
-                        default:
-                            aggregatedRow[alias] = values[0] || 0; // First value as default
-                    }
-
-                    // Format numbers to 2 decimal places if needed
-                    if (typeof aggregatedRow[alias] === 'number' && !Number.isInteger(aggregatedRow[alias])) {
-                        aggregatedRow[alias] = parseFloat(aggregatedRow[alias].toFixed(2));
-                    }
-                } else {
-                    // For non-numeric columns or no aggregation, use the first value
-                    aggregatedRow[alias] = groupRows[0]?.[alias] || '-';
-                }
-            });
-
-            return aggregatedRow;
-        });
-
-        // Sort grouped data by the group key (chronological order)
-        groupedData.sort((a, b) => {
-            return a[groupByAlias].localeCompare(b[groupByAlias]);
-        });
-    }
-
-    // ==========================================================================================
-    // 5. Process Formulas AFTER grouping (on the grouped/aggregated data)
+    // 4. Process Formulas (FIRST - before grouping)
     // ==========================================================================================
     const formulas = expressionJson?.formulas || {};
     const formulaKeys = Object.keys(formulas);
@@ -760,8 +615,8 @@ function createCard(index, data) {
             }
         });
 
-        // Calculate formulas on the grouped data
-        groupedData.forEach(row => {
+        // Calculate formulas on the original data
+        rowsArray.forEach(row => {
             formulaKeys.forEach(fColKey => {
                 const formulaObj = formulas[fColKey];
                 
@@ -772,7 +627,7 @@ function createCard(index, data) {
                 if (!expr) return;
 
                 // ---------------------------------------------------------
-                // STEP A: EVALUATE FILTER (on the grouped row)
+                // STEP A: EVALUATE FILTER (on the original row)
                 // ---------------------------------------------------------
                 let filterPassed = true; // Default to true if no filter exists
 
@@ -1007,26 +862,23 @@ function createCard(index, data) {
                 const uniqueColumnNames = [...new Set(allColumnNames)];
 
                 // Safe replacements for numeric values
-              uniqueColumnNames.forEach(col => {
-    let value = row[col];
+                uniqueColumnNames.forEach(col => {
+                    // 'col' is the ALIAS (e.g., 'MOXY_YORK'), which is the row key.
+                    let value = row[col]; // Direct lookup by alias/row key
 
-    if (dataTypeMap[col] === 'date' && value != null && value !== '' && value !== undefined) {
-        value = `"${value}"`; 
-    } 
-    else if (value !== '' && value !== null && value !== undefined && !isNaN(value)) {
-        value = parseFloat(value);
-    } 
-    // Fix: Add value === undefined here
-    else if (value === null || value === '' || value === undefined) {
-        value = 'Calculation Issue'; 
-    } 
-    else {
-        value = `"${value}"`; 
-    }
+                    if (dataTypeMap[col] === 'date' && value != null && value !== '') {
+                        value = `"${value}"`; // keep quotes for JS eval
+                    } else if (!isNaN(value) && value !== '' && value !== null) {
+                        value = parseFloat(value);
+                    } else {
+                        value = `"${value}"`; // fallback as string
+                    }
 
-    expr = expr.replace(new RegExp(`\\[${col}\\]`, 'g'), value);
-    expr = expr.replace(new RegExp(`\\b${col}\\b`, 'g'), value);
-});
+                    // Replace both bracketed and unbracketed versions
+                    expr = expr.replace(new RegExp(`\\[${col}\\]`, 'g'), value);
+                    expr = expr.replace(new RegExp(`\\b${col}\\b`, 'g'), value);
+                });
+
                 //console.log('Final expr before eval:', expr);
                 
                 expr = replaceDayNameFunction(expr);
@@ -1054,14 +906,14 @@ function createCard(index, data) {
     }
 
     // ==========================================================================================
-    // 6. Process Filters LAST (after grouping and formulas)
+    // 5. Process Filters (after formulas, before grouping)
     // ==========================================================================================
     const filters = expressionJson?.filters || {};
     const filterKeys = Object.keys(filters);
 
     
 if (filterKeys.length > 0) {
-    groupedData = groupedData.filter(row => {
+    rowsArray = rowsArray.filter(row => {
         return filterKeys.every(filterKey => {
             let expr = filters[filterKey];
             if (!expr) return true;
@@ -1130,6 +982,152 @@ if (filterKeys.length > 0) {
         });
     });
 }
+
+    // ==========================================================================================
+    // 6. GROUP BY LOGIC (now after formulas and filters, before totals)
+    // ==========================================================================================
+    let groupedData = rowsArray;
+    let groupByColumn = null;
+    let groupByAlias = null;
+
+    // Find the date column with aggregation (week, month, monthly, year, yearly, etc.)
+    selectedColumns.forEach(col => {
+        if (col.data_type?.toUpperCase() === 'DATE' && col.aggregation && col.aggregation !== 'none') {
+            groupByColumn = col;
+            groupByAlias = col.alias_name;
+        }
+    });
+
+    // If we have a group by column, perform grouping
+    if (groupByColumn && groupByAlias) {
+        const groups = {};
+
+        rowsArray.forEach(row => {
+            const dateValue = row[groupByAlias];
+            if (!dateValue) return;
+
+            let groupKey;
+            const date = new Date(dateValue);
+
+            switch (groupByColumn.aggregation) {
+            case 'week': {
+                    const year = date.getFullYear();
+                    
+                    // 1. Get the first day of the year
+                    const firstDayOfYear = new Date(year, 0, 1);
+                    
+                    // 2. Calculate the days between 'date' and 'Jan 1st'
+                    // We add the first day's day-of-week to align the grid to Sunday
+                    const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
+                    
+                    // 3. Calculate week number: (Days passed + starting day offset) / 7
+                    // This ensures every Sunday starts a new week count
+                    const weekNumber = Math.floor((pastDaysOfYear + firstDayOfYear.getDay()) / 7) + 1;
+                    
+                    groupKey = `${year}-W${weekNumber.toString().padStart(2, '0')}`;
+                    break;
+                }
+                case 'month':
+               case 'monthly':
+                    // Format: 'January-25' (Month name followed by last 2 digits of year)
+                    const monthNames = [
+                        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+                    ];
+                    const monthName = monthNames[date.getMonth()];
+                    const shortYear = date.getFullYear().toString().slice(-2); // Get last 2 digits of year
+                    groupKey = `${monthName}-${shortYear}`;
+                    break;
+                case 'year':
+                case 'yearly':
+                    // Format: '2025'
+                    groupKey = date.getFullYear().toString();
+                    break;
+                case 'quarter':
+                    // Format: '2025-Q1'
+                    const quarter = Math.floor(date.getMonth() / 3) + 1;
+                    groupKey = `${date.getFullYear()}-Q${quarter}`;
+                    break;
+                default:
+                    groupKey = dateValue; // Use original date value
+            }
+
+            if (!groups[groupKey]) {
+                groups[groupKey] = [];
+            }
+            groups[groupKey].push(row);
+        });
+
+        // Aggregate each group
+        groupedData = Object.keys(groups).map(groupKey => {
+            const groupRows = groups[groupKey];
+            const aggregatedRow = {
+                [groupByAlias]: groupKey
+            }; // Set the grouped date value
+
+            // For each column, apply aggregation based on data type and aggregation setting
+            selectedColumns.forEach(col => {
+    const alias = col.alias_name;
+
+    if (alias === groupByAlias) return;
+    if (col.visibility !== 'show') return;
+
+    const dataType = col.data_type?.toUpperCase();
+    // 1. If aggregation is 'none' or missing, treat it as 'sum' for NUMBERS
+    let aggregation = (col.aggregation && col.aggregation !== 'none') ? col.aggregation.toLowerCase() : 'sum';
+
+    if (dataType === 'NUMBER') {
+        const values = groupRows.map(row => {
+            let value = row[alias];
+            if (value === undefined || value === null || value === '') return 0;
+            
+            if (typeof value === 'string') {
+                // 2. Ignore non-numeric characters: 
+                // This regex removes everything except numbers, dots, and minus signs
+                value = parseFloat(value.replace(/[^0-9.-]/g, '')) || 0;
+            }
+            return typeof value === 'number' ? value : 0;
+        }).filter(val => !isNaN(val));
+
+        // Apply aggregation function
+        switch (aggregation) {
+            case 'sum':
+                aggregatedRow[alias] = values.reduce((sum, val) => sum + val, 0);
+                break;
+            case 'avg':
+                aggregatedRow[alias] = values.length > 0 ? values.reduce((sum, val) => sum + val, 0) / values.length : 0;
+                break;
+            case 'min':
+                aggregatedRow[alias] = values.length > 0 ? Math.min(...values) : 0;
+                break;
+            case 'max':
+                aggregatedRow[alias] = values.length > 0 ? Math.max(...values) : 0;
+                break;
+            case 'count':
+            case 'cnt':
+                aggregatedRow[alias] = values.length;
+                break;
+            default:
+                // 3. Fallback to sum if aggregation is unrecognized
+                aggregatedRow[alias] = values.reduce((sum, val) => sum + val, 0);
+        }
+
+        if (typeof aggregatedRow[alias] === 'number' && !Number.isInteger(aggregatedRow[alias])) {
+            aggregatedRow[alias] = parseFloat(aggregatedRow[alias].toFixed(2));
+        }
+    } else {
+        aggregatedRow[alias] = groupRows[0]?.[alias] || '-';
+    }
+});
+
+            return aggregatedRow;
+        });
+
+        // Sort grouped data by the group key (chronological order)
+        groupedData.sort((a, b) => {
+            return a[groupByAlias].localeCompare(b[groupByAlias]);
+        });
+    }
 
     // ==========================================================================================
     // 7. Calculate Column Totals - USING dataTypeMap to skip DATE columns
@@ -1448,8 +1446,6 @@ Object.keys(conditionalRules).forEach(targetLongName => {
     }
     return card;
 }
-
-
 
 function reorderVisibleColumns(visibleColumns, expressionJson) {
     

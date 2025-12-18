@@ -2026,7 +2026,7 @@ function groupAndAggregateTableData(tableData, formula_filterJSON, aliasMap = {}
         ["week", "month", "year"].includes((col.aggregation || "").toLowerCase())
     );
 
-    console.log('dateAggCol:>>>>>>',dateAggCol);
+   // console.log('dateAggCol:>>>>>>',dateAggCol);
     const dateKey = dateAggCol ? (dateAggCol.alias_name) : null;
     const dateAggType = dateAggCol ? dateAggCol.aggregation.toLowerCase() : null;
 
@@ -2036,10 +2036,23 @@ function groupAndAggregateTableData(tableData, formula_filterJSON, aliasMap = {}
         if (isNaN(date)) return dateStr;
         switch (dateAggType) {
             case "week": {
-                const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
-                const pastDaysOfYear = (date - firstDayOfYear) / 86400000;
-                const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
-                return `${date.getFullYear()}-W${weekNumber.toString().padStart(2,'0')}`;
+                // 1. Create a copy of the date to avoid mutating the original
+                const tempDate = new Date(date);
+                
+                // 2. Set to January 1st of the same year
+                const firstDayOfYear = new Date(tempDate.getFullYear(), 0, 1);
+                
+                // 3. Determine how many days to "offset" to make Sunday the start.
+                // .getDay() returns 0 for Sunday. 
+                const sundayOffset = firstDayOfYear.getDay(); 
+                
+                // 4. Calculate days passed since Jan 1st
+                const pastDaysOfYear = (tempDate - firstDayOfYear) / 86400000;
+                
+                // 5. Calculate week number (Sunday to Saturday)
+                const weekNumber = Math.floor((pastDaysOfYear + sundayOffset) / 7) + 1;
+                
+                return `${tempDate.getFullYear()}-W${weekNumber.toString().padStart(2, '0')}`;
             }
             case "month":
                 return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2,'0')}`;
@@ -2077,7 +2090,7 @@ Object.keys(grouped).forEach(groupKey => {
 
     const aggRow = {};
     aggRow[dateKey] = groupKey;
- //console.log('groupRows:>>>>>>>>>>>>',groupRows);
+ console.log('groupRows:>>>>>>>>>>>>',groupRows);
     selectedColumns.forEach(col => {
         const key = col.alias_name ;
         if (key === dateKey) return;
@@ -2102,7 +2115,7 @@ Object.keys(grouped).forEach(groupKey => {
     });
 
     newRows.push(aggRow);
-    //console.log('aggRow:>>>>>>>>>>>>',aggRow);
+    console.log('aggRow:>>>>>>>>>>>>',aggRow);
 });
 
     // Optional: sort by dateKey if aggregation exists
