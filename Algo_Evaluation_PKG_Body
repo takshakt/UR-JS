@@ -868,34 +868,77 @@ FUNCTION EVALUATE(
                         END LOOP;
 
                         IF l_found_text_strat THEN
-                          log_debug('............ Strategy text pass-through: ' || l_strat_text_value);
+                          log_debug('............ Strategy text pass-through detected: ' || l_strat_text_value);
 
-                          -- Build JSON output for strategy text pass-through
-                          l_attr_json := '{"' || l_strat_ref || '":"' || REPLACE(l_strat_text_value,'"','\"') || '"}';
-                          l_applied_rule_json := '{'
-                            || '"region":"' || REPLACE(region_rec.region_name,'"','\"')
-                            || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"')
-                            || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD')
-                            || '", "filters":{'
-                            || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"'
-                            || ', "lead_time":' || l_lead_time_json
-                            || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END
-                            || '}'
-                            || ', "occupancy":null'
-                            || ', "property_ranking":null'
-                            || ', "event_score":null'
-                            || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"')
-                            || '", "expression_values":' || l_attr_json
-                            || ', "evaluated_outcome":null'
-                            || ', "result_type":"text"'
-                            || ', "result":"' || REPLACE(l_strat_text_value,'"','\"') || '"'
-                            || ', "note":"strategy_text_passthrough"'
-                            || '}';
+                          -- Check for price override before passing through text
+                          DECLARE
+                            l_po_attr_id VARCHAR2(255);
+                            l_po_value NUMBER := NULL;
+                            l_final_result VARCHAR2(4000);
+                            l_result_type VARCHAR2(20);
+                            l_note_text VARCHAR2(100);
+                          BEGIN
+                            l_po_attr_id := region_rec.price_override_attr;
 
-                          PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), l_strat_text_value, l_applied_rule_json));
-                          log_debug('... PIPED ROW (strategy text pass-through) for date ' || TO_CHAR(v_stay_date, 'YYYY-MM-DD'));
-                          v_any_rule_matched_for_date := TRUE;
-                          GOTO end_date_processing;
+                            IF l_po_attr_id IS NOT NULL THEN
+                              l_po_attr_id := REGEXP_REPLACE(l_po_attr_id, '^#|#$', '');
+
+                              -- Get price override value for this date
+                              IF l_staged_data.EXISTS(l_po_attr_id) THEN
+                                l_po_value := get_value_for_date(
+                                  l_staged_data(l_po_attr_id),
+                                  v_stay_date
+                                );
+                              END IF;
+                            END IF;
+
+                            IF l_po_value IS NOT NULL THEN
+                              -- Price override takes precedence
+                              l_final_result := TO_CHAR(ROUND(l_po_value));
+                              l_result_type := 'number';
+                              l_note_text := 'price_override_on_strategy_text';
+                              log_debug('............ Price Override applied over strategy text: ' || l_final_result);
+                            ELSE
+                              -- No price override, pass through text
+                              l_final_result := l_strat_text_value;
+                              l_result_type := 'text';
+                              l_note_text := 'strategy_text_passthrough';
+                              log_debug('............ Strategy text pass-through: ' || l_strat_text_value);
+                            END IF;
+
+                            -- Build JSON output
+                            l_attr_json := '{"' || l_strat_ref || '":"' || REPLACE(l_strat_text_value,'"','\"') || '"}';
+                            l_applied_rule_json := '{'
+                              || '"region":"' || REPLACE(region_rec.region_name,'"','\"')
+                              || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"')
+                              || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD')
+                              || '", "filters":{'
+                              || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"'
+                              || ', "lead_time":' || l_lead_time_json
+                              || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END
+                              || '}'
+                              || ', "occupancy":null'
+                              || ', "property_ranking":null'
+                              || ', "event_score":null'
+                              || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"')
+                              || '", "expression_values":' || l_attr_json
+                              || ', "evaluated_outcome":null'
+                              || ', "result_type":"' || l_result_type || '"'
+                              || ', "result":"' || REPLACE(l_final_result,'"','\"') || '"'
+                              || CASE WHEN l_po_value IS NOT NULL THEN
+                                   ', "price_override_applied":true'
+                                   || ', "price_override_attribute":"' || l_po_attr_id || '"'
+                                   || ', "price_override_value":' || TO_CHAR(ROUND(l_po_value))
+                                   || ', "original_strategy_text":"' || REPLACE(l_strat_text_value,'"','\"') || '"'
+                                 ELSE '' END
+                              || ', "note":"' || l_note_text || '"'
+                              || '}';
+
+                            PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), l_final_result, l_applied_rule_json));
+                            log_debug('... PIPED ROW (strategy text ' || CASE WHEN l_po_value IS NOT NULL THEN 'with price override' ELSE 'pass-through' END || ') for date ' || TO_CHAR(v_stay_date, 'YYYY-MM-DD'));
+                            v_any_rule_matched_for_date := TRUE;
+                            GOTO end_date_processing;
+                          END;
                         END IF;
                       END;
                       -- / CHECK FOR STRATEGY TEXT PASS-THROUGH
@@ -992,29 +1035,72 @@ FUNCTION EVALUATE(
                       END LOOP;
                       l_attr_json := l_attr_json || '}';
 
-                      -- Check if any attribute value was NULL or non-numeric - return Manual Override Required
+                      -- Check if any attribute value was NULL or non-numeric
+                      -- But first check if price override exists - if so, use it instead of returning Manual Override Required
                       IF l_has_invalid_attr THEN
-                        log_debug('............ Invalid attribute detected: ' || l_invalid_attr_id || ' (' || l_invalid_reason || '). Returning Manual Override Required.');
-                        l_applied_rule_json := '{'
-                          || '"region":"' || REPLACE(region_rec.region_name,'"','\"')
-                          || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"')
-                          || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD')
-                          || '", "filters":{'
-                          || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"'
-                          || ', "lead_time":' || l_lead_time_json
-                          || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END
-                          || '}'
-                          || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"')
-                          || '", "expression_values":' || l_attr_json
-                          || ', "invalid_attribute":"' || l_invalid_attr_id || '"'
-                          || ', "invalid_reason":"' || l_invalid_reason || '"'
-                          || ', "result_type":"text"'
-                          || ', "result":"Manual Override Required"'
-                          || ', "note":"invalid_attribute_value"'
-                          || '}';
-                        PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), 'Manual Override Required', l_applied_rule_json));
-                        v_any_rule_matched_for_date := TRUE;
-                        GOTO end_date_processing;
+                        DECLARE
+                          l_po_attr_id VARCHAR2(255);
+                          l_po_value NUMBER := NULL;
+                        BEGIN
+                          l_po_attr_id := region_rec.price_override_attr;
+                          IF l_po_attr_id IS NOT NULL THEN
+                            l_po_attr_id := REGEXP_REPLACE(l_po_attr_id, '^#|#$', '');
+                            IF l_staged_data.EXISTS(l_po_attr_id) THEN
+                              l_po_value := get_value_for_date(l_staged_data(l_po_attr_id), v_stay_date);
+                            END IF;
+                          END IF;
+
+                          IF l_po_value IS NOT NULL THEN
+                            -- Price override exists and has value - use it instead of Manual Override Required
+                            log_debug('............ Invalid attribute detected but price override exists: ' || l_po_value);
+                            l_eval_result := ROUND(l_po_value);
+                            l_applied_rule_json := '{'
+                              || '"region":"' || REPLACE(region_rec.region_name,'"','\"')
+                              || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"')
+                              || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD')
+                              || '", "filters":{'
+                              || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"'
+                              || ', "lead_time":' || l_lead_time_json
+                              || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END
+                              || ', "price_override":{"attribute":"' || l_po_attr_id || '", "value":' || l_po_value || '}'
+                              || '}'
+                              || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"')
+                              || '", "expression_values":' || l_attr_json
+                              || ', "invalid_attribute":"' || l_invalid_attr_id || '"'
+                              || ', "invalid_reason":"' || l_invalid_reason || '"'
+                              || ', "result_type":"numeric"'
+                              || ', "result":' || l_eval_result
+                              || ', "note":"price_override_applied"'
+                              || '}';
+                            PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), TO_CHAR(l_eval_result), l_applied_rule_json));
+                            v_any_rule_matched_for_date := TRUE;
+                            GOTO end_date_processing;
+                          ELSE
+                            -- No price override - return Manual Override Required
+                            log_debug('............ Invalid attribute detected: ' || l_invalid_attr_id || ' (' || l_invalid_reason || '). Returning Manual Override Required.');
+                            l_applied_rule_json := '{'
+                              || '"region":"' || REPLACE(region_rec.region_name,'"','\"')
+                              || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"')
+                              || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD')
+                              || '", "filters":{'
+                              || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"'
+                              || ', "lead_time":' || l_lead_time_json
+                              || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END
+                              || CASE WHEN region_rec.price_override_attr IS NOT NULL THEN ', "price_override":{"attribute":"' || REGEXP_REPLACE(region_rec.price_override_attr, '^#|#$', '') || '"}' ELSE '' END
+                              || '}'
+                              || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"')
+                              || '", "expression_values":' || l_attr_json
+                              || ', "invalid_attribute":"' || l_invalid_attr_id || '"'
+                              || ', "invalid_reason":"' || l_invalid_reason || '"'
+                              || ', "result_type":"text"'
+                              || ', "result":"Manual Override Required"'
+                              || ', "note":"invalid_attribute_value"'
+                              || '}';
+                            PIPE ROW(t_result_rec_obj(l_algo_name, v_stay_date, TO_CHAR(v_stay_date, 'Dy'), 'Manual Override Required', l_applied_rule_json));
+                            v_any_rule_matched_for_date := TRUE;
+                            GOTO end_date_processing;
+                          END IF;
+                        END;
                       END IF;
 
                       log_debug('............ Expression with values: ' || l_eval_copy); -- (new log line)
