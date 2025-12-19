@@ -470,7 +470,10 @@ FUNCTION EVALUATE(
       BEGIN
         IF l_occ_attr IS NOT NULL AND NOT l_aliases.EXISTS(l_occ_attr) THEN l_aliases(l_occ_attr) := l_occ_attr; END IF;
         IF rec.pr_template IS NOT NULL THEN
-          l_pr_attr_id := get_attribute_id_from_template(REPLACE(rec.pr_template, '#', ''));
+          -- Load BOTH bottom and top OWN PROPERTY rank attributes (needed for evaluation regardless of condition direction)
+          l_pr_attr_id := get_attribute_id_from_template(REPLACE(rec.pr_template, '#', ''), 'bottom');
+          IF l_pr_attr_id IS NOT NULL AND NOT l_aliases.EXISTS(l_pr_attr_id) THEN l_aliases(l_pr_attr_id) := l_pr_attr_id; END IF;
+          l_pr_attr_id := get_attribute_id_from_template(REPLACE(rec.pr_template, '#', ''), 'top');
           IF l_pr_attr_id IS NOT NULL AND NOT l_aliases.EXISTS(l_pr_attr_id) THEN l_aliases(l_pr_attr_id) := l_pr_attr_id; END IF;
           -- Capture the ranking template ID for rank shifting
           IF l_ranking_template_id IS NULL THEN
@@ -516,17 +519,31 @@ FUNCTION EVALUATE(
       END IF;
 
       -- Load ALL rank attributes for this template (to support rank shifting)
+      -- Load both BOTTOM and TOP rank attributes
       DECLARE
         l_rank_attr_id VARCHAR2(255);
+        l_bottom_count NUMBER := 0;
+        l_top_count NUMBER := 0;
       BEGIN
+        -- Load all BOTTOM rank attributes
         FOR i IN 1..20 LOOP  -- Support up to 20 competitors
           l_rank_attr_id := get_attr_id_for_rank(l_ranking_template_id, i);
           EXIT WHEN l_rank_attr_id IS NULL;
           IF NOT l_aliases.EXISTS(l_rank_attr_id) THEN
             l_aliases(l_rank_attr_id) := l_rank_attr_id;
           END IF;
+          l_bottom_count := l_bottom_count + 1;
         END LOOP;
-        log_debug('Loaded all rank attributes for template: ' || l_ranking_template_id);
+        -- Load all TOP rank attributes
+        FOR i IN 1..20 LOOP  -- Support up to 20 competitors
+          l_rank_attr_id := get_attr_id_for_top_rank(l_ranking_template_id, i);
+          EXIT WHEN l_rank_attr_id IS NULL;
+          IF NOT l_aliases.EXISTS(l_rank_attr_id) THEN
+            l_aliases(l_rank_attr_id) := l_rank_attr_id;
+          END IF;
+          l_top_count := l_top_count + 1;
+        END LOOP;
+        log_debug('Loaded all rank attributes for template: ' || l_ranking_template_id || ' (bottom: ' || l_bottom_count || ', top: ' || l_top_count || ')');
       END;
     ELSE
       log_debug('No ranking template detected in algorithm');
