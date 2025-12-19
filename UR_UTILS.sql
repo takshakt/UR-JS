@@ -1602,8 +1602,10 @@ END ' || v_trigger_name || ';
 
         -- Dynamic SQL Variables
         v_sql              CLOB;
-        v_pivot_clause     CLOB; -- For inside the subquery
-        v_final_columns    CLOB; -- For the final SELECT list
+        v_pivot_clause     CLOB; -- For bottom ranking (ascending) inside the subquery
+        v_final_columns    CLOB; -- For the bottom ranking final SELECT list
+        v_top_pivot_clause   CLOB; -- For top ranking (descending) inside the subquery
+        v_top_final_columns  CLOB; -- For the top ranking final SELECT list
         v_comp_count       NUMBER := 0;  -- Count of competitor properties only
         v_exists           NUMBER;
 
@@ -1669,25 +1671,38 @@ END ' || v_trigger_name || ';
             jt.qualifier = 'COMP_PROPERTY';
 
         -- Step 4: Build the dynamic PIVOT and final column list clauses
-        -- Generate RANK_N columns based on competitor count only (OWN_PROPERTY excluded from ranking)
+        -- Generate BOTTOM_RANK_N columns (ascending - cheapest = rank 1)
         FOR i IN 1..v_comp_count LOOP
             v_pivot_clause := v_pivot_clause ||
-                              'MAX(CASE WHEN overall_rank = ' || i || ' THEN hotel_name END) AS "RANK_' || i || '_NAME",' || CHR(10) ||
-                              'MAX(CASE WHEN overall_rank = ' || i || ' THEN price END) AS "RANK_' || i || '_RATE",' || CHR(10);
+                              'MAX(CASE WHEN bottom_rank = ' || i || ' THEN hotel_name END) AS "BOTTOM_RANK_' || i || '_NAME",' || CHR(10) ||
+                              'MAX(CASE WHEN bottom_rank = ' || i || ' THEN price END) AS "BOTTOM_RANK_' || i || '_RATE",' || CHR(10);
 
             v_final_columns := v_final_columns ||
-                               'p."RANK_' || i || '_NAME",' || CHR(10) ||
-                               'p."RANK_' || i || '_RATE",' || CHR(10);
+                               'p."BOTTOM_RANK_' || i || '_NAME",' || CHR(10) ||
+                               'p."BOTTOM_RANK_' || i || '_RATE",' || CHR(10);
         END LOOP;
         v_pivot_clause  := RTRIM(v_pivot_clause, ',' || CHR(10));
         v_final_columns := RTRIM(v_final_columns, ',' || CHR(10));
 
+        -- Generate TOP_RANK_N columns (descending - most expensive = rank 1)
+        FOR i IN 1..v_comp_count LOOP
+            v_top_pivot_clause := v_top_pivot_clause ||
+                              'MAX(CASE WHEN top_rank = ' || i || ' THEN hotel_name END) AS "TOP_RANK_' || i || '_NAME",' || CHR(10) ||
+                              'MAX(CASE WHEN top_rank = ' || i || ' THEN price END) AS "TOP_RANK_' || i || '_RATE",' || CHR(10);
+
+            v_top_final_columns := v_top_final_columns ||
+                               'p."TOP_RANK_' || i || '_NAME",' || CHR(10) ||
+                               'p."TOP_RANK_' || i || '_RATE",' || CHR(10);
+        END LOOP;
+        v_top_pivot_clause  := RTRIM(v_top_pivot_clause, ',' || CHR(10));
+        v_top_final_columns := RTRIM(v_top_final_columns, ',' || CHR(10));
+
 
         -- Step 5: Build the final CREATE VIEW statement
         -- New logic:
-        --   1. Exclude OWN_PROPERTY from competitor rankings (RANK_1 to RANK_N are competitors only)
+        --   1. Exclude OWN_PROPERTY from competitor rankings (BOTTOM_RANK_1 to BOTTOM_RANK_N and TOP_RANK_1 to TOP_RANK_N are competitors only)
         --   2. Filter out invalid prices ($0, NULL, non-numeric) from competitor ranking
-        --   3. Calculate OWN_PROPERTY_RANK separately (ties go against own property - worse rank)
+        --   3. Calculate OWN_PROPERTY_BOTTOM_RANK and OWN_PROPERTY_TOP_RANK separately (ties go against own property - worse rank)
         --   4. Add VALID_COMP_COUNT for rank shifting in evaluation engine
         v_view_name := 'UR_TMPLT_' || p_template_key || '_RANK_V';
 
@@ -1704,14 +1719,15 @@ END ' || v_trigger_name || ';
                  '  WHERE REGEXP_LIKE(price, ''^[0-9,.]+$'')' || CHR(10) ||
                  '    AND TO_NUMBER(REPLACE(price, '','', '''')) > 0' || CHR(10) ||
                  '),' || CHR(10) ||
-                 -- CTE 2: Rank valid competitors by price (ascending - cheapest = rank 1)
+                 -- CTE 2: Rank valid competitors by price (both ascending and descending)
                  'competitors_ranked AS (' || CHR(10) ||
                  '  SELECT ' || CHR(10) ||
                  '      "HOTEL_ID",' || CHR(10) ||
                  '      "' || v_sdate_col || '",' || CHR(10) ||
                  '      hotel_name,' || CHR(10) ||
                  '      price,' || CHR(10) ||
-                 '      ROW_NUMBER() OVER(PARTITION BY "' || v_sdate_col || '" ORDER BY price ASC) as overall_rank' || CHR(10) ||
+                 '      ROW_NUMBER() OVER(PARTITION BY "' || v_sdate_col || '" ORDER BY price ASC) as bottom_rank,' || CHR(10) ||
+                 '      ROW_NUMBER() OVER(PARTITION BY "' || v_sdate_col || '" ORDER BY price DESC) as top_rank' || CHR(10) ||
                  '  FROM valid_competitors' || CHR(10) ||
                  '),' || CHR(10) ||
                  -- CTE 3: Get own property price data (filter out invalid prices)
@@ -1724,24 +1740,28 @@ END ' || v_trigger_name || ';
                  '  WHERE REGEXP_LIKE("' || v_own_property_col || '", ''^[0-9,.]+$'')' || CHR(10) ||
                  '    AND TO_NUMBER(REPLACE("' || v_own_property_col || '", '','', '''')) > 0' || CHR(10) ||
                  '),' || CHR(10) ||
-                 -- CTE 4: Calculate own property rank against valid competitors
-                 -- Ties go AGAINST own property (use <= to count equal prices, pushing own to worse rank)
-                 'own_property_rank AS (' || CHR(10) ||
+                 -- CTE 4: Calculate own property rank against valid competitors (both bottom and top)
+                 -- Ties go AGAINST own property (use <= / >= to count equal prices, pushing own to worse rank)
+                 'own_property_ranks AS (' || CHR(10) ||
                  '  SELECT ' || CHR(10) ||
                  '      o."HOTEL_ID",' || CHR(10) ||
                  '      o."' || v_sdate_col || '",' || CHR(10) ||
                  '      o.own_price,' || CHR(10) ||
                  '      (SELECT COUNT(*) + 1 FROM valid_competitors vc' || CHR(10) ||
                  '       WHERE vc."' || v_sdate_col || '" = o."' || v_sdate_col || '"' || CHR(10) ||
-                 '         AND vc.price <= o.own_price) AS own_rank' || CHR(10) ||
+                 '         AND vc.price <= o.own_price) AS own_bottom_rank,' || CHR(10) ||
+                 '      (SELECT COUNT(*) + 1 FROM valid_competitors vc' || CHR(10) ||
+                 '       WHERE vc."' || v_sdate_col || '" = o."' || v_sdate_col || '"' || CHR(10) ||
+                 '         AND vc.price >= o.own_price) AS own_top_rank' || CHR(10) ||
                  '  FROM own_property_data o' || CHR(10) ||
                  '),' || CHR(10) ||
-                 -- CTE 5: Pivot competitors into RANK_N_NAME and RANK_N_RATE columns
+                 -- CTE 5: Pivot competitors into BOTTOM_RANK_N and TOP_RANK_N columns
                  'pivoted_competitors AS (' || CHR(10) ||
                  '  SELECT ' || CHR(10) ||
                  '      "' || v_sdate_col || '",' || CHR(10) ||
                  '      "HOTEL_ID",' || CHR(10) ||
-                 '      ' || v_pivot_clause || CHR(10) ||
+                 '      ' || v_pivot_clause || ',' || CHR(10) ||
+                 '      ' || v_top_pivot_clause || CHR(10) ||
                  '  FROM competitors_ranked' || CHR(10) ||
                  '  GROUP BY "' || v_sdate_col || '", "HOTEL_ID"' || CHR(10) ||
                  ')' || CHR(10) ||
@@ -1750,11 +1770,13 @@ END ' || v_trigger_name || ';
                  '  p."' || v_sdate_col || '" AS "STAY_DATE",' || CHR(10) ||
                  '  p."HOTEL_ID",' || CHR(10) ||
                  '  opr.own_price AS "OWN_PROPERTY_RATE",' || CHR(10) ||
-                 '  opr.own_rank AS "OWN_PROPERTY_RANK",' || CHR(10) ||
+                 '  opr.own_bottom_rank AS "OWN_PROPERTY_BOTTOM_RANK",' || CHR(10) ||
+                 '  opr.own_top_rank AS "OWN_PROPERTY_TOP_RANK",' || CHR(10) ||
                  '  (SELECT COUNT(*) FROM valid_competitors vc WHERE vc."' || v_sdate_col || '" = p."' || v_sdate_col || '") AS "VALID_COMP_COUNT",' || CHR(10) ||
-                 '  ' || v_final_columns || CHR(10) ||
+                 '  ' || v_final_columns || ',' || CHR(10) ||
+                 '  ' || v_top_final_columns || CHR(10) ||
                  'FROM pivoted_competitors p' || CHR(10) ||
-                 'LEFT JOIN own_property_rank opr ON p."' || v_sdate_col || '" = opr."' || v_sdate_col || '"';
+                 'LEFT JOIN own_property_ranks opr ON p."' || v_sdate_col || '" = opr."' || v_sdate_col || '"';
 
         -- Step 6: Execute the dynamic SQL
         EXECUTE IMMEDIATE v_sql;
@@ -3139,7 +3161,9 @@ END ' || v_trigger_name || ';
 
             -- 3. Validate and create attributes for OWN_PROPERTY and VALID_COMP_COUNT
             FOR r_col IN (
-                SELECT 'OWN_PROPERTY_RANK' AS col_name FROM DUAL
+                SELECT 'OWN_PROPERTY_BOTTOM_RANK' AS col_name FROM DUAL
+                UNION ALL
+                SELECT 'OWN_PROPERTY_TOP_RANK' AS col_name FROM DUAL
                 UNION ALL
                 SELECT 'OWN_PROPERTY_RATE' AS col_name FROM DUAL
                 UNION ALL
@@ -3154,30 +3178,46 @@ END ' || v_trigger_name || ';
                 END IF;
             END LOOP;
 
-            create_rst_attribute('OWN PROPERTY RANK', v_db_view_object_name || '.OWN_PROPERTY_RANK', v_db_view_object_name || '.OWN_PROPERTY_RANK', 'OWN_PROPERTY');
+            create_rst_attribute('OWN PROPERTY BOTTOM RANK', v_db_view_object_name || '.OWN_PROPERTY_BOTTOM_RANK', v_db_view_object_name || '.OWN_PROPERTY_BOTTOM_RANK', 'OWN_PROPERTY');
+            create_rst_attribute('OWN PROPERTY TOP RANK', v_db_view_object_name || '.OWN_PROPERTY_TOP_RANK', v_db_view_object_name || '.OWN_PROPERTY_TOP_RANK', 'OWN_PROPERTY');
             create_rst_attribute('OWN PROPERTY RATE', v_db_view_object_name || '.OWN_PROPERTY_RATE', v_db_view_object_name || '.OWN_PROPERTY_RATE', 'OWN_PROPERTY');
             -- Create VALID_COMP_COUNT attribute for rank shifting logic in evaluation engine
             create_rst_attribute('VALID COMP COUNT', v_db_view_object_name || '.VALID_COMP_COUNT', v_db_view_object_name || '.VALID_COMP_COUNT', 'COMP_PROPERTY');
-            
-            -- 4. Create attributes for COMP_PROPERTY (RANK_1 to RANK_N where N = number of COMP_PROPERTY columns)
+
+            -- 4. Create attributes for COMP_PROPERTY (BOTTOM_RANK_1 to BOTTOM_RANK_N and TOP_RANK_1 to TOP_RANK_N where N = number of COMP_PROPERTY columns)
             FOR i IN 1 .. v_comp_property_count LOOP
               DECLARE
-                l_col_name   VARCHAR2(100) := 'RANK_' || i || '_RATE';
-                l_attr_name  VARCHAR2(100) := 'COMP SET R' || i || ' RATE';
-                l_attr_key   VARCHAR2(200) := v_db_view_object_name || '.' || l_col_name;
+                l_bottom_col_name   VARCHAR2(100) := 'BOTTOM_RANK_' || i || '_RATE';
+                l_bottom_attr_name  VARCHAR2(100) := 'COMP SET BOTTOM R' || i || ' RATE';
+                l_bottom_attr_key   VARCHAR2(200) := v_db_view_object_name || '.' || l_bottom_col_name;
+                l_top_col_name      VARCHAR2(100) := 'TOP_RANK_' || i || '_RATE';
+                l_top_attr_name     VARCHAR2(100) := 'COMP SET TOP R' || i || ' RATE';
+                l_top_attr_key      VARCHAR2(200) := v_db_view_object_name || '.' || l_top_col_name;
               BEGIN
-                -- Validate that the required rank column exists
+                -- Validate that the required bottom rank column exists
                 SELECT COUNT(*) INTO v_column_exists FROM user_tab_columns
-                WHERE table_name = UPPER(v_db_view_object_name) AND column_name = l_col_name;
+                WHERE table_name = UPPER(v_db_view_object_name) AND column_name = l_bottom_col_name;
 
                 IF v_column_exists = 0 THEN
-                  p_message := 'Failure: Required column ' || l_col_name || ' not found in view ' || v_db_view_object_name || '.';
+                  p_message := 'Failure: Required column ' || l_bottom_col_name || ' not found in view ' || v_db_view_object_name || '.';
                   ROLLBACK;
                   RETURN;
                 END IF;
-                
-                -- Create the attribute using the helper
-                create_rst_attribute(l_attr_name, l_attr_key, l_attr_key, 'COMP_PROPERTY');
+
+                -- Validate that the required top rank column exists
+                SELECT COUNT(*) INTO v_column_exists FROM user_tab_columns
+                WHERE table_name = UPPER(v_db_view_object_name) AND column_name = l_top_col_name;
+
+                IF v_column_exists = 0 THEN
+                  p_message := 'Failure: Required column ' || l_top_col_name || ' not found in view ' || v_db_view_object_name || '.';
+                  ROLLBACK;
+                  RETURN;
+                END IF;
+
+                -- Create the bottom rank attribute
+                create_rst_attribute(l_bottom_attr_name, l_bottom_attr_key, l_bottom_attr_key, 'COMP_PROPERTY');
+                -- Create the top rank attribute
+                create_rst_attribute(l_top_attr_name, l_top_attr_key, l_top_attr_key, 'COMP_PROPERTY');
               END;
             END LOOP;
           END IF;

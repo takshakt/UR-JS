@@ -46,12 +46,28 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
     END CASE;
   END GENERIC_MATH_EVAL;
 
-  FUNCTION get_attribute_id_from_template(p_template_id VARCHAR2) RETURN VARCHAR2 IS
+  -- Returns the OWN PROPERTY BOTTOM RANK or OWN PROPERTY TOP RANK attribute ID based on direction
+  -- p_rank_direction: 'bottom' (default) = cheapest first, 'top' = most expensive first
+  FUNCTION get_attribute_id_from_template(p_template_id VARCHAR2, p_rank_direction VARCHAR2 DEFAULT 'bottom') RETURN VARCHAR2 IS
     l_attr_id VARCHAR2(255);
+    l_attr_name VARCHAR2(50);
   BEGIN
-    SELECT id INTO l_attr_id FROM ur_algo_attributes WHERE template_id = p_template_id AND name = 'OWN PROPERTY RANK' AND ROWNUM = 1;
+    -- Determine which rank attribute to use based on direction
+    IF LOWER(NVL(p_rank_direction, 'bottom')) = 'top' THEN
+      l_attr_name := 'OWN PROPERTY TOP RANK';
+    ELSE
+      l_attr_name := 'OWN PROPERTY BOTTOM RANK';
+    END IF;
+
+    SELECT id INTO l_attr_id FROM ur_algo_attributes WHERE template_id = p_template_id AND name = l_attr_name AND ROWNUM = 1;
     RETURN l_attr_id;
-  EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
+  EXCEPTION WHEN NO_DATA_FOUND THEN
+    -- Fallback: Try legacy attribute name for backward compatibility
+    BEGIN
+      SELECT id INTO l_attr_id FROM ur_algo_attributes WHERE template_id = p_template_id AND name = 'OWN PROPERTY RANK' AND ROWNUM = 1;
+      RETURN l_attr_id;
+    EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
+    END;
   END get_attribute_id_from_template;
 
   -- =============================================================================
@@ -61,14 +77,14 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
   -- that don't exist for a given date, we shift down to available ranks.
   -- =============================================================================
 
-  -- Returns the rank number if the attribute is a "COMP SET R{N} RATE" attribute, NULL otherwise
+  -- Returns the rank number if the attribute is a "COMP SET BOTTOM R{N} RATE" (bottom rank) attribute, NULL otherwise
   FUNCTION get_rank_number_from_attr_id(p_attr_id IN VARCHAR2) RETURN NUMBER IS
     l_attr_name VARCHAR2(255);
     l_rank_num NUMBER;
   BEGIN
     SELECT name INTO l_attr_name FROM ur_algo_attributes WHERE id = p_attr_id;
-    -- Match pattern "COMP SET R{N} RATE" where N is the rank number
-    IF REGEXP_LIKE(l_attr_name, '^COMP SET R[0-9]+ RATE$') THEN
+    -- Match pattern "COMP SET BOTTOM R{N} RATE" where N is the rank number (bottom rank - cheapest first)
+    IF REGEXP_LIKE(l_attr_name, '^COMP SET BOTTOM R[0-9]+ RATE$') THEN
       l_rank_num := TO_NUMBER(REGEXP_SUBSTR(l_attr_name, '[0-9]+'));
       RETURN l_rank_num;
     END IF;
@@ -76,16 +92,42 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
   EXCEPTION WHEN OTHERS THEN RETURN NULL;
   END get_rank_number_from_attr_id;
 
-  -- Returns the attribute ID for a given rank number within the same template
+  -- Returns the rank number if the attribute is a "COMP SET TOP R{N} RATE" (top rank) attribute, NULL otherwise
+  FUNCTION get_top_rank_number_from_attr_id(p_attr_id IN VARCHAR2) RETURN NUMBER IS
+    l_attr_name VARCHAR2(255);
+    l_rank_num NUMBER;
+  BEGIN
+    SELECT name INTO l_attr_name FROM ur_algo_attributes WHERE id = p_attr_id;
+    -- Match pattern "COMP SET TOP R{N} RATE" where N is the rank number (top rank - most expensive first)
+    IF REGEXP_LIKE(l_attr_name, '^COMP SET TOP R[0-9]+ RATE$') THEN
+      l_rank_num := TO_NUMBER(REGEXP_SUBSTR(l_attr_name, '[0-9]+'));
+      RETURN l_rank_num;
+    END IF;
+    RETURN NULL;
+  EXCEPTION WHEN OTHERS THEN RETURN NULL;
+  END get_top_rank_number_from_attr_id;
+
+  -- Returns the attribute ID for a given bottom rank number within the same template
   FUNCTION get_attr_id_for_rank(p_template_id IN VARCHAR2, p_rank_num IN NUMBER) RETURN VARCHAR2 IS
     l_attr_id VARCHAR2(255);
-    l_target_name VARCHAR2(100) := 'COMP SET R' || p_rank_num || ' RATE';
+    l_target_name VARCHAR2(100) := 'COMP SET BOTTOM R' || p_rank_num || ' RATE';
   BEGIN
     SELECT id INTO l_attr_id FROM ur_algo_attributes
     WHERE template_id = p_template_id AND name = l_target_name AND ROWNUM = 1;
     RETURN l_attr_id;
   EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
   END get_attr_id_for_rank;
+
+  -- Returns the attribute ID for a given top rank number within the same template
+  FUNCTION get_attr_id_for_top_rank(p_template_id IN VARCHAR2, p_rank_num IN NUMBER) RETURN VARCHAR2 IS
+    l_attr_id VARCHAR2(255);
+    l_target_name VARCHAR2(100) := 'COMP SET TOP R' || p_rank_num || ' RATE';
+  BEGIN
+    SELECT id INTO l_attr_id FROM ur_algo_attributes
+    WHERE template_id = p_template_id AND name = l_target_name AND ROWNUM = 1;
+    RETURN l_attr_id;
+  EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
+  END get_attr_id_for_top_rank;
 
   -- Returns the VALID_COMP_COUNT attribute ID for a template
   FUNCTION get_valid_comp_count_attr_id(p_template_id IN VARCHAR2) RETURN VARCHAR2 IS
@@ -98,6 +140,7 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
   END get_valid_comp_count_attr_id;
 
   -- Applies rank shifting to an expression based on VALID_COMP_COUNT
+  -- Handles both BOTTOM ranks (COMP SET BOTTOM R{N} RATE) and TOP ranks (COMP SET TOP R{N} RATE)
   -- If expression references R8, R9, R10 but only 6 competitors exist,
   -- shifts to R4, R5, R6 (keeping the relative positions at the end)
   --
@@ -110,10 +153,17 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
     p_template_id IN VARCHAR2
   ) RETURN VARCHAR2 IS
     l_result VARCHAR2(4000) := p_expression;
-    l_max_rank NUMBER := 0;
-    l_min_rank NUMBER := 999;
-    l_shift_amount NUMBER := 0;
-    l_distinct_rank_count NUMBER := 0;
+    -- Bottom rank variables
+    l_bottom_max_rank NUMBER := 0;
+    l_bottom_min_rank NUMBER := 999;
+    l_bottom_shift_amount NUMBER := 0;
+    l_bottom_distinct_rank_count NUMBER := 0;
+    -- Top rank variables
+    l_top_max_rank NUMBER := 0;
+    l_top_min_rank NUMBER := 999;
+    l_top_shift_amount NUMBER := 0;
+    l_top_distinct_rank_count NUMBER := 0;
+    -- Common variables
     l_attr_id VARCHAR2(255);
     l_rank_num NUMBER;
     l_new_rank NUMBER;
@@ -122,8 +172,10 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
     l_attr_in_expr VARCHAR2(255);
     TYPE t_rank_map IS TABLE OF NUMBER INDEX BY VARCHAR2(255);
     TYPE t_rank_set IS TABLE OF BOOLEAN INDEX BY PLS_INTEGER;
-    l_rank_attrs t_rank_map;
-    l_unique_ranks t_rank_set;
+    l_bottom_rank_attrs t_rank_map;
+    l_bottom_unique_ranks t_rank_set;
+    l_top_rank_attrs t_rank_map;
+    l_top_unique_ranks t_rank_set;
   BEGIN
     -- If no valid competitors or NULL, return NULL to skip evaluation
     IF p_valid_comp_count IS NULL OR p_valid_comp_count = 0 THEN
@@ -131,68 +183,121 @@ create or replace PACKAGE BODY ALGO_EVALUATOR_PKG AS
       RETURN NULL;
     END IF;
 
-    -- Step 1: Find all rank attributes in the expression, track unique ranks
+    -- Step 1: Find all rank attributes in the expression, track unique ranks for both bottom and top
     LOOP
       l_attr_in_expr := REGEXP_SUBSTR(p_expression, '#[A-Z0-9_]+#', 1, l_pos);
       EXIT WHEN l_attr_in_expr IS NULL;
       l_attr_id := REGEXP_REPLACE(l_attr_in_expr, '^#|#$', '');
+
+      -- Check for bottom rank (COMP SET BOTTOM R{N} RATE)
       l_rank_num := get_rank_number_from_attr_id(l_attr_id);
       IF l_rank_num IS NOT NULL THEN
-        l_rank_attrs(l_attr_id) := l_rank_num;
-        l_unique_ranks(l_rank_num) := TRUE;
-        IF l_rank_num > l_max_rank THEN
-          l_max_rank := l_rank_num;
+        l_bottom_rank_attrs(l_attr_id) := l_rank_num;
+        l_bottom_unique_ranks(l_rank_num) := TRUE;
+        IF l_rank_num > l_bottom_max_rank THEN
+          l_bottom_max_rank := l_rank_num;
         END IF;
-        IF l_rank_num < l_min_rank THEN
-          l_min_rank := l_rank_num;
+        IF l_rank_num < l_bottom_min_rank THEN
+          l_bottom_min_rank := l_rank_num;
+        END IF;
+      ELSE
+        -- Check for top rank (COMP SET TOP R{N} RATE)
+        l_rank_num := get_top_rank_number_from_attr_id(l_attr_id);
+        IF l_rank_num IS NOT NULL THEN
+          l_top_rank_attrs(l_attr_id) := l_rank_num;
+          l_top_unique_ranks(l_rank_num) := TRUE;
+          IF l_rank_num > l_top_max_rank THEN
+            l_top_max_rank := l_rank_num;
+          END IF;
+          IF l_rank_num < l_top_min_rank THEN
+            l_top_min_rank := l_rank_num;
+          END IF;
         END IF;
       END IF;
       l_pos := l_pos + 1;
     END LOOP;
 
-    -- Count distinct ranks referenced
-    l_distinct_rank_count := l_unique_ranks.COUNT;
+    -- Count distinct ranks referenced for each type
+    l_bottom_distinct_rank_count := l_bottom_unique_ranks.COUNT;
+    l_top_distinct_rank_count := l_top_unique_ranks.COUNT;
 
-    -- Step 2: Check if we have enough competitors for the distinct ranks needed
-    IF l_distinct_rank_count > p_valid_comp_count THEN
-      -- Not enough competitors to satisfy the expression without duplicates
-      -- Example: AVG(R1, R2, R3) with only 2 competitors
-      log_debug('Rank shifting: Not enough competitors. Need ' || l_distinct_rank_count ||
-                ' distinct ranks but only ' || p_valid_comp_count || ' competitors available. Returning NULL.');
-      RETURN NULL;
-    END IF;
-
-    -- Step 3: Calculate shift amount if needed
-    IF l_max_rank > p_valid_comp_count THEN
-      l_shift_amount := l_max_rank - p_valid_comp_count;
-      log_debug('Rank shifting: max_rank=' || l_max_rank || ', min_rank=' || l_min_rank ||
-                ', valid_comp=' || p_valid_comp_count || ', shift=' || l_shift_amount);
-
-      -- Verify shifted min rank won't go below 1
-      IF (l_min_rank - l_shift_amount) < 1 THEN
-        log_debug('Rank shifting: Shift would push min rank below 1. Returning NULL.');
+    -- ========== BOTTOM RANK SHIFTING ==========
+    IF l_bottom_distinct_rank_count > 0 THEN
+      -- Step 2a: Check if we have enough competitors for the distinct bottom ranks needed
+      IF l_bottom_distinct_rank_count > p_valid_comp_count THEN
+        log_debug('Bottom rank shifting: Not enough competitors. Need ' || l_bottom_distinct_rank_count ||
+                  ' distinct ranks but only ' || p_valid_comp_count || ' competitors available. Returning NULL.');
         RETURN NULL;
       END IF;
-    ELSE
-      -- No shifting needed
-      RETURN p_expression;
+
+      -- Step 3a: Calculate shift amount for bottom ranks if needed
+      IF l_bottom_max_rank > p_valid_comp_count THEN
+        l_bottom_shift_amount := l_bottom_max_rank - p_valid_comp_count;
+        log_debug('Bottom rank shifting: max_rank=' || l_bottom_max_rank || ', min_rank=' || l_bottom_min_rank ||
+                  ', valid_comp=' || p_valid_comp_count || ', shift=' || l_bottom_shift_amount);
+
+        -- Verify shifted min rank won't go below 1
+        IF (l_bottom_min_rank - l_bottom_shift_amount) < 1 THEN
+          log_debug('Bottom rank shifting: Shift would push min rank below 1. Returning NULL.');
+          RETURN NULL;
+        END IF;
+
+        -- Step 4a: Replace bottom rank attribute IDs with shifted ones
+        l_attr_id := l_bottom_rank_attrs.FIRST;
+        WHILE l_attr_id IS NOT NULL LOOP
+          l_rank_num := l_bottom_rank_attrs(l_attr_id);
+          l_new_rank := l_rank_num - l_bottom_shift_amount;
+          l_new_attr_id := get_attr_id_for_rank(p_template_id, l_new_rank);
+          IF l_new_attr_id IS NOT NULL THEN
+            l_result := REPLACE(l_result, '#' || l_attr_id || '#', '#' || l_new_attr_id || '#');
+            log_debug('Shifted bottom rank ' || l_rank_num || ' -> ' || l_new_rank || ' (attr: ' || l_attr_id || ' -> ' || l_new_attr_id || ')');
+          ELSE
+            log_debug('Bottom rank shifting: Could not find attribute for rank ' || l_new_rank || '. Returning NULL.');
+            RETURN NULL;
+          END IF;
+          l_attr_id := l_bottom_rank_attrs.NEXT(l_attr_id);
+        END LOOP;
+      END IF;
     END IF;
 
-    -- Step 4: Replace rank attribute IDs with shifted ones
-    l_attr_id := l_rank_attrs.FIRST;
-    WHILE l_attr_id IS NOT NULL LOOP
-      l_rank_num := l_rank_attrs(l_attr_id);
-      l_new_rank := l_rank_num - l_shift_amount;
-      l_new_attr_id := get_attr_id_for_rank(p_template_id, l_new_rank);
-      IF l_new_attr_id IS NOT NULL THEN
-        l_result := REPLACE(l_result, '#' || l_attr_id || '#', '#' || l_new_attr_id || '#');
-        log_debug('Shifted rank ' || l_rank_num || ' -> ' || l_new_rank || ' (attr: ' || l_attr_id || ' -> ' || l_new_attr_id || ')');
-      ELSE
-        log_debug('Rank shifting: Could not find attribute for rank ' || l_new_rank || '. Returning NULL.');
+    -- ========== TOP RANK SHIFTING ==========
+    IF l_top_distinct_rank_count > 0 THEN
+      -- Step 2b: Check if we have enough competitors for the distinct top ranks needed
+      IF l_top_distinct_rank_count > p_valid_comp_count THEN
+        log_debug('Top rank shifting: Not enough competitors. Need ' || l_top_distinct_rank_count ||
+                  ' distinct ranks but only ' || p_valid_comp_count || ' competitors available. Returning NULL.');
         RETURN NULL;
       END IF;
-      l_attr_id := l_rank_attrs.NEXT(l_attr_id);
-    END LOOP;
+
+      -- Step 3b: Calculate shift amount for top ranks if needed
+      IF l_top_max_rank > p_valid_comp_count THEN
+        l_top_shift_amount := l_top_max_rank - p_valid_comp_count;
+        log_debug('Top rank shifting: max_rank=' || l_top_max_rank || ', min_rank=' || l_top_min_rank ||
+                  ', valid_comp=' || p_valid_comp_count || ', shift=' || l_top_shift_amount);
+
+        -- Verify shifted min rank won't go below 1
+        IF (l_top_min_rank - l_top_shift_amount) < 1 THEN
+          log_debug('Top rank shifting: Shift would push min rank below 1. Returning NULL.');
+          RETURN NULL;
+        END IF;
+
+        -- Step 4b: Replace top rank attribute IDs with shifted ones
+        l_attr_id := l_top_rank_attrs.FIRST;
+        WHILE l_attr_id IS NOT NULL LOOP
+          l_rank_num := l_top_rank_attrs(l_attr_id);
+          l_new_rank := l_rank_num - l_top_shift_amount;
+          l_new_attr_id := get_attr_id_for_top_rank(p_template_id, l_new_rank);
+          IF l_new_attr_id IS NOT NULL THEN
+            l_result := REPLACE(l_result, '#' || l_attr_id || '#', '#' || l_new_attr_id || '#');
+            log_debug('Shifted top rank ' || l_rank_num || ' -> ' || l_new_rank || ' (attr: ' || l_attr_id || ' -> ' || l_new_attr_id || ')');
+          ELSE
+            log_debug('Top rank shifting: Could not find attribute for rank ' || l_new_rank || '. Returning NULL.');
+            RETURN NULL;
+          END IF;
+          l_attr_id := l_top_rank_attrs.NEXT(l_attr_id);
+        END LOOP;
+      END IF;
+    END IF;
 
     RETURN l_result;
   END apply_rank_shifting;
@@ -681,11 +786,11 @@ FUNCTION EVALUATE(
             IF l_filters_passed THEN
               log_debug('... Filters PASSED for Region: ' || region_rec.region_name); -- (new log line)
               FOR cond_rec IN (
-                SELECT cond_name, expr, occ_attr, occ_op, occ_val, pr_type, pr_op, pr_val, es_op, es_val, sequence
+                SELECT cond_name, expr, occ_attr, occ_op, occ_val, pr_type, pr_op, pr_val, pr_rank_direction, es_op, es_val, sequence
                 FROM JSON_TABLE(region_rec.conditions, '$[*]' COLUMNS (
                   cond_name VARCHAR2(255) PATH '$.name', expr VARCHAR2(4000) PATH '$.expression', sequence NUMBER PATH '$.sequence',
                   occ_attr VARCHAR2(255) PATH '$.occupancyThreshold.attribute', occ_op VARCHAR2(10) PATH '$.occupancyThreshold.operator', occ_val NUMBER PATH '$.occupancyThreshold.value',
-                  pr_type VARCHAR2(255) PATH '$.propertyRanking.type', pr_op VARCHAR2(10) PATH '$.propertyRanking.operator', pr_val NUMBER PATH '$.propertyRanking.value',
+                  pr_type VARCHAR2(255) PATH '$.propertyRanking.type', pr_op VARCHAR2(10) PATH '$.propertyRanking.operator', pr_val NUMBER PATH '$.propertyRanking.value', pr_rank_direction VARCHAR2(10) PATH '$.propertyRanking.rankDirection',
                   es_op VARCHAR2(10) PATH '$.eventScore.operator', es_val NUMBER PATH '$.eventScore.value'
                 )) ORDER BY sequence
               ) LOOP
@@ -729,22 +834,23 @@ FUNCTION EVALUATE(
                   END IF;
                   
                   l_pr_failed := NULL;
-                  IF v_condition_met AND cond_rec.pr_type IS NOT NULL THEN 
-                    l_pr_template_id := REPLACE(cond_rec.pr_type, '#', ''); 
-                    l_pr_attr_id := get_attribute_id_from_template(l_pr_template_id); 
-                    IF l_pr_attr_id IS NOT NULL AND l_staged_data.EXISTS(l_pr_attr_id) THEN 
-                      l_actual_pr_val := get_value_for_date(l_staged_data(l_pr_attr_id), v_stay_date); 
-                      EXECUTE IMMEDIATE 'BEGIN :result := CASE WHEN :val1 ' || cond_rec.pr_op || ' :val2 THEN 1 ELSE 0 END; END;' USING OUT l_check_result, IN l_actual_pr_val, IN cond_rec.pr_val; 
-                      IF l_check_result = 0 OR l_actual_pr_val IS NULL THEN 
-                        log_debug('......... Property Ranking FAILED. Actual: ' || NVL(TO_CHAR(l_actual_pr_val), 'NULL') || ' ' || cond_rec.pr_op || ' ' || cond_rec.pr_val); -- (new log line)
-                        l_pr_failed := TRUE; v_condition_met := FALSE; 
-                      ELSE 
-                        l_pr_failed := FALSE; 
-                      END IF; 
-                    ELSE 
-                      log_debug('......... Property Ranking FAILED. Attribute data missing: ' || l_pr_attr_id); -- (new log line)
-                      l_pr_failed := TRUE; v_condition_met := FALSE; 
-                    END IF; 
+                  IF v_condition_met AND cond_rec.pr_type IS NOT NULL THEN
+                    l_pr_template_id := REPLACE(cond_rec.pr_type, '#', '');
+                    -- Pass rankDirection to get the correct rank attribute (bottom or top)
+                    l_pr_attr_id := get_attribute_id_from_template(l_pr_template_id, NVL(cond_rec.pr_rank_direction, 'bottom'));
+                    IF l_pr_attr_id IS NOT NULL AND l_staged_data.EXISTS(l_pr_attr_id) THEN
+                      l_actual_pr_val := get_value_for_date(l_staged_data(l_pr_attr_id), v_stay_date);
+                      EXECUTE IMMEDIATE 'BEGIN :result := CASE WHEN :val1 ' || cond_rec.pr_op || ' :val2 THEN 1 ELSE 0 END; END;' USING OUT l_check_result, IN l_actual_pr_val, IN cond_rec.pr_val;
+                      IF l_check_result = 0 OR l_actual_pr_val IS NULL THEN
+                        log_debug('......... Property Ranking (' || UPPER(NVL(cond_rec.pr_rank_direction, 'bottom')) || ') FAILED. Actual: ' || NVL(TO_CHAR(l_actual_pr_val), 'NULL') || ' ' || cond_rec.pr_op || ' ' || cond_rec.pr_val);
+                        l_pr_failed := TRUE; v_condition_met := FALSE;
+                      ELSE
+                        l_pr_failed := FALSE;
+                      END IF;
+                    ELSE
+                      log_debug('......... Property Ranking (' || UPPER(NVL(cond_rec.pr_rank_direction, 'bottom')) || ') FAILED. Attribute data missing: ' || l_pr_attr_id);
+                      l_pr_failed := TRUE; v_condition_met := FALSE;
+                    END IF;
                   END IF;
                   
                   l_ev_failed := NULL;
@@ -785,7 +891,7 @@ FUNCTION EVALUATE(
                         || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END
                         || '}'
                         || ', "occupancy":' || CASE WHEN cond_rec.occ_attr IS NOT NULL THEN '{"attr":"' || REPLACE(cond_rec.occ_attr,'#','') || '", "actual":' || NVL(TO_CHAR(l_actual_occ_val),'null') || ', "operator":"' || cond_rec.occ_op || '", "threshold":' || TO_CHAR(cond_rec.occ_val) || ', "failed":' || CASE WHEN l_occ_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END
-                        || ', "property_ranking":' || CASE WHEN cond_rec.pr_type IS NOT NULL THEN '{"attr":"' || NVL(l_pr_attr_id,'') || '", "actual":' || NVL(TO_CHAR(l_actual_pr_val),'null') || ', "operator":"' || cond_rec.pr_op || '", "threshold":' || TO_CHAR(cond_rec.pr_val) || ', "failed":' || CASE WHEN l_pr_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END
+                        || ', "property_ranking":' || CASE WHEN cond_rec.pr_type IS NOT NULL THEN '{"attr":"' || NVL(l_pr_attr_id,'') || '", "actual":' || NVL(TO_CHAR(l_actual_pr_val),'null') || ', "operator":"' || cond_rec.pr_op || '", "threshold":' || TO_CHAR(cond_rec.pr_val) || ', "direction":"' || NVL(cond_rec.pr_rank_direction, 'bottom') || '", "failed":' || CASE WHEN l_pr_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END
                         || ', "event_score":' || CASE WHEN cond_rec.es_val IS NOT NULL THEN '{"actual":' || NVL(TO_CHAR(l_actual_event_score),'null') || ', "operator":"' || cond_rec.es_op || '", "threshold":' || TO_CHAR(cond_rec.es_val) || ', "failed":' || CASE WHEN l_ev_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END
                         || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"')
                         || '", "expression_values":' || l_attr_json
@@ -1169,7 +1275,7 @@ FUNCTION EVALUATE(
                              ELSE '' END
                           || '}'
                           || ', "occupancy":' || CASE WHEN cond_rec.occ_attr IS NOT NULL THEN '{"attr":"' || REPLACE(cond_rec.occ_attr,'#','') || '", "actual":' || NVL(TO_CHAR(l_actual_occ_val),'null') || ', "operator":"' || cond_rec.occ_op || '", "threshold":' || TO_CHAR(cond_rec.occ_val) || ', "failed":' || CASE WHEN l_occ_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END
-                          || ', "property_ranking":' || CASE WHEN cond_rec.pr_type IS NOT NULL THEN '{"attr":"' || NVL(l_pr_attr_id,'') || '", "actual":' || NVL(TO_CHAR(l_actual_pr_val),'null') || ', "operator":"' || cond_rec.pr_op || '", "threshold":' || TO_CHAR(cond_rec.pr_val) || ', "failed":' || CASE WHEN l_pr_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END
+                          || ', "property_ranking":' || CASE WHEN cond_rec.pr_type IS NOT NULL THEN '{"attr":"' || NVL(l_pr_attr_id,'') || '", "actual":' || NVL(TO_CHAR(l_actual_pr_val),'null') || ', "operator":"' || cond_rec.pr_op || '", "threshold":' || TO_CHAR(cond_rec.pr_val) || ', "direction":"' || NVL(cond_rec.pr_rank_direction, 'bottom') || '", "failed":' || CASE WHEN l_pr_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END
                           || ', "event_score":' || CASE WHEN cond_rec.es_val IS NOT NULL THEN '{"actual":' || NVL(TO_CHAR(l_actual_event_score),'null') || ', "operator":"' || cond_rec.es_op || '", "threshold":' || TO_CHAR(cond_rec.es_val) || ', "failed":' || CASE WHEN l_ev_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END
                           || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"')
                           || '", "expression_values":' || l_attr_json
@@ -1248,7 +1354,7 @@ FUNCTION EVALUATE(
                       WHEN OTHERS THEN
                         l_expr_outcome := NULL;
                     END;
-                    l_failed_cond_json := '{' || '"region":"' || REPLACE(region_rec.region_name,'"','\"') || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"') || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD') || '", "filters":{' || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"' || ', "lead_time":' || l_lead_time_json || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END || CASE WHEN region_rec.minimum_rate IS NOT NULL THEN ', "minimum_rate":' || TO_CHAR(region_rec.minimum_rate) ELSE '' END || '}' || ', "occupancy":' || CASE WHEN cond_rec.occ_attr IS NOT NULL THEN '{"attr":"' || REPLACE(cond_rec.occ_attr,'#','') || '", "actual":' || NVL(TO_CHAR(l_actual_occ_val),'null') || ', "operator":"' || cond_rec.occ_op || '", "threshold":' || TO_CHAR(cond_rec.occ_val) || ', "failed":' || CASE WHEN l_occ_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "property_ranking":' || CASE WHEN cond_rec.pr_type IS NOT NULL THEN '{"attr":"' || NVL(l_pr_attr_id,'') || '", "actual":' || NVL(TO_CHAR(l_actual_pr_val),'null') || ', "operator":"' || cond_rec.pr_op || '", "threshold":' || TO_CHAR(cond_rec.pr_val) || ', "failed":' || CASE WHEN l_pr_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "event_score":' || CASE WHEN cond_rec.es_val IS NOT NULL THEN '{"actual":' || NVL(TO_CHAR(l_actual_event_score),'null') || ', "operator":"' || cond_rec.es_op || '", "threshold":' || TO_CHAR(cond_rec.es_val) || ', "failed":' || CASE WHEN l_ev_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"') || '", "expression_values":' || l_attr_json || ', "evaluated_outcome":' || NVL(TO_CHAR(l_expr_outcome),'null') || ', "result":null' || ', "note":"condition_not_met"' || '}';
+                    l_failed_cond_json := '{' || '"region":"' || REPLACE(region_rec.region_name,'"','\"') || '", "condition":"' || REPLACE(cond_rec.cond_name,'"','\"') || '", "stay_date":"' || TO_CHAR(v_stay_date,'YYYY-MM-DD') || '", "filters":{' || '"stay_window":"' || TO_CHAR(region_rec.stay_from,'YYYY-MM-DD') || ' to ' || TO_CHAR(region_rec.stay_to,'YYYY-MM-DD') || '"' || ', "lead_time":' || l_lead_time_json || CASE WHEN region_rec.days_of_week IS NOT NULL THEN ', "days_of_week":' || REPLACE(region_rec.days_of_week,'"','\"') ELSE '' END || CASE WHEN region_rec.minimum_rate IS NOT NULL THEN ', "minimum_rate":' || TO_CHAR(region_rec.minimum_rate) ELSE '' END || '}' || ', "occupancy":' || CASE WHEN cond_rec.occ_attr IS NOT NULL THEN '{"attr":"' || REPLACE(cond_rec.occ_attr,'#','') || '", "actual":' || NVL(TO_CHAR(l_actual_occ_val),'null') || ', "operator":"' || cond_rec.occ_op || '", "threshold":' || TO_CHAR(cond_rec.occ_val) || ', "failed":' || CASE WHEN l_occ_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "property_ranking":' || CASE WHEN cond_rec.pr_type IS NOT NULL THEN '{"attr":"' || NVL(l_pr_attr_id,'') || '", "actual":' || NVL(TO_CHAR(l_actual_pr_val),'null') || ', "operator":"' || cond_rec.pr_op || '", "threshold":' || TO_CHAR(cond_rec.pr_val) || ', "direction":"' || NVL(cond_rec.pr_rank_direction, 'bottom') || '", "failed":' || CASE WHEN l_pr_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "event_score":' || CASE WHEN cond_rec.es_val IS NOT NULL THEN '{"actual":' || NVL(TO_CHAR(l_actual_event_score),'null') || ', "operator":"' || cond_rec.es_op || '", "threshold":' || TO_CHAR(cond_rec.es_val) || ', "failed":' || CASE WHEN l_ev_failed THEN 'true' ELSE 'false' END || '}' ELSE 'null' END || ', "expression":"' || REPLACE(cond_rec.expr,'"','\"') || '", "expression_values":' || l_attr_json || ', "evaluated_outcome":' || NVL(TO_CHAR(l_expr_outcome),'null') || ', "result":null' || ', "note":"condition_not_met"' || '}';
                     IF l_failure_details_json IS NULL THEN l_failure_details_json := '[' || l_failed_cond_json; ELSE l_failure_details_json := l_failure_details_json || ',' || l_failed_cond_json; END IF;
                   END IF;
                 END;

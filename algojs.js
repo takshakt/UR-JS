@@ -98,11 +98,31 @@ function executeLoadRequest(capturedAlgo, capturedVersion, capturedHotelId) {
     // Re-validate: Check if values changed during debounce period
     const currentAlgo = apex.item("P1050_ALGO_LIST").getValue();
     const currentVersion = apex.item("P1050_VERSION").getValue();
+    const currentHotel = apex.item("P1050_HOTEL_LIST").getValue();
 
     if (currentAlgo !== capturedAlgo || currentVersion !== capturedVersion) {
-        console.warn('RACE CONDITION PREVENTED: Parameters changed during debounce.',
+        console.warn('RACE CONDITION DETECTED: Parameters changed during debounce.',
             'Captured:', capturedAlgo, capturedVersion,
             'Current:', currentAlgo, currentVersion);
+
+        // CRITICAL FIX: Instead of just returning, re-trigger with current values
+        // This ensures the final stable state gets loaded
+        if (currentAlgo && currentVersion) {
+            const currentKey = `${currentAlgo}:${currentVersion}`;
+            if (lastLoadedAlgoVersion !== currentKey) {
+                console.log('Re-scheduling load for current values:', currentAlgo, currentVersion);
+                // Clear any existing timer first
+                if (loadDebounceTimer) {
+                    clearTimeout(loadDebounceTimer);
+                }
+                // Schedule new request with current values
+                loadDebounceTimer = setTimeout(() => {
+                    executeLoadRequest(currentAlgo, currentVersion, currentHotel);
+                }, LOAD_DEBOUNCE_MS);
+            } else {
+                console.log('Current algo+version already loaded, no re-schedule needed');
+            }
+        }
         return;
     }
 
@@ -320,8 +340,53 @@ function updateAllDropdowns() {
     // They trigger the modal dialog instead of showing options directly
 
     document.querySelectorAll('.property-type-select').forEach(el => {
-        populateSelect(el, dynamicData.propertyTypes, 'Select Type');
+        populateSelect(el, dynamicData.propertyTypes, 'Choose Comp. Set');
     });
+
+    // Handle property ranking availability - disable when no property types available
+    if (dynamicData.propertyTypes && dynamicData.propertyTypes.length > 0) {
+        document.querySelectorAll('[id$="-property-ranking"]').forEach(checkbox => {
+            const fieldContainer = checkbox.closest('.field-container');
+            if (!fieldContainer) return;
+
+            // Enable checkbox and remove disabled styling
+            checkbox.disabled = false;
+            fieldContainer.classList.remove('disabled-field');
+
+            // Remove "Unavailable" badge from label
+            const label = fieldContainer.querySelector('label[for="' + checkbox.id + '"]');
+            if (label) {
+                const badge = label.querySelector('.unavailable-badge');
+                if (badge) badge.remove();
+            }
+        });
+    } else {
+        // Disable and uncheck all property ranking checkboxes when propertyTypes is empty
+        document.querySelectorAll('[id$="-property-ranking"]').forEach(checkbox => {
+            if (checkbox.checked) {
+                console.warn('Disabling property ranking condition - not available for selected hotel');
+            }
+            checkbox.checked = false;
+            checkbox.disabled = true;
+
+            const fieldContainer = checkbox.closest('.field-container');
+            if (fieldContainer) {
+                fieldContainer.classList.add('disabled-field');
+            }
+
+            // Add "Unavailable" badge if not present
+            const label = fieldContainer ? fieldContainer.querySelector('label[for="' + checkbox.id + '"]') : null;
+            if (label) {
+                const existingBadge = label.querySelector('.unavailable-badge');
+                if (!existingBadge) {
+                    const badge = document.createElement('span');
+                    badge.className = 'unavailable-badge';
+                    badge.textContent = 'Unavailable';
+                    label.appendChild(badge);
+                }
+            }
+        });
+    }
 
     // Handle occupancy attribute - inject/update content and manage availability state
     if (dynamicData.occupancyAttributes && dynamicData.occupancyAttributes.length > 0) {
@@ -562,6 +627,35 @@ function parseAttributeMetadata(attributes) {
 }
 
 /**
+ * Gets the competitor count for a given template ID by counting bottom rank rate attributes.
+ * We count "COMP SET R{N} RATE" pattern (excludes "TOP" variants) to get the actual competitor count.
+ * @param {string} templateId - The template ID to look up
+ * @returns {number} The number of competitors (0 if not found)
+ */
+function getCompCountForTemplate(templateId) {
+    if (!dynamicData.propertyTypes) return 0;
+
+    // Find the template name from propertyTypes
+    const template = dynamicData.propertyTypes.find(pt => pt.id === templateId);
+    if (!template) return 0;
+
+    // Count bottom rank rate attributes: "COMP SET BOTTOM R{N} RATE"
+    // This gives us the actual number of competitors
+    const bottomRankPattern = /^COMP SET BOTTOM R\d+ RATE$/;
+    let count = 0;
+
+    if (attributeMetadata.parsed) {
+        attributeMetadata.parsed.forEach(attr => {
+            if (attr.template === template.name && bottomRankPattern.test(attr.attributeName)) {
+                count++;
+            }
+        });
+    }
+
+    return count || 99; // Default to 99 if we can't determine
+}
+
+/**
  * Filters attributes based on search text, selected templates, and selected qualifiers.
  * @param {string} searchText - Case-insensitive search text
  * @param {Array} selectedTemplates - Array of selected template names (empty = all)
@@ -591,7 +685,7 @@ function filterAttributes(searchText, selectedTemplates, selectedQualifiers) {
     filtered.sort((a, b) => a.name.localeCompare(b.name));
 
     return {
-        attributes: filtered.slice(0, 20), // Return first 20
+        attributes: filtered,
         totalCount: filtered.length
     };
 }
@@ -1099,8 +1193,8 @@ function addCondition(regionId) {
                         ${generateOccupancyFieldContent(dynamicData.occupancyAttributes && dynamicData.occupancyAttributes.length > 0)}
                     </div>
                 </div>
-                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"><label for="${conditionId}-property-ranking">Property Ranking (Comp. Set)</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Select Type</option>${(dynamicData.propertyTypes || []).map(type => `<option value="${type.id}">${type.name}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="text" class="value-input property-value" placeholder="Value"></div></div>
-                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-event-score" data-validates="eventScore"><label for="${conditionId}-event-score">Event Score</label><div class="field-content hidden"><select class="operator-select event-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input event-value" value="0" min="0"></div></div>
+                <div class="field-container${dynamicData.propertyTypes && dynamicData.propertyTypes.length > 0 ? '' : ' disabled-field'}"><input type="checkbox" class="field-checkbox" id="${conditionId}-property-ranking" data-validates="propertyRanking"${dynamicData.propertyTypes && dynamicData.propertyTypes.length > 0 ? '' : ' disabled'}><label for="${conditionId}-property-ranking">Own Property Rank${dynamicData.propertyTypes && dynamicData.propertyTypes.length > 0 ? '' : '<span class="unavailable-badge">Unavailable</span>'}</label><div class="field-content hidden"><select class="property-type-select property-type"><option value="">Choose Comp. Set</option>${(dynamicData.propertyTypes || []).map(type => `<option value="${type.id}">${type.name}</option>`).join('')}</select><select class="operator-select property-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input property-value" value="1" min="1" style="width: 60px;"><label class="rank-direction-toggle"><span class="toggle-label-left">Bottom</span><input type="checkbox" class="rank-direction-switch"><span class="toggle-slider"></span><span class="toggle-label-right">Top</span></label></div></div>
+                <div class="field-container"><input type="checkbox" class="field-checkbox" id="${conditionId}-event-score" data-validates="eventScore"><label for="${conditionId}-event-score">Event Score</label><div class="field-content hidden"><select class="operator-select event-operator">${staticData.operators.map(op => `<option value="${op}">${op}</option>`).join('')}</select><input type="number" class="value-input event-value" value="0" min="-3" max="3" style="width: 60px;"></div></div>
             </div>
             <div class="condition-expression" style="flex: 2; border-left: 1px solid #444; padding-left: 20px;">
                 <div class="section calculation-section" style="padding: 0; border: none; background: none;">
@@ -1144,6 +1238,24 @@ function setupConditionEventListeners(conditionElement) {
             if (fieldContent) fieldContent.classList.toggle('hidden', !e.target.checked);
         });
     });
+
+    // Update property-value max when comp set selection changes
+    const propertyTypeSelect = conditionElement.querySelector('.property-type-select');
+    if (propertyTypeSelect) {
+        propertyTypeSelect.addEventListener('change', (e) => {
+            const templateId = e.target.value;
+            const propertyValueInput = conditionElement.querySelector('.property-value');
+            if (propertyValueInput) {
+                const compCount = getCompCountForTemplate(templateId);
+                propertyValueInput.max = compCount;
+                // If current value exceeds new max, adjust it
+                if (parseInt(propertyValueInput.value) > compCount) {
+                    propertyValueInput.value = compCount;
+                }
+            }
+        });
+    }
+
     const calculationSection = conditionElement.querySelector('.calculation-section');
     if (!calculationSection) return;
     const expressionTextarea = calculationSection.querySelector('.expression-textarea');
@@ -1647,6 +1759,12 @@ function validateRegion(regionElement) {
                     fc.classList.add('invalid-field');
                 } else {
                     signature = `${validationType}:${inputs.map(i => i.value).join(':')}`;
+                    // Include rank direction toggle in signature for propertyRanking
+                    if (validationType === 'propertyRanking') {
+                        const rankDirectionSwitch = fc.querySelector('.rank-direction-switch');
+                        const rankDirection = rankDirectionSwitch && rankDirectionSwitch.checked ? 'top' : 'bottom';
+                        signature += `:${rankDirection}`;
+                    }
                     condSignatures.push(signature);
                 }
             });
@@ -1760,11 +1878,13 @@ function getRegionData(regionElement) {
         }
         if (cond.querySelector(`#${cond.id}-property-ranking`)?.checked) {
             const val = cond.querySelector('.property-value').value;
-            conditionData.propertyRanking = { 
-                // type: cond.querySelector('.property-type').value, 
+            const rankDirection = cond.querySelector('.rank-direction-switch')?.checked ? 'top' : 'bottom';
+            conditionData.propertyRanking = {
+                // type: cond.querySelector('.property-type').value,
                 type: `#${cond.querySelector('.property-type').value}#`,
-                operator: cond.querySelector('.property-operator').value, 
-                value: isNaN(parseInt(val, 10)) ? val : parseInt(val, 10) 
+                operator: cond.querySelector('.property-operator').value,
+                value: isNaN(parseInt(val, 10)) ? val : parseInt(val, 10),
+                rankDirection: rankDirection
             };
         }
         if (cond.querySelector(`#${cond.id}-event-score`)?.checked) conditionData.eventScore = { operator: cond.querySelector('.event-operator').value, value: parseFloat(cond.querySelector('.event-value').value) };
@@ -2165,11 +2285,22 @@ function populateCondition(conditionElement, conditionData) {
             } else if (key === 'propertyRanking') {
                 // fieldContent.querySelector('.property-type-select').value = data.type;
                 const propertyTypeSelect = fieldContent.querySelector('.property-type-select');
+                const propertyValueInput = fieldContent.querySelector('.value-input');
                 if (propertyTypeSelect && data.type) {
-                    propertyTypeSelect.value = data.type.replace(/#/g, '');
+                    const templateId = data.type.replace(/#/g, '');
+                    propertyTypeSelect.value = templateId;
+                    // Set max based on comp count for this template
+                    if (propertyValueInput) {
+                        const compCount = getCompCountForTemplate(templateId);
+                        propertyValueInput.max = compCount;
+                    }
+                }
+                const rankDirectionSwitch = fieldContent.querySelector('.rank-direction-switch');
+                if (rankDirectionSwitch) {
+                    rankDirectionSwitch.checked = (data.rankDirection === 'top');
                 }
                 fieldContent.querySelector('.operator-select').value = data.operator;
-                fieldContent.querySelector('.value-input').value = data.value;
+                propertyValueInput.value = data.value;
             }
         }
     }
@@ -2303,10 +2434,12 @@ function getConditionData(cond) {
     }
     if (cond.querySelector(`#${cond.id}-property-ranking`)?.checked) {
         const val = cond.querySelector('.property-value').value;
-        conditionData.propertyRanking = { 
+        const rankDirection = cond.querySelector('.rank-direction-switch')?.checked ? 'top' : 'bottom';
+        conditionData.propertyRanking = {
             type: `#${cond.querySelector('.property-type').value}#`,
-            operator: cond.querySelector('.property-operator').value, 
-            value: isNaN(parseInt(val, 10)) ? val : parseInt(val, 10) 
+            operator: cond.querySelector('.property-operator').value,
+            value: isNaN(parseInt(val, 10)) ? val : parseInt(val, 10),
+            rankDirection: rankDirection
         };
     }
     if (cond.querySelector(`#${cond.id}-event-score`)?.checked) {
@@ -2391,6 +2524,81 @@ function getConditionData(cond) {
             color: #666;
             margin-top: 0.5rem;
             font-style: italic;
+        }
+
+        /* Rank direction toggle switch styling */
+        .rank-direction-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+
+        .rank-direction-toggle .toggle-label-left,
+        .rank-direction-toggle .toggle-label-right {
+            font-size: 0.85em;
+            color: #888;
+            transition: color 0.2s;
+            display: inline-block;
+            width: 42px;
+            text-align: center;
+        }
+
+        .rank-direction-toggle .toggle-slider {
+            position: relative;
+            width: 36px;
+            height: 18px;
+            background: #aaa;
+            border-radius: 18px;
+            transition: background 0.2s;
+        }
+
+        .rank-direction-toggle .toggle-slider::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 14px;
+            height: 14px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
+
+        .rank-direction-toggle .rank-direction-switch {
+            display: none;
+        }
+
+        .rank-direction-toggle .rank-direction-switch:checked + .toggle-slider {
+            background: #ffc107;
+        }
+
+        .rank-direction-toggle .rank-direction-switch:checked + .toggle-slider::before {
+            transform: translateX(18px);
+        }
+
+        /* When checked (Top selected): gray out Bottom, highlight Top */
+        .rank-direction-toggle:has(.rank-direction-switch:checked) .toggle-label-left {
+            color: #666;
+            font-weight: normal;
+        }
+
+        .rank-direction-toggle:has(.rank-direction-switch:checked) .toggle-label-right {
+            color: #ffc107;
+            font-weight: bold;
+        }
+
+        /* When unchecked (Bottom selected): gray out Top, highlight Bottom */
+        .rank-direction-toggle:has(.rank-direction-switch:not(:checked)) .toggle-label-right {
+            color: #666;
+            font-weight: normal;
+        }
+
+        .rank-direction-toggle:has(.rank-direction-switch:not(:checked)) .toggle-label-left {
+            color: #ccc;
+            font-weight: bold;
         }
     `;
 
