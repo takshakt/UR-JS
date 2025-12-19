@@ -1066,7 +1066,10 @@ FUNCTION EVALUATE(
                       END;
                       -- / CHECK FOR STRATEGY TEXT PASS-THROUGH
 
-                      -- ++ RANK SHIFTING: Apply rank shifting if we have ranking data
+                      -- ++ RANK SHIFTING: DISABLED - Treating missing rank attributes like any other missing attribute
+                      -- If a rank attribute has no value for a date, the normal "Manual Override Required" logic applies
+                      -- (Price Override can still supersede this behavior)
+                      /*
                       DECLARE
                         l_valid_comp_count NUMBER := NULL;
                         l_shifted_expr VARCHAR2(4000);
@@ -1114,6 +1117,7 @@ FUNCTION EVALUATE(
                           GOTO end_date_processing;
                         END IF;
                       END;
+                      */
                       -- / RANK SHIFTING
 
                       l_eval_copy := l_raw_expr; l_attr_json := '{'; l_attr_counter := 0; l_pos := 1;
@@ -1323,7 +1327,8 @@ FUNCTION EVALUATE(
                     -- ... (your existing code for l_failed_cond_json)
                     l_raw_expr := cond_rec.expr;
 
-                    -- ++ RANK SHIFTING: Apply rank shifting if we have ranking data (for failed conditions too)
+                    -- ++ RANK SHIFTING: DISABLED - Treating missing rank attributes like any other missing attribute
+                    /*
                     DECLARE
                       l_valid_comp_count NUMBER := NULL;
                       l_shifted_expr VARCHAR2(4000);
@@ -1338,6 +1343,7 @@ FUNCTION EVALUATE(
                         END IF;
                       END IF;
                     END;
+                    */
                     -- / RANK SHIFTING
 
                     l_eval_copy := l_raw_expr; l_attr_json := '{'; l_attr_counter := 0; l_pos := 1;
