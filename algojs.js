@@ -1247,10 +1247,11 @@ function setupConditionEventListeners(conditionElement) {
             const propertyValueInput = conditionElement.querySelector('.property-value');
             if (propertyValueInput) {
                 const compCount = getCompCountForTemplate(templateId);
-                propertyValueInput.max = compCount;
+                // Own property can rank from 1 to compCount+1 (after all competitors)
+                propertyValueInput.max = compCount + 1;
                 // If current value exceeds new max, adjust it
-                if (parseInt(propertyValueInput.value) > compCount) {
-                    propertyValueInput.value = compCount;
+                if (parseInt(propertyValueInput.value) > compCount + 1) {
+                    propertyValueInput.value = compCount + 1;
                 }
             }
         });
@@ -2289,10 +2290,10 @@ function populateCondition(conditionElement, conditionData) {
                 if (propertyTypeSelect && data.type) {
                     const templateId = data.type.replace(/#/g, '');
                     propertyTypeSelect.value = templateId;
-                    // Set max based on comp count for this template
+                    // Set max based on comp count for this template (own property can rank up to compCount+1)
                     if (propertyValueInput) {
                         const compCount = getCompCountForTemplate(templateId);
-                        propertyValueInput.max = compCount;
+                        propertyValueInput.max = compCount + 1;
                     }
                 }
                 const rankDirectionSwitch = fieldContent.querySelector('.rank-direction-switch');
