@@ -1,0 +1,610 @@
+---
+# ====== Page: Page Template =================================
+id: 1020
+identification: 
+  name: Page Template
+  alias: PAGE-TEMPLATE1
+  title: Page Template
+
+appearance: 
+  page-mode: Normal
+  page-template: Theme Default
+  template-options: 
+  - '#DEFAULT#'
+
+navigation-menu: 
+  override-user-interface-level: false
+
+navigation: 
+  cursor-focus: Do not focus cursor
+  warn-on-unsaved-changes: true
+
+javascript: 
+  file-urls: 
+  - 'https://cdn.jsdelivr.net/npm/sweetalert2@11'
+  function-and-global-variable-declaration: |
+    
+    function showAlert(title, message, icon = 'success', timer = 2500) {
+    
+        const showConfirmation = (icon === 'error' || icon === 'warning');
+    
+        const Toast = Swal.mixin({
+            toast: true,
+            position: "top-end",
+            showConfirmButton: showConfirmation,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.onmouseenter = Swal.stopTimer;
+                toast.onmouseleave = Swal.resumeTimer;
+            }
+        });
+    
+        Toast.fire({
+            icon: icon,
+            title: message
+        });
+    }
+
+security: 
+  authentication: Page Requires Authentication
+  deep-linking: Application Default
+  page-access-protection: Arguments Must Have Checksum
+  form-auto-complete: Off
+  browser-cache: Application Default
+
+session-management: 
+  rejoin-sessions: Application Default
+
+advanced: 
+  enable-duplicate-page-submissions: Yes - Enable page to be re-posted
+  reload-on-submit: Only for Success
+
+server-cache: 
+  caching: Disabled
+
+regions: 
+- # ====== Region: Breadcrumb ==================================
+  id: 10490325109115720
+  identification: 
+    name: Breadcrumb
+    type: Breadcrumb
+
+  source: 
+    breadcrumb: Breadcrumb # 8558440305922134
+
+  layout: 
+    sequence: 10
+    parent-region: No Parent
+    slot: REGION_POSITION_01
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Title Bar
+    template-options: 
+    - '#DEFAULT#'
+    - t-BreadcrumbRegion--useBreadcrumbTitle
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    appearance: 
+      breadcrumb-template: Breadcrumb
+      template-options: 
+      - '#DEFAULT#'
+
+page-items: 
+- # ====== Page Item: P1020_ALERT_TITLE ========================
+  id: 29902423361781321
+  identification: 
+    name: P1020_ALERT_TITLE
+    type: Hidden
+
+  settings: 
+    value-protected: false
+
+  layout: 
+    sequence: 10
+    region: No Parent
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: false
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1020_ALERT_MESSAGE ======================
+  id: 29902539468781322
+  identification: 
+    name: P1020_ALERT_MESSAGE
+    type: Hidden
+
+  settings: 
+    value-protected: false
+
+  layout: 
+    sequence: 20
+    region: No Parent
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: false
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1020_ALERT_ICON =========================
+  id: 29902595966781323
+  identification: 
+    name: P1020_ALERT_ICON
+    type: Hidden
+
+  settings: 
+    value-protected: false
+
+  layout: 
+    sequence: 30
+    region: No Parent
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: false
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1020_ALERT_TIMER ========================
+  id: 29971817395806490
+  identification: 
+    name: P1020_ALERT_TIMER
+    type: Hidden
+
+  settings: 
+    value-protected: false
+
+  layout: 
+    sequence: 40
+    region: No Parent
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: false
+    restricted-characters: All characters can be saved.
+
+dynamic-actions: 
+- # ====== Dynamic Action: New_3 ===============================
+  id: 10493159366115749
+  identification: 
+    name: New_3
+
+  execution: 
+    sequence: 90
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Custom
+    custom-event: showAlert
+    selection-type: jQuery Selector
+    jquery-selector: body
+
+  actions: 
+  - # ====== Action: Execute JavaScript Code =====================
+    id: 10493668855115753
+    identification: 
+      action: Execute JavaScript Code
+
+    settings: 
+      code: |
+        var title = $v('P1020_ALERT_TITLE') || 'Notification';
+        var message = $v('P1020_ALERT_MESSAGE');
+        var icon  = $v('P1020_ALERT_ICON') || 'success';
+        
+        if(message){
+          Swal.fire({
+            position: 'top-end',
+            icon: icon,
+            title: title,
+            text: message,
+            showConfirmButton: false,
+            timer: 2500
+          });
+          
+          $s('P1020_ALERT_MESSAGE','');
+        }
+
+    execution: 
+      sequence: 10
+      event: New_3 # 10493159366115749
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+- # ====== Dynamic Action: New =================================
+  id: 10494482121115755
+  identification: 
+    name: New
+
+  execution: 
+    sequence: 10
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1020_FILE_LOAD
+
+  actions: 
+  - # ====== Action: Submit Page =================================
+    id: 10494952513115756
+    identification: 
+      action: Submit Page
+
+    settings: 
+      show-processing: true
+
+    execution: 
+      sequence: 20
+      event: New # 10494482121115755
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+- # ====== Dynamic Action: New_1 ===============================
+  id: 10495344475115758
+  identification: 
+    name: New_1
+
+  execution: 
+    sequence: 20
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1020_TEMPLATE_LOV
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 10495895362115760
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+        BEGIN
+          -- Insert the template
+          INSERT INTO UR_TEMPLATES (
+            KEY,
+            NAME,
+            TYPE,
+            ACTIVE,
+            DEFINITION,
+            CREATED_BY,
+            CREATED_ON,
+            UPDATED_BY,
+            UPDATED_ON
+          ) VALUES (
+            'EXP_TEMPLATE_'|| ROUND(
+            (CAST(SYSTIMESTAMP AT TIME ZONE 'UTC' AS DATE) - DATE '1970-01-01') * 86400
+          ),
+            'Expense Template '|| ROUND(
+            (CAST(SYSTIMESTAMP AT TIME ZONE 'UTC' AS DATE) - DATE '1970-01-01') * 86400
+          ),
+            'RMS',
+            'Y',  -- or hardcode 'ADMIN'
+            '[{"name":"EMPLOYEE_NAME","data-type":1,"data-type-len":100,"selector":"Employee Name","is-json":false},{"name":"EXPENSE_ID","data-type":2,"selector":"Expense Id","is-json":false},{"name":"EXP_TYPE","data-type":1,"data-type-len":50,"selector":"Exp Type","is-json":false},{"name":"PROJECT_NAME","data-type":1,"data-type-len":100,"selector":"Project Name","is-json":false},{"name":"EXPENSE_PURPOSE","data-type":1,"data-type-len":50,"selector":"Expense Purpose","is-json":false},{"name":"EXPENSE_DATE_FROM","data-type":3,"selector":"Expense Date From","format-mask":"DD\"-\"MON\"-\"RR","is-json":false},{"name":"EXPENSE_DATE_TO","data-type":3,"selector":"Expense Date To","format-mask":"DD\"-\"MON\"-\"RR","is-json":false},{"name":"STATUS","data-type":1,"data-type-len":50,"selector":"Status","is-json":false},{"name":"CURRENCY","data-type":1,"data-type-len":50,"selector":"Currency","is-json":false},{"name":"CLAIM_AMOUNT","data-type":2,"selector":"Claim Amount","is-json":false},{"name":"EXPENSE_ATTACHMENT","data-type":2,"selector":"Expense Attachment","is-json":false},{"name":"EXPENSE_COMMENT","data-type":1,"data-type-len":32767,"selector":"Expense Comment","is-json":false},{"name":"CREATED_BY","data-type":1,"data-type-len":50,"selector":"Created By","is-json":false},{"name":"CREATION_DATE","data-type":3,"selector":"Creation Date","format-mask":"YYYY\"-\"MM\"-\"DD\" \"HH24\":\"MI\":\"SS","is-json":false},{"name":"LAST_UPDATED_BY","data-type":1,"data-type-len":50,"selector":"Last Updated By","is-json":false},{"name":"LAST_UPDATE_DATE","data-type":3,"selector":"Last Update Date","format-mask":"YYYY\"-\"MM\"-\"DD\" \"HH24\":\"MI\":\"SS","is-json":false}]',
+            '3AB2E656C7307FD1E063DD59000A5850',
+            SYSTIMESTAMP,
+                '3AB2E656C7307FD1E063DD59000A5850',
+            SYSTIMESTAMP
+          );
+        END;
+        
+
+    execution: 
+      sequence: 10
+      event: New_1 # 10495344475115758
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+- # ====== Dynamic Action: Page_Load_DA ========================
+  id: 10496245784115761
+  identification: 
+    name: Page_Load_DA
+
+  execution: 
+    sequence: 50
+    event-scope: Static
+
+  when: 
+    event: Page Load
+
+processes: 
+- # ====== Process: New ========================================
+  id: 10492314283115745
+  identification: 
+    name: New
+    type: Execute Code
+    execution-chain: None
+
+  source: 
+    location: Local Database
+    language: PL/SQL
+    pl/sql-code: |
+      DECLARE
+        v_profile_clob CLOB;
+        v_records NUMBER;
+        v_columns CLOB;
+      
+        -- Variables for parsing v_columns JSON
+        CURSOR cur_columns IS
+          SELECT jt.name, jt.data_type
+            FROM JSON_TABLE(
+                   v_columns,
+                   '$[*]'
+                   COLUMNS (
+                     name VARCHAR2(100) PATH '$.name',
+                     data_type VARCHAR2(20) PATH '$."data-type"'
+                   )
+                 ) jt;
+      
+      BEGIN
+        -- Create or truncate APEX collection before processing
+        IF apex_collection.collection_exists('UR_FILE_DATA_PROFILES') THEN
+          apex_collection.delete_collection('UR_FILE_DATA_PROFILES');
+        END IF;
+        
+        apex_collection.create_collection('UR_FILE_DATA_PROFILES');
+      
+        FOR r IN (
+          SELECT ID, APPLICATION_ID, NAME, FILENAME, MIME_TYPE, CREATED_ON, BLOB_CONTENT
+            FROM APEX_APPLICATION_TEMP_FILES
+           WHERE NAME = :P1020_FILE_LOAD
+        ) LOOP
+          INSERT INTO temp_BLOB (
+            ID,
+            APPLICATION_ID,
+            NAME,
+            FILENAME,
+            MIME_TYPE,
+            CREATED_ON,
+            BLOB_CONTENT
+          ) VALUES (
+            r.ID,
+            r.APPLICATION_ID,
+            r.NAME,
+            r.FILENAME,
+            r.MIME_TYPE,
+            r.CREATED_ON,
+            r.BLOB_CONTENT
+          );
+        END LOOP;
+      
+        FOR rec IN (
+          SELECT ID, BLOB_CONTENT, filename, name
+            FROM temp_BLOB
+           WHERE profile IS NULL -- only parse if profile not yet loaded
+        ) LOOP
+          -- Call APEX_DATA_PARSER.GET_FILE_PROFILE on the blob content
+          SELECT apex_data_parser.discover(
+                   p_content => rec.BLOB_CONTENT,
+                   p_file_name => rec.filename
+                 )
+            INTO v_profile_clob
+            FROM dual;
+      
+          -- Extract "parsed-rows"
+          SELECT TO_NUMBER(JSON_VALUE(v_profile_clob, '$."parsed-rows"'))
+            INTO v_records
+            FROM dual;
+      
+          -- Extract filtered columns with mapped data types
+          SELECT TO_CLOB(
+                   JSON_ARRAYAGG(
+                     JSON_OBJECT(
+                       'name' VALUE jt.name,
+                       'data-type' VALUE CASE jt.data_type
+                                          WHEN 1 THEN 'TEXT'
+                                          WHEN 2 THEN 'NUMBER'
+                                          WHEN 3 THEN 'DATE'
+                                          ELSE 'TEXT'
+                                        END
+                     )
+                   )
+                 )
+            INTO v_columns
+            FROM JSON_TABLE(v_profile_clob, '$."columns"[*]'
+                   COLUMNS (
+                     name       VARCHAR2(100) PATH '$.name',
+                     data_type  NUMBER       PATH '$."data-type"'
+                   )
+                ) jt;
+      
+          -- Insert each column into APEX collection
+          FOR col IN cur_columns LOOP
+            apex_collection.add_member(
+              p_collection_name => 'UR_FILE_DATA_PROFILES',
+              p_c001            => col.name,
+              p_c002            => col.data_type
+            );
+          END LOOP;
+      
+          -- Update temp_BLOB table
+          UPDATE temp_BLOB
+             SET profile = v_profile_clob,
+                 records = v_records,
+                 columns = v_columns
+           WHERE ID = rec.ID;
+        END LOOP;
+      
+        COMMIT;
+      END;
+
+  execution: 
+    sequence: 10
+    point: After Submit
+    run-process: Once Per Page Visit (default)
+
+  error: 
+    display-location: Inline in Notification
+
+- # ====== Process: New_1 ======================================
+  id: 10492781105115748
+  identification: 
+    name: New_1
+    type: Execute Code
+    execution-chain: None
+
+  source: 
+    location: Local Database
+    language: PL/SQL
+    pl/sql-code: |
+      DECLARE
+        l_json CLOB;
+      BEGIN
+        l_json := UR_utils.get_collection_json('UR_FILE_DATA_PROFILES');
+      
+        INSERT INTO UR_TEMPLATES (
+          KEY,
+          NAME,
+          TYPE,
+          ACTIVE,
+          DEFINITION,
+          CREATED_BY,
+          CREATED_ON,
+          UPDATED_BY,
+          UPDATED_ON
+        ) VALUES (
+          UPPER(
+            SUBSTR(
+              REGEXP_REPLACE(
+                REGEXP_REPLACE(
+                  REGEXP_REPLACE(
+                    TRIM(:P1020_TEMPLATE_NAME),
+                    '^[^A-Za-z0-9]+|[^A-Za-z0-9]+$', ''
+                  ),
+                  '[^A-Za-z0-9]+', '_'
+                ),
+                '_+', '_'
+              ),
+              1, 110
+            )
+          ),
+          :P1020_TEMPLATE_NAME,
+          :P1020_TEMPLATE_TYPE,
+          'Y',  -- or hardcode 'ADMIN'
+          l_json,
+          '3AB2E656C7307FD1E063DD59000A5850',
+          SYSTIMESTAMP,
+          '3AB2E656C7307FD1E063DD59000A5850',
+          SYSTIMESTAMP
+        );
+      
+        apex_debug.message('Debug info: ' || l_json);
+        
+        apex_pwa.send_push_notification (
+          p_application_id => 103,
+          p_user_name      => 'VKANT',
+          p_title          => 'Template Created Successfully.',
+          p_body           => 'Order #123456 will arrive within 3 days.' );
+      
+      --   :P1020_AI_RESPONSE := 'Insert Successful';
+      apex_pwa.push_queue;
+      -- RETURN 'SUCCESS';
+      
+      --   apex.message.showToast(
+      --     pMessage => 'Changes saved',
+      --     pPosition => 'top-right',   -- or 'top-left', 'bottom-right', 'bottom-left'
+      --     pDuration => 3000,          -- milliseconds; 0 means sticky until closed
+      --     pCloseIcon => true,         -- show a close (x) icon
+      --     pStyle => 'success'         -- values: 'success', 'warning', 'error', 'information'
+      --   );
+      
+      -- apex_application.g_print_success_message := 'Record saved successfully!';
+      
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- :P1020_AI_RESPONSE := 'Insert Failed: ' || SQLERRM;
+          apex_debug.message('Insert Failed: ' || SQLERRM);
+          -- RETURN 'Failed '||SQLERRM;
+      END;
+
+  execution: 
+    sequence: 30
+    point: Processing
+    run-process: Once Per Page Visit (default)
+
+  success-message: 
+    success-message: Succesfully Done
+
+  error: 
+    error-message: Blah blah blah
+    display-location: Inline in Notification
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+

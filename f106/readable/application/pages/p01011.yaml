@@ -1,0 +1,3910 @@
+---
+# ====== Page: Load Data v2 ==================================
+id: 1011
+identification: 
+  name: Load Data v2
+  alias: LOAD-DATA-V2
+  title: Load Data v2
+
+appearance: 
+  page-mode: Normal
+  page-template: Theme Default
+  template-options: 
+  - '#DEFAULT#'
+
+navigation-menu: 
+  override-user-interface-level: false
+
+navigation: 
+  cursor-focus: Do not focus cursor
+  warn-on-unsaved-changes: false
+
+javascript: 
+  file-urls: 
+  - 'https://cdn.jsdelivr.net/npm/sweetalert2@11'
+  function-and-global-variable-declaration: |
+    // function showAlert(title, message, icon='success', timer=2500) {
+    //   const showConfirmation = (icon === 'error' || icon === 'warning');
+    //   Swal.fire({
+    //     position: 'top-end',
+    //     icon: icon,
+    //     title: title,
+    //     text: message,
+    //     showConfirmButton: showConfirmation,
+    //     toast: true,
+    //     timer: showConfirmation ? undefined : timer
+    //   });
+    // }
+    
+    
+    // function showAlert(title, message, icon = 'success', timer = 2500) {
+    //   const showConfirmation = (icon === 'error' || icon === 'warning');
+    
+    //   Swal.fire({
+    //     toast: true,
+    //     position: 'top-end',
+    //     icon: icon,
+    //     title: title,
+    //     text: message,
+    //     showConfirmButton: showConfirmation,
+    //     timer: showConfirmation ? undefined : timer,
+    //     timerProgressBar: !showConfirmation,
+    //     didOpen: (toast) => {
+    //       if (!showConfirmation) {
+    //         toast.onmouseenter = Swal.stopTimer;
+    //         toast.onmouseleave = Swal.resumeTimer;
+    //       }
+    //     }
+    //   });
+    // }
+    
+    function showAlert(title, message, icon = 'success', timer = 2500) {
+    
+    const showConfirmation = (icon === 'error' || icon === 'warning');
+    
+    const Toast = Swal.mixin({
+      toast: true,
+      position: "top-end",
+      showConfirmButton: showConfirmation,
+      timer: 3000,
+      timerProgressBar: true,
+      didOpen: (toast) => {
+        toast.onmouseenter = Swal.stopTimer;
+        toast.onmouseleave = Swal.resumeTimer;
+      }
+    });
+    Toast.fire({
+      icon: icon,
+      title: message
+    });
+    }
+
+css: 
+  inline: |
+    .grey-btn {
+      background-color: #808080 !important;
+      color: white !important;
+      border-color: #808080 !important;
+    }
+    .grey-btn:hover {
+      background-color: #6e6e6e !important;
+    }
+    
+
+security: 
+  authentication: Page Requires Authentication
+  deep-linking: Application Default
+  page-access-protection: Arguments Must Have Checksum
+  form-auto-complete: Off
+  browser-cache: Application Default
+
+session-management: 
+  rejoin-sessions: Application Default
+
+advanced: 
+  enable-duplicate-page-submissions: Yes - Enable page to be re-posted
+  reload-on-submit: Only for Success
+
+server-cache: 
+  caching: Disabled
+
+regions: 
+- # ====== Region: Breadcrumb ==================================
+  id: 33315652283701611
+  identification: 
+    name: Breadcrumb
+    type: Breadcrumb
+
+  source: 
+    breadcrumb: Breadcrumb # 8558440305922134
+
+  layout: 
+    sequence: 10
+    parent-region: No Parent
+    slot: REGION_POSITION_01
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Title Bar
+    template-options: 
+    - '#DEFAULT#'
+    - t-BreadcrumbRegion--useBreadcrumbTitle
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    appearance: 
+      breadcrumb-template: Breadcrumb
+      template-options: 
+      - '#DEFAULT#'
+
+- # ====== Region: Template ====================================
+  id: 33345214504790101
+  identification: 
+    name: Template
+    title: 1. Choose Template
+    type: Static Content
+
+  layout: 
+    sequence: 10
+    parent-region: Main Region # 52476143455862522
+    slot: SUB_REGIONS
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+- # ====== Region: Metadata ====================================
+  id: 33345942753790108
+  identification: 
+    name: Metadata
+    type: Static Content
+
+  layout: 
+    sequence: 30
+    parent-region: Template # 33345214504790101
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noPadding
+    - t-Region--removeHeader js-removeLandmark
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+- # ====== Region: FIle Metadata ===============================
+  id: 33347169016790120
+  identification: 
+    name: FIle Metadata
+    type: Static Content
+
+  layout: 
+    sequence: 30
+    parent-region: File_Load # 52473197929862492
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noPadding
+    - t-Region--removeHeader js-removeLandmark
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+- # ====== Region: Data Mapping Collection =====================
+  id: 42877625058126951
+  identification: 
+    name: Data Mapping Collection
+    type: Interactive Grid
+
+  source: 
+    location: Local Database
+    type: SQL Query
+    sql-query: |
+      SELECT 
+          seq_id,
+          c003 AS mapping_type,
+          c001 AS source,
+          c002 AS target,
+          c004 AS default_value,
+          c005 as target_original_name,
+          c006 as qualifier,
+          c007 AS Format_Mask,
+          :P1011_TEMPLATE AS lov
+      FROM apex_collections
+      WHERE collection_name = 'UR_DATA_MAPPING_COLLECTION'
+        AND :P1011_TEMPLATE IS NOT NULL
+    page-items-to-submit: 
+    - P1011_TEMPLATE
+
+  layout: 
+    sequence: 10
+    parent-region: Mapping # 42950085823152151
+    slot: SUB_REGIONS
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Interactive Report
+    template-options: 
+    - '#DEFAULT#'
+    - t-IRR-region--hideHeader js-addHiddenHeadingRoleDesc
+    - margin-top-lg
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    static-id: MY_IG_MAPPING
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    id: 43351989540477302
+    edit: 
+      enabled: false
+
+    performance: 
+      lazy-loading: false
+
+    appearance: 
+      select-first-row: true
+      fixed-row-height: true
+
+    pagination: 
+      type: Scroll
+      show-total-count: true
+
+    toolbar: 
+      show: true
+      controls: 
+      - Search Column Selection
+      - Search Field
+      - Actions Menu
+      - Reset Button
+      - Save Button
+
+    enable-users-to: 
+      save-public-report: false
+      flashback: true
+      define-chart-view: true
+      download: true
+
+    download: 
+      formats: 
+      - CSV
+      - HTML
+      - PDF
+      - Excel
+      send-as-email: true
+
+    heading: 
+      fixed-to: Page
+
+    icon-view: 
+      show: false
+
+    detail-view: 
+      show: false
+
+    saved-reports: 
+    - # ====== Saved Report: Primary Report ========================
+      id: 43358543499517814
+      identification: 
+        name: Primary Report
+        alias: 100532
+
+  columns: 
+  - # ====== Column: FORMAT_MASK =================================
+    id: 33349743175790146
+    identification: 
+      column-name: FORMAT_MASK
+      type: Textarea
+
+    heading: 
+      heading: Format Mask
+      alignment: start
+
+    settings: 
+      resizable: true
+      auto-height: false
+      character-counter: false
+      trim-spaces: Leading and Trailing
+
+    layout: 
+      sequence: 100
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+      maximum-length: 32767
+
+    source: 
+      type: Database Column
+      database-column: FORMAT_MASK
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    session-state: 
+      data-type: VARCHAR2
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: None
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: false
+      hide: true
+
+  - # ====== Column: MAPPING_TYPE ================================
+    id: 43333417662903917
+    identification: 
+      column-name: MAPPING_TYPE
+      type: Select List
+
+    heading: 
+      heading: Mapping Type
+      alignment: center
+
+    layout: 
+      sequence: 30
+      column-alignment: center
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+
+    list-of-values: 
+      type: Shared Component
+      list-of-values: UR MAPPING TYPES # 10018491218303621
+      display-extra-values: true
+      display-null-value: false
+
+    source: 
+      type: Database Column
+      database-column: MAPPING_TYPE
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: Use List of Values
+      exact-match: false
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: false
+      hide: false
+
+  - # ====== Column: DEFAULT_VALUE ===============================
+    id: 43354521558477327
+    identification: 
+      column-name: DEFAULT_VALUE
+      type: Textarea
+
+    heading: 
+      heading: Calculation
+      alignment: start
+
+    settings: 
+      resizable: true
+      auto-height: false
+      character-counter: false
+      trim-spaces: Leading and Trailing
+
+    layout: 
+      sequence: 50
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+      maximum-length: 32767
+
+    source: 
+      type: Database Column
+      database-column: DEFAULT_VALUE
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    session-state: 
+      data-type: VARCHAR2
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: None
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: false
+      hide: true
+
+    advanced: 
+      static-id: formula_col
+
+  - # ====== Column: SOURCE ======================================
+    id: 45852726617881447
+    identification: 
+      column-name: SOURCE
+      type: Display Only
+
+    heading: 
+      heading: Source
+      alignment: start
+
+    settings: 
+      format: Plain Text
+      based-on: Item Value
+
+    layout: 
+      sequence: 20
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    source: 
+      type: Database Column
+      database-column: SOURCE
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    session-state: 
+      data-type: VARCHAR2
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: Use List of Values
+      exact-match: true
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: false
+      hide: true
+
+  - # ====== Column: TARGET ======================================
+    id: 45852819323881448
+    identification: 
+      column-name: TARGET
+      type: Popup LOV
+
+    heading: 
+      heading: Target
+      alignment: start
+
+    settings: 
+      display-as: Inline Popup
+      initial-fetch: Automatic
+      manual-entry: false
+      fetch-on-search: false
+
+    search: 
+      match-type: Contains
+      case-sensitive: false
+      minimum-characters: 0
+
+    multiple-values: 
+      type: No
+
+    layout: 
+      sequence: 40
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+      maximum-length: 32767
+
+    list-of-values: 
+      type: SQL Query
+      sql-query: |
+        select COLUMN_NAME||'('||DATA_TYPE||')' AS target from all_tab_cols where TABLE_NAME 
+        like (select db_object_name from ur_templates where id = :P1011_TEMPLATE)
+        
+      display-extra-values: true
+      display-null-value: true
+
+    source: 
+      type: Database Column
+      database-column: TARGET
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: Use List of Values
+      exact-match: true
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: false
+      hide: true
+
+  - # ====== Column: SEQ_ID ======================================
+    id: 60657802504302125
+    identification: 
+      column-name: SEQ_ID
+      type: Number Field
+
+    heading: 
+      heading: Seq Id
+      alignment: end
+
+    settings: 
+      number-alignment: Start
+      virtual-keyboard: Decimal
+
+    layout: 
+      sequence: 10
+      column-alignment: end
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: true
+
+    source: 
+      type: Database Column
+      database-column: SEQ_ID
+      data-type: NUMBER
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    column-filter: 
+      enabled: true
+      lov-type: None
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: true
+      control-break/aggregate: true
+      hide: true
+
+  - # ====== Column: LOV =========================================
+    id: 60657919878302126
+    identification: 
+      column-name: LOV
+      type: Textarea
+
+    heading: 
+      heading: Lov
+      alignment: start
+
+    settings: 
+      resizable: true
+      auto-height: false
+      character-counter: false
+      trim-spaces: Leading and Trailing
+
+    layout: 
+      sequence: 70
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+      maximum-length: 2000
+
+    source: 
+      type: Database Column
+      database-column: LOV
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    session-state: 
+      data-type: VARCHAR2
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: None
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: false
+      hide: true
+
+  - # ====== Column: TARGET_ORIGINAL_NAME ========================
+    id: 60658003140302127
+    identification: 
+      column-name: TARGET_ORIGINAL_NAME
+      type: Textarea
+
+    heading: 
+      heading: Target Original Name
+      alignment: start
+
+    settings: 
+      resizable: true
+      auto-height: false
+      character-counter: false
+      trim-spaces: Leading and Trailing
+
+    layout: 
+      sequence: 110
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+      maximum-length: 32767
+
+    source: 
+      type: Database Column
+      database-column: TARGET_ORIGINAL_NAME
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    session-state: 
+      data-type: VARCHAR2
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: None
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: false
+      hide: true
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Column: QUALIFIER ===================================
+    id: 60658060515302128
+    identification: 
+      column-name: QUALIFIER
+      type: Textarea
+
+    heading: 
+      heading: Qualifier
+      alignment: start
+
+    settings: 
+      resizable: true
+      auto-height: false
+      character-counter: false
+      trim-spaces: Leading and Trailing
+
+    layout: 
+      sequence: 90
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+      maximum-length: 32767
+
+    source: 
+      type: Database Column
+      database-column: QUALIFIER
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    session-state: 
+      data-type: VARCHAR2
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: None
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: false
+      hide: true
+
+  printing: 
+    page: 
+      size: Letter
+      orientation: Landscape
+      units: Inches
+      width: 11
+      height: 8.5
+      border-width: 0.5
+      border-color: '#666666'
+
+    page-header: 
+      font: Helvetica
+      font-weight: Normal
+      font-size: 12
+      font-color: '#000000'
+      alignment: center
+
+    column-headings: 
+      font: Helvetica
+      font-weight: Bold
+      font-size: 10
+      font-color: '#000000'
+      background-color: '#EEEEEE'
+
+    columns: 
+      font: Helvetica
+      font-weight: Normal
+      font-size: 10
+      font-color: '#000000'
+      background-color: '#FFFFFF'
+
+    page-footer: 
+      font: Helvetica
+      font-weight: Normal
+      font-size: 12
+      font-color: '#000000'
+      alignment: center
+
+- # ====== Region: Mapping =====================================
+  id: 42950085823152151
+  identification: 
+    name: Mapping
+    title: 3. Review Mapping & Calculations
+    type: Static Content
+
+  layout: 
+    sequence: 40
+    parent-region: Main Region # 52476143455862522
+    slot: SUB_REGIONS
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+- # ====== Region: Report ======================================
+  id: 52223967842288202
+  identification: 
+    name: Report
+    type: Interactive Report
+
+  source: 
+    location: Local Database
+    type: SQL Query
+    sql-query: |
+      -- SELECT ID, application_id, name, filename, mime_type, created_on, blob_content
+      -- FROM APEX_APPLICATION_TEMP_FILES
+      -- WHERE NAME = :P1011_FILE_LOAD
+      
+      /*SELECT 'ID' AS attribute, TO_CHAR(ID) AS value
+        FROM APEX_APPLICATION_TEMP_FILES
+       WHERE NAME = :P1011_FILE_LOAD
+      UNION ALL
+      SELECT 'FILENAME', FILENAME FROM APEX_APPLICATION_TEMP_FILES WHERE NAME = :P1011_FILE_LOAD
+      UNION ALL
+      SELECT 'Records', to_char(records-1) FROM temp_blob WHERE NAME = :P1011_FILE_LOAD*/
+      SELECT 'ID' AS attribute, TO_CHAR(f.id) AS value
+      FROM apex_application_temp_files f
+      WHERE f.name = :P1011_FILE_LOAD
+      
+      UNION ALL
+      
+      SELECT 'FILENAME', f.filename
+      FROM apex_application_temp_files f
+      WHERE f.name = :P1011_FILE_LOAD
+      
+      UNION ALL
+      
+      SELECT 'Records',
+             TO_CHAR(
+               (SELECT COUNT(*)
+                FROM TABLE(
+                       apex_data_parser.parse(
+                         p_content   => f.blob_content,
+                         p_file_name => f.filename,
+                         p_max_rows  => NULL,       -- ✅ parse ALL rows, not just 200
+                         p_skip_rows => 1           -- skip header row if needed
+                       )
+                     )
+               )
+             ) AS value
+      FROM apex_application_temp_files f
+      WHERE f.name = :P1011_FILE_LOAD
+      
+    page-items-to-submit: 
+    - P1011_FILE_LOAD
+
+  layout: 
+    sequence: 40
+    parent-region: File_Load # 52473197929862492
+    slot: BODY
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Interactive Report
+    template-options: 
+    - '#DEFAULT#'
+    - t-IRR-region--hideHeader js-addHiddenHeadingRoleDesc
+    - margin-top-lg
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  server-cache: 
+    caching: Disabled
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+  attributes: 
+    id: 52224038525288203
+    link: 
+      link-column: Exclude Link Column
+
+    pagination: 
+      type: None
+
+    performance: 
+      lazy-loading: false
+      maximum-rows-to-process: 1000000
+
+    search-bar: 
+      include-search-bar: false
+
+    heading: 
+      fixed-to: Page
+
+    icon-view: 
+      show: false
+
+    detail-view: 
+      show: false
+
+    saved-reports: 
+    - # ====== Saved Report: Primary Report ========================
+      id: 52425068184704356
+      identification: 
+        name: Primary Report
+        alias: 92503
+
+    columns: 
+    - # ====== Column: ATTRIBUTE ===================================
+      id: 52474809307862508
+      identification: 
+        column-name: ATTRIBUTE
+        type: Plain Text
+
+      heading: 
+        heading: Attribute
+        alignment: start
+
+      single-row-view: 
+        use-column-heading: true
+
+      layout: 
+        sequence: 10
+        column-alignment: start
+
+      accessibility: 
+        value-identifies-row: false
+
+      source: 
+        primary-key: false
+
+      column-filter: 
+        type: Default Based on Column Type
+
+      enable-users-to: 
+        hide: true
+        sort: true
+        filter: true
+        highlight: true
+        control-break: true
+        aggregate: true
+        compute: true
+        chart: true
+        group-by: true
+        pivot: true
+
+      security: 
+        escape-special-characters: true
+
+    - # ====== Column: VALUE =======================================
+      id: 52474911630862509
+      identification: 
+        column-name: VALUE
+        type: Plain Text
+
+      heading: 
+        heading: Value
+        alignment: start
+
+      single-row-view: 
+        use-column-heading: true
+
+      layout: 
+        sequence: 20
+        column-alignment: start
+
+      accessibility: 
+        value-identifies-row: false
+
+      source: 
+        primary-key: false
+
+      column-filter: 
+        type: Default Based on Column Type
+
+      enable-users-to: 
+        hide: true
+        sort: true
+        filter: true
+        highlight: true
+        control-break: true
+        aggregate: true
+        compute: true
+        chart: true
+        group-by: true
+        pivot: true
+
+      security: 
+        escape-special-characters: true
+
+- # ====== Region: File_Load ===================================
+  id: 52473197929862492
+  identification: 
+    name: File_Load
+    title: 2. Load File
+    type: Static Content
+
+  layout: 
+    sequence: 20
+    parent-region: Main Region # 52476143455862522
+    slot: SUB_REGIONS
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+- # ====== Region: Main Region =================================
+  id: 52476143455862522
+  identification: 
+    name: Main Region
+    type: Static Content
+
+  layout: 
+    sequence: 110
+    parent-region: No Parent
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noPadding
+    - t-Region--removeHeader js-removeLandmark
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    static-id: mainRegion
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Customizable and Shown By Default
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+page-items: 
+- # ====== Page Item: P1011_TEMPLATE ===========================
+  id: 33345334043790102
+  identification: 
+    name: P1011_TEMPLATE
+    type: Select List
+
+  label: 
+    label: Template
+    alignment: Left
+
+  settings: 
+    page-action-on-selection: None
+
+  multiple-values: 
+    type: No
+
+  layout: 
+    sequence: 10
+    region: Template # 33345214504790101
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    height: 1
+
+  validation: 
+    value-required: false
+
+  list-of-values: 
+    type: SQL Query
+    sql-query: |
+      select name as d, id as r
+      from ur_templates
+      where 1 = 1
+      and hotel_id = :P0_HOTEL_ID
+      and metadata is not null
+      and active = 'Y'
+      order by id desc
+    display-extra-values: true
+    display-null-value: true
+
+  cascading-list-of-values: 
+    parent-item(s): 
+    - P0_HOTEL_ID
+    items-to-submit: 
+    - P1011_TEMPLATE
+    parent-required: true
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_TEMPLATE_NAME ======================
+  id: 33345444292790103
+  identification: 
+    name: P1011_TEMPLATE_NAME
+    type: Text Field
+
+  label: 
+    label: Template Name
+    alignment: Left
+
+  settings: 
+    subtype: Text
+    trim-spaces: Leading and Trailing
+    text-case: NO CHANGE
+    submit-when-enter-pressed: false
+    disabled: true
+    send-on-page-submit: false
+
+  layout: 
+    sequence: 10
+    region: Metadata # 33345942753790108
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    width: 30
+
+  validation: 
+    value-required: false
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_TEMPLATE_TYPE ======================
+  id: 33346177453790110
+  identification: 
+    name: P1011_TEMPLATE_TYPE
+    type: Text Field
+
+  label: 
+    label: Template Type
+    alignment: Left
+
+  settings: 
+    subtype: Text
+    trim-spaces: Leading and Trailing
+    text-case: NO CHANGE
+    submit-when-enter-pressed: false
+    disabled: true
+    send-on-page-submit: false
+
+  layout: 
+    sequence: 20
+    region: Metadata # 33345942753790108
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    width: 30
+
+  validation: 
+    value-required: false
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_TEMPLATE_FILE_TYPE =================
+  id: 33346291624790111
+  identification: 
+    name: P1011_TEMPLATE_FILE_TYPE
+    type: Text Field
+
+  label: 
+    label: File Type
+    alignment: Left
+
+  settings: 
+    subtype: Text
+    trim-spaces: Leading and Trailing
+    text-case: NO CHANGE
+    submit-when-enter-pressed: false
+    disabled: true
+    send-on-page-submit: false
+
+  layout: 
+    sequence: 30
+    region: Metadata # 33345942753790108
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    width: 30
+
+  validation: 
+    value-required: false
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_TEMPLATE_FILE_SHEET_NAME ===========
+  id: 33346398725790112
+  identification: 
+    name: P1011_TEMPLATE_FILE_SHEET_NAME
+    type: Text Field
+
+  label: 
+    label: Sheet Name
+    alignment: Left
+
+  settings: 
+    subtype: Text
+    trim-spaces: Leading and Trailing
+    text-case: NO CHANGE
+    submit-when-enter-pressed: false
+    disabled: true
+    send-on-page-submit: false
+
+  layout: 
+    sequence: 40
+    region: Metadata # 33345942753790108
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    width: 30
+
+  validation: 
+    value-required: false
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_TEMPLATE_SKIP_ROWS =================
+  id: 33346412783790113
+  identification: 
+    name: P1011_TEMPLATE_SKIP_ROWS
+    type: Text Field
+
+  label: 
+    label: Skipped Rows
+    alignment: Left
+
+  settings: 
+    subtype: Text
+    trim-spaces: Leading and Trailing
+    text-case: NO CHANGE
+    submit-when-enter-pressed: false
+    disabled: true
+    send-on-page-submit: false
+
+  layout: 
+    sequence: 60
+    region: Metadata # 33345942753790108
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    width: 30
+
+  validation: 
+    value-required: false
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_TEMPLATE_RECORD_COUNT ==============
+  id: 33346719497790116
+  identification: 
+    name: P1011_TEMPLATE_RECORD_COUNT
+    type: Text Field
+
+  label: 
+    label: Record Count
+    alignment: Left
+
+  settings: 
+    subtype: Text
+    trim-spaces: Leading and Trailing
+    text-case: NO CHANGE
+    submit-when-enter-pressed: false
+    disabled: true
+    send-on-page-submit: false
+
+  layout: 
+    sequence: 70
+    region: Metadata # 33345942753790108
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    width: 30
+
+  validation: 
+    value-required: false
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_TEMPLATE_FILE_SHEET_XML_NAME =======
+  id: 33347095654790119
+  identification: 
+    name: P1011_TEMPLATE_FILE_SHEET_XML_NAME
+    type: Hidden
+
+  settings: 
+    value-protected: false
+
+  layout: 
+    sequence: 50
+    region: Metadata # 33345942753790108
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_FILE_NAME ==========================
+  id: 33347205116790121
+  identification: 
+    name: P1011_FILE_NAME
+    type: Text Field
+
+  label: 
+    label: File Name
+    alignment: Left
+
+  settings: 
+    subtype: Text
+    trim-spaces: Leading and Trailing
+    text-case: NO CHANGE
+    submit-when-enter-pressed: false
+    disabled: true
+    send-on-page-submit: false
+
+  layout: 
+    sequence: 10
+    region: FIle Metadata # 33347169016790120
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    width: 30
+
+  validation: 
+    value-required: false
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_FILE_TYPE ==========================
+  id: 33347377180790122
+  identification: 
+    name: P1011_FILE_TYPE
+    type: Text Field
+
+  label: 
+    label: File Type
+    alignment: Left
+
+  settings: 
+    subtype: Text
+    trim-spaces: Leading and Trailing
+    text-case: NO CHANGE
+    submit-when-enter-pressed: false
+    disabled: true
+    send-on-page-submit: false
+
+  layout: 
+    sequence: 20
+    region: FIle Metadata # 33347169016790120
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    width: 30
+
+  validation: 
+    value-required: false
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_FILE_RECORDS =======================
+  id: 33347403135790123
+  identification: 
+    name: P1011_FILE_RECORDS
+    type: Text Field
+
+  label: 
+    label: Records
+    alignment: Left
+
+  settings: 
+    subtype: Text
+    trim-spaces: Leading and Trailing
+    text-case: NO CHANGE
+    submit-when-enter-pressed: false
+    disabled: true
+    send-on-page-submit: false
+
+  layout: 
+    sequence: 30
+    region: FIle Metadata # 33347169016790120
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    width: 30
+
+  validation: 
+    value-required: false
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_COLLECTION_NAME ====================
+  id: 42957484856152233
+  identification: 
+    name: P1011_COLLECTION_NAME
+    type: Hidden
+
+  settings: 
+    value-protected: true
+
+  layout: 
+    sequence: 70
+    region: No Parent
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Static Value
+    static-value: UR_DATA_MAPPING
+    used: Only when current value in session state is null
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_MAPPING_COLLECTION_NAME ============
+  id: 43364717625477437
+  identification: 
+    name: P1011_MAPPING_COLLECTION_NAME
+    type: Hidden
+
+  settings: 
+    value-protected: true
+
+  layout: 
+    sequence: 80
+    region: No Parent
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Static Value
+    static-value: UR_DATA_MAPPING_COLLECTION
+    used: Only when current value in session state is null
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_FILE_LOAD ==========================
+  id: 51958492837349954
+  identification: 
+    name: P1011_FILE_LOAD
+    type: File Upload
+
+  label: 
+    alignment: Left
+
+  display: 
+    display-as: Block Dropzone
+    capture-using: NONE
+
+  storage:: 
+    type: Table APEX_APPLICATION_TEMP_FILES
+    purge-file-at: End of Session
+    allow-multiple-files: false
+
+  layout: 
+    sequence: 20
+    region: File_Load # 52473197929862492
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: false
+    column: Automatic
+    new-column: false
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    width: 30
+
+  validation: 
+    value-required: false
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_P1_FILE_ID =========================
+  id: 52245522074288388
+  identification: 
+    name: P1011_P1_FILE_ID
+    type: Hidden
+
+  settings: 
+    value-protected: true
+
+  layout: 
+    sequence: 50
+    region: No Parent
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+- # ====== Page Item: P1011_HOTEL_LIST =========================
+  id: 52495733380862688
+  identification: 
+    name: P1011_HOTEL_LIST
+    type: Select List
+
+  label: 
+    label: Hotel
+    alignment: Left
+
+  settings: 
+    page-action-on-selection: None
+
+  multiple-values: 
+    type: No
+
+  layout: 
+    sequence: 100
+    region: No Parent
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    height: 1
+
+  validation: 
+    value-required: true
+
+  list-of-values: 
+    type: SQL Query
+    sql-query: |
+      SELECT
+        nvl(Hotel_NAME,'Name') as Name,
+      ID as ID
+      FROM
+      UR_HOTELS
+      WHERE nvl(ASSOCIATION_END_DATE,sysdate) >= sysdate
+      
+    display-extra-values: true
+    display-null-value: true
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+- # ====== Page Item: P1011_ALERT_TIMER ========================
+  id: 52835473873771859
+  identification: 
+    name: P1011_ALERT_TIMER
+    type: Hidden
+
+  settings: 
+    value-protected: false
+
+  layout: 
+    sequence: 40
+    region: No Parent
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: false
+    restricted-characters: All characters can be saved.
+
+buttons: 
+- # ====== Button: Data_Load ===================================
+  id: 33306423082701540
+  identification: 
+    button-name: Data_Load
+    label: Load Data
+
+  layout: 
+    sequence: 10
+    region: Main Region # 52476143455862522
+    slot: CLOSE
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    button-template: Text
+    hot: false
+    template-options: 
+    - '#DEFAULT#'
+    - t-Button--success
+
+  behavior: 
+    action: Defined by Dynamic Action
+    execute-validations: true
+
+dynamic-actions: 
+- # ====== Dynamic Action: Changed =============================
+  id: 33322711332701647
+  identification: 
+    name: Changed
+
+  execution: 
+    sequence: 130
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1011_ALERT_MESSAGE
+
+  actions: 
+  - # ====== Action: Execute JavaScript Code =====================
+    id: 33323233875701649
+    identification: 
+      action: Execute JavaScript Code
+
+    settings: 
+      code: |
+        var messagesJson = $v("P1011_ALERT_MESSAGE");  // get the string from hidden page item
+        
+        if (messagesJson) {
+          try {
+            // Try parsing the string
+            var parsed = JSON.parse(messagesJson);
+        
+            // Check if parsed result is array or object
+            if (Array.isArray(parsed)) {
+              // It's an array - pass as is
+              showAlertToastr(parsed);
+            } else if (parsed && typeof parsed === 'object') {
+              // Single object - pass it wrapped in array for consistency 
+              showAlertToastr([parsed]);
+            } else {
+              // Parsed to something else (string/number) — just pass original string
+              showAlertToastr(messagesJson);
+            }
+          } catch (e) {
+            // Parsing failed — probably plain text, pass as is
+            showAlertToastr(messagesJson);
+          }
+        }
+
+    execution: 
+      sequence: 10
+      event: Changed # 33322711332701647
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+- # ====== Dynamic Action: New =================================
+  id: 33323694534701650
+  identification: 
+    name: New
+
+  execution: 
+    sequence: 140
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1011_TEMPLATE_JSON
+
+  actions: 
+  - # ====== Action: Refresh =====================================
+    id: 33324147317701651
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P1011_TEMPLATE_LOV
+
+    execution: 
+      sequence: 10
+      event: New # 33323694534701650
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+- # ====== Dynamic Action: New_1 ===============================
+  id: 33324512751701652
+  identification: 
+    name: New_1
+
+  execution: 
+    sequence: 160
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: jQuery Selector
+    jquery-selector: '#formula_col'
+
+  actions: 
+  - # ====== Action: Execute JavaScript Code =====================
+    id: 33325060278701654
+    identification: 
+      action: Execute JavaScript Code
+
+    settings: 
+      code: |
+        var formula = this.triggeringElement.value.trim();
+        
+        // Allowed characters: alphanumeric, underscore, operators (+ - * / ^), parentheses
+        var allowedPattern = /^[A-Za-z0-9_+\-*/^() ]+$/;
+        if (!allowedPattern.test(formula)) {
+            apex.message.clearErrors();
+            apex.message.showErrors([{
+                type: "error",
+                location: "inline",
+                pageItem: "formula_col",
+                message: "Invalid characters in formula.",
+                unsafe: false
+            }]);
+            return;
+        }
+        
+        // Cannot start or end with operator
+        if (/^[+\-*/^]/.test(formula) || /[+\-*/^]$/.test(formula)) {
+            apex.message.clearErrors();
+            apex.message.showErrors([{
+                type: "error",
+                location: "inline",
+                pageItem: "formula_col",
+                message: "Formula cannot start or end with operator.",
+                unsafe: false
+            }]);
+            return;
+        }
+        
+        // No consecutive operators
+        if (/[-+*/^]{2,}/.test(formula)) {
+            apex.message.clearErrors();
+            apex.message.showErrors([{
+                type: "error",
+                location: "inline",
+                pageItem: "formula_col",
+                message: "Formula contains consecutive operators.",
+                unsafe: false
+            }]);
+            return;
+        }
+        
+        apex.message.clearErrors();
+        console.log("Formula validated: " + formula);
+        
+
+    execution: 
+      sequence: 10
+      event: New_1 # 33324512751701652
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+- # ====== Dynamic Action: Load Data on Button Click ===========
+  id: 33330161498701670
+  identification: 
+    name: Load Data on Button Click
+
+  execution: 
+    sequence: 100
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Click
+    selection-type: Button
+    button: Data_Load # 33306423082701540
+
+  actions: 
+  - # ====== Action: Load Data in Selected Table =================
+    id: 33330632830701672
+    identification: 
+      name: Load Data in Selected Table
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+            l_status  VARCHAR2(1000);
+            l_message  VARCHAR2(4000);
+            v_alerts   CLOB := NULL;
+        BEGIN
+            -- 1. Call the main data load procedure
+            ur_utils.load_data_v2(
+                p_file_id         => :P1011_P1_FILE_ID,        -- NUMBER
+                p_template_key    => :P1011_TEMPLATE,      -- VARCHAR2
+                p_hotel_id        => :P0_HOTEL_ID,       -- RAW(16)
+                p_collection_name => 'UR_DATA_MAPPING_COLLECTION',
+                p_status          => l_status,
+                p_message         => l_message
+            );
+        
+            COMMIT;
+        
+            -- 2. Show alerts based on status
+            IF l_status = 'E' THEN
+                -- Error → show clickable HTML alert
+                add_alert_1(
+                    p_existing_json => v_alerts,
+                    p_message       => l_message,
+                    p_icon          => 'error',
+                    p_title         => 'Upload Failed',
+                    p_timeout       => NULL,
+                    p_html_safe     => 'Y',  -- allow HTML
+                    p_updated_json  => v_alerts
+                );
+        
+            ELSIF l_status = 'S' THEN
+                -- Success → normal alert
+                add_alert_1(
+                    p_existing_json => v_alerts,
+                    p_message       => l_message,
+                    p_icon          => 'success',
+                    p_title         => 'Upload Success',
+                    p_timeout       => NULL,
+                    p_html_safe     => 'N',
+                    p_updated_json  => v_alerts
+                );
+        
+        
+            ELSIF l_status = 'W' THEN
+                -- Warning → normal alert
+                add_alert_1(
+                    p_existing_json => v_alerts,
+                    p_message       => l_message,
+                    p_icon          => 'warning',
+                    p_title         => 'Upload Warning',
+                    p_timeout       => NULL,
+                    p_html_safe     => 'N',
+                    p_updated_json  => v_alerts
+                );
+            END IF;
+        
+            -- 3. Push the alert to the global page item
+            :P0_ALERT_MESSAGE := v_alerts;
+        
+        EXCEPTION
+            WHEN OTHERS THEN
+                -- Any unhandled exception → show error alert
+                add_alert_1(
+                    p_existing_json => v_alerts,
+                    p_message       => SQLERRM,
+                    p_icon          => 'error',
+                    p_title         => 'Unexpected Error',
+                    p_timeout       => NULL,
+                    p_html_safe     => 'Y',
+                    p_updated_json  => v_alerts
+                );
+                :P0_ALERT_MESSAGE := v_alerts;
+                RAISE;
+        END;
+        
+        
+        
+        
+      items-to-submit: 
+      - P1011_P1_FILE_ID
+      - P1011_TEMPLATE
+      items-to-return: 
+      - P0_ALERT_MESSAGE
+      suppress-change-event: false
+
+    execution: 
+      sequence: 20
+      event: Load Data on Button Click # 33330161498701670
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Execute JavaScript Code =====================
+    id: 33331616539701675
+    identification: 
+      action: Execute JavaScript Code
+
+    settings: 
+      code: var spinner = apex.util.showSpinner();
+
+    execution: 
+      sequence: 10
+      event: Load Data on Button Click # 33330161498701670
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+  - # ====== Action: Execute JavaScript Code =====================
+    id: 33332166054701677
+    identification: 
+      action: Execute JavaScript Code
+
+    settings: 
+      code: |
+        $("#apex_wait_overlay").remove();
+        $(".u-Processing").remove();
+
+    execution: 
+      sequence: 40
+      event: Load Data on Button Click # 33330161498701670
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+- # ====== Dynamic Action: Change_Hotel ========================
+  id: 33332594911701678
+  identification: 
+    name: Change_Hotel
+
+  execution: 
+    sequence: 60
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P0_HOTEL_ID
+
+  client-side-condition: 
+    type: Item != Value
+    item: P0_HOTEL_ID
+    value: FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 33333073394701680
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        Begin
+          IF apex_collection.collection_exists(:P1011_MAPPING_COLLECTION_NAME) THEN
+            apex_collection.delete_collection('UR_DATA_MAPPING_COLLECTION');
+          END IF;
+        END;  
+      items-to-submit: 
+      - P1011_MAPPING_COLLECTION_NAME
+
+    execution: 
+      sequence: 20
+      event: Change_Hotel # 33332594911701678
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Refresh =====================================
+    id: 33333568990701681
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Region
+      region: File_Load # 52473197929862492
+
+    execution: 
+      sequence: 60
+      event: Change_Hotel # 33332594911701678
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+  - # ====== Action: Hide ========================================
+    id: 33334536107701684
+    identification: 
+      action: Hide
+
+    affected-elements: 
+      selection-type: Region
+      region: Main Region # 52476143455862522
+
+    execution: 
+      sequence: 10
+      event: Change_Hotel # 33332594911701678
+      fire-when-event-result-is: False
+      fire-on-initialization: true
+
+  - # ====== Action: Show ========================================
+    id: 33335046686701685
+    identification: 
+      action: Show
+
+    affected-elements: 
+      selection-type: Region
+      region: Main Region # 52476143455862522
+
+    execution: 
+      sequence: 10
+      event: Change_Hotel # 33332594911701678
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+
+  - # ====== Action: Refresh =====================================
+    id: 33335561477701687
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Region
+      region: Data Mapping Collection # 42877625058126951
+
+    execution: 
+      sequence: 50
+      event: Change_Hotel # 33332594911701678
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+  - # ====== Action: Execute JavaScript Code =====================
+    id: 33336064644701688
+    identification: 
+      action: Execute JavaScript Code
+
+    settings: 
+      code: |
+        apex.region("MY_IG_MAPPING").widget().interactiveGrid("getViews").grid.model.clearChanges();
+        apex.region("MY_IG_MAPPING").widget().interactiveGrid("getActions").set("edit", false);
+
+    execution: 
+      sequence: 30
+      event: Change_Hotel # 33332594911701678
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Execute Server-side Code ====================
+    id: 33336557927701690
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          v_output CLOB;
+          v_status VARCHAR2(1);
+          v_msg    VARCHAR2(4000);
+        BEGIN
+          -- Call your procedure with desired inputs:
+          UR_UTILS.FETCH_TEMPLATES(
+            p_file_id    => :P1011_P1_FILE_ID,
+            p_hotel_id   => :P0_HOTEL_ID,
+            p_min_score  => 10,
+            p_debug_flag => 'N',
+            p_output_json => v_output,
+            p_status    => v_status,
+            p_message   => v_msg
+          );
+         
+            apex_debug.message('Template matching error: ' || v_msg); 
+        END;
+      items-to-submit: 
+      - P1011_P1_FILE_ID
+      - P1011_HOTEL_LIST
+      - P0_HOTEL_ID
+
+    execution: 
+      sequence: 100
+      event: Change_Hotel # 33332594911701678
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Set Value ===================================
+    id: 33337001892701691
+    identification: 
+      action: Set Value
+
+    settings: 
+      set-type: Static Assignment
+      suppress-change-event: false
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P1011_FILE_LOAD
+
+    execution: 
+      sequence: 70
+      event: Change_Hotel # 33332594911701678
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Refresh =====================================
+    id: 33337526299701692
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Region
+      region: Report # 52223967842288202
+
+    execution: 
+      sequence: 80
+      event: Change_Hotel # 33332594911701678
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+- # ====== Dynamic Action: File Loaded =========================
+  id: 33338489396701695
+  identification: 
+    name: File Loaded
+
+  execution: 
+    sequence: 10
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1011_FILE_LOAD
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 33338980859701696
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          v_output CLOB;
+          v_status VARCHAR2(1);
+          v_msg    VARCHAR2(4000);
+        BEGIN
+          -- Call your procedure with desired inputs:
+          UR_UTILS.FETCH_TEMPLATES(
+            p_file_id    => :P1011_P1_FILE_ID,
+            p_hotel_id   => :P0_HOTEL_ID,
+            p_min_score  => 50,
+            p_debug_flag => 'N',
+            p_output_json => v_output,
+            p_status    => v_status,
+            p_message   => v_msg
+          );
+        
+          IF v_status = 'S' THEN
+            :P1011_TEMPLATE_JSON := v_output;
+            ur_utils.add_alert(p_existing_json => :P1011_ALERT_MESSAGE,
+                                p_message       => v_msg,
+                                p_icon          => v_status,
+                                p_updated_json  => :P1011_ALERT_MESSAGE);
+          ELSE
+            :P1011_TEMPLATE_JSON := '[{}]'; -- fallback empty
+            apex_debug.message('Template matching error: ' || v_msg);
+          END IF;
+        END;
+      items-to-submit: 
+      - P1011_P1_FILE_ID
+      - P1011_HOTEL_LIST
+      - P0_HOTEL_ID
+
+    execution: 
+      sequence: 80
+      event: File Loaded # 33338489396701695
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Set Value ===================================
+    id: 33339460437701698
+    identification: 
+      action: Set Value
+
+    settings: 
+      set-type: Static Assignment
+      suppress-change-event: false
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P1011_TEMPLATE_JSON
+
+    execution: 
+      sequence: 60
+      event: File Loaded # 33338489396701695
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+      stop-execution-on-error: true
+      wait-for-result: true
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Refresh =====================================
+    id: 33340438761701701
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Region
+      region: Report # 52223967842288202
+
+    execution: 
+      sequence: 40
+      event: File Loaded # 33338489396701695
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+  - # ====== Action: Submit Page =================================
+    id: 33340935822701702
+    identification: 
+      action: Submit Page
+
+    settings: 
+      show-processing: true
+
+    execution: 
+      sequence: 20
+      event: File Loaded # 33338489396701695
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+  - # ====== Action: Execute Server-side Code ====================
+    id: 33341447681701703
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        BEGIN
+            IF APEX_COLLECTION.COLLECTION_EXISTS(:P1011_MAPPING_COLLECTION_NAME) THEN
+                APEX_COLLECTION.DELETE_COLLECTION(:P1011_MAPPING_COLLECTION_NAME);
+            END IF;
+        END;
+
+    execution: 
+      sequence: 30
+      event: File Loaded # 33338489396701695
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Fetch Templates =============================
+    id: 33341930390701705
+    identification: 
+      name: Fetch Templates
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          v_output CLOB;
+          v_status VARCHAR2(1);
+          v_msg    VARCHAR2(4000);
+        BEGIN
+          -- Call your procedure with desired inputs:
+          UR_UTILS.FETCH_TEMPLATES(
+            p_file_id    => :P1011_P1_FILE_ID,
+            p_hotel_id   => :P0_HOTEL_ID,
+            p_min_score  => 50,
+            p_debug_flag => 'N',
+            p_output_json => v_output,
+            p_status    => v_status,
+            p_message   => v_msg
+          );
+        
+          IF v_status = 'S' THEN
+            :P1011_TEMPLATE_JSON := v_output;
+            ur_utils.add_alert(p_existing_json => :P1011_ALERT_MESSAGE,
+                                p_message       => v_msg,
+                                p_icon          => v_status,
+                                p_updated_json  => :P1011_ALERT_MESSAGE);
+          ELSE
+            :P1011_TEMPLATE_JSON := '[{}]'; -- fallback empty
+            apex_debug.message('Template matching error: ' || v_msg);
+          END IF;
+        END;
+      items-to-submit: 
+      - P1011_P1_FILE_ID
+      - P1011_HOTEL_LIST
+      - P0_HOTEL_ID
+
+    execution: 
+      sequence: 70
+      event: File Loaded # 33338489396701695
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Refresh =====================================
+    id: 33342478371701706
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P1011_TEMPLATE_JSON
+
+    execution: 
+      sequence: 50
+      event: File Loaded # 33338489396701695
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Execute JavaScript Code =====================
+    id: 33342989994701708
+    identification: 
+      action: Execute JavaScript Code
+
+    settings: 
+      code: |
+        showAlert(
+            $v("P1011_ALERT_TITLE"),
+            $v("P1011_P1_FILE_ID"),
+            $v("P1011_ALERT_ICON"),
+            $v("P1011_ALERT_TIMER")
+        );
+
+    execution: 
+      sequence: 100
+      event: File Loaded # 33338489396701695
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+- # ====== Dynamic Action: Choose Template =====================
+  id: 33345588600790104
+  identification: 
+    name: Choose Template
+
+  execution: 
+    sequence: 170
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1011_TEMPLATE
+
+  client-side-condition: 
+    type: Item is not null
+    item: P1011_TEMPLATE
+
+  actions: 
+  - # ====== Action: Refresh =====================================
+    id: 33345671241790105
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Region
+      region: Metadata # 33345942753790108
+
+    execution: 
+      sequence: 30
+      event: Choose Template # 33345588600790104
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+    configuration: 
+      build-option: Commented Out # 8557885664922129
+
+  - # ====== Action: Execute Server-side Code ====================
+    id: 33346057886790109
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          v_name           VARCHAR2(100);
+          v_type           VARCHAR2(50);
+          v_skip_rows      NUMBER;
+          v_sheet          VARCHAR2(200);
+          v_file_type      VARCHAR2(50); 
+          v_db_object_name VARCHAR2(200);
+          v_records        NUMBER;
+          -- Declare a variable to hold the dynamic SQL string
+          v_sql_query      VARCHAR2(500); 
+          v_xml_sheet_name VARCHAR2(500); 
+        BEGIN
+          -- 1. Fetch template details including the dynamic table name
+          SELECT name, type, db_object_name, JSON_VALUE(metadata, '$.sheet_file_name'),
+                 JSON_VALUE(metadata, '$.skip_rows' RETURNING NUMBER DEFAULT 0 ON ERROR),
+                 JSON_VALUE(metadata, '$.sheet_display_name') || ' (' || JSON_VALUE(metadata, '$.sheet_file_name') || ')' as sheet_name,
+                 CASE JSON_VALUE(metadata, '$.file_type' RETURNING NUMBER DEFAULT 0 ON ERROR)
+                     WHEN 1 THEN '1 - MS Excel (.xlsx, .xls)'
+                     WHEN 2 THEN '2 - CSV (.csv, .txt)'
+                     WHEN 3 THEN '3 - JSON'
+                     WHEN 4 THEN '4 - XML (.xml)'
+                     ELSE 'N/A'
+                 END
+          INTO v_name, v_type, v_db_object_name, v_xml_sheet_name, v_skip_rows, v_sheet, v_file_type
+          FROM ur_templates
+          WHERE id = :P1011_TEMPLATE;
+          
+          -- 2. Construct the dynamic SQL statement
+          v_sql_query := 'SELECT COUNT(*) FROM ' || v_db_object_name;
+        
+          -- 3. Execute the dynamic SQL
+          -- EXECUTE IMMEDIATE runs the string in v_sql_query and puts the result INTO v_records
+          EXECUTE IMMEDIATE v_sql_query INTO v_records; 
+        
+          -- 4. Assign results to APEX page items (or bind variables)
+          :P1011_TEMPLATE_NAME := v_name;
+          :P1011_TEMPLATE_TYPE := v_type;
+          :P1011_TEMPLATE_SKIP_ROWS := v_skip_rows;
+          :P1011_TEMPLATE_FILE_SHEET_NAME := v_sheet;
+          :P1011_TEMPLATE_FILE_SHEET_XML_NAME := v_xml_sheet_name;
+          :P1011_TEMPLATE_FILE_TYPE := v_file_type;
+          :P1011_TEMPLATE_RECORD_COUNT := v_records; -- Assuming you'll need to display this count
+          :P1011_P1_FILE_ID := null;
+        END;
+      items-to-submit: 
+      - P1011_TEMPLATE
+      items-to-return: 
+      - P1011_TEMPLATE_NAME
+      - P1011_TEMPLATE_TYPE
+      - P1011_TEMPLATE_FILE_TYPE
+      - P1011_TEMPLATE_FILE_SHEET_NAME
+      - P1011_TEMPLATE_SKIP_ROWS
+      - P1011_TEMPLATE_RECORD_COUNT
+      - P1011_TEMPLATE_FILE_SHEET_XML_NAME
+      suppress-change-event: false
+
+    execution: 
+      sequence: 10
+      event: Choose Template # 33345588600790104
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Hide ========================================
+    id: 33346587082790114
+    identification: 
+      action: Hide
+
+    affected-elements: 
+      selection-type: Region
+      region: Metadata # 33345942753790108
+
+    execution: 
+      sequence: 10
+      event: Choose Template # 33345588600790104
+      fire-when-event-result-is: False
+      fire-on-initialization: true
+
+  - # ====== Action: Show ========================================
+    id: 33346664354790115
+    identification: 
+      action: Show
+
+    affected-elements: 
+      selection-type: Region
+      region: Metadata # 33345942753790108
+
+    execution: 
+      sequence: 20
+      event: Choose Template # 33345588600790104
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+
+- # ====== Dynamic Action: Print File_ID =======================
+  id: 33347767646790126
+  identification: 
+    name: Print File_ID
+
+  execution: 
+    sequence: 180
+    event-scope: Static
+
+  when: 
+    event: Page Load
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 33347881566790127
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        declare
+        v_clob clob := null;
+        begin
+        
+        ur_utils.add_alert(v_clob, :P1011_P1_FILE_ID,'warning',NULL, NULL, v_clob);
+        
+        :P0_ALERT_MESSAGE := v_clob;
+        
+        end;
+        
+      items-to-return: 
+      - P0_ALERT_MESSAGE
+      suppress-change-event: false
+
+    execution: 
+      sequence: 10
+      event: Print File_ID # 33347767646790126
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+- # ====== Dynamic Action: Create File Profile =================
+  id: 33348178868790130
+  identification: 
+    name: Create File Profile
+
+  execution: 
+    sequence: 190
+    event-scope: Static
+
+  when: 
+    event: Page Load
+
+  server-side-condition: 
+    type: Item is NOT NULL
+    item: P1011_P1_FILE_ID
+
+  actions: 
+  - # ====== Action: Validate File ===============================
+    id: 33348215369790131
+    identification: 
+      name: Validate File
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          v_alert_json CLOB := NULL;
+          v_template_file_type NUMBER;
+          v_template_sheet_display VARCHAR2(200);
+          v_uploaded_file_type NUMBER;
+          v_matched_sheet_file_name VARCHAR2(200) := null;
+          v_filename VARCHAR2(500);
+          v_file_blob BLOB;
+          v_profile_clob CLOB;
+        
+        BEGIN
+            -- ur_utils.add_alert(v_alert_json, 'File ID:'||:P1011_P1_FILE_ID || ' - Template ID:' || :P1011_TEMPLATE,'success',NULL, NULL, v_alert_json);
+        
+            -- :P0_ALERT_MESSAGE := v_alert_json;
+        
+          -- Get template metadata
+          SELECT JSON_VALUE(metadata, '$.file_type' RETURNING NUMBER),
+                 JSON_VALUE(metadata, '$.sheet_display_name'),
+                 BLOB_CONTENT, FILENAME
+          INTO v_template_file_type, v_template_sheet_display,
+               v_file_blob, v_filename
+          FROM ur_templates t, temp_BLOB b
+          WHERE t.id = :P1011_TEMPLATE
+            AND b.id = :P1011_P1_FILE_ID;
+        
+            -- ur_utils.add_alert(v_alert_json, v_filename,'success',NULL, NULL, v_alert_json);
+        
+          -- Discover and validate file type
+          SELECT apex_data_parser.discover(
+                   p_content => v_file_blob,
+                   p_file_name => v_filename,
+                   p_max_rows => 1
+                 )
+          INTO v_profile_clob FROM dual;
+        
+          SELECT JSON_VALUE(v_profile_clob, '$."file-type"' RETURNING NUMBER)
+          INTO v_uploaded_file_type FROM dual;
+        
+          -- File type validation
+          IF v_uploaded_file_type != v_template_file_type THEN
+            UR_UTILS.add_alert(v_alert_json,
+              'File type mismatch! Template expects ' ||
+              CASE v_template_file_type WHEN 1 THEN 'Excel' WHEN 2 THEN 'CSV' 
+                   WHEN 3 THEN 'JSON' WHEN 4 THEN 'XML' ELSE 'Unknown' END ||
+              ' but file is ' ||
+              CASE v_uploaded_file_type WHEN 1 THEN 'Excel' WHEN 2 THEN 'CSV'
+                   WHEN 3 THEN 'JSON' WHEN 4 THEN 'XML' ELSE 'Unknown' END,
+              'E', null, null, v_alert_json);
+            :P0_ALERT_MESSAGE := v_alert_json;
+            :P1011_P1_FILE_ID := NULL;
+            RETURN;
+          END IF;
+        
+        
+          -- Excel sheet validation
+          IF v_uploaded_file_type = 1 AND v_template_sheet_display IS NOT NULL THEN
+            BEGIN
+              SELECT SHEET_FILE_NAME INTO v_matched_sheet_file_name
+              FROM TABLE(apex_data_parser.get_xlsx_worksheets(p_content => v_file_blob))
+              WHERE SHEET_DISPLAY_NAME = v_template_sheet_display;
+            EXCEPTION
+              WHEN NO_DATA_FOUND THEN
+                DECLARE v_sheets VARCHAR2(4000);
+                BEGIN
+                  SELECT LISTAGG(SHEET_DISPLAY_NAME, ', ') WITHIN GROUP (ORDER BY ROWNUM)
+                  INTO v_sheets
+                  FROM TABLE(apex_data_parser.get_xlsx_worksheets(p_content => v_file_blob));
+                  
+                  UR_UTILS.add_alert(v_alert_json,
+                    'Sheet "' || v_template_sheet_display || 
+                    '" not found. Available: ' || v_sheets,
+                    'E', null, null, v_alert_json);
+                  :P0_ALERT_MESSAGE := v_alert_json;
+                  :P1011_P1_FILE_ID := NULL;
+                  RETURN;
+                END;
+            END;
+          END IF;
+          if v_matched_sheet_file_name is not null or v_uploaded_file_type = 2 THEN
+              ur_utils.add_alert(v_alert_json, 'Uploaded file matched successfully with template metadata. Loading Data Mapping','success',NULL, NULL, v_alert_json);
+          END IF;
+        
+          IF v_uploaded_file_type not in (1,2) THEN
+               ur_utils.add_alert(v_alert_json, 'File Type is not supported, please upload Excel or CSV file only','error',NULL, NULL, v_alert_json);
+               :P1011_P1_FILE_ID := NULL;
+          END IF;
+            :P0_ALERT_MESSAGE := v_alert_json;
+        EXCEPTION
+          WHEN NO_DATA_FOUND THEN
+            UR_UTILS.add_alert(v_alert_json,
+              'Template or file not found.', 'E', null, null, v_alert_json);
+            :P0_ALERT_MESSAGE := v_alert_json;
+            :P1011_P1_FILE_ID := NULL;
+          WHEN OTHERS THEN
+            UR_UTILS.add_alert(v_alert_json,
+              'Error: ' || SQLERRM, 'E', null, null, v_alert_json);
+            :P0_ALERT_MESSAGE := v_alert_json;
+            :P1011_P1_FILE_ID := NULL;
+        END;
+      items-to-submit: 
+      - P1011_P1_FILE_ID
+      - P1011_TEMPLATE
+      items-to-return: 
+      - P0_ALERT_MESSAGE
+      suppress-change-event: false
+
+    execution: 
+      sequence: 10
+      event: Create File Profile # 33348178868790130
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Load Data Mapping Collection ================
+    id: 33348523252790134
+    identification: 
+      name: Load Data Mapping Collection
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+          v_columns CLOB;
+          v_records NUMBER;
+          v_column_count NUMBER;
+          v_alert_json CLOB := NULL;
+          v_filename VARCHAR2(500);
+          v_sheet_display VARCHAR2(200);
+          v_status VARCHAR2(1);        -- Add this for OUT parameter
+          v_message VARCHAR2(4000);    -- Add this for OUT parameter
+        
+          CURSOR cur_columns IS
+            SELECT jt.name, jt.data_type, jt.pos
+            FROM JSON_TABLE(v_columns, '$[*]' COLUMNS (
+              name VARCHAR2(100) PATH '$.name',
+              data_type VARCHAR2(20) PATH '$."data-type"',
+              pos VARCHAR2(10) PATH '$.pos'
+            )) jt;
+        BEGIN
+          -- Get file data
+          SELECT columns, records, filename
+          INTO v_columns, v_records, v_filename
+          FROM temp_BLOB
+          WHERE ID = :P1011_P1_FILE_ID;
+        
+          -- Create collections
+          IF apex_collection.collection_exists(:P1011_COLLECTION_NAME) THEN
+            apex_collection.delete_collection(:P1011_COLLECTION_NAME);
+          END IF;
+          apex_collection.create_collection(:P1011_COLLECTION_NAME);
+        
+          IF apex_collection.collection_exists(:P1011_MAPPING_COLLECTION_NAME) THEN
+            apex_collection.delete_collection(:P1011_MAPPING_COLLECTION_NAME);
+          END IF;
+          apex_collection.create_collection(:P1011_MAPPING_COLLECTION_NAME);
+        
+          -- Populate file data collection
+          FOR col IN cur_columns LOOP
+            apex_collection.add_member(
+              p_collection_name => :P1011_COLLECTION_NAME,
+              p_c001 => col.name,
+              p_c002 => col.data_type,
+              p_c003 => col.pos
+            );
+          END LOOP;
+        
+          v_column_count := apex_collection.collection_member_count(:P1011_COLLECTION_NAME);
+        
+          -- Load mapping collection with OUT parameters
+          UR_UTILS.LOAD_DATA_MAPPING_COLLECTION(
+            p_file_id => :P1011_P1_FILE_ID,
+            p_template_id => :P1011_TEMPLATE,
+            p_collection_name => 'UR_DATA_MAPPING_COLLECTION',
+            p_use_original_name => 'AUTO',
+            p_match_datatype =>'N',
+            p_status => v_status,      -- Add OUT parameter
+            p_message => v_message     -- Add OUT parameter
+          );
+        
+          -- Check if mapping was successful
+          IF v_status != 'S' THEN
+            UR_UTILS.add_alert(
+              v_alert_json,
+              'Error creating data mapping: ' || v_message,
+              'E',
+              null,
+              null,
+              v_alert_json
+            );
+            :P0_ALERT_MESSAGE := v_alert_json;
+            :P1011_P1_FILE_ID := NULL;
+            RETURN;
+          END IF;
+        
+          -- Get sheet name for success message
+          SELECT JSON_VALUE(metadata, '$.sheet_display_name')
+          INTO v_sheet_display
+          FROM ur_templates
+          WHERE id = :P1011_TEMPLATE;
+        
+          -- Success alert
+          UR_UTILS.add_alert(
+            v_alert_json,
+            'File "' || v_filename || '" uploaded successfully! Found ' || v_records ||
+            ' records with ' || v_column_count || ' columns.' ||
+            CASE
+              WHEN v_sheet_display IS NOT NULL THEN ' Using sheet: "' || v_sheet_display || '"'
+              ELSE ''
+            END,
+            'S',
+            null,
+            null,
+            v_alert_json
+          );
+          :P0_ALERT_MESSAGE := v_alert_json;
+        
+          -- Clear FILE_ID to prevent re-run on refresh
+          :P1011_P1_FILE_ID := NULL;
+          COMMIT;
+        
+        EXCEPTION
+          WHEN OTHERS THEN
+            UR_UTILS.add_alert(
+              v_alert_json,
+              'Error: ' || SQLERRM,
+              'E',
+              null,
+              null,
+              v_alert_json
+            );
+            :P0_ALERT_MESSAGE := v_alert_json;
+            :P1011_P1_FILE_ID := NULL;
+            ROLLBACK;
+        END;
+        
+      items-to-submit: 
+      - P1011_P1_FILE_ID
+      - P1011_TEMPLATE
+      items-to-return: 
+      - P0_ALERT_MESSAGE
+      suppress-change-event: false
+
+    execution: 
+      sequence: 20
+      event: Create File Profile # 33348178868790130
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Show ========================================
+    id: 33348678861790135
+    identification: 
+      action: Show
+
+    affected-elements: 
+      selection-type: Region
+      region: Data Mapping Collection # 42877625058126951
+
+    execution: 
+      sequence: 40
+      event: Create File Profile # 33348178868790130
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+
+  - # ====== Action: Refresh =====================================
+    id: 33348710645790136
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Region
+      region: Data Mapping Collection # 42877625058126951
+
+    execution: 
+      sequence: 30
+      event: Create File Profile # 33348178868790130
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+processes: 
+- # ====== Process: Load Templates =============================
+  id: 33319184530701632
+  identification: 
+    name: Load Templates
+    type: Execute Code
+    execution-chain: None
+
+  source: 
+    location: Local Database
+    language: PL/SQL
+    pl/sql-code: |
+      
+          DECLARE
+            v_output CLOB;
+            v_status VARCHAR2(1);
+            v_msg    VARCHAR2(4000);
+          BEGIN
+            -- Call your procedure with desired inputs:
+            UR_UTILS.FETCH_TEMPLATES(
+              p_file_id    => 10367474368641719,
+              p_hotel_id   => '3B9B828094379CA8E063DD59000AC846',
+              p_min_score  => 90,
+              p_debug_flag => 'N',
+              p_output_json => v_output,
+              p_status    => v_status,
+              p_message   => v_msg
+            );
+      
+            IF v_status = 'S' THEN
+              :P1011_TEMPLATE_JSON := v_output;
+            ELSE
+              :P1011_TEMPLATE_JSON := '[{}]'; -- fallback empty
+              apex_debug.message('Template matching error: ' || v_msg);
+            END IF;
+          END;
+      
+
+  execution: 
+    sequence: 40
+    point: After Submit
+    run-process: Once Per Page Visit (default)
+
+  error: 
+    display-location: Inline in Notification
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+- # ====== Process: File Profiling and Collection ==============
+  id: 33319518431701634
+  identification: 
+    name: File Profiling and Collection
+    type: Execute Code
+    execution-chain: None
+
+  source: 
+    location: Local Database
+    language: PL/SQL
+    pl/sql-code: |
+      DECLARE
+        v_profile_clob CLOB;
+        v_records NUMBER;
+        v_columns CLOB;
+        v_column_count NUMBER;
+        v_alert_json CLOB := NULL;
+      
+        -- Template metadata variables
+        v_template_file_type NUMBER;
+        v_template_sheet_name VARCHAR2(200);
+        v_uploaded_file_type NUMBER;
+        v_sheet_exists NUMBER := 0;
+        v_filename VARCHAR2(500);
+      
+        -- Variables for parsing v_columns JSON
+        CURSOR cur_columns IS
+          SELECT jt.name, jt.data_type
+          FROM JSON_TABLE(
+                 v_columns,
+                 '$[*]'
+                 COLUMNS (
+                   name VARCHAR2(100) PATH '$.name',
+                   data_type VARCHAR2(20) PATH '$."data-type"'
+                 )
+               ) jt;
+      
+      BEGIN
+        -- Get template metadata
+        SELECT
+          JSON_VALUE(metadata, '$.file_type' RETURNING NUMBER),
+          JSON_VALUE(metadata, '$.sheet_file_name')
+        INTO v_template_file_type, v_template_sheet_name
+        FROM ur_templates
+        WHERE id = :P1011_TEMPLATE;
+      
+        -- Create or truncate APEX collection before processing
+        IF apex_collection.collection_exists(:P1011_COLLECTION_NAME) THEN
+          apex_collection.delete_collection(:P1011_COLLECTION_NAME);
+        END IF;
+      
+        IF apex_collection.collection_exists(:P1011_MAPPING_COLLECTION_NAME) THEN
+          apex_collection.delete_collection(:P1011_MAPPING_COLLECTION_NAME);
+        END IF;
+      
+        apex_collection.create_collection(:P1011_COLLECTION_NAME);
+      
+        -- Insert uploaded file into temp_blob
+        FOR r IN (
+          SELECT ID, APPLICATION_ID, NAME, FILENAME, MIME_TYPE, CREATED_ON, BLOB_CONTENT
+          FROM APEX_APPLICATION_TEMP_FILES
+          WHERE NAME = :P1011_FILE_LOAD
+        ) LOOP
+          -- Store filename for validation messages
+          v_filename := r.FILENAME;
+      
+          INSERT INTO temp_BLOB (
+            ID, APPLICATION_ID, NAME, FILENAME, MIME_TYPE, CREATED_ON, BLOB_CONTENT
+          ) VALUES (
+            r.ID, r.APPLICATION_ID, r.NAME, r.FILENAME, r.MIME_TYPE, r.CREATED_ON, r.BLOB_CONTENT
+          );
+        END LOOP;
+      
+        -- Process each uploaded file
+        FOR rec IN (
+          SELECT ID, BLOB_CONTENT, filename, name
+          FROM temp_BLOB
+          WHERE profile IS NULL
+        ) LOOP
+          -- Discover file profile to get file type
+          SELECT apex_data_parser.discover(
+                   p_content => rec.BLOB_CONTENT,
+                   p_file_name => rec.filename,
+                   p_skip_rows => :P1011_TEMPLATE_SKIP_ROWS,
+                   p_xlsx_sheet_name => :P1011_TEMPLATE_FILE_SHEET_XML_NAME,
+                   p_max_rows => NULL
+                 )
+          INTO v_profile_clob
+          FROM dual;
+      
+          -- Extract file type from discovered profile
+          SELECT JSON_VALUE(v_profile_clob, '$."file-type"' RETURNING NUMBER)
+          INTO v_uploaded_file_type
+          FROM dual;
+      
+          -- VALIDATION 1: Check if file type matches template metadata
+          IF v_uploaded_file_type != v_template_file_type THEN
+            -- File type mismatch error
+            UR_UTILS.add_alert(
+              v_alert_json,
+              'File type mismatch! Template expects ' ||
+              CASE v_template_file_type
+                WHEN 1 THEN 'Excel (XLSX)'
+                WHEN 2 THEN 'CSV'
+                WHEN 3 THEN 'JSON'
+                WHEN 4 THEN 'XML'
+                ELSE 'Unknown'
+              END ||
+              ' but uploaded file is ' ||
+              CASE v_uploaded_file_type
+                WHEN 1 THEN 'Excel (XLSX)'
+                WHEN 2 THEN 'CSV'
+                WHEN 3 THEN 'JSON'
+                WHEN 4 THEN 'XML'
+                ELSE 'Unknown'
+              END || '. Please upload the correct file type.',
+              'E',
+              null,
+              null,
+              v_alert_json
+            );
+            :P0_ALERT_MESSAGE := v_alert_json;
+            ROLLBACK;
+            RETURN;
+          END IF;
+      
+          -- VALIDATION 2: For Excel files, check if sheet exists
+          IF v_uploaded_file_type = 1 AND v_template_sheet_name IS NOT NULL THEN
+            -- Check if the template's sheet exists in uploaded file
+            BEGIN
+              SELECT COUNT(*)
+              INTO v_sheet_exists
+              FROM TABLE(
+                apex_data_parser.get_xlsx_worksheets(
+                  p_content => rec.BLOB_CONTENT
+                )
+              )
+              WHERE SHEET_FILE_NAME = v_template_sheet_name;
+      
+              IF v_sheet_exists = 0 THEN
+                -- Sheet not found error
+                UR_UTILS.add_alert(
+                  v_alert_json,
+                  'Sheet "' || v_template_sheet_name || '" not found in uploaded Excel file. Please ensure the file contains the correct sheet name.',
+                  'E',
+                  null,
+                  null,
+                  v_alert_json
+                );
+                :P0_ALERT_MESSAGE := v_alert_json;
+                ROLLBACK;
+                RETURN;
+              END IF;
+            EXCEPTION
+              WHEN OTHERS THEN
+                UR_UTILS.add_alert(
+                  v_alert_json,
+                  'Error validating Excel sheets: ' || SQLERRM,
+                  'E',
+                  null,
+                  null,
+                  v_alert_json
+                );
+                :P0_ALERT_MESSAGE := v_alert_json;
+                ROLLBACK;
+                RETURN;
+            END;
+          END IF;
+      
+          -- VALIDATIONS PASSED - Continue with profile extraction
+      
+          -- Extract parsed rows
+          SELECT TO_NUMBER(JSON_VALUE(v_profile_clob, '$."parsed-rows"'))
+          INTO v_records
+          FROM dual;
+      
+          -- Extract columns with mapped data types
+          SELECT JSON_ARRAYAGG(
+                   JSON_OBJECT(
+                     'name' VALUE sanitize_column_name(jt.name),
+                     'data-type' VALUE CASE jt.data_type
+                                        WHEN 1 THEN 'TEXT'
+                                        WHEN 2 THEN 'NUMBER'
+                                        WHEN 3 THEN 'DATE'
+                                        ELSE 'TEXT'
+                                      END,
+                     'pos' VALUE 'COL' || LPAD(TO_CHAR(jt.ord), 3, '0')
+                   ) RETURNING CLOB
+                 )
+          INTO v_columns
+          FROM JSON_TABLE(
+                 v_profile_clob,
+                 '$."columns"[*]'
+                 COLUMNS (
+                   ord FOR ORDINALITY,
+                   name VARCHAR2(100) PATH '$.name',
+                   data_type NUMBER PATH '$."data-type"'
+                 )
+               ) jt;
+      
+          -- Insert each column into APEX collection
+          FOR col IN cur_columns LOOP
+            apex_collection.add_member(
+              p_collection_name => :P1011_COLLECTION_NAME,
+              p_c001            => col.name,
+              p_c002            => col.data_type
+            );
+          END LOOP;
+      
+          -- Update temp_BLOB table with profile data
+          UPDATE temp_BLOB
+          SET profile = v_profile_clob,
+              records = v_records,
+              columns = v_columns
+          WHERE ID = rec.ID;
+        END LOOP;
+      
+        COMMIT;
+      
+        -- Get column count for success message
+        SELECT COUNT(*)
+        INTO v_column_count
+        FROM apex_collections
+        WHERE collection_name = :P1011_COLLECTION_NAME;
+      
+        -- SUCCESS: File processed successfully
+        UR_UTILS.add_alert(
+          v_alert_json,
+          'File uploaded and validated successfully! Found ' || v_records || ' records with ' || v_column_count || ' columns.',
+          'S',
+          null,
+          null,
+          v_alert_json
+        );
+        :P0_ALERT_MESSAGE := v_alert_json;
+      
+      EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+          UR_UTILS.add_alert(
+            v_alert_json,
+            'Template not found or no file uploaded. Please select a template and upload a file.',
+            'E',
+            null,
+            null,
+            v_alert_json
+          );
+          :P0_ALERT_MESSAGE := v_alert_json;
+          ROLLBACK;
+        WHEN OTHERS THEN
+          UR_UTILS.add_alert(
+            v_alert_json,
+            'Error processing file: ' || SQLERRM,
+            'E',
+            null,
+            null,
+            v_alert_json
+          );
+          :P0_ALERT_MESSAGE := v_alert_json;
+          ROLLBACK;
+      END;
+
+  execution: 
+    sequence: 20
+    point: After Submit
+    run-process: Once Per Page Visit (default)
+
+  success-message: 
+    success-message: Success
+
+  error: 
+    error-message: Error
+    display-location: Inline in Notification
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+- # ====== Process: Load File Profile ==========================
+  id: 33347578351790124
+  identification: 
+    name: Load File Profile
+    type: Execute Code
+    execution-chain: None
+
+  source: 
+    location: Local Database
+    language: PL/SQL
+    pl/sql-code: |
+      DECLARE
+        v_name           VARCHAR2(100);
+        v_type           VARCHAR2(50);
+        v_skip_rows      NUMBER;
+        v_sheet          VARCHAR2(200);
+        v_file_type      VARCHAR2(50); 
+        v_db_object_name VARCHAR2(200);
+        v_records        NUMBER;
+        -- Declare a variable to hold the dynamic SQL string
+        v_sql_query      VARCHAR2(500); 
+        v_xml_sheet_name VARCHAR2(500); 
+      BEGIN
+        -- 1. Fetch template details including the dynamic table name
+        SELECT name, type, db_object_name, JSON_VALUE(metadata, '$.sheet_file_name'),
+               JSON_VALUE(metadata, '$.skip_rows' RETURNING NUMBER DEFAULT 0 ON ERROR),
+               JSON_VALUE(metadata, '$.sheet_display_name') || ' (' || JSON_VALUE(metadata, '$.sheet_file_name') || ')' as sheet_name,
+               CASE JSON_VALUE(metadata, '$.file_type' RETURNING NUMBER DEFAULT 0 ON ERROR)
+                   WHEN 1 THEN '1 - MS Excel (.xlsx, .xls)'
+                   WHEN 2 THEN '2 - CSV (.csv, .txt)'
+                   WHEN 3 THEN '3 - JSON'
+                   WHEN 4 THEN '4 - XML (.xml)'
+                   ELSE 'N/A'
+               END
+        INTO v_name, v_type, v_db_object_name, v_xml_sheet_name, v_skip_rows, v_sheet, v_file_type
+        FROM ur_templates
+        WHERE id = :P1011_TEMPLATE;
+        
+        -- 2. Construct the dynamic SQL statement
+        v_sql_query := 'SELECT COUNT(*) FROM ' || v_db_object_name;
+      
+        -- 3. Execute the dynamic SQL
+        -- EXECUTE IMMEDIATE runs the string in v_sql_query and puts the result INTO v_records
+        EXECUTE IMMEDIATE v_sql_query INTO v_records; 
+      
+        -- 4. Assign results to APEX page items (or bind variables)
+        :P1011_TEMPLATE_NAME := v_name;
+        :P1011_TEMPLATE_TYPE := v_type;
+        :P1011_TEMPLATE_SKIP_ROWS := v_skip_rows;
+        :P1011_TEMPLATE_FILE_SHEET_NAME := v_sheet;
+        :P1011_TEMPLATE_FILE_SHEET_XML_NAME := v_xml_sheet_name;
+        :P1011_TEMPLATE_FILE_TYPE := v_file_type;
+        :P1011_TEMPLATE_RECORD_COUNT := v_records; -- Assuming you'll need to display this count
+      END;
+
+  execution: 
+    sequence: 10
+    point: After Submit
+    run-process: Once Per Page Visit (default)
+
+  error: 
+    display-location: Inline in Notification
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+- # ====== Process: File Profiling and Collection_1 ============
+  id: 33347655717790125
+  identification: 
+    name: File Profiling and Collection_1
+    type: Execute Code
+    execution-chain: None
+
+  source: 
+    location: Local Database
+    language: PL/SQL
+    pl/sql-code: |
+      DECLARE
+        v_file_id NUMBER;
+      BEGIN
+        -- Copy file from APEX_APPLICATION_TEMP_FILES to temp_blob
+        FOR r IN (
+          SELECT ID, APPLICATION_ID, NAME, FILENAME, MIME_TYPE, CREATED_ON, BLOB_CONTENT
+          FROM APEX_APPLICATION_TEMP_FILES
+          WHERE NAME = :P1011_FILE_LOAD
+        ) LOOP
+          -- Store the file ID
+          v_file_id := r.ID;
+      
+          -- Delete existing entry if exists (prevent duplicates)
+          -- DELETE FROM temp_BLOB WHERE ID = r.ID;
+      
+          -- Insert into temp_blob
+          INSERT INTO temp_BLOB (
+            ID,
+            APPLICATION_ID,
+            NAME,
+            FILENAME,
+            MIME_TYPE,
+            CREATED_ON,
+            BLOB_CONTENT
+          ) VALUES (
+            r.ID,
+            r.APPLICATION_ID,
+            r.NAME,
+            r.FILENAME,
+            r.MIME_TYPE,
+            r.CREATED_ON,
+            r.BLOB_CONTENT
+          );
+      
+          -- Store file ID in page item for later reference
+          :P1011_P1_FILE_ID := v_file_id;
+        END LOOP;
+      
+        COMMIT;
+      
+      EXCEPTION
+        WHEN OTHERS THEN
+          ROLLBACK;
+          -- Log error or set error message
+          apex_error.add_error(
+            p_message => 'Error copying file: ' || SQLERRM,
+            p_display_location => apex_error.c_inline_in_notification
+          );
+      END;
+
+  execution: 
+    sequence: 30
+    point: After Submit
+    run-process: Once Per Page Visit (default)
+
+  error: 
+    error-message: Error while uploading file, please contact system administrator.
+    display-location: Inline in Notification
+

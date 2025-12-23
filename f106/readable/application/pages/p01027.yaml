@@ -1,0 +1,1129 @@
+---
+# ====== Page: Groups ========================================
+id: 1027
+identification: 
+  name: Groups
+  alias: GROUPS
+  title: Cluster
+
+appearance: 
+  page-mode: Normal
+  page-template: Theme Default
+  template-options: 
+  - '#DEFAULT#'
+
+navigation-menu: 
+  override-user-interface-level: false
+
+navigation: 
+  cursor-focus: Do not focus cursor
+  warn-on-unsaved-changes: true
+
+security: 
+  authentication: Page Requires Authentication
+  deep-linking: Application Default
+  page-access-protection: Arguments Must Have Checksum
+  form-auto-complete: Off
+  browser-cache: Application Default
+
+session-management: 
+  rejoin-sessions: Application Default
+
+advanced: 
+  enable-duplicate-page-submissions: Yes - Enable page to be re-posted
+  reload-on-submit: Only for Success
+
+server-cache: 
+  caching: Disabled
+
+regions: 
+- # ====== Region: Groups ======================================
+  id: 15749327905986869
+  identification: 
+    name: Groups
+    type: Breadcrumb
+
+  source: 
+    breadcrumb: Breadcrumb # 8558440305922134
+
+  layout: 
+    sequence: 1
+    parent-region: No Parent
+    slot: REGION_POSITION_01
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Title Bar
+    template-options: 
+    - '#DEFAULT#'
+    - t-BreadcrumbRegion--useBreadcrumbTitle
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    appearance: 
+      breadcrumb-template: Breadcrumb
+      template-options: 
+      - '#DEFAULT#'
+
+- # ====== Region: Groups1 =====================================
+  id: 32323079909752575
+  identification: 
+    name: Groups1
+    type: Interactive Grid
+
+  source: 
+    location: Local Database
+    type: SQL Query
+    sql-query: |
+      SELECT 
+          RAWTOHEX(hg.ID) AS ID,
+          hg.GROUP_NAME,
+          hg.DESCRIPTION,
+          addr.STREET_ADDRESS || ' - ' || addr.POST_CODE AS ADDRESS_DISPLAY,
+          cont.CONTACT_NAME AS CONTACT_DISPLAY,
+          hg.ASSOCIATION_START_DATE,
+          hg.ASSOCIATION_END_DATE,
+          RAWTOHEX(hg.ASSOCIATED_EMP_ID) AS ASSOCIATED_EMP_ID
+      
+      FROM UR_HOTEL_GROUPS hg
+      LEFT JOIN UR_ADDRESSES addr ON hg.ADDRESS_ID = addr.ID
+      LEFT JOIN UR_CONTACTS cont ON hg.CONTACT_ID = cont.ID
+    page-items-to-submit: 
+    - P1027_GROUP_NAME
+
+  layout: 
+    sequence: 30
+    parent-region: No Parent
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Interactive Report
+    template-options: 
+    - '#DEFAULT#'
+    - t-IRR-region--hideHeader js-addHiddenHeadingRoleDesc
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    id: 14003839623828249
+    edit: 
+      enabled: false
+
+    performance: 
+      lazy-loading: false
+
+    appearance: 
+      select-first-row: true
+      fixed-row-height: true
+
+    pagination: 
+      type: Scroll
+      show-total-count: true
+
+    toolbar: 
+      show: true
+      controls: 
+      - Search Column Selection
+      - Search Field
+      - Actions Menu
+      - Reset Button
+      - Save Button
+
+    enable-users-to: 
+      save-public-report: false
+      flashback: true
+      define-chart-view: true
+      download: true
+
+    download: 
+      formats: 
+      - CSV
+      - HTML
+      - Excel
+      - PDF
+      send-as-email: true
+
+    heading: 
+      fixed-to: Page
+
+    icon-view: 
+      show: false
+
+    detail-view: 
+      show: false
+
+    saved-reports: 
+    - # ====== Saved Report: Primary Report ========================
+      id: 14110570793838982
+      identification: 
+        name: Primary Report
+        alias: 141106
+
+  columns: 
+  - # ====== Column: ID ==========================================
+    id: 14102967364783002
+    identification: 
+      column-name: ID
+      type: Hidden
+
+    settings: 
+      value-protected: false
+
+    layout: 
+      sequence: 30
+
+    accessibility: 
+      value-identifies-row: false
+
+    source: 
+      type: Database Column
+      database-column: ID
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    session-state: 
+      data-type: VARCHAR2
+
+    export-/-printing: 
+      include-in-export-/-print: false
+
+    enable-users-to: 
+      sort: false
+
+  - # ====== Column: GROUP_NAME ==================================
+    id: 14103050442783003
+    identification: 
+      column-name: GROUP_NAME
+      type: Link
+
+    heading: 
+      heading: Hotel Cluster
+      alignment: start
+
+    layout: 
+      sequence: 40
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    link: 
+      target: 
+        url: 'f?p=&APP_ID.:10:&SESSION.::&DEBUG.::P10_GROUP_ID,P10_ADDRESS_ID,P10_CONTACT_ID,P10_DESCRIPTION,P10_ASSOCIATION_START_DATE,P10_ASSOCIATION_END_DATE,P10_ID:&GROUP_NAME.,&ADDRESS_ID.,&CONTACT_ID.,&DESCRIPTION.,&ASSOCIATION_START_DATE.,&ASSOCIATION_END_DATE.,&ID.'
+        page: 10 # Hotel Cluster
+        values: 
+          p10_group_id: '&GROUP_NAME.'
+          p10_address_id: '&ADDRESS_ID.'
+          p10_contact_id: '&CONTACT_ID.'
+          p10_description: '&DESCRIPTION.'
+          p10_association_start_date: '&ASSOCIATION_START_DATE.'
+          p10_association_end_date: '&ASSOCIATION_END_DATE.'
+          p10_id: '&ID.'
+
+      link-text: '&GROUP_NAME.'
+
+    source: 
+      type: Database Column
+      database-column: GROUP_NAME
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: Distinct Column
+      exact-match: true
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: true
+      control-break/aggregate: true
+      hide: true
+
+    security: 
+      escape-special-characters: true
+
+  - # ====== Column: DESCRIPTION =================================
+    id: 14103106898783004
+    identification: 
+      column-name: DESCRIPTION
+      type: Text Field
+
+    heading: 
+      heading: Description
+      alignment: start
+
+    settings: 
+      trim-spaces: Leading and Trailing
+      text-case: NO CHANGE
+
+    layout: 
+      sequence: 50
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+      maximum-length: 250
+
+    source: 
+      type: Database Column
+      database-column: DESCRIPTION
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: Distinct Column
+      exact-match: true
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: true
+      control-break/aggregate: true
+      hide: true
+
+  - # ====== Column: ASSOCIATION_START_DATE ======================
+    id: 14103499280783007
+    identification: 
+      column-name: ASSOCIATION_START_DATE
+      type: Date Picker
+
+    heading: 
+      heading: Association Start Date
+      alignment: start
+
+    settings: 
+      show-time: false
+      display-as: Popup
+      minimum-date: None
+      maximum-date: None
+      multiple-months: No
+      use-defaults: true
+
+    layout: 
+      sequence: 80
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+
+    source: 
+      type: Database Column
+      database-column: ASSOCIATION_START_DATE
+      data-type: DATE
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    column-filter: 
+      enabled: true
+      lov-type: Distinct Column
+      date-ranges: All
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: true
+      control-break/aggregate: true
+      hide: true
+
+  - # ====== Column: ASSOCIATION_END_DATE ========================
+    id: 14103569066783008
+    identification: 
+      column-name: ASSOCIATION_END_DATE
+      type: Date Picker
+
+    heading: 
+      heading: Association End Date
+      alignment: start
+
+    settings: 
+      show-time: false
+      display-as: Popup
+      minimum-date: None
+      maximum-date: None
+      multiple-months: No
+      use-defaults: true
+
+    layout: 
+      sequence: 90
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+
+    source: 
+      type: Database Column
+      database-column: ASSOCIATION_END_DATE
+      data-type: DATE
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    column-filter: 
+      enabled: true
+      lov-type: Distinct Column
+      date-ranges: All
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: true
+      control-break/aggregate: true
+      hide: true
+
+  - # ====== Column: ASSOCIATED_EMP_ID ===========================
+    id: 14103618152783009
+    identification: 
+      column-name: ASSOCIATED_EMP_ID
+      type: Text Field
+
+    heading: 
+      heading: Associated Emp Id
+      alignment: start
+
+    settings: 
+      trim-spaces: Leading and Trailing
+      text-case: NO CHANGE
+
+    layout: 
+      sequence: 100
+      column-alignment: start
+      stretch: Use Report Setting
+
+    accessibility: 
+      value-identifies-row: false
+
+    validation: 
+      value-required: false
+      maximum-length: 16
+
+    source: 
+      type: Database Column
+      database-column: ASSOCIATED_EMP_ID
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    column-filter: 
+      enabled: true
+      performance-impacting-operators: 
+      - Contains
+      - Starts With
+      - Case Insensitive
+      - Regular Expression
+      text-case: Mixed
+      lov-type: Distinct Column
+      exact-match: true
+
+    export-/-printing: 
+      include-in-export-/-print: true
+
+    enable-users-to: 
+      sort: true
+      control-break/aggregate: true
+      hide: true
+
+  - # ====== Column: ADDRESS_DISPLAY =============================
+    id: 24479214294362101
+    identification: 
+      column-name: ADDRESS_DISPLAY
+      type: Hidden
+
+    settings: 
+      value-protected: false
+
+    layout: 
+      sequence: 110
+
+    accessibility: 
+      value-identifies-row: false
+
+    source: 
+      type: Database Column
+      database-column: ADDRESS_DISPLAY
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    session-state: 
+      data-type: VARCHAR2
+
+    export-/-printing: 
+      include-in-export-/-print: false
+
+    enable-users-to: 
+      sort: false
+
+  - # ====== Column: CONTACT_DISPLAY =============================
+    id: 24479355557362102
+    identification: 
+      column-name: CONTACT_DISPLAY
+      type: Hidden
+
+    settings: 
+      value-protected: false
+
+    layout: 
+      sequence: 120
+
+    accessibility: 
+      value-identifies-row: false
+
+    source: 
+      type: Database Column
+      database-column: CONTACT_DISPLAY
+      data-type: VARCHAR2
+      query-only: false
+      primary-key: false
+
+    default: 
+      duplicate-copies-existing-value: true
+
+    session-state: 
+      data-type: VARCHAR2
+
+    export-/-printing: 
+      include-in-export-/-print: false
+
+    enable-users-to: 
+      sort: false
+
+  printing: 
+    page: 
+      size: Letter
+      orientation: Landscape
+      units: Inches
+      width: 11
+      height: 8.5
+      border-width: 0.5
+      border-color: '#666666'
+
+    page-header: 
+      font: Helvetica
+      font-weight: Normal
+      font-size: 12
+      font-color: '#000000'
+      alignment: center
+
+    column-headings: 
+      font: Helvetica
+      font-weight: Bold
+      font-size: 10
+      font-color: '#000000'
+      background-color: '#EEEEEE'
+
+    columns: 
+      font: Helvetica
+      font-weight: Normal
+      font-size: 10
+      font-color: '#000000'
+      background-color: '#FFFFFF'
+
+    page-footer: 
+      font: Helvetica
+      font-weight: Normal
+      font-size: 12
+      font-color: '#000000'
+      alignment: center
+
+page-items: 
+- # ====== Page Item: P1027_GROUP_NAME =========================
+  id: 14104147102783014
+  identification: 
+    name: P1027_GROUP_NAME
+    type: Select List
+
+  label: 
+    label: Group Name
+    alignment: Left
+
+  settings: 
+    page-action-on-selection: None
+
+  multiple-values: 
+    type: No
+
+  layout: 
+    sequence: 20
+    region: No Parent
+    slot: BODY
+    alignment: Left
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: 5
+    label-column-span: Page Template Default
+
+  appearance: 
+    template: Optional - Floating
+    template-options: 
+    - '#DEFAULT#'
+    height: 1
+
+  validation: 
+    value-required: false
+
+  list-of-values: 
+    type: SQL Query
+    sql-query: |
+      SELECT GROUP_NAME AS DISPLAY_VALUE,
+             RAWTOHEX(ID) AS RETURN_VALUE
+      FROM UR_HOTEL_GROUPS
+      WHERE nvl(ASSOCIATION_END_DATE,sysdate) >= sysdate
+      ORDER BY GROUP_NAME;
+      
+    display-extra-values: true
+    display-null-value: true
+    null-display-value: '-- Select Group --'
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Only when current value in session state is null
+
+  session-state: 
+    storage: Per Session (Persistent)
+
+  quick-picks: 
+    show-quick-picks: false
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: true
+    restricted-characters: All characters can be saved.
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+buttons: 
+- # ====== Button: CREATE ======================================
+  id: 10958638187623437
+  identification: 
+    button-name: CREATE
+    label: Create
+
+  layout: 
+    sequence: 50
+    region: Groups1 # 32323079909752575
+    slot: RIGHT_OF_IR_SEARCH_BAR
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    button-template: Text
+    hot: true
+    template-options: 
+    - '#DEFAULT#'
+
+  behavior: 
+    action: Redirect to Page in this Application
+    target: 
+      url: 'f?p=&APP_ID.:1034:&SESSION.::&DEBUG.:::'
+      page: 1034 # Group
+
+    warn-on-unsaved-changes: Do Not Check
+
+- # ====== Button: ADD_NEW_CLUSTER =============================
+  id: 14104240768783015
+  identification: 
+    button-name: ADD_NEW_CLUSTER
+    label: Add New Cluster
+
+  layout: 
+    sequence: 10
+    region: Groups1 # 32323079909752575
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+    alignment: Left center
+
+  appearance: 
+    button-template: Text
+    hot: false
+    template-options: 
+    - '#DEFAULT#'
+    - t-Button--success
+    - t-Button--padTop
+    - t-Button--padBottom
+
+  behavior: 
+    action: Redirect to Page in this Application
+    target: 
+      url: 'f?p=&APP_ID.:10:&SESSION.::&DEBUG.:::'
+      page: 10 # Hotel Cluster
+
+    warn-on-unsaved-changes: Do Not Check
+
+dynamic-actions: 
+- # ====== Dynamic Action: New_2 ===============================
+  id: 10889829947916472
+  identification: 
+    name: New_2
+
+  execution: 
+    sequence: 50
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1027_HOTEL_SELECT
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 10890398735916474
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        :P1027_HOTEL_SELECT := :P1027_HOTEL_ID_T;
+        
+      items-to-submit: 
+      - P1027_HOTEL_SELECT
+      items-to-return: 
+      - P1027_HOTEL_ID_T
+      suppress-change-event: false
+
+    execution: 
+      sequence: 10
+      event: New_2 # 10889829947916472
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+- # ====== Dynamic Action: New_1 ===============================
+  id: 10890771865916475
+  identification: 
+    name: New_1
+
+  execution: 
+    sequence: 20
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1027_HOTEL_LIST
+
+  client-side-condition: 
+    type: Item is not null
+    item: P1027_HOTEL_LIST
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 10891238890916476
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: ':P1027_NEW := :P1027_HOTEL_LIST;'
+      items-to-submit: 
+      - P1027_HOTEL_LIST
+      items-to-return: 
+      - P1027_GROUP_NAME
+      suppress-change-event: false
+
+    execution: 
+      sequence: 20
+      event: New_1 # 10890771865916475
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+  - # ====== Action: Refresh =====================================
+    id: 10891703263916478
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Region
+      region: Groups1 # 32323079909752575
+
+    execution: 
+      sequence: 40
+      event: New_1 # 10890771865916475
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+- # ====== Dynamic Action: New_1 ===============================
+  id: 10892113805916479
+  identification: 
+    name: New_1
+
+  execution: 
+    sequence: 20
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1027_HOTEL_SELECT
+
+  client-side-condition: 
+    type: Item is not null
+    item: P1027_HOTEL_SELECT
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 10892698089916480
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        --:P1027_HOTEL_SELECT
+        :P1027_HOTEL_SELECT := :P1027_HOTEL_ID_T;
+        
+      items-to-submit: 
+      - P1027_HOTEL_SELECT
+      items-to-return: 
+      - P1027_HOTEL_ID_T
+      suppress-change-event: false
+
+    execution: 
+      sequence: 20
+      event: New_1 # 10892113805916479
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+- # ====== Dynamic Action: New_2 ===============================
+  id: 10893079672916481
+  identification: 
+    name: New_2
+
+  execution: 
+    sequence: 40
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1027_HOTEL_ID
+
+  actions: 
+  - # ====== Action: Set Value ===================================
+    id: 10893596879916483
+    identification: 
+      action: Set Value
+
+    settings: 
+      set-type: Static Assignment
+      value: 1
+      suppress-change-event: false
+
+    affected-elements: 
+      selection-type: Item(s)
+      item(s): 
+      - P1027_CURRENCY_CODE
+
+    execution: 
+      sequence: 10
+      event: New_2 # 10893079672916481
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+      stop-execution-on-error: true
+      wait-for-result: true
+
+- # ====== Dynamic Action: New =================================
+  id: 10893931856916484
+  identification: 
+    name: New
+
+  execution: 
+    sequence: 10
+    event-scope: Static
+
+  when: 
+    event: Page Load
+
+  server-side-condition: 
+    type: Never
+
+- # ====== Dynamic Action: Change Hotel ========================
+  id: 14126314533840841
+  identification: 
+    name: Change Hotel
+
+  execution: 
+    sequence: 60
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1027_GROUP_NAME
+
+  actions: 
+  - # ====== Action: Show ========================================
+    id: 14126719711840843
+    identification: 
+      action: Show
+
+    affected-elements: 
+      selection-type: Region
+      region: Groups1 # 32323079909752575
+
+    execution: 
+      sequence: 20
+      event: Change Hotel # 14126314533840841
+      fire-when-event-result-is: True
+      fire-on-initialization: true
+
+  - # ====== Action: Submit Page =================================
+    id: 16386858438516901
+    identification: 
+      action: Submit Page
+
+    settings: 
+      show-processing: true
+
+    execution: 
+      sequence: 10
+      event: Change Hotel # 14126314533840841
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+- # ====== Dynamic Action: Hotel list change ===================
+  id: 14127152947842446
+  identification: 
+    name: Hotel list change
+
+  execution: 
+    sequence: 70
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1027_GROUP_NAME
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+
+  actions: 
+  - # ====== Action: Refresh =====================================
+    id: 14127584613842448
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Region
+      region: Groups1 # 32323079909752575
+
+    execution: 
+      sequence: 10
+      event: Hotel list change # 14127152947842446
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+- # ====== Dynamic Action: refresh =============================
+  id: 19440133063368711
+  identification: 
+    name: refresh
+
+  execution: 
+    sequence: 80
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Dialog Closed
+    selection-type: Region
+    region: Groups1 # 32323079909752575
+
+  actions: 
+  - # ====== Action: Refresh =====================================
+    id: 19440210824368712
+    identification: 
+      action: Refresh
+
+    settings: 
+      maintain-pagination: false
+
+    affected-elements: 
+      selection-type: Region
+      region: Groups1 # 32323079909752575
+
+    execution: 
+      sequence: 10
+      event: refresh # 19440133063368711
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+processes: 
+- # ====== Process: Close Dialog ===============================
+  id: 18543451681841148
+  identification: 
+    name: Close Dialog
+    type: Close Dialog
+    execution-chain: None
+
+  settings: 
+    show-success-messages: true
+
+  execution: 
+    sequence: 10
+    point: Processing
+    run-process: Once Per Page Visit (default)
+
+  error: 
+    display-location: Inline in Notification
+
+  server-side-condition: 
+    type: Request is contained in Value
+    value: CREATE,SAVE,DELETE
+
+- # ====== Process: Test Delete ================================
+  id: 18543573785841149
+  identification: 
+    name: Test Delete
+    type: Execute Code
+    execution-chain: None
+
+  source: 
+    location: Local Database
+    language: PL/SQL
+    pl/sql-code: |
+      BEGIN
+        IF :P1027_GROUP_NAME IS NOT NULL THEN
+          DECLARE
+            l_count NUMBER;
+          BEGIN
+            SELECT COUNT(*)
+              INTO l_count
+              FROM UR_HOTEL_GROUPS
+             WHERE ID = HEXTORAW(:P1027_GROUP_NAME)
+               AND NVL(ASSOCIATION_END_DATE, SYSDATE) >= SYSDATE;
+      
+            IF l_count = 0 THEN
+              -- Clear both the item and session state to prevent item from keeping stale value
+              :P1027_GROUP_NAME := NULL;
+              APEX_UTIL.SET_SESSION_STATE('P1027_GROUP_NAME', NULL);
+            END IF;
+          END;
+        END IF;
+      END;
+
+  execution: 
+    sequence: 10
+    point: After Header
+    run-process: Once Per Page Visit (default)
+

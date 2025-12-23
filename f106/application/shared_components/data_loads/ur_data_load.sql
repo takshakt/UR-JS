@@ -1,0 +1,235 @@
+prompt --application/shared_components/data_loads/ur_data_load
+begin
+--   Manifest
+--     DATA LOAD: UR Data Load
+--   Manifest End
+wwv_flow_imp.component_begin (
+ p_version_yyyy_mm_dd=>'2024.11.30'
+,p_release=>'24.2.11'
+,p_default_workspace_id=>7945143549875994
+,p_default_application_id=>103
+,p_default_id_offset=>25186177142438240
+,p_default_owner=>'WKSP_DEV'
+);
+wwv_flow_imp_shared.create_data_profile(
+ p_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'UR Data Load'
+,p_format=>'CSV'
+,p_encoding=>'utf-8'
+,p_csv_enclosed=>'"'
+,p_has_header_row=>true
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27845915369981482)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'ID'
+,p_sequence=>1
+,p_is_primary_key=>true
+,p_column_type=>'DATA'
+,p_data_type=>'VARCHAR2'
+,p_selector_type=>'NAME'
+,p_selector=>'ID'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27846258954981484)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'HOTEL_ID'
+,p_sequence=>2
+,p_column_type=>'DATA'
+,p_data_type=>'VARCHAR2'
+,p_selector_type=>'NAME'
+,p_selector=>'HOTEL_ID'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27846547302981485)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'EVENT_NAME'
+,p_sequence=>3
+,p_column_type=>'DATA'
+,p_data_type=>'VARCHAR2'
+,p_max_length=>200
+,p_selector_type=>'NAME'
+,p_selector=>'EVENT_NAME'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27846860725981486)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'EVENT_TYPE'
+,p_sequence=>4
+,p_column_type=>'DATA'
+,p_data_type=>'VARCHAR2'
+,p_max_length=>100
+,p_selector_type=>'NAME'
+,p_selector=>'EVENT_TYPE'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27847193554981488)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'EVENT_START_DATE'
+,p_sequence=>5
+,p_column_type=>'DATA'
+,p_data_type=>'DATE'
+,p_format_mask=>'YYYY"-"MM"-"DD'
+,p_has_time_zone=>false
+,p_selector_type=>'NAME'
+,p_selector=>'EVENT_START_DATE'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27847423167981489)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'EVENT_END_DATE'
+,p_sequence=>6
+,p_column_type=>'DATA'
+,p_data_type=>'DATE'
+,p_format_mask=>'YYYY"-"MM"-"DD'
+,p_has_time_zone=>false
+,p_selector_type=>'NAME'
+,p_selector=>'EVENT_END_DATE'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27847785708981490)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'ESTIMATED_ATTENDANCE'
+,p_sequence=>7
+,p_column_type=>'DATA'
+,p_data_type=>'NUMBER'
+,p_selector_type=>'NAME'
+,p_selector=>'ESTIMATED_ATTENDANCE'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27848023110981491)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'IMPACT_LEVEL'
+,p_sequence=>8
+,p_column_type=>'DATA'
+,p_data_type=>'VARCHAR2'
+,p_max_length=>50
+,p_selector_type=>'NAME'
+,p_selector=>'IMPACT_LEVEL'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27848370657981493)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'DESCRIPTION'
+,p_sequence=>9
+,p_column_type=>'DATA'
+,p_data_type=>'VARCHAR2'
+,p_max_length=>500
+,p_selector_type=>'NAME'
+,p_selector=>'DESCRIPTION'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27848663016981494)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'CITY'
+,p_sequence=>10
+,p_column_type=>'DATA'
+,p_data_type=>'VARCHAR2'
+,p_max_length=>100
+,p_selector_type=>'NAME'
+,p_selector=>'CITY'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27848950657981495)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'POSTCODE'
+,p_sequence=>11
+,p_column_type=>'DATA'
+,p_data_type=>'VARCHAR2'
+,p_max_length=>10
+,p_selector_type=>'NAME'
+,p_selector=>'POSTCODE'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27849225958981496)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'CREATED_BY'
+,p_sequence=>12
+,p_column_type=>'DATA'
+,p_data_type=>'VARCHAR2'
+,p_selector_type=>'NAME'
+,p_selector=>'CREATED_BY'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27849576397981498)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'UPDATED_BY'
+,p_sequence=>13
+,p_column_type=>'DATA'
+,p_data_type=>'VARCHAR2'
+,p_selector_type=>'NAME'
+,p_selector=>'UPDATED_BY'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27849812559981499)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'CREATED_ON'
+,p_sequence=>14
+,p_column_type=>'DATA'
+,p_data_type=>'DATE'
+,p_format_mask=>'YYYY"-"MM"-"DD'
+,p_has_time_zone=>false
+,p_selector_type=>'NAME'
+,p_selector=>'CREATED_ON'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27850199991981500)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'UPDATED_ON'
+,p_sequence=>15
+,p_column_type=>'DATA'
+,p_data_type=>'DATE'
+,p_format_mask=>'YYYY"-"MM"-"DD'
+,p_has_time_zone=>false
+,p_selector_type=>'NAME'
+,p_selector=>'UPDATED_ON'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27850485408981501)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'COUNTRY'
+,p_sequence=>16
+,p_column_type=>'DATA'
+,p_data_type=>'VARCHAR2'
+,p_max_length=>100
+,p_selector_type=>'NAME'
+,p_selector=>'COUNTRY'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27850770431981503)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'EVENT_FREQUENCY'
+,p_sequence=>17
+,p_column_type=>'DATA'
+,p_data_type=>'VARCHAR2'
+,p_max_length=>50
+,p_selector_type=>'NAME'
+,p_selector=>'EVENT_FREQUENCY'
+);
+wwv_flow_imp_shared.create_data_profile_col(
+ p_id=>wwv_flow_imp.id(27851023067981504)
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_name=>'IMPACT_TYPE'
+,p_sequence=>18
+,p_column_type=>'DATA'
+,p_data_type=>'VARCHAR2'
+,p_max_length=>50
+,p_selector_type=>'NAME'
+,p_selector=>'IMPACT_TYPE'
+);
+wwv_flow_imp_shared.create_load_table(
+ p_id=>wwv_flow_imp.id(27851257527981505)
+,p_name=>'UR Data Load'
+,p_static_id=>'ur_data_load'
+,p_target_type=>'TABLE'
+,p_table_name=>'UR_EVENTS'
+,p_data_profile_id=>wwv_flow_imp.id(27845681915981452)
+,p_loading_method=>'MERGE'
+,p_commit_interval=>200
+,p_error_handling=>'ABORT'
+,p_skip_validation=>'N'
+,p_version_scn=>45828710801289
+);
+wwv_flow_imp.component_end;
+end;
+/
