@@ -1,0 +1,381 @@
+---
+- # ====== Data Load Definition: UR Data Load ==================
+  id: 27851257527981505
+  identification: 
+    name: UR Data Load
+
+  subscription: 
+    version-number: 45828710801289
+
+  target: 
+    type: Table
+    table-owner: Parsing Schema
+    table-name: UR_EVENTS
+    loading-method: Merge
+
+  error-handling: 
+    when-on-error: Stop
+
+  advanced: 
+    commit-interval: 200
+    static-id: ur_data_load
+
+  data-profiles: 
+    id: 27845681915981452
+    identification: 
+      name: UR Data Load
+
+    data-profile: 
+      format: CSV
+
+    advanced: 
+      encoding: Unicode UTF-8
+      csv-enclosed-by: '"'
+      first-line-contains-headers: true
+
+    columns: 
+    - # ====== Column: ID ==========================================
+      id: 27845915369981482
+      identification: 
+        column-name: ID
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 4000
+        primary-key: true
+
+      parsing: 
+        selector-type: Name
+        selector: ID
+
+      advanced: 
+        sequence: 1
+        hidden: false
+
+    - # ====== Column: HOTEL_ID ====================================
+      id: 27846258954981484
+      identification: 
+        column-name: HOTEL_ID
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 4000
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: HOTEL_ID
+
+      advanced: 
+        sequence: 2
+        hidden: false
+
+    - # ====== Column: EVENT_NAME ==================================
+      id: 27846547302981485
+      identification: 
+        column-name: EVENT_NAME
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 200
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: EVENT_NAME
+
+      advanced: 
+        sequence: 3
+        hidden: false
+
+    - # ====== Column: EVENT_TYPE ==================================
+      id: 27846860725981486
+      identification: 
+        column-name: EVENT_TYPE
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 100
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: EVENT_TYPE
+
+      advanced: 
+        sequence: 4
+        hidden: false
+
+    - # ====== Column: EVENT_START_DATE ============================
+      id: 27847193554981488
+      identification: 
+        column-name: EVENT_START_DATE
+
+      source: 
+        type: Data
+        data-type: DATE
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: EVENT_START_DATE
+        format-mask: YYYY"-"MM"-"DD
+        has-time-zone: false
+
+      advanced: 
+        sequence: 5
+        hidden: false
+
+    - # ====== Column: EVENT_END_DATE ==============================
+      id: 27847423167981489
+      identification: 
+        column-name: EVENT_END_DATE
+
+      source: 
+        type: Data
+        data-type: DATE
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: EVENT_END_DATE
+        format-mask: YYYY"-"MM"-"DD
+        has-time-zone: false
+
+      advanced: 
+        sequence: 6
+        hidden: false
+
+    - # ====== Column: ESTIMATED_ATTENDANCE ========================
+      id: 27847785708981490
+      identification: 
+        column-name: ESTIMATED_ATTENDANCE
+
+      source: 
+        type: Data
+        data-type: NUMBER
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: ESTIMATED_ATTENDANCE
+
+      advanced: 
+        sequence: 7
+        hidden: false
+
+    - # ====== Column: IMPACT_LEVEL ================================
+      id: 27848023110981491
+      identification: 
+        column-name: IMPACT_LEVEL
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 50
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: IMPACT_LEVEL
+
+      advanced: 
+        sequence: 8
+        hidden: false
+
+    - # ====== Column: DESCRIPTION =================================
+      id: 27848370657981493
+      identification: 
+        column-name: DESCRIPTION
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 500
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: DESCRIPTION
+
+      advanced: 
+        sequence: 9
+        hidden: false
+
+    - # ====== Column: CITY ========================================
+      id: 27848663016981494
+      identification: 
+        column-name: CITY
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 100
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: CITY
+
+      advanced: 
+        sequence: 10
+        hidden: false
+
+    - # ====== Column: POSTCODE ====================================
+      id: 27848950657981495
+      identification: 
+        column-name: POSTCODE
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 10
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: POSTCODE
+
+      advanced: 
+        sequence: 11
+        hidden: false
+
+    - # ====== Column: CREATED_BY ==================================
+      id: 27849225958981496
+      identification: 
+        column-name: CREATED_BY
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 4000
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: CREATED_BY
+
+      advanced: 
+        sequence: 12
+        hidden: false
+
+    - # ====== Column: UPDATED_BY ==================================
+      id: 27849576397981498
+      identification: 
+        column-name: UPDATED_BY
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 4000
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: UPDATED_BY
+
+      advanced: 
+        sequence: 13
+        hidden: false
+
+    - # ====== Column: CREATED_ON ==================================
+      id: 27849812559981499
+      identification: 
+        column-name: CREATED_ON
+
+      source: 
+        type: Data
+        data-type: DATE
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: CREATED_ON
+        format-mask: YYYY"-"MM"-"DD
+        has-time-zone: false
+
+      advanced: 
+        sequence: 14
+        hidden: false
+
+    - # ====== Column: UPDATED_ON ==================================
+      id: 27850199991981500
+      identification: 
+        column-name: UPDATED_ON
+
+      source: 
+        type: Data
+        data-type: DATE
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: UPDATED_ON
+        format-mask: YYYY"-"MM"-"DD
+        has-time-zone: false
+
+      advanced: 
+        sequence: 15
+        hidden: false
+
+    - # ====== Column: COUNTRY =====================================
+      id: 27850485408981501
+      identification: 
+        column-name: COUNTRY
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 100
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: COUNTRY
+
+      advanced: 
+        sequence: 16
+        hidden: false
+
+    - # ====== Column: EVENT_FREQUENCY =============================
+      id: 27850770431981503
+      identification: 
+        column-name: EVENT_FREQUENCY
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 50
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: EVENT_FREQUENCY
+
+      advanced: 
+        sequence: 17
+        hidden: false
+
+    - # ====== Column: IMPACT_TYPE =================================
+      id: 27851023067981504
+      identification: 
+        column-name: IMPACT_TYPE
+
+      source: 
+        type: Data
+        data-type: VARCHAR2
+        maximum-length: 50
+        primary-key: false
+
+      parsing: 
+        selector-type: Name
+        selector: IMPACT_TYPE
+
+      advanced: 
+        sequence: 18
+        hidden: false
+

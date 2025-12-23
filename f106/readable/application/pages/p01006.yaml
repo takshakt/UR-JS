@@ -1,0 +1,2294 @@
+---
+# ====== Page: Report Template ===============================
+id: 1006
+identification: 
+  name: Report Template
+  alias: REPORT-TEMPLATE
+  title: Report Template
+
+appearance: 
+  page-mode: Normal
+  page-template: Theme Default
+  template-options: 
+  - '#DEFAULT#'
+
+navigation-menu: 
+  override-user-interface-level: false
+
+navigation: 
+  cursor-focus: Do not focus cursor
+  warn-on-unsaved-changes: false
+
+javascript: 
+  file-urls: 
+  - '#APP_FILES#DynamicReportJS#MIN#.js'
+
+css: 
+  inline: |2
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+    
+            body {
+                background: linear-gradient(135deg, #0c0c0c 0%, #0c0c0c 100%);
+                color: #333;
+                padding: 0px;
+                min-height: 0vh;
+            }
+    
+            .container {
+                max-width: 100%;
+                max-height: 100%;
+                margin: 0 auto;
+                background: #0c0c0c;
+                border-radius: 1px;
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+                padding: 0px;
+                position: relative;
+                overflow: hidden;
+            }
+    
+            header {
+                text-align: center;
+                margin-bottom: 0px;
+                padding-bottom: 0px;
+                border-bottom: 1px solid #0c0c0c;
+            }
+    
+            h1 {
+                color: #2c3e50;
+                margin-bottom: 15px;
+                font-size: 32px;
+            }
+    
+            .description {
+                color: #7f8c8d;
+                max-width: 600px;
+                margin: 0 auto;
+                line-height: 1.6;
+            }
+    
+            .main-selector {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                gap: 15px;
+                margin: 25px 0;
+                flex-wrap: wrap;
+            }
+    
+            .selector-group {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+    
+            .selector-group label {
+                font-weight: 600;
+                color: #ffffff;
+                font-size: 14px;
+            }
+    
+            select {
+                padding: 12px 20px;
+                border: 1px solid #0c0c0c;
+                border-radius: 8px;
+                background-color: #0c0c0c;
+                font-size: 16px;
+                color: #ffffff;
+                width: 250px;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            }
+    
+            select:focus {
+                outline: none;
+                border-color: #4a7bff;
+                box-shadow: 0 0 0 3px rgba(236, 236, 240, 0.2);
+            }
+    
+            .selector-container {
+                display: flex;
+                gap: 30px;
+                margin-top: 30px;
+            }
+    
+            .column-section {
+                flex: 1;
+                background: #403c3ca8;
+                border-radius: 10px;
+                padding: 20px;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+                display: flex;
+                flex-direction: column;
+            }
+    
+            .column-section-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 20px;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #f3f0f0;
+            }
+    
+            h2 {
+                color: #ffffff;
+                font-size: 20px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+    
+            h2 span {
+                background: #ffffff;
+                color: #0c0c0c;
+                border-radius: 50%;
+                width: 30px;
+                height: 30px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 14px;
+            }
+    
+            .sort-buttons {
+                display: flex;
+                gap: 5px;
+            }
+    
+            .sort-btn {
+                padding: 5px 10px;
+                background: #f7f5f5;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+            }
+    
+            .sort-btn:hover {
+                background: #d6caca;
+            }
+    
+            .search-box {
+                padding: 12px 15px;
+                width: 100%;
+                border: 1px solid #0c0c0c;
+                border-radius: 8px;
+                margin-bottom: 15px;
+                font-size: 14px;
+                transition: all 0.3s ease;
+            }
+    
+            .search-box:focus {
+                outline: none;
+                border-color: #ffffff;
+                box-shadow: 0 0 0 3px rgba(242, 243, 245, 0.2);
+            }
+    
+            .New-Report {
+                padding: 6px 6px;
+                width: 100%;
+                border: 1px solid #0c0c0c;
+                border-radius: 8px;
+                margin-bottom: -5px;
+                margin-top: 15px;
+                font-size: 16px;
+                transition: all 0.3s ease;
+                height: 50px;
+            }
+    
+            .New-Report:focus {
+                outline: none;
+                border-color: #ffffff;
+                box-shadow: 0 0 0 3px rgba(242, 243, 245, 0.2);
+            }
+    
+            .column-list {
+                height: 350px;
+                overflow-y: auto;
+                border: 2px dashed #0c0c0c;
+                border-radius: 8px;
+                background: #0c0c0c;
+                padding: 15px;
+                flex-grow: 1;
+                transition: all 0.3s ease;
+            }
+    
+            .column-list.drag-over {
+                background: #0c0c0c;
+                border-color: #ffffff;
+                box-shadow: 0 0 15px rgba(74, 123, 255, 0.2);
+            }
+    
+            .column-item {
+                padding: 12px 15px;
+                margin-bottom: 10px;
+                background: #0c0c0c;
+                border: 1px solid #0c0c0c;
+                border-radius: 8px;
+                cursor: grab;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                transition: all 0.2s ease;
+                user-select: none;
+            }
+            
+            .column-item label {
+                flex-grow: 1;
+                margin-left: 10px;
+                font-weight: normal;
+                cursor: pointer;
+            }
+            
+            .column-item input[type="checkbox"] {
+                cursor: pointer;
+            }
+            
+            .column-item:hover {
+                background: #0c0c0c;
+                border-color: #4a7bff;
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            }
+    
+            .column-item:active {
+                cursor: grabbing;
+                transform: scale(1.02);
+                box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            }
+    
+            .column-item.dragging {
+                opacity: 0.6;
+                background: #0c0c0c;
+            }
+    
+            .drag-icon {
+                color: #7f8c8d;
+                font-size: 18px;
+            }
+    
+            .transfer-controls {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                gap: 15px;
+            }
+    
+            .transfer-controls button {
+                min-width: 120px;
+                padding: 12px 15px;
+            }
+    
+            button {
+                padding: 14px 28px;
+                background: #f0f1f4;
+                color: #151414;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: 600;
+                transition: all 0.2s ease;
+                font-size: 16px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+    
+            button:hover {
+                background: #ffffff;
+                transform: translateY(-2px);
+                box-shadow: 0 6px 10px rgb(193, 169, 169);
+            }
+    
+            button:active {
+                transform: translateY(0);
+            }
+    
+            button:disabled {
+                background: #f1eeee;
+                cursor: not-allowed;
+                transform: none;
+                box-shadow: none;
+            }
+    
+            #generateJson {
+                background: #4caf50;
+            }
+    
+            #generateJson:hover {
+                background: #45a049;
+            }
+    
+            #resetSelection {
+                background: #f44336;
+            }
+    
+            #resetSelection:hover {
+                background: #e53935;
+            }
+    
+            .action-buttons {
+                display: flex;
+                justify-content: center;
+                margin-top: 30px;
+                gap: 15px;
+            }
+    
+            .json-output {
+                margin-top: 30px;
+                padding: 20px;
+                background: #2c3e50;
+                color: #ffffff;
+                border-radius: 8px;
+                font-family: monospace;
+                white-space: pre-wrap;
+                
+                max-height: 200px;
+                overflow-y: auto;
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+                display: none;
+            }
+    
+            .instructions {
+                text-align: center;
+                color: #7f8c8d;
+                margin-top: 15px;
+                font-size: 14px;
+                display: flex;
+                flex-direction: column;
+                gap: 5px;
+            }
+    
+            .instructions strong {
+                color: #4a7bff;
+            }
+    
+            @media (max-width: 768px) {
+                .selector-container {
+                    flex-direction: column;
+                }
+                
+                .transfer-controls {
+                    flex-direction: row;
+                    margin: 15px 0;
+                }
+                
+                .column-list {
+                    height: 250px;
+                }
+                
+                .main-selector {
+                    flex-direction: column;
+                }
+            }
+    
+    
+            .notification {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                background: #4caf50;
+                color: #ffffff;
+                border-radius: 8px;
+                box-shadow: 0 5px 15px rgba(238, 235, 235, 0.2);
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+                z-index: 1000;
+            }
+    
+            .notification.show {
+                transform: translateX(0);
+            }
+    
+    
+    
+            /* Spinner styles */
+            .spinner {
+                border: 3px solid rgba(255, 255, 255, 0.2);
+                border-top: 3px solid #ffffff;
+                border-radius: 50%;
+                width: 18px;
+                height: 18px;
+                animation: spin 1s linear infinite;
+                display: inline-block;
+                vertical-align: middle;
+                margin-left: 8px;
+            }
+    
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+    
+            .template-info {
+                text-align: center;
+                margin: 10px 0;
+                color: #fbfefe;
+                font-style: italic;
+            }
+    
+            .transfer-btn, .action-btn {
+        padding: 14px 28px;
+        background: #fdfdfd;
+        color: rgb(11, 11, 11);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 6px rgba(181, 163, 163, 0.3);
+        text-decoration: none;
+        min-width: 60px;
+        justify-content: center;
+    }
+    
+    .transfer-btn {
+        min-width: 60px;
+        padding: 12px 15px;
+    }
+    
+    .transfer-btn:hover, .action-btn:hover {
+        background: #7294f1;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.4);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .transfer-btn:active, .action-btn:active {
+        transform: translateY(0);
+    }
+    
+    .transfer-btn:disabled, .action-btn:disabled {
+        background: #444444;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+    
+    #generateJson.action-btn {
+        background: #4caf50;
+    }
+    
+     
+    
+    /* Ensure btn-primary styles are used for action buttons */
+    #generateJson.action-btnSave {
+        background-color: #007bff; /* Standard Blue */
+         width: auto;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s, opacity 0.3s;
+        font-weight: 600;
+        display: inline-block;  
+        text-align: center; 
+        justify-content: center;
+        align-items: center;
+        user-select: none;
+        white-space: nowrap;
+        color: white;
+    }
+    
+    /* Ensure the hover effect also uses a slightly different blue */
+    #generateJson.action-btnSave:hover {
+        background-color: #0056b3; /* Darker Blue on hover */
+         width: auto;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s, opacity 0.3s;
+        font-weight: 600;
+        display: inline-block;  
+        text-align: center; 
+        justify-content: center;
+        align-items: center;
+        user-select: none;
+        white-space: nowrap;
+        color: white;
+    }
+    
+    
+    
+    
+    #generateJson.action-btn:hover {
+        background: #45a049;
+    }
+    
+    #resetSelection.action-btn {
+        background: #f44336;
+    }
+    
+    #resetSelection.action-btn:hover {
+        background: #e53935;
+    }
+    
+    
+    
+    /* ****************************************************************************** */
+    .custom-data-table {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: #1e1e1e;
+        color: #ffffff;
+        font-family: Arial, sans-serif;
+    }
+    
+    .custom-data-table th {
+        background-color: #333;
+        color: #fff;
+        padding: 12px;
+        text-align: left;
+        border: 1px solid #444;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    
+    .custom-data-table th:hover {
+        background-color: #555;
+    }
+    
+    .custom-data-table td {
+        padding: 10px;
+        border: 1px solid #444;
+        background-color: #2d2d2d;
+    }
+    
+    .custom-data-table tr:hover td {
+        background-color: #3a3a3a;
+    }
+    
+    /* Header grouping styles */
+    .table-group-header {
+        background-color: #555 !important;
+        text-align: center !important;
+        font-size: 1.1em;
+        cursor: default !important;
+    }
+    
+    .table-group-header:hover {
+        background-color: #555 !important;
+    }
+    
+    .data-cell {
+        text-align: center;
+    }
+    
+    /* Popup overlay styles */
+    .popup-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 10000;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .popup-content {
+        background-color: #2d2d2d;
+        padding: 30px;
+        border-radius: 8px;
+        width: 500px;
+        max-width: 90%;
+        border: 1px solid #555;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .popup-title {
+        color: #fff;
+        margin-bottom: 20px;
+        font-size: 1.3em;
+        border-bottom: 1px solid #555;
+        padding-bottom: 10px;
+    }
+    
+    .form-group {
+        margin-bottom: 20px;
+    }
+    
+    .form-label {
+        display: block;
+        color: #ccc;
+        margin-bottom: 8px;
+        font-weight: bold;
+    }
+    
+    .form-input {
+        width: 100%;
+        padding: 10px;
+        background-color: #1e1e1e;
+        border: 1px solid #555;
+        border-radius: 4px;
+        color: #fff;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+    
+    .form-input:focus {
+        outline: none;
+        border-color: #007bff;
+    }
+    
+    .popup-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 15px;
+        margin-top: 25px;
+    }
+    
+    .popup-button {
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.3s;
+    }
+    
+    .save-button {
+        background-color: #28a745;
+        color: white;
+    }
+    
+    .save-button:hover {
+        background-color: #218838;
+    }
+    
+    .cancel-button {
+        background-color: #6c757d;
+        color: white;
+    }
+    
+    .cancel-button:hover {
+        background-color: #5a6268;
+    }
+    
+    /*  New Formula code Start*/
+    /* --- START DASHBOARD STYLES --- */
+    
+    /* High-specificity wrapper for the entire dashboard to prevent conflicts */
+    .data-dashboard-wrapper {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    /* General Layout and Background */
+    /* NOTE: Apply the background/color/padding to the body or a higher-level wrapper if needed. */
+    /* body { background-color: #121212; color: #ffffff; padding: 20px; } */
+    
+    /* Header Styles */
+    .data-dashboard-wrapper header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding: 20px;
+        background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+        color: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    }
+    
+    .data-dashboard-wrapper h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+    }
+    
+    .data-dashboard-wrapper .description {
+        font-size: 1.1rem;
+        max-width: 100%;
+        margin: 0 auto;
+        color: rgba(255, 255, 255, 0.9);
+    }
+    
+    /* Panel Layout */
+    .data-dashboard-wrapper .panels-container {
+        /* display: grid; */
+        grid-template-columns: 1fr 1fr;
+        gap: 0px;
+        margin-bottom: 30px;
+    }
+    
+    /* Control Panels (the boxes) */
+    .data-dashboard-wrapper .control-panel {
+        background-color: #1e1e1e;
+        padding: 0px;
+        border-radius: 10px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        margin-bottom: 20px;
+        border: 1px solid #333;
+    }
+    
+    .data-dashboard-wrapper .control-panel h2 {
+        margin-bottom: 15px;
+        color: #ffffff;
+         padding: 10px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #333;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .data-dashboard-wrapper h3 {
+        color: #ffffff;
+        margin-bottom: 15px;
+    }
+    
+    /* Form Elements */
+    .data-dashboard-wrapper .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .data-dashboard-wrapper label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #e0e0e0;
+    }
+    
+    .data-dashboard-wrapper select, 
+    .data-dashboard-wrapper input:not(.action-btn), 
+    .data-dashboard-wrapper textarea { 
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #444;
+        border-radius: 5px;
+        font-size: 1rem;
+        background-color: #2d2d2d;
+        color: #ffffff;
+    }
+    
+    .data-dashboard-wrapper select:focus, 
+    .data-dashboard-wrapper input:focus, 
+    .data-dashboard-wrapper textarea:focus {
+        outline: none;
+        border-color: #6a11cb;
+        box-shadow: 0 0 0 2px rgba(106, 17, 203, 0.2);
+    }
+    
+    /* --- DIV-BUTTON STYLES --- */
+    
+    /* Base Styles for ALL Div Buttons */
+    .data-dashboard-wrapper .collapse-btn, 
+    .data-dashboard-wrapper .action-btn { 
+        width: auto;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s, opacity 0.3s;
+        font-weight: 600;
+        display: inline-block;  
+        text-align: center; 
+        justify-content: center;
+        align-items: center;
+        user-select: none;
+        white-space: nowrap;
+    }
+    
+    /* Collapse Button (minus/plus icon) */
+    .data-dashboard-wrapper .collapse-btn {
+        background: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #6a11cb;
+        width: auto;
+        padding: 0 10px;
+    }
+    
+    /* Default Action Button (Green) */
+    .data-dashboard-wrapper .action-btn { 
+        background-color: #528e54;
+        color: white;
+    }
+    
+    .data-dashboard-wrapper .action-btn:hover {
+        background-color: #529555;
+    }
+    
+    /* Danger Button (Red) */
+    .data-dashboard-wrapper .btn-danger {
+        background-color: #c14037;
+    }
+    
+    .data-dashboard-wrapper .btn-danger:hover {
+        background-color: #b34040;
+    }
+    
+    /* Info Button (Blue) */
+    .data-dashboard-wrapper .btn-info {
+        background-color: #2196F3;
+    }
+    
+    .data-dashboard-wrapper .btn-info:hover {
+        background-color: #0b7dda;
+    }
+    
+    /* Disabled State for Update Button (using aria-disabled='true') */
+    .data-dashboard-wrapper .action-btn[aria-disabled='true'] {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+    
+    /* Formula Builder Specific Layout */
+    .data-dashboard-wrapper .formula-builder {
+        display: grid;
+        /* Defines 4 columns: 2 equal-width selects, a fixed-width color picker (40px), and an auto-width button */
+        grid-template-columns: 1fr 1fr 40px auto; 
+        gap: 10px;
+        margin-bottom: 15px;
+        align-items: center; /* Ensures vertical alignment */
+    }
+    
+    /* Styling for the custom color picker control */
+    .color-picker-control {
+        /* Critical to override default input behavior in the grid layout */
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        
+        /* Set dimensions for a visible circle */
+        width: 35px;
+        height: 35px;
+        padding: 0;
+        margin: 0;
+        
+        /* Make it round */
+        border-radius: 50%;
+        
+        /* Style border to match controls */
+        border: 2px solid #555;
+        cursor: pointer;
+        overflow: hidden; /* Important for clean circle look */
+    }
+    
+    /* Ensure the color value is reflected inside */
+    .color-picker-control::-webkit-color-swatch {
+        border: none;
+        border-radius: 50%;
+    }
+    .color-picker-control::-moz-color-swatch {
+        border: none;
+        border-radius: 50%;
+    }
+    
+    .data-dashboard-wrapper .formula-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    
+    .data-dashboard-wrapper .formula-preview {
+        padding: 12px;
+        background-color: #2d2d2d;
+        border: 1px dashed #555;
+        border-radius: 5px;
+        min-height: 45px;
+        margin-bottom: 15px;
+        font-family: monospace;
+        font-size: 1.1rem;
+        width: 100%;
+        box-sizing: border-box;
+        color: #ffffff;
+        resize: vertical;
+    }
+    
+    /* Saved Formulas List */
+    /* .data-dashboard-wrapper .saved-formulas {
+        margin-top: 20px;
+    }
+    
+    .data-dashboard-wrapper .formula-item {
+        padding: 10px;
+        background-color: #2d2d2d;
+        border-radius: 5px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-left: 3px solid #3a3ab5;
+    }
+    
+    .data-dashboard-wrapper .formula-item-buttons {
+        display: flex;
+        gap: 5px;
+    }
+    
+    .data-dashboard-wrapper .formula-item-buttons .action-btn {
+        width: auto;
+        padding: 5px 10px;
+        font-size: 0.9rem;
+    } */
+    
+    
+    /* Saved Formulas Container */
+    .saved-formulas {
+      margin-top: 20px;
+      color: #eee;
+      background-color: transparent;
+    }
+    
+    /* Table */
+    .saved-formulas-table {
+      width: 100%;
+      border-collapse: collapse;
+      background-color: #111;
+      border: 1px solid #333;
+      border-radius: 5px;
+      overflow: hidden;
+      table-layout: auto;
+    }
+    
+    /* Header */
+    .saved-formulas-table th {
+      background-color: #222;
+      color: #ccc;
+      text-align: left;
+      padding: 10px;
+      font-weight: 600;
+      border-bottom: 1px solid #333;
+    }
+    
+    /* Table cells */
+    .saved-formulas-table td {
+       
+      padding: 10px;
+      border-bottom: 1px solid #333;
+      color: #eee;
+      vertical-align: middle;
+      word-break: break-word;
+    }
+    
+    /* Row hover */
+    .saved-formulas-table tr:hover td {
+      background-color: #252525;
+    }
+    
+    
+    /* Action buttons */
+    .action-btn {
+        width: auto; 
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: #fff;
+      margin-right: 5px;
+    }
+    
+    .btn-info { background-color: #17a2b8; }
+    .btn-primary { background-color: #007bff; }
+    .btn-danger { background-color: #dc3545; }
+    
+    .btn-info:hover,
+    .btn-primary:hover,
+    .btn-danger:hover {
+      opacity: 0.85;
+    }
+    
+    /* Table border fix for dark theme */
+    .saved-formulas-table th:first-child,
+    .saved-formulas-table td:first-child {
+      border-left: none;
+    }
+    .saved-formulas-table th,
+    .saved-formulas-table td {
+      border-right: 1px solid #333;
+    }
+    .saved-formulas-table th:last-child,
+    .saved-formulas-table td:last-child {
+      border-right: none;
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    /* Table Styles */
+    .data-dashboard-wrapper .table-container {
+        background-color: #1e1e1e;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        margin-bottom: 30px;
+        overflow-x: auto;
+        border: 1px solid #333;
+    }
+    
+    .data-dashboard-wrapper table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .data-dashboard-wrapper th, 
+    .data-dashboard-wrapper td {
+        padding: 12px 15px;
+        text-align: left;
+        border-bottom: 1px solid #333;
+        color: #ffffff;
+    }
+    
+    .data-dashboard-wrapper th {
+        background-color: #2d2d2d;
+        font-weight: 600;
+        color: #ffffff;
+        position: sticky;
+        top: 0;
+    }
+    
+    .data-dashboard-wrapper tr:hover {
+        background-color: #2d2d2d;
+    }
+    
+    /* Summary Results */
+    .data-dashboard-wrapper .summary-item {
+        margin-bottom: 10px;
+        padding: 10px;
+        background-color: #2d2d2d;
+        border-radius: 5px;
+        color: #ffffff;
+    }
+    
+    .data-dashboard-wrapper .footer {
+        text-align: center;
+        margin-top: 30px;
+        color: #b0b0b0;
+    }
+    
+    /* Media Queries for Responsiveness */
+    @media (max-width: 100%) {
+        .data-dashboard-wrapper .panels-container {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .data-dashboard-wrapper .formula-builder {
+            grid-template-columns: 1fr;
+        }
+        
+        .data-dashboard-wrapper .formula-actions {
+            grid-template-columns: 1fr;
+        }
+    }
+     
+    /* --- END DASHBOARD STYLES --- */
+    
+    
+    .SaveAll {
+        /* Style for the export button */
+        background-color: #559857; /* Green */
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: bold;
+        margin: 20px auto; /* Center button */
+        display: block;
+        width: 300px;
+        transition: background-color 0.3s ease;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .SaveAll:hover {
+        background-color: #45a049;
+    }
+    
+     .hide-prompt {
+        color: red !important; 
+        border: 2px solid red !important;
+        background-color: #ffe5e5; /* Light red background for better visibility */
+    }
+    
+    
+    /* start 1210*/
+    /* Base style for permanent control panels (like formula builder, formatter) */
+    .control-panel-region {
+        background-color: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 20px;
+        
+    }
+    
+    .control-panel-header h2 {
+        color: #fff;
+        border-bottom: 1px solid #444;
+        padding-bottom: 10px;
+        margin-bottom: 15px; 
+    }
+    
+    /* Ensure buttons added via JavaScript are also styled as divs */
+    .remove-rule-btn {
+        /* Style to make the remove button look clickable */
+        background: #c0392b !important;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        cursor: pointer;
+        border-radius: 3px;
+        font-size: 12px;
+    }
+    
+    
+     
+    /* Ensure the dialog content has a maximum height and scrolls if needed */
+    .formula-dialog .dialog-content {
+        /* Retain existing styles (e.g., background, padding, width) */
+        
+        /* ADD these two properties: */
+        max-height: 90vh; /* Limits the dialog height to 90% of the viewport height */
+        overflow-y: auto; /* Adds a vertical scrollbar if content exceeds max-height */
+    }
+    
+    /* Optional: Add slight padding to the bottom of the content to ensure the last element isn't touching the scrollbar */
+    .formula-dialog .dialog-content > :last-child {
+        padding-bottom: 5px;
+    }
+    
+    
+    .formula-dialog {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      /* Changed from 0.4 to 0.7 for a darker, less transparent overlay */
+      background: rgba(0, 0, 0, 0.7); 
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+    }
+    
+    .dialog-content {
+      /* Changed from rgba(0, 0, 0, 0.3) to solid white */
+      background: #3c3737; 
+      padding: 20px;
+      border-radius: 10px;
+      width: 600px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+    
+    .dialog-footer {
+        display: flex;
+        justify-content: space-between; 
+        align-items: center;
+        width: 100%;
+        margin-top: 15px; 
+    }
+    
+    /* 2. Style the new wrapper to keep the right buttons grouped */
+    .button-group-right {
+        display: flex;
+        gap: 10px; /* Space between Add Rule and Save buttons */
+        align-items: center;
+    }
+    .action-btn {
+      display: inline-block;
+      padding: 6px 12px;
+      margin: 3px;
+      background-color: #007bff;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    
+    .btn-danger { background-color: #dc3545; }
+    .btn-info { background-color: #17a2b8; }
+    .btn-secondary {
+        width: auto;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s, opacity 0.3s;
+        font-weight: 600;
+        display: inline-block;
+        text-align: center;
+     
+        user-select: none;
+        white-space: nowrap;
+        background-color: #6c757d; 
+        margin-left: 0; 
+    }
+    
+     
+    
+    .rule-header {
+        display: flex;
+        /* Pushes the first item (Label) to the start and the last item (Button) to the end */
+        justify-content: space-between; 
+        /* Vertically aligns the items in the center */
+        align-items: center; 
+        /* Ensures the header takes the full width available */
+        width: 100%; 
+        margin-bottom: 10px; 
+    }
+    
+    /* 2. Constrain the size of the Delete Button */
+    .delete-rule-btn {
+        /* Prevents the button from stretching */
+        flex-shrink: 0;
+        
+        /* Make the button look smaller than the main action buttons */
+        padding: 4px 8px !important; /* Use !important if needed to override global .action-btn padding */
+        font-size: 0.8rem;
+        cursor: pointer;
+        
+        /* Set specific background color */
+        background-color: #dc3545; 
+    }
+    
+    /* 3. Ensure the parent .form-group isn't trying to do its own conflicting layout */
+    /* If you use the .form-group CSS below, it might be pushing the button down: */
+    /* #formatter-dialog .form-group { display: flex; flex-direction: column; } */
+    
+    /* If your delete button is still breaking, you might need to force the label to stay on one line */
+    .rule-label {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+     
+     
+    .radio-group {
+        /* Force all content inside this container to remain on a single line */
+        white-space: nowrap; 
+    }
+    
+    /* Ensure btn-primary styles are used for action buttons */
+    .action-btn.btn-primarySave {
+        background-color: #007bff; /* Standard Blue */
+    }
+    
+    /* Ensure the hover effect also uses a slightly different blue */
+    .action-btn.btn-primarySave:hover {
+        background-color: #0056b3; /* Darker Blue on hover */
+    }
+    
+    
+
+security: 
+  authentication: Page Requires Authentication
+  deep-linking: Application Default
+  page-access-protection: Arguments Must Have Checksum
+  form-auto-complete: Off
+  browser-cache: Application Default
+
+session-management: 
+  rejoin-sessions: Application Default
+
+advanced: 
+  enable-duplicate-page-submissions: Yes - Enable page to be re-posted
+  reload-on-submit: Only for Success
+
+server-cache: 
+  caching: Disabled
+
+regions: 
+- # ====== Region: staticCntRN =================================
+  id: 9903517614138614
+  identification: 
+    name: staticCntRN
+    type: Static Content
+
+  source: 
+    html-code: |
+      <div class="container">
+          <header>
+              <div class="main-selector">
+                  <div class="selector-group">
+                      <label for="hotel-lov">Select Hotel:</label>
+                      <select id="hotel-lov">
+                          
+                      </select>
+                  </div>
+                  <div class="selector-group">
+                      <label for="report-lov">Select Report:</label>
+                      <select id="report-lov">
+                          
+                      </select>
+                      
+                  </div>
+                  <div class="selector-group">
+                      <input type="text" class="New-Report" id="New-Report" placeholder="Create New Report" style="display: none;">
+                  </div>
+                  <div class="selector-group">
+                      <label for="template-lov"></label>
+                      <select id="template-lov" disabled>
+                          <option value="">-- Select Hotel First --</option>
+                      </select>
+                  </div>
+              </div>
+          </header>
+      
+      
+          <div class="selector-container">
+              <div class="column-section">
+                  <div class="column-section-header">
+                      <h2>Available Fields <span id="available-count">0</span></h2>
+                      <div class="sort-buttons">
+                          <a href="javascript:void(0)" class="sort-btn" id="sort-available-asc">A-Z</a>
+                          <a href="javascript:void(0)" class="sort-btn" id="sort-available-desc">Z-A</a>
+                      </div>
+                  </div>
+                  <p class="template-info" id="current-template-info">Current template: None</p>
+                  <input type="text" class="search-box" id="left-search" placeholder="Search fields...">
+                  <div class="column-list" id="available-columns">
+                      </div>
+              </div>
+      
+              <div class="transfer-controls">
+                  <a href="javascript:void(0)" id="add-btn" class="transfer-btn" disabled>  &gt;</a>
+                  <a href="javascript:void(0)" id="add-all-btn" class="transfer-btn" disabled>  &gt;&gt;</a>
+                  <a href="javascript:void(0)" id="remove-btn" class="transfer-btn" disabled>&lt;  </a>
+                  <a href="javascript:void(0)" id="remove-all-btn" class="transfer-btn" disabled>&lt;&lt; </a>
+              </div>
+      
+              <div class="column-section">
+                  <div class="column-section-header">
+                      <h2>Selected Fields <span id="selected-count">0</span></h2>
+                      <div class="sort-buttons">
+                          <a href="javascript:void(0)" class="sort-btn" id="sort-selected-asc">A-Z</a>
+                          <a href="javascript:void(0)" class="sort-btn" id="sort-selected-desc">Z-A</a>
+                      </div>
+                  </div>
+                  <p class="template-info">Fields from all templates</p>
+                  <input type="text" class="search-box" id="right-search" placeholder="Search selected...">
+                  <div class="column-list" id="selected-columns">
+                      </div>
+              </div>
+          </div>
+      
+          <div class="action-buttons">
+              <a href="javascript:void(0)" id="generateJson" class="action-btnSave">
+                  Save
+              </a>
+              <a href="javascript:void(0)" id="resetSelection" class="action-btn">
+                  
+                  Delete
+              </a>
+          </div>
+      
+          <div class="json-output" id="json-output"></div>
+      </div>
+       
+      
+      
+      
+      <!-- Popup for column header editing -->
+      <div id="columnPopup" class="popup-overlay">
+          <div class="popup-content">
+              <div class="popup-title">Edit Column Header</div>
+              
+              <div class="form-group">
+                  <label class="form-label">Original Column Header:</label>
+                  <input type="text" id="originalHeader" class="form-input" readonly>
+              </div>
+              
+              <div class="form-group">
+                  <label class="form-label">New Column Header:</label>
+                  <input type="text" id="newHeader" class="form-input" placeholder="Enter new column header">
+              </div>
+              
+              <div class="form-group">
+                  <label class="form-label">Visibility:</label>
+                  <div class="radio-group">
+                      <input type="radio" id="visibilityShow" name="columnVisibility" value="show" checked>
+                      <label for="visibilityShow">Show</label>
+                      
+                      <input type="radio" id="visibilityHide" name="columnVisibility" value="hide">
+                      <label for="visibilityHide">Hide</label>
+                  </div>
+              </div>
+                <div class="form-group" id="aggregation-group" style="display: none;">
+                  <label class="form-label">Aggregation:</label>
+                      <select id="numericAggregation" class="form-input" style="display: none;">
+              <option value="none">None</option>
+              <option value="sum">Sum</option>
+              <option value="average">Average</option>
+              <option value="min">Min</option>
+              <option value="max">Max</option>
+              <option value="count">Count</option>
+          </select>
+      
+          <select id="dateAggregation" class="form-input" style="display: none;">
+              <option value="none">None</option>
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+              <option value="year">Year</option>
+          </select>
+              </div>
+              <div class="popup-buttons">
+                  <div id="cancelPopup" class="popup-button cancel-button">Cancel</div>
+                  <div id="savePopup" class="popup-button save-button">Save</div>
+              </div>
+          </div>
+      </div>
+      
+      
+      
+      
+      <br>
+      <br>
+      <br>
+      <br>
+      
+       
+      
+        <div class="data-dashboard-wrapper">
+        
+       <div class="panels-container">
+          <h2>View data and edit headers</h2>
+      <div class="table-container">
+          
+          <table id="reporttblDataTable" class="custom-data-table">
+              <thead id="tableHeader">
+                  <!-- JavaScript will populate headers here -->
+              </thead>
+              <tbody id="tableBody">
+                  <!-- JavaScript will populate rows here -->
+              </tbody>
+          </table>
+      </div>
+       
+      <div id="noDataMessage" style="display: none; text-align: center; color: #fff; padding: 20px;">
+          No report data available.
+      </div>
+      
+      
+      
+      
+      
+      
+      <br>
+      <br>
+      <br>
+      <br>
+      
+      
+       
+      
+      
+      
+      
+      
+      
+      
+      
+      
+      
+                
+                
+      <div>
+      
+      
+      <div id="ui-container">
+      
+          <div class="control-panel formula-panel">
+              <h2>Formula Builder</h2>
+              <div id="open-formula-dialog" class="action-btn btn-primary" role="button">+ Add New Formula</div>
+      
+              <div id="formula-dialog" class="formula-dialog" style="display: none;">
+                  <div class="dialog-content">
+                      <h3>Formula Builder</h3>
+                      <div class="form-group">
+                          <label for="calc-name">Calculation Name:</label>
+                          <input type="text" id="calc-name" placeholder="e.g., Total Value">
+                      </div>
+                      <div class="formula-builder">
+                          <select id="column-lov"><option value="">Select Column</option></select>
+                          <select id="operator-lov">
+                          <option value="">Select Operator</option>
+                          <option value="+">+ (Add)</option>
+                          <option value="-">- (Subtract)</option>
+                          <option value="*">* (Multiply)</option>
+                          <option value="/">/ (Divide)</option>
+                          <option value="(">( (Open Paren)</option>
+                          <option value=")">) (Close Paren)</option>
+                          </select>
+                          <div id="add-to-formula" class="action-btn" role="button">Add</div>
+                      </div>
+                      <div class="form-group">
+                          <label for="formula-preview">Formula Preview:</label>
+                          <textarea id="formula-preview" class="formula-preview" rows="3" placeholder="Click 'Add' or type your formula here..."></textarea>
+                      </div>
+      
+      <label for="formula-preview">Where:</label>
+                      <div class="formula-builder">
+                          <select id="column-lovfilter"><option value="">Select Column</option></select>
+                          <select id="operator-lovfilter">
+                          <option value="">Select Operator</option>
+                         <option value="===">Equals (=)</option>
+                          <option value="!==">Not Equals (!=)</option>
+                          <option value=">">Greater Than (>)</option>
+                          <option value="<">Less Than (<)</option>
+                          <option value=">=">Greater Than or Equal (>=)</option>
+                          <option value="<=">Less Than or Equal (<=)</option>
+                          <option value="&&">AND (&&)</option>
+                          <option value="||">OR (||)</option> 
+                          </select>
+                          <div id="add-to-formulafilter" class="action-btn" role="button">Add</div>
+                      </div>
+                      <div class="form-group">
+                          <label for="formula-preview">Where Preview:</label>
+                          <textarea id="formulafilter-preview" class="formula-preview" rows="3" placeholder="Click 'Add' or type your filter here..."></textarea>
+                      </div>
+      
+      
+                      <div class="formula-actions">
+                          <div id="add-calculation" class="action-btn btn-info" role="button">Add Calculation</div>
+                          <div id="update-calculation" class="action-btn btn-info" role="button" aria-disabled="true">Update Calculation</div>
+                          <div id="clear-formula" class="action-btn btn-danger" role="button">Clear Formula</div>
+                          <div id="test-formula" class="action-btn btn-info" role="button">Test Formula</div>
+                      </div>
+                      <div class="dialog-footer">
+                          <div id="close-dialog" class="btn-secondary" role="button">Close</div>
+                      </div>
+                  </div>
+              </div>
+      
+              <div class="saved-formulas">
+                  <h3>Saved Formulas</h3>
+                  <table id="saved-formulas-table" class="saved-formulas-table">
+                      <thead><tr><th>Rule Name</th><th>Formula</th><th>Actions</th><th>Delete</th></tr></thead>
+                      <tbody id="saved-formulas-list"></tbody>
+                  </table>
+              </div>
+          </div>
+          
+          <br>
+          
+          <div class="control-panel filter-panel">
+              <h2>Advanced Filter Builder</h2>
+              <div id="open-filter-dialog" class="action-btn btn-primary" role="button">+ Add New Filter</div>
+      
+              <div id="filter-dialog" class="formula-dialog" style="display: none;">
+                  <div class="dialog-content">
+                      <h3>Filter Builder</h3>
+                      <div class="formula-builder">
+                          <select id="filter-column-lov" title="Select Column"></select>
+                          <select id="filter-operator-lov" title="Select Operator">
+                          <option value="">Select Operator</option>
+                          <option value="===">Equals (=)</option>
+                          <option value="!==">Not Equals (!=)</option>
+                          <option value=">">Greater Than (>)</option>
+                          <option value="<">Less Than (<)</option>
+                          <option value=">=">Greater Than or Equal (>=)</option>
+                          <option value="<=">Less Than or Equal (<=)</option>
+                          <option value="&&">AND (&&)</option>
+                          <option value="||">OR (||)</option>
+                          <option value=".includes('VALUE')">Contains (String)</option>
+                          <option value=".startsWith('VALUE')">Starts With</option>
+                          <option value=".endsWith('VALUE')">Ends With</option>
+                          </select>
+                          <div id="add-to-filter" class="action-btn">Add</div>
+                      </div>
+                      <div class="form-group">
+                          <label for="filter-preview">Filter Expression Preview</label>
+                          <textarea id="filter-preview" class="formula-preview" rows="2"></textarea>
+                      </div>
+                      <div class="form-group">
+                          <label for="filter-name-input">Filter Name</label>
+                          <input type="text" id="filter-name-input" placeholder="e.g., HighSalesFilter">
+                      </div>
+                      <div class="formula-actions">
+                          <div id="apply-saved-filter" class="action-btn btn-info">Save Filter</div>
+                          <div id="add-saved-filter" class="action-btn">Save New Filter</div>
+                          <div id="update-saved-filter" class="action-btn btn-info" aria-disabled="true">Update Saved Filter</div>
+                          <div id="clear-filter-builder" class="action-btn btn-danger">Clear Builder</div>
+                      </div>
+                      <div class="dialog-footer">
+                          <div id="close-filter-dialog" class="btn-secondary" role="button">Close</div>
+                      </div>
+                  </div>
+              </div>
+      
+              <div class="saved-formulas">
+                  <h3>Saved Filters</h3>
+                  <table id="saved-filters-table" class="saved-formulas-table">
+                      <thead><tr><th>Filter Name</th><th>Expression</th><th>Actions</th><th>Delete</th></tr></thead>
+                      <tbody id="saved-filters-list"></tbody>
+                  </table>
+              </div>
+          </div>
+          
+          <br>
+          
+          <div class="control-panel formatter-panel">
+              <h2>Column Formatter Configurations</h2>
+              <div id="addColumnFormatterBtn" class="action-btn btn-primary" role="button">+ Add Column Format</div>
+      
+              <div id="formatter-dialog" class="formula-dialog" style="display: none;">
+                  <div class="dialog-content">
+                      <h3>Add/Edit Formatting</h3>
+      
+                      <div class="form-group">
+                          <label for="column-select_ftr">1. Source Column</label>
+                          <select id="column-select_ftr" class="column-select_ftr">
+                              <option value="">-- Select Column --</option>
+                          </select>
+                      </div>
+      
+                      <div id="rules-list">
+                          <div class="rule-section" data-rule-id="1">
+                              <div class="form-group">
+                                  <div class="rule-header">
+                                      <label class="rule-label" id="rule-label-1">Create Rule 1</label>
+                                      <div class="action-btn btn-danger delete-rule-btn" data-rule-id="1">Delete Rule</div>
+                                  </div>
+                                  
+                                  <div class="formula-builder">
+                                      <select id="formatter-column-lov-1" class="rule_set_column">
+                                          <option value="">Select Column</option>
+                                      </select>
+                                      
+                                       <select id="formatter-operator-lov-1">
+                                          <option value="">Select Operator</option>
+                                          <option value=">">></option> 
+                                          <option value="<"><</option>
+                                          <option value="==">==</option>
+                                          <option value="!=">!=</option>
+                                      </select>
+                                      
+                                      <input type="color" id="formatter-color-1" value="#ff0000" class="color-picker-control">
+                                      
+                                      <div class="action-btn btn-primary" id="add-condition-1">Add condition</div>
+                                  </div>
+                                  
+                                  <div class="form-group">
+                                      <label for="formatter-rules-1">Rule Expression:</label>
+                                      <textarea id="formatter-rules-1" class="formula-preview" rows="4"
+                                      placeholder="Your rule expression will appear here..."></textarea>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+      
+                      <div class="dialog-footer">
+                          <div id="close-formatter-dialog" class="btn-secondary">Close</div>
+      
+                          <div class="button-group-right"> 
+                              <div id="add-new-rule" class="action-btn btn-secondary">Add Rule</div>
+                              <div id="save-formatter" class="action-btn btn-primarySave">Save</div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+      
+              <div id="formattertableContainer">
+                  <div class="saved-formulas">
+                      <h3>Saved Formatters</h3>
+                      <table id="saved-formatters-table" class="saved-formulas-table">
+                          <thead><tr><th>Column</th>
+                          <!-- <th>Format Type</th> -->
+                          <th>Rules / Conditions</th><th>Actions</th><th>Delete</th></tr></thead>
+                          <tbody id="saved-formatters-list"></tbody>
+                      </table>
+                  </div>
+              </div>
+          </div>
+      </div>
+      
+      
+      </div>
+       </div>
+       </div>
+      
+      
+       
+
+  layout: 
+    sequence: 30
+    parent-region: No Parent
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--noPadding
+    - t-Region--removeHeader js-removeLandmark
+    - t-Region--noBorder
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
+- # ====== Region: Report Template =============================
+  id: 15881362790763205
+  identification: 
+    name: Report Template
+    type: Breadcrumb
+
+  source: 
+    breadcrumb: Breadcrumb # 8558440305922134
+
+  layout: 
+    sequence: 20
+    parent-region: Hotel Selector # 25697469516364507
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Title Bar
+    template-options: 
+    - '#DEFAULT#'
+    - t-BreadcrumbRegion--useBreadcrumbTitle
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    appearance: 
+      breadcrumb-template: Breadcrumb
+      template-options: 
+      - '#DEFAULT#'
+
+page-items: 
+- # ====== Page Item: P1006_ALERT_MESSAGE ======================
+  id: 32227819366536255
+  identification: 
+    name: P1006_ALERT_MESSAGE
+    type: Hidden
+
+  settings: 
+    value-protected: false
+
+  layout: 
+    sequence: 20
+    region: No Parent
+    slot: BODY
+
+  advanced: 
+    warn-on-unsaved-changes: Page Default
+
+  source: 
+    type: Null
+    used: Always, replacing any existing value in session state
+
+  session-state: 
+    data-type: VARCHAR2
+    storage: Per Session (Persistent)
+
+  security: 
+    session-state-protection: Unrestricted
+    store-value-encrypted-in-session-state: false
+    restricted-characters: All characters can be saved.
+
+dynamic-actions: 
+- # ====== Dynamic Action: New_3 ===============================
+  id: 12817591563870679
+  identification: 
+    name: New_3
+
+  execution: 
+    sequence: 90
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Custom
+    custom-event: showAlert
+    selection-type: jQuery Selector
+    jquery-selector: body
+
+  actions: 
+  - # ====== Action: Execute JavaScript Code =====================
+    id: 12818097980870682
+    identification: 
+      action: Execute JavaScript Code
+
+    settings: 
+      code: |
+        var title = $v('P1006_ALERT_TITLE') || 'Notification';
+        var message = $v('P1006_ALERT_MESSAGE');
+        var icon  = $v('P1006_ALERT_ICON') || 'success';
+        
+        if(message){
+          Swal.fire({
+            position: 'top-end',
+            icon: icon,
+            title: title,
+            text: message,
+            showConfirmButton: false,
+            timer: 2500
+          });
+          
+          $s('P1006_ALERT_MESSAGE','');
+        }
+
+    execution: 
+      sequence: 10
+      event: New_3 # 12817591563870679
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+- # ====== Dynamic Action: Change_Hotel ========================
+  id: 12818459982870683
+  identification: 
+    name: Change_Hotel
+
+  execution: 
+    sequence: 60
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1006_HOTEL_LIST
+
+- # ====== Dynamic Action: New =================================
+  id: 12818862061870685
+  identification: 
+    name: New
+
+  execution: 
+    sequence: 10
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1006_FILE_LOAD
+
+  actions: 
+  - # ====== Action: Submit Page =================================
+    id: 12819349365870686
+    identification: 
+      action: Submit Page
+
+    settings: 
+      show-processing: true
+
+    execution: 
+      sequence: 20
+      event: New # 12818862061870685
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+- # ====== Dynamic Action: New_1 ===============================
+  id: 12819716282870687
+  identification: 
+    name: New_1
+
+  execution: 
+    sequence: 20
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1006_TEMPLATE_LOV
+
+  actions: 
+  - # ====== Action: Execute Server-side Code ====================
+    id: 12820230797870689
+    identification: 
+      action: Execute Server-side Code
+
+    settings: 
+      language: PE.PROPERTY.SOURCE_SNIPPET_LANG.LOV.PLSQL.D
+      pl/sql-code: |
+        DECLARE
+        BEGIN
+          -- Insert the template
+          INSERT INTO UR_TEMPLATES (
+            KEY,
+            NAME,
+            TYPE,
+            ACTIVE,
+            DEFINITION,
+            CREATED_BY,
+            CREATED_ON,
+            UPDATED_BY,
+            UPDATED_ON
+          ) VALUES (
+            'EXP_TEMPLATE_'|| ROUND(
+            (CAST(SYSTIMESTAMP AT TIME ZONE 'UTC' AS DATE) - DATE '1970-01-01') * 86400
+          ),
+            'Expense Template '|| ROUND(
+            (CAST(SYSTIMESTAMP AT TIME ZONE 'UTC' AS DATE) - DATE '1970-01-01') * 86400
+          ),
+            'RMS',
+            'Y',  -- or hardcode 'ADMIN'
+            '[{"name":"EMPLOYEE_NAME","data-type":1,"data-type-len":100,"selector":"Employee Name","is-json":false},{"name":"EXPENSE_ID","data-type":2,"selector":"Expense Id","is-json":false},{"name":"EXP_TYPE","data-type":1,"data-type-len":50,"selector":"Exp Type","is-json":false},{"name":"PROJECT_NAME","data-type":1,"data-type-len":100,"selector":"Project Name","is-json":false},{"name":"EXPENSE_PURPOSE","data-type":1,"data-type-len":50,"selector":"Expense Purpose","is-json":false},{"name":"EXPENSE_DATE_FROM","data-type":3,"selector":"Expense Date From","format-mask":"DD\"-\"MON\"-\"RR","is-json":false},{"name":"EXPENSE_DATE_TO","data-type":3,"selector":"Expense Date To","format-mask":"DD\"-\"MON\"-\"RR","is-json":false},{"name":"STATUS","data-type":1,"data-type-len":50,"selector":"Status","is-json":false},{"name":"CURRENCY","data-type":1,"data-type-len":50,"selector":"Currency","is-json":false},{"name":"CLAIM_AMOUNT","data-type":2,"selector":"Claim Amount","is-json":false},{"name":"EXPENSE_ATTACHMENT","data-type":2,"selector":"Expense Attachment","is-json":false},{"name":"EXPENSE_COMMENT","data-type":1,"data-type-len":32767,"selector":"Expense Comment","is-json":false},{"name":"CREATED_BY","data-type":1,"data-type-len":50,"selector":"Created By","is-json":false},{"name":"CREATION_DATE","data-type":3,"selector":"Creation Date","format-mask":"YYYY\"-\"MM\"-\"DD\" \"HH24\":\"MI\":\"SS","is-json":false},{"name":"LAST_UPDATED_BY","data-type":1,"data-type-len":50,"selector":"Last Updated By","is-json":false},{"name":"LAST_UPDATE_DATE","data-type":3,"selector":"Last Update Date","format-mask":"YYYY\"-\"MM\"-\"DD\" \"HH24\":\"MI\":\"SS","is-json":false}]',
+            '3AB2E656C7307FD1E063DD59000A5850',
+            SYSTIMESTAMP,
+                '3AB2E656C7307FD1E063DD59000A5850',
+            SYSTIMESTAMP
+          );
+        END;
+        
+
+    execution: 
+      sequence: 10
+      event: New_1 # 12819716282870687
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+      stop-execution-on-error: true
+      wait-for-result: true
+
+- # ====== Dynamic Action: Page_Load_DA ========================
+  id: 12820603273870690
+  identification: 
+    name: Page_Load_DA
+
+  execution: 
+    sequence: 50
+    event-scope: Static
+
+  when: 
+    event: Page Load
+
+- # ====== Dynamic Action: Changed =============================
+  id: 12821016863870691
+  identification: 
+    name: Changed
+
+  execution: 
+    sequence: 100
+    event-scope: Static
+    type: Immediate
+
+  when: 
+    event: Change
+    selection-type: Item(s)
+    item(s): 
+    - P1006_ALERT_MESSAGE
+
+  actions: 
+  - # ====== Action: Execute JavaScript Code =====================
+    id: 12821534582870693
+    identification: 
+      action: Execute JavaScript Code
+
+    settings: 
+      code: |
+        var messagesJson = $v("P1001_ALERT_MESSAGE");  // get the string from hidden page item
+        
+        if (messagesJson) {
+          try {
+            // Try parsing the string
+            var parsed = JSON.parse(messagesJson);
+        
+            // Check if parsed result is array or object
+            if (Array.isArray(parsed)) {
+              // It's an array - pass as is
+              showAlertToastr(parsed);
+            } else if (parsed && typeof parsed === 'object') {
+              // Single object - pass it wrapped in array for consistency 
+              showAlertToastr([parsed]);
+            } else {
+              // Parsed to something else (string/number) — just pass original string
+              showAlertToastr(messagesJson);
+            }
+          } catch (e) {
+            // Parsing failed — probably plain text, pass as is
+            showAlertToastr(messagesJson);
+          }
+        }
+
+    execution: 
+      sequence: 10
+      event: Changed # 12821016863870691
+      fire-when-event-result-is: True
+      fire-on-initialization: false
+
+processes: 
+- # ====== Process: New ========================================
+  id: 12816755696870675
+  identification: 
+    name: New
+    type: Execute Code
+    execution-chain: None
+
+  source: 
+    location: Local Database
+    language: PL/SQL
+    pl/sql-code: |
+      DECLARE
+        v_profile_clob CLOB;
+        v_records NUMBER;
+        v_columns CLOB;
+      
+        -- Variables for parsing v_columns JSON
+        CURSOR cur_columns IS
+          SELECT jt.name, jt.data_type
+            FROM JSON_TABLE(
+                   v_columns,
+                   '$[*]'
+                   COLUMNS (
+                     name VARCHAR2(100) PATH '$.name',
+                     data_type VARCHAR2(20) PATH '$."data-type"'
+                   )
+                 ) jt;
+      
+      BEGIN
+        -- Create or truncate APEX collection before processing
+        IF apex_collection.collection_exists('UR_FILE_DATA_PROFILES') THEN
+          apex_collection.delete_collection('UR_FILE_DATA_PROFILES');
+        END IF;
+        
+        apex_collection.create_collection('UR_FILE_DATA_PROFILES');
+      
+        FOR r IN (
+          SELECT ID, APPLICATION_ID, NAME, FILENAME, MIME_TYPE, CREATED_ON, BLOB_CONTENT
+            FROM APEX_APPLICATION_TEMP_FILES
+           WHERE NAME = :P1006_FILE_LOAD
+        ) LOOP
+          INSERT INTO temp_BLOB (
+            ID,
+            APPLICATION_ID,
+            NAME,
+            FILENAME,
+            MIME_TYPE,
+            CREATED_ON,
+            BLOB_CONTENT
+          ) VALUES (
+            r.ID,
+            r.APPLICATION_ID,
+            r.NAME,
+            r.FILENAME,
+            r.MIME_TYPE,
+            r.CREATED_ON,
+            r.BLOB_CONTENT
+          );
+        END LOOP;
+      
+        FOR rec IN (
+          SELECT ID, BLOB_CONTENT, filename, name
+            FROM temp_BLOB
+           WHERE profile IS NULL -- only parse if profile not yet loaded
+        ) LOOP
+          -- Call APEX_DATA_PARSER.GET_FILE_PROFILE on the blob content
+          SELECT apex_data_parser.discover(
+                   p_content => rec.BLOB_CONTENT,
+                   p_file_name => rec.filename
+                 )
+            INTO v_profile_clob
+            FROM dual;
+      
+          -- Extract "parsed-rows"
+          SELECT TO_NUMBER(JSON_VALUE(v_profile_clob, '$."parsed-rows"'))
+            INTO v_records
+            FROM dual;
+      
+          -- Extract filtered columns with mapped data types
+          SELECT TO_CLOB(
+                   JSON_ARRAYAGG(
+                     JSON_OBJECT(
+                       'name' VALUE jt.name,
+                       'data-type' VALUE CASE jt.data_type
+                                          WHEN 1 THEN 'TEXT'
+                                          WHEN 2 THEN 'NUMBER'
+                                          WHEN 3 THEN 'DATE'
+                                          ELSE 'TEXT'
+                                        END
+                     )
+                   )
+                 )
+            INTO v_columns
+            FROM JSON_TABLE(v_profile_clob, '$."columns"[*]'
+                   COLUMNS (
+                     name       VARCHAR2(100) PATH '$.name',
+                     data_type  NUMBER       PATH '$."data-type"'
+                   )
+                ) jt;
+      
+          -- Insert each column into APEX collection
+          FOR col IN cur_columns LOOP
+            apex_collection.add_member(
+              p_collection_name => 'UR_FILE_DATA_PROFILES',
+              p_c001            => col.name,
+              p_c002            => col.data_type
+            );
+          END LOOP;
+      
+          -- Update temp_BLOB table
+          UPDATE temp_BLOB
+             SET profile = v_profile_clob,
+                 records = v_records,
+                 columns = v_columns
+           WHERE ID = rec.ID;
+        END LOOP;
+      
+        COMMIT;
+      END;
+
+  execution: 
+    sequence: 10
+    point: After Submit
+    run-process: Once Per Page Visit (default)
+
+  error: 
+    display-location: Inline in Notification
+
+- # ====== Process: New_1 ======================================
+  id: 12817152489870677
+  identification: 
+    name: New_1
+    type: Execute Code
+    execution-chain: None
+
+  source: 
+    location: Local Database
+    language: PL/SQL
+    pl/sql-code: |
+      DECLARE
+        l_json CLOB;
+      BEGIN
+        l_json := UR_utils.get_collection_json('UR_FILE_DATA_PROFILES');
+      
+        INSERT INTO UR_TEMPLATES (
+          KEY,
+          NAME,
+          TYPE,
+          ACTIVE,
+          DEFINITION,
+          CREATED_BY,
+          CREATED_ON,
+          UPDATED_BY,
+          UPDATED_ON
+        ) VALUES (
+          UPPER(
+            SUBSTR(
+              REGEXP_REPLACE(
+                REGEXP_REPLACE(
+                  REGEXP_REPLACE(
+                    TRIM(:P1006_TEMPLATE_NAME),
+                    '^[^A-Za-z0-9]+|[^A-Za-z0-9]+$', ''
+                  ),
+                  '[^A-Za-z0-9]+', '_'
+                ),
+                '_+', '_'
+              ),
+              1, 110
+            )
+          ),
+          :P1006_TEMPLATE_NAME,
+          :P1006_TEMPLATE_TYPE,
+          'Y',  -- or hardcode 'ADMIN'
+          l_json,
+          '3AB2E656C7307FD1E063DD59000A5850',
+          SYSTIMESTAMP,
+          '3AB2E656C7307FD1E063DD59000A5850',
+          SYSTIMESTAMP
+        );
+      
+        apex_debug.message('Debug info: ' || l_json);
+        
+        apex_pwa.send_push_notification (
+          p_application_id => 103,
+          p_user_name      => 'VKANT',
+          p_title          => 'Template Created Successfully.',
+          p_body           => 'Order #123456 will arrive within 3 days.' );
+      
+      --   :P1006_AI_RESPONSE := 'Insert Successful';
+      apex_pwa.push_queue;
+      -- RETURN 'SUCCESS';
+      
+      --   apex.message.showToast(
+      --     pMessage => 'Changes saved',
+      --     pPosition => 'top-right',   -- or 'top-left', 'bottom-right', 'bottom-left'
+      --     pDuration => 3000,          -- milliseconds; 0 means sticky until closed
+      --     pCloseIcon => true,         -- show a close (x) icon
+      --     pStyle => 'success'         -- values: 'success', 'warning', 'error', 'information'
+      --   );
+      
+      -- apex_application.g_print_success_message := 'Record saved successfully!';
+      
+      EXCEPTION
+        WHEN OTHERS THEN
+          -- :P1006_AI_RESPONSE := 'Insert Failed: ' || SQLERRM;
+          apex_debug.message('Insert Failed: ' || SQLERRM);
+          -- RETURN 'Failed '||SQLERRM;
+      END;
+
+  execution: 
+    sequence: 30
+    point: Processing
+    run-process: Once Per Page Visit (default)
+
+  success-message: 
+    success-message: Succesfully Done
+
+  error: 
+    error-message: Blah blah blah
+    display-location: Inline in Notification
+
+  configuration: 
+    build-option: Commented Out # 8557885664922129
+

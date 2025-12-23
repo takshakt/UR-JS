@@ -1,0 +1,320 @@
+---
+# ====== Application: Untapped Revenue =======================
+id: 103
+identification: 
+  name: Untapped Revenue
+  alias: UR
+  version: Release 1.0
+
+row-search: 
+  tokenize: true
+  text-query-function: None
+
+availability: 
+  status: Available with Developer Toolbar
+  build-status: Run and Build Application
+
+error-handling: 
+  default-display-location: Inline with Field and in Notification
+
+report-printing: 
+  type: Native Printing
+
+advanced: 
+  friendly-urls: true
+  allow-feedback: true
+  logging: true
+  debugging: true
+  compatibility-mode: 24.2
+  accessible-read-only-items: true
+  pass-ecid: Y
+
+authentication: 
+  public-user: APEX_PUBLIC_USER
+  authentication-scheme: Oracle APEX Accounts # 8558171425922130
+
+authorization: 
+  authorization-scheme: Administration Rights # 8565313938922218
+  run-on-public-pages: false
+  run-on-background-job: true
+  source-for-role-or-group-schemes: Access Control User Role Assignments
+
+session-management: 
+  rejoin-sessions: Disabled
+
+session-state-protection: 
+  enabled: true
+
+security: 
+  deep-linking: Disabled
+  browser-cache: Disabled
+  embed-in-frames: Deny
+  referrer-policy: strict-origin
+  html-escaping-mode: Extended
+  runtime-api-usage: 
+  - Modify This Application
+
+database-session: 
+  parsing-schema: WKSP_UAT
+
+globalization: 
+  primary-language: English (en)
+  document-direction: Language Default
+  language-derived-from: Application Primary Language
+  automatic-time-zone: false
+  automatic-csv-encoding: true
+
+application-format-masks: 
+  date: DD-MON-YYYY
+  date-time: 'DD-MON-YYYY HH24:MI:SS'
+  timestamp: 'DD-MON-YYYY HH24:MI:SS'
+  timestamp-time-zone: 'DD-MON-YYYY HH24:MI:SS'
+
+character-value-comparison: 
+  behavior: Database session NLS setting (default)
+
+logo: 
+  type: Text
+  text: Untapped Revenue
+
+progressive-web-app: 
+  enable: true
+  installable: true
+  display: Standalone
+  screen-orientation: Any
+  ios-status-bar-style: Default
+  enable-push-notifications: true
+  pwa-push-notifications-credentials: App 103 Push Notifications Credentials (2) # 29306016323028621
+
+navigation: 
+  home-url: 
+    url: 'f?p=&APP_ID.:1:&APP_SESSION.::&DEBUG.:::'
+    page: 1 # Home
+
+  login-url: 
+    url: 'f?p=&APP_ID.:LOGIN:&APP_SESSION.::&DEBUG.:::'
+    page: LOGIN
+
+navigation-menu: 
+  list-template: Side Navigation Menu
+  template-options: 
+  - '#DEFAULT#'
+  - js-defaultCollapsed
+  - js-navCollapsed--hidden
+  - t-TreeNav--styleA
+  list-position: Side
+  list: Navigation Menu # 8558978835922138
+
+navigation-bar: 
+  implementation: List
+  list: Navigation Bar # 8560150247922173
+  list-template: Navigation Bar
+  template-options: 
+  - '#DEFAULT#'
+
+javascript: 
+  file-urls: 
+  - 'https://cdn.jsdelivr.net/npm/sweetalert2@11'
+  - 'https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js'
+  - 'https://cdn.jsdelivr.net/npm/flatpickr'
+  - null
+  - null
+  - '#APP_FILES#showAlert#MIN#.js'
+  include-jquery-migrate: false
+
+css: 
+  file-urls: 
+  - 'https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css'
+  - 'https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css'
+
+attributes: 
+  theme: Universal Theme # 42
+  global-page: 0
+  enable-end-users-to-choose-theme-style: true
+  add-"built-with-apex"-to-footer: false
+  auto-dismiss-success-messages: true
+
+subscription: 
+  version-number: 45942077874868
+
+substitutions: 
+- # ====== Substitution: APP_NAME ==============================
+  id: 25186177142438239
+  identification: 
+    name: APP_NAME
+
+  value: 
+    static-value: Untapped Revenue
+
+component-settings: 
+- # ====== Component Setting: NATIVE_DISPLAY_SELECTOR ==========
+  id: 8553743561922111
+  identification: 
+    name: NATIVE_DISPLAY_SELECTOR
+    type: Region
+
+  subscription: 
+    version-number: 45069603843769
+
+- # ====== Component Setting: NATIVE_ADFBC =====================
+  id: 8554034231922115
+  identification: 
+    name: NATIVE_ADFBC
+    type: REST Data Source
+
+  subscription: 
+    version-number: 45069603843778
+
+- # ====== Component Setting: NATIVE_SELECT_MANY ===============
+  id: 8554226063922116
+  identification: 
+    name: NATIVE_SELECT_MANY
+    type: Item
+
+  subscription: 
+    version-number: 45069603843779
+
+- # ====== Component Setting: NATIVE_DATE_PICKER_APEX ==========
+  id: 8554533649922117
+  identification: 
+    name: NATIVE_DATE_PICKER_APEX
+    type: Item
+
+  subscription: 
+    version-number: 45069603843784
+
+- # ====== Component Setting: NATIVE_MAP_REGION ================
+  id: 8554826526922118
+  identification: 
+    name: NATIVE_MAP_REGION
+    type: Region
+
+  subscription: 
+    version-number: 45069603843792
+
+- # ====== Component Setting: NATIVE_GEOCODING =================
+  id: 8555114959922119
+  identification: 
+    name: NATIVE_GEOCODING
+    type: Process
+
+  settings: 
+    attribute-1: RELAX_HOUSE_NUMBER
+
+  subscription: 
+    version-number: 45069603843832
+
+- # ====== Component Setting: NATIVE_SINGLE_CHECKBOX ===========
+  id: 8555459117922120
+  identification: 
+    name: NATIVE_SINGLE_CHECKBOX
+    type: Item
+
+  subscription: 
+    version-number: 45069603843837
+
+- # ====== Component Setting: NATIVE_COLOR_PICKER ==============
+  id: 8555703847922121
+  identification: 
+    name: NATIVE_COLOR_PICKER
+    type: Item
+
+  subscription: 
+    version-number: 45069603843837
+
+- # ====== Component Setting: NATIVE_STAR_RATING ===============
+  id: 8556002713922122
+  identification: 
+    name: NATIVE_STAR_RATING
+    type: Item
+
+  subscription: 
+    version-number: 45069603843837
+
+- # ====== Component Setting: NATIVE_GEOCODED_ADDRESS ==========
+  id: 8556360741922123
+  identification: 
+    name: NATIVE_GEOCODED_ADDRESS
+    type: Item
+
+  subscription: 
+    version-number: 45069603843837
+
+- # ====== Component Setting: NATIVE_IR ========================
+  id: 8556610108922124
+  identification: 
+    name: NATIVE_IR
+    type: Region
+
+  subscription: 
+    version-number: 45069603843837
+
+- # ====== Component Setting: NATIVE_OPEN_AI_ASSISTANT =========
+  id: 8556934372922125
+  identification: 
+    name: NATIVE_OPEN_AI_ASSISTANT
+    type: Dynamic Action
+
+  subscription: 
+    version-number: 45069603843839
+
+- # ====== Component Setting: NATIVE_BOSS ======================
+  id: 8557276934922126
+  identification: 
+    name: NATIVE_BOSS
+    type: REST Data Source
+
+  subscription: 
+    version-number: 45069603843844
+
+- # ====== Component Setting: NATIVE_YES_NO ====================
+  id: 8557575475922127
+  identification: 
+    name: NATIVE_YES_NO
+    type: Item
+
+  subscription: 
+    version-number: 45069603843849
+
+application-settings: 
+- # ====== Application Setting: FEEDBACK_ATTACHMENTS_YN ========
+  id: 8566232145922225
+  identification: 
+    name: FEEDBACK_ATTACHMENTS_YN
+
+  value: 
+    value: Y
+    required: false
+
+  advanced: 
+    valid-values: Y, N
+    on-upgrade-keep-value: true
+
+  subscription: 
+    version-number: 45069603844260
+
+  configuration: 
+    build-option: 'Feature: Feedback' # 8562819231922207
+
+- # ====== Application Setting: ACCESS_CONTROL_SCOPE ===========
+  id: 8566542408922227
+  identification: 
+    name: ACCESS_CONTROL_SCOPE
+
+  value: 
+    value: ACL_ONLY
+    required: false
+
+  advanced: 
+    valid-values: ACL_ONLY, ALL_USERS
+    on-upgrade-keep-value: true
+
+  subscription: 
+    version-number: 45069603844266
+
+  configuration: 
+    build-option: 'Feature: Access Control' # 8562625690922207
+
+  comments: 
+    comments: The default access level given to authenticated users who are not in the access control list
+

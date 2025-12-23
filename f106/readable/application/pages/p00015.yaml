@@ -1,0 +1,1399 @@
+---
+# ====== Page: Report Dashboard ==============================
+id: 15
+identification: 
+  name: Report Dashboard
+  alias: REPORT-DASHBOARD
+  title: Report Dashboard
+
+appearance: 
+  page-mode: Normal
+  page-template: Theme Default
+  template-options: 
+  - '#DEFAULT#'
+
+navigation-menu: 
+  override-user-interface-level: false
+
+navigation: 
+  cursor-focus: Do not focus cursor
+  warn-on-unsaved-changes: true
+
+javascript: 
+  file-urls: 
+  - 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'
+  - '#APP_FILES#ReportDashboardJS#MIN#.js'
+  - 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.min.js'
+  - 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js'
+  - null
+  - null
+
+css: 
+  inline: |2
+       * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+            
+            body {
+                background-color: #121212;
+                color: #ffffff;
+                padding: 0px;
+            }
+            
+            .container {
+                max-width: 0 auto;
+                margin: 0 auto;
+            }
+            
+            header {
+                text-align: center;
+                margin-bottom: 0px;
+                padding: 0px;
+                background: linear-gradient(135deg, #040008 0%, #090909 100%);
+                color: white;
+                border-radius: 10px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            }
+            
+            h1 {
+                font-size: 2.5rem;
+                margin-bottom: 10px;
+            }
+            
+            .description {
+                font-size: 1.1rem;
+                max-width: 800px;
+                margin: 0 auto;
+                color: rgba(255, 255, 255, 0.9);
+            }
+            
+            .panels-container {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 20px;
+                margin-bottom: 30px;
+            }
+            
+            @media (max-width: 992px) {
+                .panels-container {
+                    grid-template-columns: 1fr;
+                }
+            }
+    
+            .control-panel.collapsed > *:not(h2) {
+        display: none;
+    }
+            
+            .control-panel {
+                background-color: #1e1e1e;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+                margin-bottom: 20px;
+                border: 1px solid #333;
+                flex: 1; /* Makes each panel take up equal space */
+                min-width: 50%; /* Ensures the panels can shrink on smaller screens */
+            }
+            .panels-row {
+      display: flex;
+      flex-wrap: nowrap; /* Prevents panels from wrapping to the next line */
+      gap: 40px; /* Adds space between the panels */
+    }
+            
+            h2 {
+                margin-bottom: 15px;
+                color: #ffffff;
+                padding-bottom: 10px;
+                border-bottom: 2px solid #333;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            h3 {
+                color: #ffffff;
+                margin-bottom: 15px;
+            }
+            
+            .collapse-btn {
+                background: none;
+                border: none;
+                font-size: 1.5rem;
+                cursor: pointer;
+                color: #3e5ae8;
+                width: auto;
+                padding: 0 10px;
+            }
+            
+            .form-group {
+                margin-bottom: 15px;
+            }
+            
+            label {
+                display: block;
+                margin-bottom: 5px;
+                font-weight: 600;
+                color: #e0e0e0;
+            }
+            
+            select, input, button, textarea {
+                width: 100%;
+                padding: 10px;
+                border: 1px solid #444;
+                border-radius: 5px;
+                font-size: 1rem;
+                background-color: #2d2d2d;
+                color: #ffffff;
+            }
+            
+            select:focus, input:focus, textarea:focus {
+                outline: none;
+                border-color: #3361eb;
+                box-shadow: 0 0 0 2px rgba(106, 17, 203, 0.2);
+            }
+            
+            button {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                cursor: pointer;
+                transition: background-color 0.3s;
+                font-weight: 600;
+            }
+            
+            button:hover {
+                background-color: #45a049;
+            }
+            
+            .btn-danger {
+                background-color: #f44336;
+            }
+            
+            .btn-danger:hover {
+                background-color: #d32f2f;
+            }
+            
+            .btn-info {
+                background-color: #2196F3;
+            }
+            
+            .btn-info:hover {
+                background-color: #0b7dda;
+            }
+            
+            .formula-builder {
+                display: grid;
+                grid-template-columns: 1fr 1fr auto;
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+            
+            .formula-builder select, .formula-builder button {
+                width: 100%;
+            }
+            
+            .formula-preview {
+                padding: 12px;
+                background-color: #2d2d2d;
+                border: 1px dashed #555;
+                border-radius: 5px;
+                min-height: 45px;
+                margin-bottom: 15px;
+                font-family: monospace;
+                font-size: 1.1rem;
+                width: 100%;
+                box-sizing: border-box;
+                color: #ffffff;
+                resize: vertical;
+            }
+            
+            .formula-actions {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            
+            .saved-formulas {
+                margin-top: 20px;
+            }
+            
+            .formula-item {
+                padding: 10px;
+                background-color: #2d2d2d;
+                border-radius: 5px;
+                margin-bottom: 10px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-left: 3px solid #3257eb;
+            }
+            
+            .formula-item-buttons {
+                display: flex;
+                gap: 5px;
+            }
+            
+            .formula-item-buttons button {
+                width: auto;
+                padding: 5px 10px;
+                font-size: 0.9rem;
+            }
+            
+            
+            
+            .summary {
+                background-color: #1e1e1e;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+                border: 1px solid #333;
+            }
+            
+            .summary-item {
+                margin-bottom: 10px;
+                padding: 10px;
+                background-color: #2d2d2d;
+                border-radius: 5px;
+                color: #ffffff;
+            }
+            
+            .footer {
+                text-align: center;
+                margin-top: 30px;
+                color: #b0b0b0;
+            }
+            
+            .highlight {
+                background-color: #3d3d3d;
+            }
+            
+            @media (max-width: 768px) {
+                .formula-builder {
+                    grid-template-columns: 1fr;
+                }
+                
+                .formula-actions {
+                    grid-template-columns: 1fr;
+                }
+            }
+    
+     
+    /* Generic "button lookalike" style */
+    .fake-btn {
+        display: inline-block;
+        padding: 6px 12px;
+        margin: 2px;
+        background-color: #0078D4; /* Blue */
+        color: white;
+        font-weight: 500;
+        border-radius: 4px;
+        cursor: pointer;
+        user-select: none;
+        text-align: center;
+    }
+    
+    .fake-btn:hover {
+        background-color: #005A9E;
+    }
+    
+    .fake-btn.disabled {
+        background-color: #A6A6A6;
+        cursor: not-allowed;
+    }
+    
+    /* Info and danger variants */
+    .fake-btn-info {
+        background-color: #17a2b8;
+    }
+    
+    .fake-btn-info:hover {
+        background-color: #117a8b;
+    }
+    
+    .fake-btn-danger {
+        background-color: #dc3545;
+    }
+    
+    .fake-btn-danger:hover {
+        background-color: #a71d2a;
+    }
+    
+    /* Tab Styles - Updated for div instead of button */
+    .tabs-container {
+        margin-bottom: 20px;
+    }
+    
+    .tabs-header {
+        display: flex;
+        background-color: #1e1e1e;
+        border-bottom: 1px solid #333;
+        padding: 0 10px;
+        align-items: center;
+    }
+    
+    .tab {
+        padding: 10px 20px;
+        background-color: #2d2d2d;
+        border: 1px solid #333;
+        border-bottom: none;
+        border-radius: 5px 5px 0 0;
+        margin-right: 5px;
+        cursor: pointer;
+        color: #ffffff;
+        position: relative;
+    }
+    
+    .tab.active {
+        background-color: #1e1e1e;
+        border-bottom: 1px solid #1e1e1e;
+        margin-bottom: -1px;
+    }
+    
+    .tab:hover {
+        background-color: #3d3d3d;
+    }
+    
+    .tab-close {
+        margin-left: 8px;
+        color: #888;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    
+    .tab-close:hover {
+        color: #ff4444;
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+    
+    .add-tab-div {
+        padding: 10px 15px;
+        background-color: #4b4b7f;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-left: 10px;
+        font-weight: bold;
+        user-select: none;
+    }
+    
+    .add-tab-div:hover {
+        background-color: #3e6bd4;
+    }
+     
+    
+    /* Ensure no button styles interfere with our div */
+    .add-tab-div {
+        display: inline-block;
+        text-align: center;
+        text-decoration: none;
+        border: none;
+        outline: none;
+    }
+    
+    /* New LOV Styles */
+    .tabs-controls {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 15px;
+        padding: 10px;
+        background-color: #1e1e1e;
+        border-radius: 5px;
+    }
+    
+    .static-lov-container,
+    .dynamic-lov-container {
+        display: flex; 
+        flex-direction: row; /* Change this from column to row */
+        gap: 15px; /* Add space between the LOVs */
+        align-items: center; /* Vertically align them in the center */
+    }
+    
+    .static-lov-container label,
+    .dynamic-lov-container label {
+        color: #e0e0e0;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    
+    .static-lov,
+    .dynamic-lov {
+        padding: 8px 12px;
+        border: 1px solid #444;
+        border-radius: 5px;
+        background-color: #2d2d2d;
+        color: #ffffff; 
+        margin-bottom: 20px;
+        max-width: 40%;
+    }
+    
+    .static-lov:focus,
+    .dynamic-lov:focus {
+        outline: none;
+        border-color: #6a11cb;
+        box-shadow: 0 0 0 2px rgba(106, 17, 203, 0.2);
+    }
+    
+    /* Adjust tabs header to accommodate new LOVs */
+    .tabs-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+     
+     
+    /**  ************************************************************************  */
+    
+     /* Modal Styles */
+    .modal {
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .modal-content {
+        background-color: #1e1e1e;
+        border-radius: 10px;
+        width: 400px;
+        max-width: 90%;
+        border: 1px solid #333;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+    
+    .modal-header {
+        padding: 20px;
+        border-bottom: 1px solid #333;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .modal-header h3 {
+        margin: 0;
+        color: #ffffff;
+    }
+    
+    .close-modal {
+        color: #aaa;
+        font-size: 24px;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    
+    .close-modal:hover {
+        color: #fff;
+    }
+    
+    .modal-body {
+        padding: 20px;
+    }
+    
+    .modal-footer {
+        padding: 15px 20px;
+        border-top: 1px solid #333;
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    
+    /* Ensure modal form elements look consistent */
+    .modal-body .form-group {
+        margin-bottom: 15px;
+    }
+    
+    .modal-body label {
+        display: block;
+        margin-bottom: 5px;
+        color: #e0e0e0;
+    }
+    
+    .modal-body select, 
+    .modal-body input {
+        width: 100%;
+        padding: 8px 12px;
+        background-color: #2d2d2d;
+        border: 1px solid #444;
+        border-radius: 5px;
+        color: #ffffff;
+    }
+    
+    .modal-footer .fake-btn {
+        padding: 8px 16px;
+        margin: 0;
+        cursor: pointer;
+        text-align: center;
+        min-width: 80px;
+    }
+    
+    .modal-footer {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+    
+    
+    .tab {
+        padding: 10px 20px;
+        background-color: #2d2d2d;
+        border: 1px solid #333;
+        border-bottom: none;
+        border-radius: 5px 5px 0 0;
+        margin-right: 5px;
+        cursor: pointer;
+        color: #ffffff;
+        position: relative;
+        user-select: none;
+    }
+    
+    .tab.active {
+        background-color: #1e1e1e;
+        color: #e5e0ea;
+        border-bottom: 1px solid #1e1e1e;
+        margin-bottom: -1px;
+        z-index: 10;
+    }
+    
+    .tab:hover:not(.active) {
+        background-color: #3d3d3d;
+    }
+    
+    .tab-content {
+        display: none;
+        padding: 20px;
+        background-color: #1e1e1e;
+        border: 1px solid #333;
+        border-top: none;
+        border-radius: 0 0 10px 10px;
+        margin-top: -1px;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+    
+    /* Ensure tabs are properly aligned and visible */
+    .tabs-header {
+        display: flex;
+        align-items: flex-end;
+        background-color: #1e1e1e;
+        border-bottom: 1px solid #333;
+        padding: 0 10px;
+        min-height: 50px;
+        flex-wrap: wrap;
+    }
+    
+    /* Fix pointer events for tabs */
+    .tab * {
+        pointer-events: none;
+    }
+    
+    .tab-close {
+        pointer-events: auto !important;
+        margin-left: 8px;
+        color: #888;
+        cursor: pointer;
+        font-weight: bold;
+        padding: 2px 5px;
+        border-radius: 3px;
+    }
+    
+    .tab-close:hover {
+        background-color: #ff4444;
+        color: white;
+    }
+    
+    /* Ensure modal z-index is higher than tabs */
+    .modal {
+        z-index: 10000;
+    }
+    
+    .modal-content {
+        z-index: 10001;
+    }
+    
+    #static-lov-report {
+      display: none;
+    }
+    
+    .panels-container {
+        display: none !important;
+    }
+    
+    .control-panel {
+        display: none !important;
+    }
+    
+    .panels-container.hidden {
+        display: none !important;
+    }
+    
+    .control-panel.hidden {
+        display: none !important;
+    } 
+    
+    
+    
+    
+    
+    /*
+    .table-container {
+        background-color: #1e1e1e;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        margin-bottom: 30px;
+        overflow-x: auto;
+        border: 1px solid #333;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        border-spacing: 0;
+    }
+    */
+    
+    .table-wrapper {
+      position: relative;
+    }
+    
+    .table-scroll-top {
+      overflow-x: auto;
+      overflow-y: hidden;
+    }
+    
+    .table-scroll-top::-webkit-scrollbar {
+      height: 8px;
+    }
+    
+    .table-container {
+      background-color: #1e1e1e;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+      margin-bottom: 30px;
+      border: 1px solid #333;
+      overflow: auto; /* enables both horizontal and vertical scroll */
+       max-height: 500px; /*~10 rows */
+      max-width: auto;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      border-spacing: 0;
+      color: #ddd;
+      table-layout: auto; /* important: makes column widths fixed and evenly distributed */
+      word-wrap: break-word; /* wraps long words inside cells */
+    }
+    
+    /* make thead act normally */
+    .table-container thead {
+      display: table-header-group;
+    }
+    
+    /* sticky header */
+    .table-container thead th {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
+      color: #ffffff;
+      border-bottom: 2px solid #666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-size: 0.9em;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+    
+    /* ensure body rows scroll under the header */
+    .table-container tbody td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #333;
+      color: #ddd;
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    th, td {
+        padding: 12px 15px;
+        text-align: left;
+        border: 1px solid #444; /* White border for all cells */
+        color: #ffffff;
+        white-space: nowrap; /* Prevent text wrapping */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 200px; /* Limit column width */
+    }
+    
+    th {
+        background-color: #2d2d2d;
+        font-weight: 600;
+        color: #ffffff;
+        position: sticky;
+        top: 0;
+        border-bottom: 2px solid #666; /* Thicker border for header */
+        border-right: 1px solid #444; /* Ensure header has right border */
+    }
+    
+    td {
+        background-color: #1e1e1e;
+        border-right: 1px solid #444; /* Ensure data cells have right border */
+        border-bottom: 1px solid #444;
+    }
+    
+    /* Remove right border from last column */
+    th:last-child, td:last-child {
+        border-right: 1px solid #444;
+    }
+    
+    tr:hover {
+        background-color: #2d2d2d;
+    }
+    
+    /* Alternate row coloring for better readability */
+    tr:nth-child(even) {
+        background-color: #252525;
+    }
+    
+    tr:nth-child(even):hover {
+        background-color: #2d2d2d;
+    }
+    
+    /* Header styling improvements */
+    th {
+        background: linear-gradient(135deg, #2d2d2d 0%, #3d3d3d 100%);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-size: 0.9em;
+    }
+    
+    /* Frozen first column for wide tables */
+    .table-container {
+        position: relative;
+    }
+    
+    
+    /* Add column highlighting on hover */
+    td:hover {
+        background-color: #3a3a3a;
+        position: relative;
+    }
+    
+    /* Optional: Column highlight effect */
+    table:hover td {
+        transition: background-color 0.2s ease;
+    }
+    
+    /* Scrollbar styling for better appearance */
+    .table-container::-webkit-scrollbar {
+        height: 8px;
+        width: 8px;
+    }
+    
+    .table-container::-webkit-scrollbar-track {
+        background: #2d2d2d;
+        border-radius: 4px;
+    }
+    
+    .table-container::-webkit-scrollbar-thumb {
+        background: #555;
+        border-radius: 4px;
+    }
+    
+    .table-container::-webkit-scrollbar-thumb:hover {
+        background: #777;
+    }
+    
+    /* Compact mode for very wide tables */
+    .compact-table th,
+    .compact-table td {
+        padding: 8px 10px;
+        font-size: 0.85em;
+    }
+    
+    /* Column resizing hint */
+    th {
+        /* position: relative; */
+        cursor: col-resize;
+        user-select: none;
+    }
+    
+    th::after {
+        content: '';
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 2px;
+        height: 20px;
+        background-color: #555;
+        cursor: col-resize;
+    }
+    
+    
+    .compact-table th,
+    .compact-table td {
+        padding: 6px 8px;
+        font-size: 0.8em;
+        max-width: 150px;
+    }
+    
+    /* Conditional formatting styles */
+    .highlight-cell {
+        font-weight: bold;
+    }
+    
+    .error-cell {
+        background-color: #ffebee !important;
+        color: #c62828 !important;
+    }
+    
+    
+    
+    .formula-column {
+        background: linear-gradient(135deg, #514d4d 0%, #595858 100%) !important;
+        font-style: italic;
+    }
+    
+    .formula-cell {
+        background-color: rgba(94, 89, 89, 0.1) !important;
+        font-style: italic;
+        font-weight: 500;
+    }
+    
+    /* Style for formula options in dropdowns */
+    .formula-option {
+        font-style: italic;
+        background-color: #f3e5f5;
+    }
+    
+    
+    /* Resizable column headers */
+    th {
+        /* position: relative; */
+        cursor: col-resize;
+        user-select: none;
+    }
+    
+    .resize-handle {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 5px;
+        height: 100%;
+        background-color: transparent;
+        cursor: col-resize;
+        z-index: 1;
+    }
+    
+    .resize-handle:hover {
+        background-color: #555;
+    }
+    
+    .resize-handle.active {
+        background-color: #007bff;
+    }
+    
+    /* Prevent text selection during resize */
+    .table-container {
+        user-select: none;
+    }
+    
+    /* Visual feedback during resize */
+    .resizing {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+    }
+     
+    .download-dropdown {
+        background: #2e2e2e !important;
+        color: #fff !important;
+        border: 1px solid #555 !important;
+        border-radius: 6px;
+        padding: 4px 0;
+    }
+    
+    .dropdown-option {
+        padding: 8px 14px;
+        color: #ffffff !important; /* Changed from #2f2e2e to white */
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .dropdown-option:hover {
+        background: #958b8b !important;
+    }
+    
+    .dropdown-option img {
+        width: 14px;
+        height: 14px;
+    }
+    
+    
+    
+    .dropdown-option:last-child {
+      border-bottom: none;
+    }
+    
+    
+    
+
+html-header: 
+  html-header: |2
+      <script src="https://cdn.jsdelivr.net/npm/exceljs@4.3.0/dist/exceljs.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+    
+    
+      <script>
+      function getColumnMap(configJSON) {
+        const columnMap = {};
+        const columns = configJSON?.columnConfiguration?.selectedColumns || [];
+     
+        columns.forEach(col => {
+     
+            const internalKey = col.col_name + (col.temp_name && col.temp_name !== 'calc' ? ` - ${col.temp_name}` : '');
+            
+            // Map the internal key to the actual header text (alias_name)
+            columnMap[internalKey.trim()] = col.alias_name.trim();
+        });
+        
+        return columnMap;
+    }
+    
+    /**
+     * Exports the HTML table data to an Excel file, applying conditional formatting 
+     * based on alias names derived from the configuration JSON.
+     * * @param {string} tabId The ID of the HTML element containing the table.
+     * @param {object} formula_filterJSON Configuration object containing conditional formatting rules.
+     * @returns {Promise<void>}
+     */
+    async function exportToExcelWithFormatting(tabId = 'report-tab', formula_filterJSON = {}) {
+        const tabElement = document.getElementById(tabId);
+        const table = tabElement?.querySelector(".data-table");
+        if (!table) return console.error("Table not found");
+    
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet("Report");
+    
+        // 1. Read headers
+        const rows = table.querySelectorAll("tr");
+        const headers = Array.from(rows[0].querySelectorAll("th,td")).map(th =>
+            th.textContent.trim()
+        );
+        ws.addRow(headers);
+        ws.getRow(1).font = { bold: true };
+    
+        // 2. Add table data
+        for (let i = 1; i < rows.length; i++) {
+            const cols = Array.from(rows[i].querySelectorAll("td")).map(td =>
+                td.textContent.trim()
+            );
+            ws.addRow(cols);
+        }
+    
+        // 3. Create the mapping (Internal Name -> Alias Name)
+        const columnMap = getColumnMap(formula_filterJSON);
+    
+        // 4. Conditional formatting logic
+        const cf = formula_filterJSON?.conditionalFormatting || {};
+        
+        for (const [internalColKey, conditions] of Object.entries(cf)) {
+            // A. Find the target column's header name (alias) from the map
+            const aliasHeaderName = columnMap[internalColKey];
+            if (!aliasHeaderName) {
+                 console.warn(`Alias not found for internal key: ${internalColKey}. Skipping conditional formatting.`);
+                 continue;
+            }
+    
+            // B. Find the Excel column index using the alias name
+            const colIndex = headers.findIndex(h => h.trim() === aliasHeaderName) + 1;
+            
+            if (colIndex === 0) {
+                console.warn(`Header '${aliasHeaderName}' not found in table. Skipping conditional formatting for ${internalColKey}.`);
+                continue; 
+            }
+    
+            for (const cond of conditions) {
+                for (let r = 2; r <= ws.rowCount; r++) {
+                    
+                    // Build a local context of all column values for this row, keyed by HEADER (Alias) NAME
+                    const rowValues = {};
+                    headers.forEach((h, i) => {
+                        const cellVal = ws.getCell(r, i + 1).value;
+                        rowValues[h.trim()] = parseFloat(cellVal) || 0;
+                    });
+    
+                    // C. Replace [INTERNAL_NAME] with its actual value from this row
+                    let expr = cond.expression;
+                    
+                    expr = expr.replace(/\[(.*?)\]/g, (match, colRef) => {
+                        const referenceKey = colRef.trim(); // e.g., 'MY_OTB - My Hotel template 88b'
+                        
+                        // 1. Get the alias (header name) for the reference key
+                        const requiredHeader = columnMap[referenceKey]; 
+    
+                        // 2. Look up the value using the alias/header name
+                        if (requiredHeader && rowValues.hasOwnProperty(requiredHeader)) {
+                            // requiredHeader is the key in rowValues (e.g., 'OTB' or 'MARKET_OTB')
+                            return rowValues[requiredHeader];
+                        }
+                        
+                        console.warn(`Value not found for reference key: ${referenceKey}. Defaulting to 0.`);
+                        return 0;
+                    });
+    
+                    try {
+                        // Use a safe wrapper for eval
+                        const result = new Function('return ' + expr)(); 
+                        
+                        if (result) {
+                            ws.getCell(r, colIndex).fill = {
+                                type: "pattern",
+                                pattern: "solid",
+                                // Ensure ARGB format: 'FF' (opacity) + hex color without '#'
+                                fgColor: { argb: "FF" + cond.color.replace("#", "").toUpperCase() }
+                            };
+                        }
+                    } catch (e) {
+                        console.warn("Error evaluating expression:", expr, e);
+                    }
+                }
+            }
+        }
+    
+        // 5. Download Excel file
+        const buffer = await wb.xlsx.writeBuffer();
+        saveAs(
+            new Blob([buffer], {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            }),
+            "report_data_formatted.xlsx"
+        );
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    async function exportToPDFWithFormatting(tabId = 'report-tab', formula_filterJSON = {}) {
+        const tabElement = document.getElementById(tabId);
+        const table = tabElement?.querySelector(".data-table");
+        if (!table) return console.error("Table not found");
+    
+        // ✅ Extract headers and rows directly from HTML
+        const rows = table.querySelectorAll("tr");
+        const headers = Array.from(rows[0].querySelectorAll("th,td")).map(th => th.textContent.trim());
+        const body = [];
+    
+        for (let i = 1; i < rows.length; i++) {
+            const cols = Array.from(rows[i].querySelectorAll("td")).map(td => td.textContent.trim());
+            body.push(cols);
+        }
+    
+        const { jsPDF } = window.jspdf;
+        if (!jsPDF) {
+            // Use a message box instead of alert()
+            console.error("jsPDF library not loaded.");
+            const messageBox = document.getElementById('message-box');
+            if (messageBox) {
+                messageBox.textContent = "Error: jsPDF library not loaded. Cannot generate PDF.";
+                messageBox.classList.remove('hidden');
+            }
+            return;
+        }
+    
+        const doc = new jsPDF("l", "pt");
+        doc.setFontSize(14);
+        doc.text(tabElement?.dataset?.title || "Report", 40, 30);
+    
+        // 1. Create the mapping (Internal Name -> Alias Name)
+        const columnMap = getColumnMap(formula_filterJSON);
+        
+        const cf = formula_filterJSON?.conditionalFormatting || {};
+    
+        // 2. Build color rules map using ALIAS NAME resolution
+        const colorRules = {};
+        for (const [internalColKey, rules] of Object.entries(cf)) {
+            // A. Find the target column's header name (alias) from the map
+            const aliasHeaderName = columnMap[internalColKey];
+            if (!aliasHeaderName) {
+                console.warn(`PDF: Alias not found for internal key: ${internalColKey}. Skipping conditional formatting.`);
+                continue;
+            }
+    
+            // B. Find the PDF/HTML column index using the alias name
+            const colIndex = headers.findIndex(h => h.trim() === aliasHeaderName);
+            
+            if (colIndex >= 0) colorRules[colIndex] = rules;
+        }
+    
+        doc.autoTable({
+            startY: 50,
+            head: [headers],
+            body: body,
+            theme: "grid",
+            styles: {
+                fontSize: 8,
+                halign: "center",
+                valign: "middle",
+            },
+            headStyles: {
+                fillColor: [41, 128, 185],
+                textColor: 255,
+                fontStyle: "bold",
+            },
+            didParseCell: function (data) {
+                if (data.section === "body") {
+                    const colIndex = data.column.index;
+                    const colRules = colorRules[colIndex];
+                    
+                    if (colRules && colRules.length) {
+                        
+                        // 1. Build context of all row values, keyed by header/alias name
+                        const rowValues = {};
+                        data.row.raw.forEach((cellContent, idx) => {
+                            // Use the official header name as the key
+                            const headerName = headers[idx].trim(); 
+                            rowValues[headerName] = parseFloat(cellContent) || 0;
+                        });
+                        
+                        // Iterate through all rules for this column
+                        colRules.forEach(rule => {
+                            let expr = rule.expression;
+                            
+                            // 2. Replace all [INTERNAL_NAME] references with the correct value (via map lookup)
+                            expr = expr.replace(/\[(.*?)\]/g, (match, colRef) => {
+                                const referenceKey = colRef.trim(); // e.g., 'MY_OTB - My Hotel template 88b'
+                                
+                                // Get the alias (header name) for the internal reference key
+                                const requiredHeader = columnMap[referenceKey]; 
+    
+                                // Look up the value using the alias/header name from the current row context
+                                if (requiredHeader && rowValues.hasOwnProperty(requiredHeader)) {
+                                    return rowValues[requiredHeader];
+                                }
+                                
+                                console.warn(`PDF: Value not found for reference key: ${referenceKey}. Defaulting to 0.`);
+                                return 0;
+                            });
+    
+                            try {
+                                // Use a safe wrapper for eval
+                                const result = new Function('return ' + expr)();
+                                
+                                if (result) {
+                                    // Convert hex to RGB
+                                    const hex = rule.color.replace("#", "");
+                                    const r = parseInt(hex.substring(0, 2), 16);
+                                    const g = parseInt(hex.substring(2, 4), 16);
+                                    const b = parseInt(hex.substring(4, 6), 16);
+                                    data.cell.styles.fillColor = [r, g, b];
+                                    data.cell.styles.textColor = 255; // white text for contrast
+                                    // If a rule matches, stop checking other rules for this cell
+                                    return;
+                                }
+                            } catch (err) {
+                                console.warn("PDF: Conditional rule error:", rule, expr, err);
+                            }
+                        });
+                    }
+                }
+            },
+        });
+    
+        doc.save(`${tabElement?.dataset?.title || "report_data"}.pdf`);
+    }
+    
+      </script>
+
+security: 
+  authentication: Page Requires Authentication
+  deep-linking: Application Default
+  page-access-protection: Arguments Must Have Checksum
+  form-auto-complete: Off
+  browser-cache: Application Default
+
+session-management: 
+  rejoin-sessions: Application Default
+
+advanced: 
+  enable-duplicate-page-submissions: Yes - Enable page to be re-posted
+  reload-on-submit: Only for Success
+
+server-cache: 
+  caching: Disabled
+
+regions: 
+- # ====== Region: Breadcrumb ==================================
+  id: 13490419006952044
+  identification: 
+    name: Breadcrumb
+    title: Hotel Dashboard
+    type: Breadcrumb
+
+  source: 
+    breadcrumb: Breadcrumb # 8558440305922134
+
+  layout: 
+    sequence: 20
+    parent-region: Hotel Selector # 25697469516364507
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Title Bar
+    template-options: 
+    - '#DEFAULT#'
+    - t-BreadcrumbRegion--useBreadcrumbTitle
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    appearance: 
+      breadcrumb-template: Breadcrumb
+      template-options: 
+      - '#DEFAULT#'
+
+- # ====== Region: Dynamic_Report_DetailsRN ====================
+  id: 13491368351956401
+  identification: 
+    name: Dynamic_Report_DetailsRN
+    type: Static Content
+
+  source: 
+    html-code: |
+      <div class="container">
+          <div class="tabs-container">
+              <div class="static-lov-container"> 
+                  <select id="static-lov-hotel" class="static-lov">
+                      <option value="">Select Hotel</option> 
+                  </select>
+              
+                  <select id="static-lov-report" class="static-lov">
+                      <option value="">Select Report</option> 
+                  </select>
+              </div>
+      
+      
+                  
+              <div class="tabs-header" id="tabs-header">
+                  <div class="add-tab-div" id="add-tab-div">+ New Report</div>
+              </div>
+          </div>
+      
+         <!-- Popup Modal for New Tab -->
+      <div id="newTabModal" class="modal" style="display: none;">
+          <div class="modal-content">
+              <div class="modal-header">
+                  <h3>Create New Report Tab</h3>
+                  <span class="close-modal">&times;</span>
+              </div>
+              <div class="modal-body">
+                  <div class="form-group">
+                      <label for="popup-report-lov">Select Report:</label>
+                      <select id="popup-report-lov" class="static-lov">
+                          <option value="">Select Report</option>
+                      </select>
+                  </div>
+                  <div class="form-group">
+                      <label for="tab-name-input">Sheet/Tab Name:</label>
+                      <input type="text" id="tab-name-input" placeholder="Enter tab name" class="static-lov">
+                  </div>
+              </div>
+              <div class="modal-footer">
+                  <div id="cancel-new-tab" class="fake-btn fake-btn-danger">Cancel</div>
+                  <div id="save-new-tab" class="fake-btn">Save</div>
+              </div>
+          </div>
+      </div>
+      
+      </div>
+
+  layout: 
+    sequence: 30
+    parent-region: No Parent
+    slot: BODY
+    start-new-layout: false
+    start-new-row: true
+    column: Automatic
+    new-column: true
+    column-span: Automatic
+
+  appearance: 
+    template: Standard
+    template-options: 
+    - '#DEFAULT#'
+    - t-Region--removeHeader js-removeLandmark
+    - t-Region--scrollBody
+    render-components: Above Content
+
+  accessibility: 
+    use-landmark: true
+    landmark-type: Template Default
+
+  advanced: 
+    region-display-selector: false
+    exclude-title-from-translation: false
+
+  customization: 
+    customizable: Not Customizable By End Users
+
+  attributes: 
+    settings: 
+      output-as: HTML
+      expand-shortcuts: false
+
