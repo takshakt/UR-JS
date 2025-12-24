@@ -1447,7 +1447,12 @@
         pdfConfidentialMessage: 'HIGHLY CONFIDENTIAL - All Rights Reserved',
         // User info for PDF download tracking (can be set dynamically)
         pdfUserName: '',
-        pdfUserEmail: ''
+        pdfUserEmail: '',
+        // Accessibility Configuration
+        enableAccessibility: true,    // Show accessibility toolbar (zoom, TTS, contrast)
+        ttsApiKey: '',                 // OpenAI API key for natural TTS (falls back to browser TTS if empty)
+        ttsVoice: 'alloy',             // OpenAI voice: alloy, echo, fable, onyx, nova, shimmer
+        ttsModel: 'tts-1'              // OpenAI model: tts-1 (faster) or tts-1-hd (higher quality)
       }, options);
 
       this.container = null;
@@ -1466,6 +1471,7 @@
       this.ttsActive = false;
       this.speechSynthesis = window.speechSynthesis || null;
       this.currentUtterance = null;
+      this.ttsAudio = null;  // For OpenAI TTS audio playback
 
       this.init();
     }
@@ -1684,12 +1690,14 @@
               <span>Search all documents...</span>
               <kbd>⌘K</kbd>
             </div>
+            ${this.options.enableAccessibility ? `
             <div class="ur-kb-a11y-toolbar">
               <button type="button" class="ur-kb-a11y-btn ur-kb-zoom-out" aria-label="Decrease text size" title="Decrease text size">A-</button>
               <button type="button" class="ur-kb-a11y-btn ur-kb-zoom-in" aria-label="Increase text size" title="Increase text size">A+</button>
               <button type="button" class="ur-kb-a11y-btn ur-kb-tts-btn" aria-label="Read aloud" title="Read aloud">${ICONS.speaker}</button>
               <button type="button" class="ur-kb-a11y-btn ur-kb-contrast-btn${this.highContrast ? ' active' : ''}" aria-label="Toggle high contrast" title="Toggle high contrast">${ICONS.contrast}</button>
             </div>
+            ` : ''}
           </div>
           <div class="ur-kb-body">
             <aside class="ur-kb-sidebar">
@@ -3081,21 +3089,11 @@
     }
 
     toggleTTS() {
-      if (!this.speechSynthesis) {
-        console.warn('Text-to-Speech is not supported in this browser');
-        return;
-      }
-
       const ttsBtn = this.container.querySelector('.ur-kb-tts-btn');
 
       if (this.ttsActive) {
         // Stop speaking
-        this.speechSynthesis.cancel();
-        this.ttsActive = false;
-        ttsBtn.classList.remove('speaking');
-        ttsBtn.innerHTML = ICONS.speaker;
-        ttsBtn.setAttribute('title', 'Read aloud');
-        ttsBtn.setAttribute('aria-label', 'Read aloud');
+        this.stopTTS();
       } else {
         // Start speaking
         const content = this.container.querySelector('.ur-kb-content');
@@ -3105,44 +3103,138 @@
         const textContent = this.getReadableText(content);
         if (!textContent) return;
 
-        // Create utterance
-        this.currentUtterance = new SpeechSynthesisUtterance(textContent);
-
-        // Try to get a natural sounding voice
-        const voices = this.speechSynthesis.getVoices();
-        const preferredVoice = voices.find(v =>
-          v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Premium') || v.name.includes('Enhanced'))
-        ) || voices.find(v => v.lang.startsWith('en') && v.localService)
-          || voices.find(v => v.lang.startsWith('en'));
-
-        if (preferredVoice) {
-          this.currentUtterance.voice = preferredVoice;
+        // Use OpenAI TTS if API key is provided, otherwise fall back to browser TTS
+        if (this.options.ttsApiKey) {
+          this.speakWithOpenAI(textContent, ttsBtn);
+        } else {
+          this.speakWithBrowser(textContent, ttsBtn);
         }
+      }
+    }
 
-        this.currentUtterance.rate = 0.9; // Slightly slower for clarity
-        this.currentUtterance.pitch = 1;
+    stopTTS() {
+      const ttsBtn = this.container.querySelector('.ur-kb-tts-btn');
 
-        this.currentUtterance.onend = () => {
-          this.ttsActive = false;
-          ttsBtn.classList.remove('speaking');
-          ttsBtn.innerHTML = ICONS.speaker;
-          ttsBtn.setAttribute('title', 'Read aloud');
-          ttsBtn.setAttribute('aria-label', 'Read aloud');
-        };
+      // Stop OpenAI TTS audio
+      if (this.ttsAudio) {
+        this.ttsAudio.pause();
+        this.ttsAudio.currentTime = 0;
+        this.ttsAudio = null;
+      }
 
-        this.currentUtterance.onerror = () => {
-          this.ttsActive = false;
-          ttsBtn.classList.remove('speaking');
-          ttsBtn.innerHTML = ICONS.speaker;
-        };
+      // Stop browser TTS
+      if (this.speechSynthesis) {
+        this.speechSynthesis.cancel();
+      }
 
-        this.speechSynthesis.speak(this.currentUtterance);
+      this.ttsActive = false;
+      if (ttsBtn) {
+        ttsBtn.classList.remove('speaking');
+        ttsBtn.innerHTML = ICONS.speaker;
+        ttsBtn.setAttribute('title', 'Read aloud');
+        ttsBtn.setAttribute('aria-label', 'Read aloud');
+      }
+    }
+
+    async speakWithOpenAI(text, ttsBtn) {
+      // Limit text length for API (OpenAI has a 4096 character limit per request)
+      const maxLength = 4000;
+      const truncatedText = text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
+
+      try {
+        // Show loading state
         this.ttsActive = true;
         ttsBtn.classList.add('speaking');
         ttsBtn.innerHTML = ICONS.speakerOff;
         ttsBtn.setAttribute('title', 'Stop reading');
         ttsBtn.setAttribute('aria-label', 'Stop reading');
+
+        const response = await fetch('https://api.openai.com/v1/audio/speech', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.options.ttsApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: this.options.ttsModel,
+            input: truncatedText,
+            voice: this.options.ttsVoice,
+            response_format: 'mp3'
+          })
+        });
+
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          console.warn('OpenAI TTS failed, falling back to browser TTS:', error);
+          this.stopTTS();
+          this.speakWithBrowser(text, ttsBtn);
+          return;
+        }
+
+        // Create audio from response
+        const audioBlob = await response.blob();
+        const audioUrl = URL.createObjectURL(audioBlob);
+
+        this.ttsAudio = new Audio(audioUrl);
+
+        this.ttsAudio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          this.stopTTS();
+        };
+
+        this.ttsAudio.onerror = () => {
+          URL.revokeObjectURL(audioUrl);
+          console.warn('Audio playback failed, falling back to browser TTS');
+          this.stopTTS();
+          this.speakWithBrowser(text, ttsBtn);
+        };
+
+        await this.ttsAudio.play();
+
+      } catch (error) {
+        console.warn('OpenAI TTS error, falling back to browser TTS:', error);
+        this.stopTTS();
+        this.speakWithBrowser(text, ttsBtn);
       }
+    }
+
+    speakWithBrowser(text, ttsBtn) {
+      if (!this.speechSynthesis) {
+        console.warn('Text-to-Speech is not supported in this browser');
+        return;
+      }
+
+      // Create utterance
+      this.currentUtterance = new SpeechSynthesisUtterance(text);
+
+      // Try to get a natural sounding voice
+      const voices = this.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(v =>
+        v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Premium') || v.name.includes('Enhanced'))
+      ) || voices.find(v => v.lang.startsWith('en') && v.localService)
+        || voices.find(v => v.lang.startsWith('en'));
+
+      if (preferredVoice) {
+        this.currentUtterance.voice = preferredVoice;
+      }
+
+      this.currentUtterance.rate = 0.9; // Slightly slower for clarity
+      this.currentUtterance.pitch = 1;
+
+      this.currentUtterance.onend = () => {
+        this.stopTTS();
+      };
+
+      this.currentUtterance.onerror = () => {
+        this.stopTTS();
+      };
+
+      this.speechSynthesis.speak(this.currentUtterance);
+      this.ttsActive = true;
+      ttsBtn.classList.add('speaking');
+      ttsBtn.innerHTML = ICONS.speakerOff;
+      ttsBtn.setAttribute('title', 'Stop reading');
+      ttsBtn.setAttribute('aria-label', 'Stop reading');
     }
 
     getReadableText(element) {
