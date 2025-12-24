@@ -18,9 +18,9 @@
       check: () => typeof Fuse !== 'undefined'
     },
     hljs: {
-      url: 'https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/highlight.min.js',
+      url: 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js',
       check: () => typeof hljs !== 'undefined',
-      css: 'https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/github.min.css'
+      css: 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'
     },
     html2pdf: {
       url: 'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js',
@@ -77,10 +77,17 @@
       display: flex;
       flex-direction: column;
       height: 100%;
-      min-height: 500px;
       border-radius: var(--kb-radius);
       overflow: hidden;
       box-shadow: var(--kb-shadow);
+      position: relative;
+    }
+
+    /* Default container height - can be overridden by parent styles */
+    #kb-container, [id*="kb-container"] {
+      height: calc(100vh - 150px);
+      min-height: 500px;
+      overflow: hidden;
     }
 
     /* Search Header */
@@ -159,28 +166,22 @@
       color: var(--kb-text-muted);
     }
 
-    .ur-kb-menu-toggle {
-      display: none;
-      padding: 8px;
-      background: none;
-      border: 1px solid var(--kb-border);
-      border-radius: var(--kb-radius);
-      cursor: pointer;
-      color: var(--kb-text);
-    }
 
     /* Main Layout */
     .ur-kb-body {
       display: flex;
-      flex: 1;
+      flex: 1 1 0;
       overflow: hidden;
       position: relative;
+      min-height: 0;
+      max-height: 100%;
     }
 
     /* Sidebar - Left Navigation */
     .ur-kb-sidebar {
       width: 280px;
       min-width: 280px;
+      max-height: 100%;
       background: var(--kb-sidebar-bg);
       border-right: 1px solid var(--kb-border);
       display: flex;
@@ -188,6 +189,7 @@
       overflow: hidden;
       transition: all 0.3s ease;
       position: relative;
+      flex-shrink: 0;
     }
 
     .ur-kb-sidebar.collapsed {
@@ -211,31 +213,9 @@
       flex-shrink: 0;
     }
 
-    /* Collapse button - positioned at center right edge of sidebar */
+    /* Sidebar toggle button - hidden, using expand button instead */
     .ur-kb-sidebar-toggle {
-      position: absolute;
-      right: -12px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 24px;
-      height: 48px;
-      background: var(--kb-sidebar-bg);
-      border: 1px solid var(--kb-border);
-      border-left: none;
-      border-radius: 0 var(--kb-radius) var(--kb-radius) 0;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      color: var(--kb-text-muted);
-      transition: all var(--kb-transition);
-      z-index: 10;
-    }
-
-    .ur-kb-sidebar-toggle:hover {
-      background: var(--kb-sidebar-hover);
-      color: var(--kb-text);
+      display: none;
     }
 
     .ur-kb-sidebar-content {
@@ -428,13 +408,18 @@
       flex-direction: column;
       overflow: hidden;
       position: relative;
+      min-height: 0;
+      max-height: 100%;
     }
 
     .ur-kb-content {
-      flex: 1;
+      flex: 1 1 0;
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 24px 32px;
       background: var(--kb-bg);
+      min-height: 0;
+      max-height: 100%;
     }
 
     /* Breadcrumb Navigation */
@@ -475,6 +460,58 @@
 
     .ur-kb-breadcrumb-sep {
       color: var(--kb-text-muted);
+    }
+
+    /* Scroll-aware section indicator - stacked hierarchy */
+    .ur-kb-scroll-indicator {
+      display: none;
+      flex-direction: column;
+      padding: 8px 32px;
+      background: var(--kb-sidebar-bg);
+      border-bottom: 1px solid var(--kb-border);
+      font-size: 12px;
+      color: var(--kb-text-muted);
+      flex-shrink: 0;
+      gap: 2px;
+    }
+
+    .ur-kb-scroll-indicator.visible {
+      display: flex;
+    }
+
+    .ur-kb-scroll-indicator-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--kb-text);
+      font-weight: 500;
+    }
+
+    .ur-kb-scroll-indicator-item:not(:first-child) {
+      padding-left: 16px;
+      color: var(--kb-text-muted);
+      font-weight: 400;
+    }
+
+    .ur-kb-scroll-indicator-item:not(:first-child)::before {
+      content: '└';
+      color: var(--kb-border);
+      margin-right: 4px;
+    }
+
+    .ur-kb-scroll-indicator-item:last-child {
+      color: var(--kb-accent);
+      font-weight: 500;
+    }
+
+    .ur-kb-scroll-indicator-icon {
+      color: var(--kb-accent);
+      flex-shrink: 0;
+    }
+
+    .ur-kb-scroll-indicator-icon svg {
+      width: 12px;
+      height: 12px;
     }
 
     /* Content Header - Clean, No Frame */
@@ -990,24 +1027,26 @@
       to { transform: rotate(360deg); }
     }
 
-    /* Sidebar Expand Button */
+    /* Sidebar Toggle Button - positioned at sidebar edge */
     .ur-kb-sidebar-expand {
       position: absolute;
-      left: 0;
+      left: 280px;
       top: 50%;
       transform: translateY(-50%);
-      width: 24px;
-      height: 48px;
+      width: 20px;
+      height: 40px;
+      padding: 0;
       background: var(--kb-sidebar-bg);
       border: 1px solid var(--kb-border);
       border-left: none;
-      border-radius: 0 var(--kb-radius) var(--kb-radius) 0;
+      border-radius: 0 6px 6px 0;
       cursor: pointer;
-      display: none;
+      display: flex;
       align-items: center;
       justify-content: center;
       color: var(--kb-text-muted);
-      z-index: 10;
+      z-index: 101;
+      transition: left 0.3s ease, background 0.2s ease;
     }
 
     .ur-kb-sidebar-expand:hover {
@@ -1015,37 +1054,46 @@
       color: var(--kb-text);
     }
 
-    .ur-kb-sidebar-expand.visible {
-      display: flex;
+    .ur-kb-sidebar.collapsed ~ .ur-kb-sidebar-expand,
+    .ur-kb-sidebar-expand.collapsed {
+      left: 0;
     }
 
     .ur-kb-sidebar-expand svg {
-      width: 14px;
-      height: 14px;
+      width: 12px;
+      height: 12px;
+      transition: transform 0.3s ease;
+    }
+
+    .ur-kb-sidebar.collapsed ~ .ur-kb-sidebar-expand svg,
+    .ur-kb-sidebar-expand.collapsed svg {
+      transform: rotate(180deg);
     }
 
     /* Responsive */
     @media (max-width: 768px) {
       .ur-kb-sidebar {
-        position: fixed;
+        position: absolute;
         left: 0;
         top: 0;
         bottom: 0;
         z-index: 100;
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
+        width: 260px;
+        min-width: 260px;
       }
 
-      .ur-kb-sidebar.mobile-open {
-        transform: translateX(0);
+      .ur-kb-sidebar.collapsed {
+        width: 0;
+        min-width: 0;
       }
 
-      .ur-kb-menu-toggle {
-        display: flex;
+      .ur-kb-sidebar-expand {
+        left: 260px;
       }
 
-      .ur-kb-sidebar-toggle {
-        display: none;
+      .ur-kb-sidebar.collapsed ~ .ur-kb-sidebar-expand,
+      .ur-kb-sidebar-expand.collapsed {
+        left: 0;
       }
 
       .ur-kb-content {
@@ -1072,11 +1120,14 @@
         bottom: 0;
         background: rgba(0,0,0,0.5);
         z-index: 99;
-        display: none;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
       }
 
       .ur-kb-overlay.active {
-        display: block;
+        opacity: 1;
+        pointer-events: auto;
       }
 
       .ur-kb-doc-cards {
@@ -1175,7 +1226,10 @@
         organizationName: 'Organization',
         applicationName: 'Knowledge Base',
         pdfAuthor: 'System Generated',
-        pdfConfidentialMessage: 'HIGHLY CONFIDENTIAL - All Rights Reserved'
+        pdfConfidentialMessage: 'HIGHLY CONFIDENTIAL - All Rights Reserved',
+        // User info for PDF download tracking (can be set dynamically)
+        pdfUserName: '',
+        pdfUserEmail: ''
       }, options);
 
       this.container = null;
@@ -1379,7 +1433,6 @@
       this.container.innerHTML = `
         <div class="ur-kb ${themeClass}">
           <div class="ur-kb-header">
-            <button class="ur-kb-menu-toggle" aria-label="Toggle menu">${ICONS.menu}</button>
             <button class="ur-kb-home-btn" aria-label="Home">${ICONS.home}<span>Home</span></button>
             <div class="ur-kb-search-trigger" role="button" tabindex="0">
               ${ICONS.search}
@@ -1388,22 +1441,22 @@
             </div>
           </div>
           <div class="ur-kb-body">
-            <div class="ur-kb-overlay"></div>
             <aside class="ur-kb-sidebar">
               <div class="ur-kb-sidebar-header">
                 <span>${escapeHtml(this.options.sidebarTitle)}</span>
               </div>
-              <button class="ur-kb-sidebar-toggle" aria-label="Collapse sidebar">«</button>
               <nav class="ur-kb-sidebar-content">
                 ${this.renderDocumentList()}
               </nav>
             </aside>
+            <button class="ur-kb-sidebar-expand" type="button" aria-label="Toggle sidebar">${ICONS.chevronLeft}</button>
             <div class="ur-kb-main">
-              <div class="ur-kb-sidebar-expand" aria-label="Expand sidebar">${ICONS.chevronRight}</div>
               <div class="ur-kb-breadcrumb"></div>
+              <div class="ur-kb-scroll-indicator"></div>
               <main class="ur-kb-content"></main>
               <div class="ur-kb-footer"></div>
             </div>
+            <div class="ur-kb-overlay"></div>
           </div>
           ${this.renderSearchModal()}
         </div>
@@ -1552,27 +1605,16 @@
           return;
         }
 
-        // Sidebar toggle
-        if (e.target.closest('.ur-kb-sidebar-toggle')) {
+        // Sidebar toggle button (expand/collapse)
+        if (e.target.closest('.ur-kb-sidebar-expand')) {
+          e.preventDefault();
           this.toggleSidebar();
           return;
         }
 
-        // Sidebar expand button
-        if (e.target.closest('.ur-kb-sidebar-expand')) {
-          this.toggleSidebar(false);
-          return;
-        }
-
-        // Mobile menu toggle
-        if (e.target.closest('.ur-kb-menu-toggle')) {
-          this.toggleMobileMenu();
-          return;
-        }
-
-        // Overlay click
+        // Overlay click - close sidebar on mobile
         if (e.target.closest('.ur-kb-overlay')) {
-          this.toggleMobileMenu(false);
+          this.toggleSidebar(true);
           return;
         }
 
@@ -1643,6 +1685,72 @@
           }
         }
       });
+
+      // Scroll listener for section indicator
+      const content = kb.querySelector('.ur-kb-content');
+      content.addEventListener('scroll', debounce(() => {
+        this.updateScrollIndicator();
+      }, 50));
+    }
+
+    updateScrollIndicator() {
+      const indicator = this.container.querySelector('.ur-kb-scroll-indicator');
+      const content = this.container.querySelector('.ur-kb-content');
+
+      // Find all section headers in content
+      const headers = content.querySelectorAll('.ur-kb-section-title h1, .ur-kb-section-title h2, .ur-kb-section-title h3, .ur-kb-section-title h4, .ur-kb-section-title h5, .ur-kb-section-title h6');
+
+      if (headers.length === 0) {
+        indicator.classList.remove('visible');
+        return;
+      }
+
+      // Find all headers that are above the viewport (scrolled past)
+      const scrollTop = content.scrollTop;
+      const offset = 100; // Offset from top to consider "in view"
+      const contentRect = content.getBoundingClientRect();
+
+      // Build hierarchy of current headers by level
+      const currentHierarchy = {}; // level -> header text
+
+      for (const header of headers) {
+        const rect = header.getBoundingClientRect();
+        const relativeTop = rect.top - contentRect.top;
+
+        if (relativeTop <= offset) {
+          // This header is at or above the scroll position
+          const level = parseInt(header.tagName.charAt(1));
+          currentHierarchy[level] = header.textContent;
+
+          // Clear any lower levels when we pass a higher level header
+          for (let l = level + 1; l <= 6; l++) {
+            delete currentHierarchy[l];
+          }
+        } else {
+          break;
+        }
+      }
+
+      // Build the stacked indicator HTML
+      const levels = Object.keys(currentHierarchy).map(Number).sort((a, b) => a - b);
+
+      if (levels.length > 0 && scrollTop > 50) {
+        indicator.classList.add('visible');
+        indicator.innerHTML = levels.map(level => {
+          return `<div class="ur-kb-scroll-indicator-item">${escapeHtml(currentHierarchy[level])}</div>`;
+        }).join('');
+      } else {
+        indicator.classList.remove('visible');
+        indicator.innerHTML = '';
+      }
+    }
+
+    hideScrollIndicator() {
+      const indicator = this.container.querySelector('.ur-kb-scroll-indicator');
+      if (indicator) {
+        indicator.classList.remove('visible');
+        indicator.innerHTML = '';
+      }
     }
 
     showHome() {
@@ -1654,8 +1762,9 @@
       sidebar.querySelectorAll('.ur-kb-doc-header').forEach(el => el.classList.remove('active'));
       sidebar.querySelectorAll('.ur-kb-section-item').forEach(el => el.classList.remove('active'));
 
-      // Update breadcrumb
+      // Update breadcrumb and hide scroll indicator
       this.updateBreadcrumb([]);
+      this.hideScrollIndicator();
 
       const content = this.container.querySelector('.ur-kb-content');
       content.innerHTML = `
@@ -1680,7 +1789,6 @@
 
       // Hide footer on home
       this.updateFooter(null, null);
-      this.toggleMobileMenu(false);
     }
 
     selectDocument(docId) {
@@ -1708,8 +1816,6 @@
       // Show full document content (all sections)
       this.renderDocumentContent(doc);
       this.updateFooter(null, null); // Hide prev/next on document overview
-
-      this.toggleMobileMenu(false);
     }
 
     selectSection(docId, sectionId) {
@@ -1775,7 +1881,6 @@
 
       this.renderSectionContent(doc, section);
       this.updateFooter(docId, sectionId);
-      this.toggleMobileMenu(false);
     }
 
     updateBreadcrumb(items) {
@@ -1874,12 +1979,6 @@
       content.innerHTML = `
         <div class="ur-kb-content-header">
           <h1 class="ur-kb-content-title">${escapeHtml(doc.title)}</h1>
-          ${this.options.enablePdfExport ? `
-            <button class="ur-kb-pdf-btn" title="Download as PDF">
-              ${ICONS.download}
-              <span>PDF</span>
-            </button>
-          ` : ''}
         </div>
         <div class="ur-kb-markdown">
           ${html}
@@ -2022,14 +2121,10 @@
           const id = slugify(text) + '-' + index;
           const headerTag = `h${level}`;
 
+          // No PDF buttons on subsection headers - main PDF button is in content-header
           html += `
             <div class="ur-kb-section-title">
               <${headerTag} id="${id}">${escapeHtml(text)}</${headerTag}>
-              ${this.options.enablePdfExport ? `
-                <button class="ur-kb-section-pdf-btn" data-section-id="${id}" title="Download this section as PDF">
-                  ${ICONS.download}
-                </button>
-              ` : ''}
             </div>
           `;
         } else {
@@ -2076,8 +2171,8 @@
 
     toggleSidebar(collapsed) {
       const sidebar = this.container.querySelector('.ur-kb-sidebar');
-      const toggle = this.container.querySelector('.ur-kb-sidebar-toggle');
       const expandBtn = this.container.querySelector('.ur-kb-sidebar-expand');
+      const overlay = this.container.querySelector('.ur-kb-overlay');
 
       if (collapsed === undefined) {
         this.sidebarCollapsed = !this.sidebarCollapsed;
@@ -2086,25 +2181,16 @@
       }
 
       sidebar.classList.toggle('collapsed', this.sidebarCollapsed);
-      toggle.textContent = this.sidebarCollapsed ? '»' : '«';
-      expandBtn.classList.toggle('visible', this.sidebarCollapsed);
+      expandBtn.classList.toggle('collapsed', this.sidebarCollapsed);
+
+      // Show/hide overlay on mobile when sidebar is open
+      if (overlay) {
+        overlay.classList.toggle('active', !this.sidebarCollapsed);
+      }
 
       localStorage.setItem('ur-kb-sidebar', this.sidebarCollapsed ? 'collapsed' : 'expanded');
     }
 
-    toggleMobileMenu(open) {
-      const sidebar = this.container.querySelector('.ur-kb-sidebar');
-      const overlay = this.container.querySelector('.ur-kb-overlay');
-
-      if (open === undefined) {
-        this.mobileMenuOpen = !this.mobileMenuOpen;
-      } else {
-        this.mobileMenuOpen = open;
-      }
-
-      sidebar.classList.toggle('mobile-open', this.mobileMenuOpen);
-      overlay.classList.toggle('active', this.mobileMenuOpen);
-    }
 
     openSearch() {
       const modal = this.container.querySelector('.ur-kb-search-modal');
@@ -2286,21 +2372,31 @@
         const tempDiv = document.createElement('div');
         tempDiv.style.cssText = 'font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a2e; max-width: 800px;';
 
-        // Cover Page
+        // Get download timestamp
+        const downloadTime = new Date().toLocaleString('en-US', {
+          year: 'numeric', month: 'long', day: 'numeric',
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+        const userName = this.options.pdfUserName || 'Anonymous User';
+        const userEmail = this.options.pdfUserEmail || '';
+
+        // Cover Page - centered content with larger title (no absolute positioning for better PDF rendering)
         const coverPage = document.createElement('div');
-        coverPage.style.cssText = 'page-break-after: always; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 40px;';
+        coverPage.style.cssText = 'page-break-after: always; text-align: center; padding: 40px;';
         coverPage.innerHTML = `
-          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
-            <div style="font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">${escapeHtml(this.options.applicationName)}</div>
-            <h1 style="font-size: 32px; color: #1a1a2e; margin: 0 0 20px 0; line-height: 1.3;">${escapeHtml(this.currentDoc.title)}</h1>
-            <div style="font-size: 20px; color: #4f46e5; margin-bottom: 40px;">${escapeHtml(title)}</div>
-            <div style="width: 80px; height: 4px; background: #4f46e5; margin: 0 auto 40px;"></div>
+          <div style="padding-top: 80px; padding-bottom: 60px;">
+            <div style="font-size: 16px; color: #6b7280; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 30px;">${escapeHtml(this.options.applicationName)}</div>
+            <h1 style="font-size: 42px; color: #1a1a2e; margin: 0 0 24px 0; line-height: 1.2; font-weight: 700;">${escapeHtml(this.currentDoc.title)}</h1>
+            <div style="font-size: 28px; color: #4f46e5; margin-bottom: 50px; font-weight: 500;">${escapeHtml(title)}</div>
+            <div style="width: 100px; height: 4px; background: #4f46e5; margin: 0 auto;"></div>
           </div>
-          <div style="margin-top: auto; padding-bottom: 60px;">
-            <div style="font-size: 14px; color: #374151; margin-bottom: 8px;"><strong>Last Updated:</strong> ${escapeHtml(docLastUpdated)}</div>
-            <div style="font-size: 14px; color: #374151; margin-bottom: 8px;"><strong>Created By:</strong> ${escapeHtml(docAuthor)}</div>
-            <div style="font-size: 14px; color: #374151; margin-bottom: 24px;"><strong>Organization:</strong> ${escapeHtml(this.options.organizationName)}</div>
-            <div style="font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 20px;">${escapeHtml(this.options.pdfConfidentialMessage)}<br>&copy; ${new Date().getFullYear()} ${escapeHtml(this.options.organizationName)}</div>
+          <div style="margin-top: 80px; text-align: center;">
+            <div style="font-size: 13px; color: #374151; margin-bottom: 6px;"><strong>Last Updated:</strong> ${escapeHtml(docLastUpdated)}</div>
+            <div style="font-size: 13px; color: #374151; margin-bottom: 6px;"><strong>Created By:</strong> ${escapeHtml(docAuthor)}</div>
+            <div style="font-size: 13px; color: #374151; margin-bottom: 16px;"><strong>Organization:</strong> ${escapeHtml(this.options.organizationName)}</div>
+            <div style="font-size: 13px; color: #374151; margin-bottom: 6px;"><strong>Downloaded By:</strong> ${escapeHtml(userName)}${userEmail ? ` (${escapeHtml(userEmail)})` : ''}</div>
+            <div style="font-size: 13px; color: #374151; margin-bottom: 24px;"><strong>Downloaded On:</strong> ${escapeHtml(downloadTime)}</div>
+            <div style="font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 30px;">${escapeHtml(this.options.pdfConfidentialMessage)}<br>&copy; ${new Date().getFullYear()} ${escapeHtml(this.options.organizationName)}</div>
           </div>
         `;
         tempDiv.appendChild(coverPage);
@@ -2325,7 +2421,13 @@
           h.style.cssText = 'margin: 0; color: #1a1a2e; page-break-after: avoid;';
         });
         tempDiv.querySelectorAll('table').forEach(table => {
-          table.style.cssText = 'width: 100%; border-collapse: collapse; margin: 1em 0; page-break-inside: avoid;';
+          table.style.cssText = 'width: 100%; border-collapse: collapse; margin: 1em 0;';
+        });
+        tempDiv.querySelectorAll('thead').forEach(thead => {
+          thead.style.cssText = 'display: table-header-group;';
+        });
+        tempDiv.querySelectorAll('tr').forEach(tr => {
+          tr.style.cssText = 'page-break-inside: avoid;';
         });
         tempDiv.querySelectorAll('th, td').forEach(cell => {
           cell.style.cssText = 'padding: 8px 12px; border: 1px solid #e5e7eb; text-align: left;';
@@ -2434,19 +2536,29 @@
       const tempDiv = document.createElement('div');
       tempDiv.style.cssText = 'font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a2e; max-width: 800px;';
 
-      // Cover Page
+      // Get download timestamp
+      const downloadTime = new Date().toLocaleString('en-US', {
+        year: 'numeric', month: 'long', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit'
+      });
+      const userName = this.options.pdfUserName || 'Anonymous User';
+      const userEmail = this.options.pdfUserEmail || '';
+
+      // Cover Page - centered content with larger title (no absolute positioning - causes issues with html2pdf)
       const coverPage = `
-        <div style="page-break-after: always; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 40px;">
-          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
-            <div style="font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">${escapeHtml(this.options.applicationName)}</div>
-            <h1 style="font-size: 36px; color: #1a1a2e; margin: 0 0 40px 0; line-height: 1.3;">${escapeHtml(title)}</h1>
-            <div style="width: 80px; height: 4px; background: #4f46e5; margin: 0 auto 40px;"></div>
+        <div style="page-break-after: always; text-align: center; padding: 40px;">
+          <div style="padding-top: 80px; padding-bottom: 60px;">
+            <div style="font-size: 16px; color: #6b7280; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 30px;">${escapeHtml(this.options.applicationName)}</div>
+            <h1 style="font-size: 42px; color: #1a1a2e; margin: 0 0 50px 0; line-height: 1.2; font-weight: 700;">${escapeHtml(title)}</h1>
+            <div style="width: 100px; height: 4px; background: #4f46e5; margin: 0 auto;"></div>
           </div>
-          <div style="margin-top: auto; padding-bottom: 60px;">
-            <div style="font-size: 14px; color: #374151; margin-bottom: 8px;"><strong>Last Updated:</strong> ${escapeHtml(docLastUpdated)}</div>
-            <div style="font-size: 14px; color: #374151; margin-bottom: 8px;"><strong>Created By:</strong> ${escapeHtml(docAuthor)}</div>
-            <div style="font-size: 14px; color: #374151; margin-bottom: 24px;"><strong>Organization:</strong> ${escapeHtml(this.options.organizationName)}</div>
-            <div style="font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 20px;">${escapeHtml(this.options.pdfConfidentialMessage)}<br>&copy; ${new Date().getFullYear()} ${escapeHtml(this.options.organizationName)}</div>
+          <div style="margin-top: 80px; text-align: center;">
+            <div style="font-size: 13px; color: #374151; margin-bottom: 6px;"><strong>Last Updated:</strong> ${escapeHtml(docLastUpdated)}</div>
+            <div style="font-size: 13px; color: #374151; margin-bottom: 6px;"><strong>Created By:</strong> ${escapeHtml(docAuthor)}</div>
+            <div style="font-size: 13px; color: #374151; margin-bottom: 16px;"><strong>Organization:</strong> ${escapeHtml(this.options.organizationName)}</div>
+            <div style="font-size: 13px; color: #374151; margin-bottom: 6px;"><strong>Downloaded By:</strong> ${escapeHtml(userName)}${userEmail ? ` (${escapeHtml(userEmail)})` : ''}</div>
+            <div style="font-size: 13px; color: #374151; margin-bottom: 24px;"><strong>Downloaded On:</strong> ${escapeHtml(downloadTime)}</div>
+            <div style="font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 30px;">${escapeHtml(this.options.pdfConfidentialMessage)}<br>&copy; ${new Date().getFullYear()} ${escapeHtml(this.options.organizationName)}</div>
           </div>
         </div>
       `;
@@ -2462,7 +2574,13 @@
 
       // Style for PDF with page-break handling
       tempDiv.querySelectorAll('table').forEach(table => {
-        table.style.cssText = 'width: 100%; border-collapse: collapse; margin: 1em 0; page-break-inside: avoid;';
+        table.style.cssText = 'width: 100%; border-collapse: collapse; margin: 1em 0;';
+      });
+      tempDiv.querySelectorAll('thead').forEach(thead => {
+        thead.style.cssText = 'display: table-header-group;';
+      });
+      tempDiv.querySelectorAll('tr').forEach(tr => {
+        tr.style.cssText = 'page-break-inside: avoid;';
       });
       tempDiv.querySelectorAll('th, td').forEach(cell => {
         cell.style.cssText = 'padding: 8px 12px; border: 1px solid #e5e7eb; text-align: left;';
