@@ -51,21 +51,42 @@
   <script src="kb-widget.js"></script>
   <script>
     // Initialize the Knowledge Base widget
-    URKnowledgeBase.init({
+    KnowledgeBase.init({
       container: '#kb-container',
 
-      // Your markdown documents
+      // Your markdown documents with metadata
       documents: [
-        { url: 'f106-user-guide-reader.md' },
-        { url: 'f106-user-guide-contributor.md' },
-        { url: 'f106-user-guide-administrator.md' }
+        {
+          url: 'f106-user-guide-reader.md',
+          title: 'Reader Guide',                    // Document title (root header)
+          author: 'Product Team',                   // Document author
+          lastUpdated: 'December 20, 2024'          // Last updated date
+        },
+        {
+          url: 'f106-user-guide-contributor.md',
+          title: 'Contributor Guide',
+          author: 'Technical Writing Team',
+          lastUpdated: 'December 18, 2024'
+        },
+        {
+          url: 'f106-user-guide-administrator.md',
+          title: 'Administrator Guide',
+          author: 'Admin Documentation Team',
+          lastUpdated: 'December 22, 2024'
+        }
       ],
 
       // Configuration
       sidebarTitle: 'KB Documents',
       theme: 'auto',          // 'light', 'dark', or 'auto'
       enableSearch: true,
-      enablePdfExport: true
+      enablePdfExport: true,
+
+      // PDF Configuration - customize these for your organization
+      organizationName: 'Untapped Revenue',
+      applicationName: 'F106 Application',
+      pdfAuthor: 'Documentation Team',             // Default author if not specified per document
+      pdfConfidentialMessage: 'HIGHLY CONFIDENTIAL - All Rights Reserved'
     });
   </script>
 </body>

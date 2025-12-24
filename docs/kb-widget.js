@@ -1,6 +1,6 @@
 /**
- * URKnowledgeBase - Portable Markdown Knowledge Base Widget
- * Version 3.0 - With left sidebar navigation, prev/next, breadcrumbs, and improved PDF
+ * KnowledgeBase - Portable Markdown Knowledge Base Widget
+ * Version 4.0 - With left sidebar navigation, prev/next, breadcrumbs, and enhanced PDF
  */
 (function(global) {
   'use strict';
@@ -187,6 +187,7 @@
       flex-direction: column;
       overflow: hidden;
       transition: all 0.3s ease;
+      position: relative;
     }
 
     .ur-kb-sidebar.collapsed {
@@ -201,7 +202,6 @@
       border-bottom: 1px solid var(--kb-border);
       display: flex;
       align-items: center;
-      justify-content: space-between;
       font-weight: 600;
       font-size: 13px;
       text-transform: uppercase;
@@ -211,15 +211,26 @@
       flex-shrink: 0;
     }
 
+    /* Collapse button - positioned at center right edge of sidebar */
     .ur-kb-sidebar-toggle {
-      padding: 4px 8px;
-      background: none;
+      position: absolute;
+      right: -12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 48px;
+      background: var(--kb-sidebar-bg);
       border: 1px solid var(--kb-border);
-      border-radius: 4px;
+      border-left: none;
+      border-radius: 0 var(--kb-radius) var(--kb-radius) 0;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 14px;
       color: var(--kb-text-muted);
       transition: all var(--kb-transition);
+      z-index: 10;
     }
 
     .ur-kb-sidebar-toggle:hover {
@@ -232,6 +243,59 @@
       overflow-y: auto;
       overflow-x: auto;
       padding: 8px 0;
+    }
+
+    /* Custom scrollbar styles for better visibility */
+    .ur-kb-sidebar-content::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .ur-kb-sidebar-content::-webkit-scrollbar-track {
+      background: var(--kb-sidebar-bg);
+      border-radius: 4px;
+    }
+
+    .ur-kb-sidebar-content::-webkit-scrollbar-thumb {
+      background: var(--kb-border);
+      border-radius: 4px;
+      border: 2px solid var(--kb-sidebar-bg);
+    }
+
+    .ur-kb-sidebar-content::-webkit-scrollbar-thumb:hover {
+      background: var(--kb-text-muted);
+    }
+
+    /* Firefox scrollbar */
+    .ur-kb-sidebar-content {
+      scrollbar-width: thin;
+      scrollbar-color: var(--kb-border) var(--kb-sidebar-bg);
+    }
+
+    /* Content area scrollbar */
+    .ur-kb-content::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    .ur-kb-content::-webkit-scrollbar-track {
+      background: var(--kb-bg);
+      border-radius: 4px;
+    }
+
+    .ur-kb-content::-webkit-scrollbar-thumb {
+      background: var(--kb-border);
+      border-radius: 4px;
+      border: 2px solid var(--kb-bg);
+    }
+
+    .ur-kb-content::-webkit-scrollbar-thumb:hover {
+      background: var(--kb-text-muted);
+    }
+
+    .ur-kb-content {
+      scrollbar-width: thin;
+      scrollbar-color: var(--kb-border) var(--kb-bg);
     }
 
     /* Document List in Sidebar */
@@ -377,18 +441,21 @@
     .ur-kb-breadcrumb {
       display: flex;
       align-items: center;
-      gap: 8px;
+      flex-wrap: wrap;
+      gap: 6px 8px;
       padding: 12px 32px;
       background: var(--kb-sidebar-bg);
       border-bottom: 1px solid var(--kb-border);
       font-size: 13px;
       flex-shrink: 0;
+      line-height: 1.6;
     }
 
     .ur-kb-breadcrumb-item {
       color: var(--kb-link);
       cursor: pointer;
       transition: color var(--kb-transition);
+      white-space: nowrap;
     }
 
     .ur-kb-breadcrumb-item:hover {
@@ -399,6 +466,7 @@
     .ur-kb-breadcrumb-item.current {
       color: var(--kb-text);
       cursor: default;
+      font-weight: 500;
     }
 
     .ur-kb-breadcrumb-item.current:hover {
@@ -1091,9 +1159,9 @@
   }
 
   // ============================================================
-  // Main URKnowledgeBase Class
+  // Main KnowledgeBase Class
   // ============================================================
-  class URKnowledgeBase {
+  class KnowledgeBase {
     constructor(options) {
       this.options = Object.assign({
         container: '#kb-container',
@@ -1102,7 +1170,12 @@
         theme: 'auto',
         enableSearch: true,
         enablePdfExport: true,
-        defaultDocument: null
+        defaultDocument: null,
+        // PDF Configuration
+        organizationName: 'Organization',
+        applicationName: 'Knowledge Base',
+        pdfAuthor: 'System Generated',
+        pdfConfidentialMessage: 'HIGHLY CONFIDENTIAL - All Rights Reserved'
       }, options);
 
       this.container = null;
@@ -1124,7 +1197,7 @@
         : this.options.container;
 
       if (!this.container) {
-        console.error('URKnowledgeBase: Container not found');
+        console.error('KnowledgeBase: Container not found');
         return;
       }
 
@@ -1180,6 +1253,8 @@
         id: doc.id || `doc-${index}`,
         url: doc.url,
         title: doc.title || generateTitle(doc.url),
+        author: doc.author || this.options.pdfAuthor,
+        lastUpdated: doc.lastUpdated || null,
         content: null,
         sections: [],
         loaded: false
@@ -1317,8 +1392,8 @@
             <aside class="ur-kb-sidebar">
               <div class="ur-kb-sidebar-header">
                 <span>${escapeHtml(this.options.sidebarTitle)}</span>
-                <button class="ur-kb-sidebar-toggle" aria-label="Collapse sidebar">«</button>
               </div>
+              <button class="ur-kb-sidebar-toggle" aria-label="Collapse sidebar">«</button>
               <nav class="ur-kb-sidebar-content">
                 ${this.renderDocumentList()}
               </nav>
@@ -1717,11 +1792,28 @@
         `<span class="ur-kb-breadcrumb-item" data-doc-id="">${ICONS.home}</span>`
       ];
 
-      items.forEach((item) => {
-        html.push(`<span class="ur-kb-breadcrumb-sep">/</span>`);
+      // Skip the first item (document name) - start from section headers only
+      const sectionItems = items.slice(1);
+
+      sectionItems.forEach((item, index) => {
+        // Add separator before each item (no separator before first section item)
+        if (index > 0) {
+          html.push(`<span class="ur-kb-breadcrumb-sep">/</span>`);
+        } else {
+          // First separator after Home
+          html.push(`<span class="ur-kb-breadcrumb-sep">/</span>`);
+        }
         const currentClass = item.isCurrent ? ' current' : '';
         html.push(`<span class="ur-kb-breadcrumb-item${currentClass}" data-doc-id="${item.docId || ''}" data-section-id="${item.sectionId || ''}">${escapeHtml(item.label)}</span>`);
       });
+
+      // If no section items (only document selected), show document name
+      if (sectionItems.length === 0 && items.length > 0) {
+        html.push(`<span class="ur-kb-breadcrumb-sep">/</span>`);
+        const item = items[0];
+        const currentClass = item.isCurrent ? ' current' : '';
+        html.push(`<span class="ur-kb-breadcrumb-item${currentClass}" data-doc-id="${item.docId || ''}" data-section-id="${item.sectionId || ''}">${escapeHtml(item.label)}</span>`);
+      }
 
       breadcrumb.innerHTML = html.join('');
     }
@@ -1798,20 +1890,78 @@
         if (typeof hljs !== 'undefined') hljs.highlightElement(block);
       });
 
+      // Add click handlers for internal anchor links (TOC links)
+      this.setupInternalLinkHandlers(doc);
+
       // Scroll to top
       content.scrollTop = 0;
     }
 
+    setupInternalLinkHandlers(doc) {
+      const content = this.container.querySelector('.ur-kb-content');
+
+      content.querySelectorAll('a[href^="#"]').forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault();
+          const hash = link.getAttribute('href').substring(1); // Remove the #
+
+          // Find matching section by trying to match the hash with section IDs or text
+          const matchingSection = this.findSectionByHash(doc, hash);
+
+          if (matchingSection) {
+            this.selectSection(doc.id, matchingSection.id);
+          } else {
+            // If no exact match, try to scroll to element with that ID
+            const targetEl = content.querySelector(`#${CSS.escape(hash)}`);
+            if (targetEl) {
+              targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }
+        });
+      });
+    }
+
+    findSectionByHash(doc, hash) {
+      // Normalize the hash for comparison
+      const normalizedHash = hash.toLowerCase().replace(/[^\w-]/g, '');
+
+      const searchSections = (sections) => {
+        for (const section of sections) {
+          // Try matching by slugified text
+          const sectionSlug = slugify(section.text).toLowerCase();
+          if (sectionSlug === normalizedHash || sectionSlug.includes(normalizedHash) || normalizedHash.includes(sectionSlug)) {
+            return section;
+          }
+
+          // Also try matching section ID (which includes line number)
+          const sectionIdBase = section.id.split('-').slice(0, -1).join('-');
+          if (sectionIdBase === normalizedHash) {
+            return section;
+          }
+
+          // Recursively search children
+          if (section.children.length > 0) {
+            const found = searchSections(section.children);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      return searchSections(doc.sections);
+    }
+
     renderSectionContent(doc, section) {
       const content = this.container.querySelector('.ur-kb-content');
-      const sectionContent = this.extractSectionContent(doc.content, section);
+      // Skip the main section header since it's shown in the content-header
+      const sectionContent = this.extractSectionContent(doc.content, section, true);
       const html = this.renderMarkdownWithHeaders(sectionContent);
 
       content.innerHTML = `
         <div class="ur-kb-content-header">
-          <h1 class="ur-kb-content-title">${escapeHtml(doc.title)}</h1>
+          <h1 class="ur-kb-content-title">${escapeHtml(section.text)}</h1>
           ${this.options.enablePdfExport ? `
-            <button class="ur-kb-pdf-btn" title="Download entire document as PDF">
+            <button class="ur-kb-pdf-btn" title="Download this section as PDF">
               ${ICONS.download}
               <span>PDF</span>
             </button>
@@ -1830,12 +1980,13 @@
       content.scrollTop = 0;
     }
 
-    extractSectionContent(content, section) {
+    extractSectionContent(content, section, skipHeader = false) {
       const lines = content.split('\n');
-      const startLine = section.line;
+      // Skip the header line if requested (since it's shown in content-header)
+      const startLine = skipHeader ? section.line + 1 : section.line;
       let endLine = lines.length;
 
-      for (let i = startLine + 1; i < lines.length; i++) {
+      for (let i = section.line + 1; i < lines.length; i++) {
         const match = lines[i].match(/^(#{1,6})\s/);
         if (match && match[1].length <= section.level) {
           endLine = i;
@@ -2123,25 +2274,58 @@
           sectionContent.push(el.cloneNode(true));
         }
 
-        // Create temp container
+        // Use document-specific metadata if available, otherwise fall back to global options
+        const docAuthor = this.currentDoc?.author || this.options.pdfAuthor;
+        const docLastUpdated = this.currentDoc?.lastUpdated || new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+
+        // Create temp container with cover page
         const tempDiv = document.createElement('div');
-        tempDiv.style.cssText = 'padding: 20px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a2e; max-width: 800px;';
+        tempDiv.style.cssText = 'font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a2e; max-width: 800px;';
+
+        // Cover Page
+        const coverPage = document.createElement('div');
+        coverPage.style.cssText = 'page-break-after: always; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 40px;';
+        coverPage.innerHTML = `
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+            <div style="font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">${escapeHtml(this.options.applicationName)}</div>
+            <h1 style="font-size: 32px; color: #1a1a2e; margin: 0 0 20px 0; line-height: 1.3;">${escapeHtml(this.currentDoc.title)}</h1>
+            <div style="font-size: 20px; color: #4f46e5; margin-bottom: 40px;">${escapeHtml(title)}</div>
+            <div style="width: 80px; height: 4px; background: #4f46e5; margin: 0 auto 40px;"></div>
+          </div>
+          <div style="margin-top: auto; padding-bottom: 60px;">
+            <div style="font-size: 14px; color: #374151; margin-bottom: 8px;"><strong>Last Updated:</strong> ${escapeHtml(docLastUpdated)}</div>
+            <div style="font-size: 14px; color: #374151; margin-bottom: 8px;"><strong>Created By:</strong> ${escapeHtml(docAuthor)}</div>
+            <div style="font-size: 14px; color: #374151; margin-bottom: 24px;"><strong>Organization:</strong> ${escapeHtml(this.options.organizationName)}</div>
+            <div style="font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 20px;">${escapeHtml(this.options.pdfConfidentialMessage)}<br>&copy; ${new Date().getFullYear()} ${escapeHtml(this.options.organizationName)}</div>
+          </div>
+        `;
+        tempDiv.appendChild(coverPage);
+
+        // Content container
+        const contentContainer = document.createElement('div');
+        contentContainer.style.cssText = 'padding: 20px;';
 
         sectionContent.forEach(el => {
           // Remove PDF buttons from clone
           el.querySelectorAll('.ur-kb-section-pdf-btn').forEach(b => b.remove());
-          tempDiv.appendChild(el);
+          contentContainer.appendChild(el);
         });
 
-        // Style for PDF
+        tempDiv.appendChild(contentContainer);
+
+        // Style for PDF with page-break handling
         tempDiv.querySelectorAll('.ur-kb-section-title').forEach(st => {
-          st.style.cssText = 'margin: 1.5em 0 1em 0; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;';
+          st.style.cssText = 'margin: 1.5em 0 1em 0; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb; page-break-after: avoid;';
         });
         tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(h => {
-          h.style.cssText = 'margin: 0; color: #1a1a2e;';
+          h.style.cssText = 'margin: 0; color: #1a1a2e; page-break-after: avoid;';
         });
         tempDiv.querySelectorAll('table').forEach(table => {
-          table.style.cssText = 'width: 100%; border-collapse: collapse; margin: 1em 0;';
+          table.style.cssText = 'width: 100%; border-collapse: collapse; margin: 1em 0; page-break-inside: avoid;';
         });
         tempDiv.querySelectorAll('th, td').forEach(cell => {
           cell.style.cssText = 'padding: 8px 12px; border: 1px solid #e5e7eb; text-align: left;';
@@ -2150,7 +2334,7 @@
           th.style.background = '#f9fafb';
         });
         tempDiv.querySelectorAll('pre').forEach(pre => {
-          pre.style.cssText = 'background: #f3f4f6; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px;';
+          pre.style.cssText = 'background: #f3f4f6; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; page-break-inside: avoid;';
         });
         tempDiv.querySelectorAll('code').forEach(code => {
           if (!code.parentElement.matches('pre')) {
@@ -2158,20 +2342,67 @@
           }
         });
         tempDiv.querySelectorAll('blockquote').forEach(bq => {
-          bq.style.cssText = 'margin: 1em 0; padding: 12px 20px; border-left: 4px solid #4f46e5; background: #f9fafb;';
+          bq.style.cssText = 'margin: 1em 0; padding: 12px 20px; border-left: 4px solid #4f46e5; background: #f9fafb; page-break-inside: avoid;';
+        });
+        // Prevent orphaned list items
+        tempDiv.querySelectorAll('li').forEach(li => {
+          li.style.cssText = 'page-break-inside: avoid;';
+        });
+        // Prevent orphaned paragraphs
+        tempDiv.querySelectorAll('p').forEach(p => {
+          p.style.cssText = (p.style.cssText || '') + 'orphans: 3; widows: 3;';
+        });
+        // Keep images from breaking
+        tempDiv.querySelectorAll('img').forEach(img => {
+          img.style.cssText = (img.style.cssText || '') + 'page-break-inside: avoid; max-width: 100%;';
         });
 
         document.body.appendChild(tempDiv);
 
         const opt = {
-          margin: [10, 10],
-          filename: `${title}.pdf`,
+          margin: [15, 15, 25, 15], // top, right, bottom (extra for footer), left
+          filename: `${this.currentDoc.title} - ${title}.pdf`,
           image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+          html2canvas: { scale: 2, useCORS: true, logging: false },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         };
 
-        await html2pdf().set(opt).from(tempDiv).save();
+        // Generate PDF with footer
+        const pdfInstance = html2pdf().set(opt).from(tempDiv);
+
+        await pdfInstance.toPdf().get('pdf').then((pdf) => {
+          const totalPages = pdf.internal.getNumberOfPages();
+          const pageWidth = pdf.internal.pageSize.getWidth();
+          const pageHeight = pdf.internal.pageSize.getHeight();
+
+          for (let i = 1; i <= totalPages; i++) {
+            pdf.setPage(i);
+
+            // Skip footer on cover page
+            if (i === 1) continue;
+
+            // Footer line
+            pdf.setDrawColor(229, 231, 235);
+            pdf.line(15, pageHeight - 18, pageWidth - 15, pageHeight - 18);
+
+            // Footer text - left side (confidential)
+            pdf.setFontSize(8);
+            pdf.setTextColor(156, 163, 175);
+            pdf.text(this.options.pdfConfidentialMessage, 15, pageHeight - 12);
+
+            // Footer text - center (company)
+            const companyText = `© ${new Date().getFullYear()} ${this.options.organizationName}`;
+            const companyWidth = pdf.getStringUnitWidth(companyText) * 8 / pdf.internal.scaleFactor;
+            pdf.text(companyText, (pageWidth - companyWidth) / 2, pageHeight - 12);
+
+            // Footer text - right side (page numbers)
+            const pageText = `Page ${i - 1} of ${totalPages - 1}`;
+            const pageTextWidth = pdf.getStringUnitWidth(pageText) * 8 / pdf.internal.scaleFactor;
+            pdf.text(pageText, pageWidth - 15 - pageTextWidth, pageHeight - 12);
+          }
+        }).save();
+
         document.body.removeChild(tempDiv);
       } catch (e) {
         console.error('PDF export failed:', e);
@@ -2192,13 +2423,46 @@
 
       const html = marked.parse(content, { renderer });
 
-      const tempDiv = document.createElement('div');
-      tempDiv.style.cssText = 'padding: 20px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a2e; max-width: 800px;';
-      tempDiv.innerHTML = html;
+      // Use document-specific metadata if available, otherwise fall back to global options
+      const docAuthor = this.currentDoc?.author || this.options.pdfAuthor;
+      const docLastUpdated = this.currentDoc?.lastUpdated || new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
 
-      // Style for PDF
+      const tempDiv = document.createElement('div');
+      tempDiv.style.cssText = 'font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a2e; max-width: 800px;';
+
+      // Cover Page
+      const coverPage = `
+        <div style="page-break-after: always; height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 40px;">
+          <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+            <div style="font-size: 14px; color: #6b7280; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px;">${escapeHtml(this.options.applicationName)}</div>
+            <h1 style="font-size: 36px; color: #1a1a2e; margin: 0 0 40px 0; line-height: 1.3;">${escapeHtml(title)}</h1>
+            <div style="width: 80px; height: 4px; background: #4f46e5; margin: 0 auto 40px;"></div>
+          </div>
+          <div style="margin-top: auto; padding-bottom: 60px;">
+            <div style="font-size: 14px; color: #374151; margin-bottom: 8px;"><strong>Last Updated:</strong> ${escapeHtml(docLastUpdated)}</div>
+            <div style="font-size: 14px; color: #374151; margin-bottom: 8px;"><strong>Created By:</strong> ${escapeHtml(docAuthor)}</div>
+            <div style="font-size: 14px; color: #374151; margin-bottom: 24px;"><strong>Organization:</strong> ${escapeHtml(this.options.organizationName)}</div>
+            <div style="font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 20px;">${escapeHtml(this.options.pdfConfidentialMessage)}<br>&copy; ${new Date().getFullYear()} ${escapeHtml(this.options.organizationName)}</div>
+          </div>
+        </div>
+      `;
+
+      // Content with page-break styles
+      const contentHtml = `
+        <div style="padding: 20px;">
+          ${html}
+        </div>
+      `;
+
+      tempDiv.innerHTML = coverPage + contentHtml;
+
+      // Style for PDF with page-break handling
       tempDiv.querySelectorAll('table').forEach(table => {
-        table.style.cssText = 'width: 100%; border-collapse: collapse; margin: 1em 0;';
+        table.style.cssText = 'width: 100%; border-collapse: collapse; margin: 1em 0; page-break-inside: avoid;';
       });
       tempDiv.querySelectorAll('th, td').forEach(cell => {
         cell.style.cssText = 'padding: 8px 12px; border: 1px solid #e5e7eb; text-align: left;';
@@ -2207,7 +2471,7 @@
         th.style.background = '#f9fafb';
       });
       tempDiv.querySelectorAll('pre').forEach(pre => {
-        pre.style.cssText = 'background: #f3f4f6; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px;';
+        pre.style.cssText = 'background: #f3f4f6; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px; page-break-inside: avoid;';
       });
       tempDiv.querySelectorAll('code').forEach(code => {
         if (!code.parentElement.matches('pre')) {
@@ -2215,10 +2479,10 @@
         }
       });
       tempDiv.querySelectorAll('blockquote').forEach(bq => {
-        bq.style.cssText = 'margin: 1em 0; padding: 12px 20px; border-left: 4px solid #4f46e5; background: #f9fafb;';
+        bq.style.cssText = 'margin: 1em 0; padding: 12px 20px; border-left: 4px solid #4f46e5; background: #f9fafb; page-break-inside: avoid;';
       });
       tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(h => {
-        h.style.cssText = 'margin-top: 1.5em; margin-bottom: 0.5em; color: #1a1a2e;';
+        h.style.cssText = 'margin-top: 1.5em; margin-bottom: 0.5em; color: #1a1a2e; page-break-after: avoid;';
       });
       tempDiv.querySelectorAll('h1').forEach(h => {
         h.style.cssText += 'border-bottom: 2px solid #e5e7eb; padding-bottom: 0.3em;';
@@ -2226,18 +2490,65 @@
       tempDiv.querySelectorAll('h2').forEach(h => {
         h.style.cssText += 'border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3em;';
       });
+      // Prevent orphaned list items
+      tempDiv.querySelectorAll('li').forEach(li => {
+        li.style.cssText = 'page-break-inside: avoid;';
+      });
+      // Prevent orphaned paragraphs
+      tempDiv.querySelectorAll('p').forEach(p => {
+        p.style.cssText = (p.style.cssText || '') + 'orphans: 3; widows: 3;';
+      });
+      // Keep images from breaking
+      tempDiv.querySelectorAll('img').forEach(img => {
+        img.style.cssText = (img.style.cssText || '') + 'page-break-inside: avoid; max-width: 100%;';
+      });
 
       document.body.appendChild(tempDiv);
 
       const opt = {
-        margin: [10, 10],
+        margin: [15, 15, 25, 15], // top, right, bottom (extra for footer), left
         filename: `${title}.pdf`,
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
       };
 
-      await html2pdf().set(opt).from(tempDiv).save();
+      // Generate PDF with footer
+      const pdfInstance = html2pdf().set(opt).from(tempDiv);
+
+      await pdfInstance.toPdf().get('pdf').then((pdf) => {
+        const totalPages = pdf.internal.getNumberOfPages();
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+
+        for (let i = 1; i <= totalPages; i++) {
+          pdf.setPage(i);
+
+          // Skip footer on cover page
+          if (i === 1) continue;
+
+          // Footer line
+          pdf.setDrawColor(229, 231, 235);
+          pdf.line(15, pageHeight - 18, pageWidth - 15, pageHeight - 18);
+
+          // Footer text - left side (confidential)
+          pdf.setFontSize(8);
+          pdf.setTextColor(156, 163, 175);
+          pdf.text(this.options.pdfConfidentialMessage, 15, pageHeight - 12);
+
+          // Footer text - center (company)
+          const companyText = `© ${new Date().getFullYear()} ${this.options.organizationName}`;
+          const companyWidth = pdf.getStringUnitWidth(companyText) * 8 / pdf.internal.scaleFactor;
+          pdf.text(companyText, (pageWidth - companyWidth) / 2, pageHeight - 12);
+
+          // Footer text - right side (page numbers)
+          const pageText = `Page ${i - 1} of ${totalPages - 1}`;
+          const pageTextWidth = pdf.getStringUnitWidth(pageText) * 8 / pdf.internal.scaleFactor;
+          pdf.text(pageText, pageWidth - 15 - pageTextWidth, pageHeight - 12);
+        }
+      }).save();
+
       document.body.removeChild(tempDiv);
     }
   }
@@ -2245,10 +2556,13 @@
   // ============================================================
   // Public API
   // ============================================================
-  global.URKnowledgeBase = {
+  global.KnowledgeBase = {
     init: function(options) {
-      return new URKnowledgeBase(options);
+      return new KnowledgeBase(options);
     }
   };
+
+  // Backward compatibility alias
+  global.URKnowledgeBase = global.KnowledgeBase;
 
 })(typeof window !== 'undefined' ? window : this);
