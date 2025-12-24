@@ -858,7 +858,46 @@
     .ur-kb-markdown h3 { font-size: 18px; }
     .ur-kb-markdown h4 { font-size: 16px; }
 
-    /* Media Container (16:9) */
+    /* Video Container (16:9 aspect ratio) */
+    .ur-kb-video-container {
+      position: relative;
+      width: 100%;
+      padding-top: 56.25%;
+      margin: 1em 0;
+      background: var(--kb-code-bg);
+      border-radius: var(--kb-radius);
+      overflow: hidden;
+    }
+
+    .ur-kb-video-container iframe,
+    .ur-kb-video-container video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border: none;
+    }
+
+    /* Image Container (natural dimensions, max-width constrained) */
+    .ur-kb-image-container {
+      display: inline-block;
+      margin: 1em 0;
+      padding: 8px;
+      border: 1px solid var(--kb-border);
+      border-radius: var(--kb-radius);
+      background: var(--kb-bg);
+    }
+
+    .ur-kb-image-container img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: calc(var(--kb-radius) - 4px);
+    }
+
+    /* Legacy media container for backwards compatibility */
     .ur-kb-media-container {
       position: relative;
       width: 100%;
@@ -869,9 +908,18 @@
       overflow: hidden;
     }
 
-    .ur-kb-media-container img,
     .ur-kb-media-container iframe,
     .ur-kb-media-container video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border: none;
+    }
+
+    .ur-kb-media-container img {
       position: absolute;
       top: 0;
       left: 0;
@@ -884,10 +932,11 @@
     /* Link Preview Card */
     .ur-kb-link-preview {
       display: flex;
+      flex-direction: column;
       border: 1px solid var(--kb-border);
       border-radius: var(--kb-radius);
-      overflow: hidden;
       margin: 1em 0;
+      padding: 12px 16px;
       background: var(--kb-bg);
       text-decoration: none;
       color: inherit;
@@ -896,66 +945,32 @@
 
     .ur-kb-link-preview:hover {
       border-color: var(--kb-accent);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-
-    .ur-kb-link-preview-icon {
-      width: 80px;
-      min-height: 80px;
       background: var(--kb-code-bg);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .ur-kb-link-preview-icon svg {
-      width: 32px;
-      height: 32px;
-      color: var(--kb-text-muted);
-    }
-
-    .ur-kb-link-preview-icon img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-
-    .ur-kb-link-preview-content {
-      padding: 12px 16px;
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
     }
 
     .ur-kb-link-preview-title {
       font-weight: 600;
       font-size: 14px;
-      color: var(--kb-text);
-      margin: 0 0 4px 0;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      color: var(--kb-accent);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .ur-kb-link-preview-title svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
     }
 
     .ur-kb-link-preview-url {
+      display: block;
       font-size: 12px;
       color: var(--kb-text-muted);
+      margin-top: 4px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    .ur-kb-link-preview-description {
-      font-size: 13px;
-      color: var(--kb-text-muted);
-      margin-top: 4px;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
     }
 
     /* Search Modal */
@@ -2253,12 +2268,12 @@
       renderer.image = (href, title, text) => {
         const youtubeMatch = href.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
         if (youtubeMatch) {
-          return `<div class="ur-kb-media-container"><iframe src="https://www.youtube.com/embed/${youtubeMatch[1]}" allowfullscreen></iframe></div>`;
+          return `<div class="ur-kb-video-container"><iframe src="https://www.youtube.com/embed/${youtubeMatch[1]}" allowfullscreen></iframe></div>`;
         }
         if (/\.(mp4|webm|ogg)$/i.test(href)) {
-          return `<div class="ur-kb-media-container"><video controls><source src="${escapeHtml(href)}" type="video/${href.split('.').pop()}"></video></div>`;
+          return `<div class="ur-kb-video-container"><video controls><source src="${escapeHtml(href)}" type="video/${href.split('.').pop()}"></video></div>`;
         }
-        return `<div class="ur-kb-media-container"><img src="${escapeHtml(href)}" alt="${escapeHtml(text)}" title="${escapeHtml(title || '')}"></div>`;
+        return `<div class="ur-kb-image-container"><img src="${escapeHtml(href)}" alt="${escapeHtml(text)}" title="${escapeHtml(title || '')}"></div>`;
       };
 
       renderer.link = (href, title, text) => {
@@ -2274,55 +2289,25 @@
           // YouTube video - embed player
           const youtubeMatch = href.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)/);
           if (youtubeMatch) {
-            return `
-              <div class="ur-kb-media-container">
-                <iframe
-                  src="https://www.youtube.com/embed/${youtubeMatch[1]}"
-                  frameborder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowfullscreen>
-                </iframe>
-              </div>`;
+            return `<div class="ur-kb-video-container"><iframe src="https://www.youtube.com/embed/${youtubeMatch[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
           }
 
           // Vimeo video - embed player
           const vimeoMatch = href.match(/vimeo\.com\/(\d+)/);
           if (vimeoMatch) {
-            return `
-              <div class="ur-kb-media-container">
-                <iframe
-                  src="https://player.vimeo.com/video/${vimeoMatch[1]}"
-                  frameborder="0"
-                  allow="autoplay; fullscreen; picture-in-picture"
-                  allowfullscreen>
-                </iframe>
-              </div>`;
+            return `<div class="ur-kb-video-container"><iframe src="https://player.vimeo.com/video/${vimeoMatch[1]}" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
           }
 
           // videos.448.global video platform - embed player
           const globalVideoMatch = href.match(/videos\.448\.global\/w\/([\w-]+)/);
           if (globalVideoMatch) {
-            return `
-              <div class="ur-kb-media-container">
-                <iframe
-                  src="https://videos.448.global/videos/embed/${globalVideoMatch[1]}"
-                  frameborder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowfullscreen>
-                </iframe>
-              </div>`;
+            return `<div class="ur-kb-video-container"><iframe src="https://videos.448.global/videos/embed/${globalVideoMatch[1]}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
           }
 
           // Direct video file
           if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(href)) {
             const ext = href.match(/\.(mp4|webm|ogg|mov)/i)[1];
-            return `
-              <div class="ur-kb-media-container">
-                <video controls>
-                  <source src="${escapeHtml(href)}" type="video/${ext.toLowerCase()}">
-                  Your browser does not support the video tag.
-                </video>
-              </div>`;
+            return `<div class="ur-kb-video-container"><video controls><source src="${escapeHtml(href)}" type="video/${ext.toLowerCase()}">Your browser does not support the video tag.</video></div>`;
           }
 
           // Direct image URL (including Google Images)
@@ -2335,23 +2320,18 @@
             if (imgUrlMatch) {
               imageUrl = decodeURIComponent(imgUrlMatch[1]);
             }
-            return `
-              <div class="ur-kb-media-container">
-                <img src="${escapeHtml(imageUrl)}" alt="Image" loading="lazy">
-              </div>`;
+            return `<div class="ur-kb-image-container"><img src="${escapeHtml(imageUrl)}" alt="Image" loading="lazy"></div>`;
           }
 
-          // Regular website link - show as preview card
+          // Regular website link - show as preview card with async title fetch
           const domain = new URL(href).hostname.replace('www.', '');
-          const linkIcon = ICONS.externalLink || '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>';
-          return `
-            <a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" class="ur-kb-link-preview">
-              <div class="ur-kb-link-preview-icon">${linkIcon}</div>
-              <div class="ur-kb-link-preview-content">
-                <div class="ur-kb-link-preview-title">${escapeHtml(title || domain)}</div>
-                <div class="ur-kb-link-preview-url">${escapeHtml(href)}</div>
-              </div>
-            </a>`;
+          const linkId = 'link-' + Math.random().toString(36).slice(2, 11);
+          const linkIcon = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>';
+
+          // Queue async title fetch
+          setTimeout(() => this.fetchLinkTitle(linkId, href), 0);
+
+          return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" class="ur-kb-link-preview" id="${linkId}"><span class="ur-kb-link-preview-title">${linkIcon}<span class="ur-kb-link-title-text">${escapeHtml(title || domain)}</span></span><span class="ur-kb-link-preview-url">${escapeHtml(href)}</span></a>`;
         }
 
         // Inline link within text - render as normal link
@@ -2363,6 +2343,39 @@
       renderer.heading = () => '';
 
       return marked.parse(content, { renderer });
+    }
+
+    async fetchLinkTitle(linkId, url) {
+      try {
+        // Use a CORS proxy or direct fetch (may fail due to CORS)
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        const response = await fetch(proxyUrl, {
+          signal: AbortSignal.timeout(5000) // 5 second timeout
+        });
+
+        if (!response.ok) return;
+
+        const html = await response.text();
+
+        // Extract title from HTML
+        const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+        if (titleMatch && titleMatch[1]) {
+          // Decode HTML entities using textarea trick
+          const textarea = document.createElement('textarea');
+          textarea.innerHTML = titleMatch[1].trim();
+          const title = textarea.value;
+
+          const linkEl = document.getElementById(linkId);
+          if (linkEl) {
+            const titleSpan = linkEl.querySelector('.ur-kb-link-title-text');
+            if (titleSpan && title) {
+              titleSpan.textContent = title;
+            }
+          }
+        }
+      } catch (e) {
+        // Silently fail - keep showing domain name
+      }
     }
 
     toggleSidebar(collapsed) {
