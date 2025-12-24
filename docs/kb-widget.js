@@ -77,6 +77,7 @@
       display: flex;
       flex-direction: column;
       height: 100%;
+      max-height: 100%;
       border-radius: var(--kb-radius);
       overflow: hidden;
       box-shadow: var(--kb-shadow);
@@ -85,8 +86,9 @@
 
     /* Default container height - can be overridden by parent styles */
     #kb-container, [id*="kb-container"] {
-      height: calc(100vh - 150px);
-      min-height: 500px;
+      height: calc(100vh - 200px);
+      min-height: 400px;
+      max-height: calc(100vh - 200px);
       overflow: hidden;
     }
 
