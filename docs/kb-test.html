@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knowledge Base - Test Page</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f3f4f6;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .page-header h1 {
+      color: #1a1a2e;
+      margin-bottom: 8px;
+    }
+
+    .page-header p {
+      color: #6b7280;
+    }
+
+    #kb-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      height: calc(100vh - 120px);
+      min-height: 600px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-header">
+    <h1>Untapped Revenue - Knowledge Base</h1>
+    <p>Documentation and User Guides</p>
+  </div>
+
+  <div id="kb-container"></div>
+
+  <script src="kb-widget.js"></script>
+  <script>
+    // Initialize the Knowledge Base widget
+    URKnowledgeBase.init({
+      container: '#kb-container',
+
+      // Your markdown documents
+      documents: [
+        { url: 'f106-user-guide-reader.md' },
+        { url: 'f106-user-guide-contributor.md' },
+        { url: 'f106-user-guide-administrator.md' }
+      ],
+
+      // Configuration
+      sidebarTitle: 'KB Documents',
+      theme: 'auto',          // 'light', 'dark', or 'auto'
+      enableSearch: true,
+      enablePdfExport: true
+    });
+  </script>
+</body>
+</html>
