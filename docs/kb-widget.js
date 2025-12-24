@@ -172,18 +172,16 @@
     /* Main Layout */
     .ur-kb-body {
       display: flex;
-      flex: 1 1 0;
+      flex: 1;
       overflow: hidden;
       position: relative;
       min-height: 0;
-      max-height: 100%;
     }
 
     /* Sidebar - Left Navigation */
     .ur-kb-sidebar {
       width: 280px;
       min-width: 280px;
-      max-height: 100%;
       background: var(--kb-sidebar-bg);
       border-right: 1px solid var(--kb-border);
       display: flex;
@@ -225,6 +223,7 @@
       overflow-y: auto;
       overflow-x: auto;
       padding: 8px 0;
+      min-height: 0;
     }
 
     /* Custom scrollbar styles for better visibility */
@@ -411,17 +410,15 @@
       overflow: hidden;
       position: relative;
       min-height: 0;
-      max-height: 100%;
     }
 
     .ur-kb-content {
-      flex: 1 1 0;
+      flex: 1;
       overflow-y: auto;
       overflow-x: hidden;
       padding: 24px 32px;
       background: var(--kb-bg);
       min-height: 0;
-      max-height: 100%;
     }
 
     /* Breadcrumb Navigation */
@@ -2387,18 +2384,19 @@
         coverPage.style.cssText = 'page-break-after: always; text-align: center; padding: 40px;';
         coverPage.innerHTML = `
           <div style="padding-top: 80px; padding-bottom: 60px;">
-            <div style="font-size: 16px; color: #6b7280; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 30px;">${escapeHtml(this.options.applicationName)}</div>
-            <h1 style="font-size: 42px; color: #1a1a2e; margin: 0 0 24px 0; line-height: 1.2; font-weight: 700;">${escapeHtml(this.currentDoc.title)}</h1>
-            <div style="font-size: 28px; color: #4f46e5; margin-bottom: 50px; font-weight: 500;">${escapeHtml(title)}</div>
+            <div style="font-size: 20px; color: #6b7280; text-transform: uppercase; letter-spacing: 4px; margin-bottom: 16px; font-weight: 600;">${escapeHtml(this.options.organizationName)}</div>
+            <div style="font-size: 16px; color: #9ca3af; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 40px;">${escapeHtml(this.options.applicationName)}</div>
+            <h1 style="font-size: 48px; color: #1a1a2e; margin: 0 0 24px 0; line-height: 1.2; font-weight: 700;">${escapeHtml(this.currentDoc.title)}</h1>
+            <div style="font-size: 32px; color: #4f46e5; margin-bottom: 50px; font-weight: 500;">${escapeHtml(title)}</div>
             <div style="width: 100px; height: 4px; background: #4f46e5; margin: 0 auto;"></div>
           </div>
           <div style="margin-top: 80px; text-align: center;">
-            <div style="font-size: 13px; color: #374151; margin-bottom: 6px;"><strong>Last Updated:</strong> ${escapeHtml(docLastUpdated)}</div>
-            <div style="font-size: 13px; color: #374151; margin-bottom: 6px;"><strong>Created By:</strong> ${escapeHtml(docAuthor)}</div>
-            <div style="font-size: 13px; color: #374151; margin-bottom: 16px;"><strong>Organization:</strong> ${escapeHtml(this.options.organizationName)}</div>
-            <div style="font-size: 13px; color: #374151; margin-bottom: 6px;"><strong>Downloaded By:</strong> ${escapeHtml(userName)}${userEmail ? ` (${escapeHtml(userEmail)})` : ''}</div>
-            <div style="font-size: 13px; color: #374151; margin-bottom: 24px;"><strong>Downloaded On:</strong> ${escapeHtml(downloadTime)}</div>
-            <div style="font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 30px;">${escapeHtml(this.options.pdfConfidentialMessage)}<br>&copy; ${new Date().getFullYear()} ${escapeHtml(this.options.organizationName)}</div>
+            <div style="font-size: 14px; color: #374151; margin-bottom: 8px;"><strong>Last Updated:</strong> ${escapeHtml(docLastUpdated)}</div>
+            <div style="font-size: 14px; color: #374151; margin-bottom: 8px;"><strong>Created By:</strong> ${escapeHtml(docAuthor)}</div>
+            <div style="font-size: 14px; color: #374151; margin-bottom: 20px;"><strong>Organization:</strong> ${escapeHtml(this.options.organizationName)}</div>
+            <div style="font-size: 14px; color: #374151; margin-bottom: 8px;"><strong>Downloaded By:</strong> ${escapeHtml(userName)}${userEmail ? ` (${escapeHtml(userEmail)})` : ''}</div>
+            <div style="font-size: 14px; color: #374151; margin-bottom: 24px;"><strong>Downloaded On:</strong> ${escapeHtml(downloadTime)}</div>
+            <div style="font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 30px;">${escapeHtml(this.options.pdfConfidentialMessage)}<br>&copy; ${new Date().getFullYear()} ${escapeHtml(this.options.organizationName)}</div>
           </div>
         `;
         tempDiv.appendChild(coverPage);
@@ -2550,17 +2548,18 @@
       const coverPage = `
         <div style="page-break-after: always; text-align: center; padding: 40px;">
           <div style="padding-top: 80px; padding-bottom: 60px;">
-            <div style="font-size: 16px; color: #6b7280; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 30px;">${escapeHtml(this.options.applicationName)}</div>
-            <h1 style="font-size: 42px; color: #1a1a2e; margin: 0 0 50px 0; line-height: 1.2; font-weight: 700;">${escapeHtml(title)}</h1>
+            <div style="font-size: 20px; color: #6b7280; text-transform: uppercase; letter-spacing: 4px; margin-bottom: 16px; font-weight: 600;">${escapeHtml(this.options.organizationName)}</div>
+            <div style="font-size: 16px; color: #9ca3af; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 40px;">${escapeHtml(this.options.applicationName)}</div>
+            <h1 style="font-size: 48px; color: #1a1a2e; margin: 0 0 50px 0; line-height: 1.2; font-weight: 700;">${escapeHtml(title)}</h1>
             <div style="width: 100px; height: 4px; background: #4f46e5; margin: 0 auto;"></div>
           </div>
           <div style="margin-top: 80px; text-align: center;">
-            <div style="font-size: 13px; color: #374151; margin-bottom: 6px;"><strong>Last Updated:</strong> ${escapeHtml(docLastUpdated)}</div>
-            <div style="font-size: 13px; color: #374151; margin-bottom: 6px;"><strong>Created By:</strong> ${escapeHtml(docAuthor)}</div>
-            <div style="font-size: 13px; color: #374151; margin-bottom: 16px;"><strong>Organization:</strong> ${escapeHtml(this.options.organizationName)}</div>
-            <div style="font-size: 13px; color: #374151; margin-bottom: 6px;"><strong>Downloaded By:</strong> ${escapeHtml(userName)}${userEmail ? ` (${escapeHtml(userEmail)})` : ''}</div>
-            <div style="font-size: 13px; color: #374151; margin-bottom: 24px;"><strong>Downloaded On:</strong> ${escapeHtml(downloadTime)}</div>
-            <div style="font-size: 11px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 30px;">${escapeHtml(this.options.pdfConfidentialMessage)}<br>&copy; ${new Date().getFullYear()} ${escapeHtml(this.options.organizationName)}</div>
+            <div style="font-size: 14px; color: #374151; margin-bottom: 8px;"><strong>Last Updated:</strong> ${escapeHtml(docLastUpdated)}</div>
+            <div style="font-size: 14px; color: #374151; margin-bottom: 8px;"><strong>Created By:</strong> ${escapeHtml(docAuthor)}</div>
+            <div style="font-size: 14px; color: #374151; margin-bottom: 20px;"><strong>Organization:</strong> ${escapeHtml(this.options.organizationName)}</div>
+            <div style="font-size: 14px; color: #374151; margin-bottom: 8px;"><strong>Downloaded By:</strong> ${escapeHtml(userName)}${userEmail ? ` (${escapeHtml(userEmail)})` : ''}</div>
+            <div style="font-size: 14px; color: #374151; margin-bottom: 24px;"><strong>Downloaded On:</strong> ${escapeHtml(downloadTime)}</div>
+            <div style="font-size: 12px; color: #9ca3af; border-top: 1px solid #e5e7eb; padding-top: 16px; margin-top: 30px;">${escapeHtml(this.options.pdfConfidentialMessage)}<br>&copy; ${new Date().getFullYear()} ${escapeHtml(this.options.organizationName)}</div>
           </div>
         </div>
       `;
