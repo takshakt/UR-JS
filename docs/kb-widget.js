@@ -1252,6 +1252,103 @@
         max-width: 48%;
         padding: 8px 12px;
       }
+
+      .ur-kb-a11y-toolbar {
+        flex-wrap: wrap;
+      }
+    }
+
+    /* Accessibility Toolbar */
+    .ur-kb-a11y-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 8px;
+      padding-left: 12px;
+      border-left: 1px solid var(--kb-border);
+    }
+
+    .ur-kb-a11y-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      background: var(--kb-sidebar-bg);
+      border: 1px solid var(--kb-border);
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--kb-text-muted);
+      font-size: 14px;
+      font-weight: 600;
+      transition: all var(--kb-transition);
+    }
+
+    .ur-kb-a11y-btn:hover {
+      background: var(--kb-sidebar-hover);
+      border-color: var(--kb-accent);
+      color: var(--kb-text);
+    }
+
+    .ur-kb-a11y-btn.active {
+      background: var(--kb-accent);
+      border-color: var(--kb-accent);
+      color: white;
+    }
+
+    .ur-kb-a11y-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .ur-kb-a11y-btn.speaking {
+      background: var(--kb-accent);
+      border-color: var(--kb-accent);
+      color: white;
+      animation: ur-kb-pulse 1.5s ease-in-out infinite;
+    }
+
+    @keyframes ur-kb-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    /* Text Zoom Classes */
+    .ur-kb.zoom-90 { font-size: 14.4px; }
+    .ur-kb.zoom-100 { font-size: 16px; }
+    .ur-kb.zoom-110 { font-size: 17.6px; }
+    .ur-kb.zoom-125 { font-size: 20px; }
+    .ur-kb.zoom-150 { font-size: 24px; }
+
+    /* High Contrast Mode */
+    .ur-kb.high-contrast {
+      --kb-bg: #000000;
+      --kb-text: #ffffff;
+      --kb-text-muted: #cccccc;
+      --kb-border: #ffffff;
+      --kb-sidebar-bg: #000000;
+      --kb-sidebar-hover: #333333;
+      --kb-sidebar-active: #0055ff;
+      --kb-sidebar-active-text: #ffffff;
+      --kb-accent: #ffff00;
+      --kb-accent-hover: #ffff66;
+      --kb-code-bg: #1a1a1a;
+      --kb-link: #00ffff;
+    }
+
+    .ur-kb.high-contrast .ur-kb-a11y-btn {
+      border-width: 2px;
+    }
+
+    .ur-kb.high-contrast a {
+      text-decoration: underline;
+    }
+
+    /* TTS Selection Highlight */
+    .ur-kb-tts-highlight {
+      background: rgba(79, 70, 229, 0.3);
+      border-radius: 2px;
     }
   `;
 
@@ -1267,7 +1364,10 @@
     document: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>',
     home: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>',
     arrowUp: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>',
-    externalLink: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>'
+    externalLink: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>',
+    speaker: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>',
+    speakerOff: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="22" y1="9" x2="16" y2="15"></line><line x1="16" y1="9" x2="22" y2="15"></line></svg>',
+    contrast: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"></path></svg>'
   };
 
   // ============================================================
@@ -1360,6 +1460,13 @@
       this.mobileMenuOpen = false;
       this.flatSections = []; // Flat list of all sections for prev/next navigation
 
+      // Accessibility state
+      this.zoomLevel = parseInt(localStorage.getItem('ur-kb-zoom') || '100', 10);
+      this.highContrast = localStorage.getItem('ur-kb-contrast') === 'true';
+      this.ttsActive = false;
+      this.speechSynthesis = window.speechSynthesis || null;
+      this.currentUtterance = null;
+
       this.init();
     }
 
@@ -1382,6 +1489,16 @@
       this.buildSearchIndex();
       this.render();
       this.setupEventListeners();
+
+      // Preload TTS voices (some browsers load them asynchronously)
+      if (this.speechSynthesis) {
+        this.speechSynthesis.getVoices();
+        if (typeof this.speechSynthesis.onvoiceschanged !== 'undefined') {
+          this.speechSynthesis.onvoiceschanged = () => {
+            this.speechSynthesis.getVoices();
+          };
+        }
+      }
 
       // Show home view by default
       this.showHome();
@@ -1547,13 +1664,15 @@
 
     render() {
       const themeClass = this.options.theme === 'dark' ? 'dark' : '';
+      const zoomClass = `zoom-${this.zoomLevel}`;
+      const contrastClass = this.highContrast ? 'high-contrast' : '';
 
       // Generate page title - default to "{orgName} - Knowledge Base" if not provided
       const pageTitle = this.options.pageTitle || `${this.options.organizationName} - Knowledge Base`;
       const pageSubtitle = this.options.pageSubtitle || '';
 
       this.container.innerHTML = `
-        <div class="ur-kb ${themeClass}">
+        <div class="ur-kb ${themeClass} ${zoomClass} ${contrastClass}">
           <div class="ur-kb-page-header">
             <h1 class="ur-kb-page-title">${escapeHtml(pageTitle)}</h1>
             ${pageSubtitle ? `<p class="ur-kb-page-subtitle">${escapeHtml(pageSubtitle)}</p>` : ''}
@@ -1564,6 +1683,12 @@
               ${ICONS.search}
               <span>Search all documents...</span>
               <kbd>⌘K</kbd>
+            </div>
+            <div class="ur-kb-a11y-toolbar">
+              <button type="button" class="ur-kb-a11y-btn ur-kb-zoom-out" aria-label="Decrease text size" title="Decrease text size">A-</button>
+              <button type="button" class="ur-kb-a11y-btn ur-kb-zoom-in" aria-label="Increase text size" title="Increase text size">A+</button>
+              <button type="button" class="ur-kb-a11y-btn ur-kb-tts-btn" aria-label="Read aloud" title="Read aloud">${ICONS.speaker}</button>
+              <button type="button" class="ur-kb-a11y-btn ur-kb-contrast-btn${this.highContrast ? ' active' : ''}" aria-label="Toggle high contrast" title="Toggle high contrast">${ICONS.contrast}</button>
             </div>
           </div>
           <div class="ur-kb-body">
@@ -1747,6 +1872,34 @@
         // Search trigger
         if (e.target.closest('.ur-kb-search-trigger')) {
           this.openSearch();
+          return;
+        }
+
+        // Accessibility: Zoom Out (A-)
+        if (e.target.closest('.ur-kb-zoom-out')) {
+          e.preventDefault();
+          this.adjustZoom(-1);
+          return;
+        }
+
+        // Accessibility: Zoom In (A+)
+        if (e.target.closest('.ur-kb-zoom-in')) {
+          e.preventDefault();
+          this.adjustZoom(1);
+          return;
+        }
+
+        // Accessibility: Text-to-Speech
+        if (e.target.closest('.ur-kb-tts-btn')) {
+          e.preventDefault();
+          this.toggleTTS();
+          return;
+        }
+
+        // Accessibility: High Contrast
+        if (e.target.closest('.ur-kb-contrast-btn')) {
+          e.preventDefault();
+          this.toggleHighContrast();
           return;
         }
 
@@ -2879,6 +3032,139 @@
       }).save();
 
       document.body.removeChild(tempDiv);
+    }
+
+    // ============================================================
+    // Accessibility Methods
+    // ============================================================
+
+    adjustZoom(direction) {
+      const zoomLevels = [90, 100, 110, 125, 150];
+      const currentIndex = zoomLevels.indexOf(this.zoomLevel);
+      let newIndex;
+
+      if (direction > 0) {
+        // Zoom in
+        newIndex = Math.min(currentIndex + 1, zoomLevels.length - 1);
+      } else {
+        // Zoom out
+        newIndex = Math.max(currentIndex - 1, 0);
+      }
+
+      const newZoom = zoomLevels[newIndex];
+      if (newZoom === this.zoomLevel) return;
+
+      const kb = this.container.querySelector('.ur-kb');
+
+      // Remove old zoom class
+      kb.classList.remove(`zoom-${this.zoomLevel}`);
+
+      // Apply new zoom
+      this.zoomLevel = newZoom;
+      kb.classList.add(`zoom-${this.zoomLevel}`);
+
+      // Persist to localStorage
+      localStorage.setItem('ur-kb-zoom', this.zoomLevel.toString());
+    }
+
+    toggleHighContrast() {
+      const kb = this.container.querySelector('.ur-kb');
+      const contrastBtn = this.container.querySelector('.ur-kb-contrast-btn');
+
+      this.highContrast = !this.highContrast;
+
+      kb.classList.toggle('high-contrast', this.highContrast);
+      contrastBtn.classList.toggle('active', this.highContrast);
+
+      // Persist to localStorage
+      localStorage.setItem('ur-kb-contrast', this.highContrast.toString());
+    }
+
+    toggleTTS() {
+      if (!this.speechSynthesis) {
+        console.warn('Text-to-Speech is not supported in this browser');
+        return;
+      }
+
+      const ttsBtn = this.container.querySelector('.ur-kb-tts-btn');
+
+      if (this.ttsActive) {
+        // Stop speaking
+        this.speechSynthesis.cancel();
+        this.ttsActive = false;
+        ttsBtn.classList.remove('speaking');
+        ttsBtn.innerHTML = ICONS.speaker;
+        ttsBtn.setAttribute('title', 'Read aloud');
+        ttsBtn.setAttribute('aria-label', 'Read aloud');
+      } else {
+        // Start speaking
+        const content = this.container.querySelector('.ur-kb-content');
+        if (!content) return;
+
+        // Get text content from the main content area
+        const textContent = this.getReadableText(content);
+        if (!textContent) return;
+
+        // Create utterance
+        this.currentUtterance = new SpeechSynthesisUtterance(textContent);
+
+        // Try to get a natural sounding voice
+        const voices = this.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(v =>
+          v.lang.startsWith('en') && (v.name.includes('Natural') || v.name.includes('Premium') || v.name.includes('Enhanced'))
+        ) || voices.find(v => v.lang.startsWith('en') && v.localService)
+          || voices.find(v => v.lang.startsWith('en'));
+
+        if (preferredVoice) {
+          this.currentUtterance.voice = preferredVoice;
+        }
+
+        this.currentUtterance.rate = 0.9; // Slightly slower for clarity
+        this.currentUtterance.pitch = 1;
+
+        this.currentUtterance.onend = () => {
+          this.ttsActive = false;
+          ttsBtn.classList.remove('speaking');
+          ttsBtn.innerHTML = ICONS.speaker;
+          ttsBtn.setAttribute('title', 'Read aloud');
+          ttsBtn.setAttribute('aria-label', 'Read aloud');
+        };
+
+        this.currentUtterance.onerror = () => {
+          this.ttsActive = false;
+          ttsBtn.classList.remove('speaking');
+          ttsBtn.innerHTML = ICONS.speaker;
+        };
+
+        this.speechSynthesis.speak(this.currentUtterance);
+        this.ttsActive = true;
+        ttsBtn.classList.add('speaking');
+        ttsBtn.innerHTML = ICONS.speakerOff;
+        ttsBtn.setAttribute('title', 'Stop reading');
+        ttsBtn.setAttribute('aria-label', 'Stop reading');
+      }
+    }
+
+    getReadableText(element) {
+      // Clone the element to avoid modifying the original
+      const clone = element.cloneNode(true);
+
+      // Remove elements that shouldn't be read
+      const removeSelectors = [
+        'script', 'style', 'nav', 'button', '.ur-kb-pdf-btn',
+        '.ur-kb-section-pdf-btn', 'code', 'pre'
+      ];
+      removeSelectors.forEach(sel => {
+        clone.querySelectorAll(sel).forEach(el => el.remove());
+      });
+
+      // Get text content
+      let text = clone.textContent || '';
+
+      // Clean up whitespace
+      text = text.replace(/\s+/g, ' ').trim();
+
+      return text;
     }
   }
 
