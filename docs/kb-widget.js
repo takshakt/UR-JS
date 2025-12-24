@@ -1,6 +1,6 @@
 /**
  * URKnowledgeBase - Portable Markdown Knowledge Base Widget
- * Version 2.0 - With collapsible headers, section PDF export, and improved navigation
+ * Version 3.0 - With left sidebar navigation, prev/next, breadcrumbs, and improved PDF
  */
 (function(global) {
   'use strict';
@@ -85,12 +85,13 @@
 
     /* Search Header */
     .ur-kb-header {
-      padding: 16px 20px;
+      padding: 12px 20px;
       border-bottom: 1px solid var(--kb-border);
       background: var(--kb-bg);
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-shrink: 0;
     }
 
     .ur-kb-home-btn {
@@ -168,20 +169,6 @@
       color: var(--kb-text);
     }
 
-    .ur-kb-sidebar-expand-btn {
-      padding: 8px;
-      background: var(--kb-sidebar-bg);
-      border: 1px solid var(--kb-border);
-      border-radius: var(--kb-radius);
-      cursor: pointer;
-      color: var(--kb-text);
-      display: none;
-    }
-
-    .ur-kb-sidebar-expand-btn.visible {
-      display: flex;
-    }
-
     /* Main Layout */
     .ur-kb-body {
       display: flex;
@@ -190,10 +177,10 @@
       position: relative;
     }
 
-    /* Sidebar */
+    /* Sidebar - Left Navigation */
     .ur-kb-sidebar {
-      width: 300px;
-      min-width: 300px;
+      width: 280px;
+      min-width: 280px;
       background: var(--kb-sidebar-bg);
       border-right: 1px solid var(--kb-border);
       display: flex;
@@ -210,17 +197,18 @@
     }
 
     .ur-kb-sidebar-header {
-      padding: 16px 20px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--kb-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       color: var(--kb-text-muted);
       white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .ur-kb-sidebar-toggle {
@@ -242,22 +230,24 @@
     .ur-kb-sidebar-content {
       flex: 1;
       overflow-y: auto;
-      padding: 12px 0;
+      overflow-x: auto;
+      padding: 8px 0;
     }
 
-    /* Document List */
+    /* Document List in Sidebar */
     .ur-kb-doc {
-      margin-bottom: 4px;
+      margin-bottom: 2px;
     }
 
     .ur-kb-doc-header {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 20px;
+      padding: 10px 16px;
       cursor: pointer;
       transition: all var(--kb-transition);
-      font-weight: 500;
+      font-weight: 600;
+      font-size: 14px;
       color: var(--kb-text);
       white-space: nowrap;
     }
@@ -290,10 +280,10 @@
       height: 12px;
     }
 
-    /* Section List */
+    /* Section List in Sidebar */
     .ur-kb-sections {
       display: none;
-      padding-left: 20px;
+      padding-left: 12px;
     }
 
     .ur-kb-sections.expanded {
@@ -308,15 +298,13 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 8px 20px 8px 16px;
+      padding: 8px 16px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13px;
       color: var(--kb-text-muted);
-      border-left: 2px solid var(--kb-border);
+      border-left: 2px solid transparent;
       transition: all var(--kb-transition);
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
 
     .ur-kb-section-item:hover {
@@ -358,15 +346,26 @@
     }
 
     .ur-kb-section-children .ur-kb-section-item {
-      padding-left: 32px;
-      font-size: 13px;
+      padding-left: 28px;
     }
 
     .ur-kb-section-children .ur-kb-section-children .ur-kb-section-item {
-      padding-left: 48px;
+      padding-left: 40px;
+    }
+
+    .ur-kb-section-children .ur-kb-section-children .ur-kb-section-children .ur-kb-section-item {
+      padding-left: 52px;
     }
 
     /* Content Area */
+    .ur-kb-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
     .ur-kb-content {
       flex: 1;
       overflow-y: auto;
@@ -374,6 +373,43 @@
       background: var(--kb-bg);
     }
 
+    /* Breadcrumb Navigation */
+    .ur-kb-breadcrumb {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 32px;
+      background: var(--kb-sidebar-bg);
+      border-bottom: 1px solid var(--kb-border);
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .ur-kb-breadcrumb-item {
+      color: var(--kb-link);
+      cursor: pointer;
+      transition: color var(--kb-transition);
+    }
+
+    .ur-kb-breadcrumb-item:hover {
+      color: var(--kb-accent-hover);
+      text-decoration: underline;
+    }
+
+    .ur-kb-breadcrumb-item.current {
+      color: var(--kb-text);
+      cursor: default;
+    }
+
+    .ur-kb-breadcrumb-item.current:hover {
+      text-decoration: none;
+    }
+
+    .ur-kb-breadcrumb-sep {
+      color: var(--kb-text-muted);
+    }
+
+    /* Content Header - Clean, No Frame */
     .ur-kb-content-header {
       display: flex;
       align-items: center;
@@ -420,23 +456,130 @@
       height: 16px;
     }
 
-    .ur-kb-pdf-btn-small {
+    /* Section Header - Clean, No Frame */
+    .ur-kb-section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin: 1.5em 0 0.5em 0;
+    }
+
+    .ur-kb-section-title h1,
+    .ur-kb-section-title h2,
+    .ur-kb-section-title h3,
+    .ur-kb-section-title h4,
+    .ur-kb-section-title h5,
+    .ur-kb-section-title h6 {
+      margin: 0;
+      color: var(--kb-text);
+    }
+
+    .ur-kb-section-title h1 { font-size: 24px; }
+    .ur-kb-section-title h2 { font-size: 20px; }
+    .ur-kb-section-title h3 { font-size: 18px; }
+    .ur-kb-section-title h4 { font-size: 16px; }
+    .ur-kb-section-title h5 { font-size: 15px; }
+    .ur-kb-section-title h6 { font-size: 14px; }
+
+    .ur-kb-section-pdf-btn {
       padding: 4px 8px;
-      font-size: 12px;
-      background: var(--kb-sidebar-bg);
+      font-size: 11px;
+      background: transparent;
       color: var(--kb-text-muted);
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all var(--kb-transition);
+      opacity: 0.6;
+    }
+
+    .ur-kb-section-pdf-btn:hover {
+      color: var(--kb-accent);
+      opacity: 1;
+    }
+
+    .ur-kb-section-pdf-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Footer Navigation - Prev/Next */
+    .ur-kb-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 32px;
+      background: var(--kb-sidebar-bg);
+      border-top: 1px solid var(--kb-border);
+      flex-shrink: 0;
+    }
+
+    .ur-kb-nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: var(--kb-bg);
       border: 1px solid var(--kb-border);
+      border-radius: var(--kb-radius);
+      cursor: pointer;
+      transition: all var(--kb-transition);
+      max-width: 45%;
     }
 
-    .ur-kb-pdf-btn-small:hover {
-      background: var(--kb-accent);
-      color: white;
+    .ur-kb-nav-btn:hover {
       border-color: var(--kb-accent);
+      background: var(--kb-sidebar-hover);
     }
 
-    /* Home View - Document Cards */
+    .ur-kb-nav-btn.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .ur-kb-nav-btn svg {
+      width: 16px;
+      height: 16px;
+      color: var(--kb-text-muted);
+      flex-shrink: 0;
+    }
+
+    .ur-kb-nav-btn-content {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .ur-kb-nav-btn-label {
+      font-size: 11px;
+      color: var(--kb-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .ur-kb-nav-btn-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--kb-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ur-kb-nav-prev .ur-kb-nav-btn-content {
+      text-align: left;
+    }
+
+    .ur-kb-nav-next .ur-kb-nav-btn-content {
+      text-align: right;
+    }
+
+    /* Home View */
     .ur-kb-home {
-      padding: 20px;
+      padding: 20px 0;
     }
 
     .ur-kb-home-title {
@@ -493,139 +636,7 @@
       color: var(--kb-text-muted);
     }
 
-    /* TOC (Table of Contents) */
-    .ur-kb-toc {
-      background: var(--kb-sidebar-bg);
-      border: 1px solid var(--kb-border);
-      border-radius: var(--kb-radius);
-      padding: 20px 24px;
-      margin-bottom: 24px;
-    }
-
-    .ur-kb-toc-title {
-      font-size: 14px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--kb-text-muted);
-      margin-bottom: 16px;
-    }
-
-    .ur-kb-toc-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    .ur-kb-toc-item {
-      margin-bottom: 4px;
-    }
-
-    .ur-kb-toc-link {
-      display: block;
-      color: var(--kb-link);
-      text-decoration: none;
-      font-size: 15px;
-      padding: 8px 12px;
-      border-radius: var(--kb-radius);
-      transition: all var(--kb-transition);
-      cursor: pointer;
-    }
-
-    .ur-kb-toc-link:hover {
-      background: var(--kb-sidebar-hover);
-      color: var(--kb-accent-hover);
-    }
-
-    /* Collapsible Section in Content */
-    .ur-kb-collapsible-section {
-      margin: 1em 0;
-      border: 1px solid var(--kb-border);
-      border-radius: var(--kb-radius);
-      overflow: hidden;
-    }
-
-    .ur-kb-section-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px 16px;
-      background: var(--kb-sidebar-bg);
-      cursor: pointer;
-      user-select: none;
-      transition: background var(--kb-transition);
-    }
-
-    .ur-kb-section-header:hover {
-      background: var(--kb-sidebar-hover);
-    }
-
-    .ur-kb-section-header-toggle {
-      width: 20px;
-      height: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: transform var(--kb-transition);
-      flex-shrink: 0;
-    }
-
-    .ur-kb-section-header-toggle.expanded {
-      transform: rotate(90deg);
-    }
-
-    .ur-kb-section-header-toggle svg {
-      width: 14px;
-      height: 14px;
-    }
-
-    .ur-kb-section-header-text {
-      flex: 1;
-      font-weight: 600;
-      color: var(--kb-text);
-    }
-
-    .ur-kb-section-header h1,
-    .ur-kb-section-header h2,
-    .ur-kb-section-header h3,
-    .ur-kb-section-header h4,
-    .ur-kb-section-header h5,
-    .ur-kb-section-header h6 {
-      margin: 0;
-      font-size: inherit;
-      font-weight: inherit;
-    }
-
-    .ur-kb-section-header-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .ur-kb-section-body {
-      display: none;
-      padding: 16px;
-      border-top: 1px solid var(--kb-border);
-    }
-
-    .ur-kb-section-body.expanded {
-      display: block;
-    }
-
-    .ur-kb-section-body > *:first-child {
-      margin-top: 0;
-    }
-
-    .ur-kb-section-body > *:last-child {
-      margin-bottom: 0;
-    }
-
-    /* Nested collapsible sections */
-    .ur-kb-section-body .ur-kb-collapsible-section {
-      margin-left: 0;
-    }
-
-    /* Markdown Content (for non-header content) */
+    /* Markdown Content */
     .ur-kb-markdown p {
       margin-bottom: 1em;
     }
@@ -703,6 +714,22 @@
       border-top: 1px solid var(--kb-border);
       margin: 2em 0;
     }
+
+    .ur-kb-markdown h1,
+    .ur-kb-markdown h2,
+    .ur-kb-markdown h3,
+    .ur-kb-markdown h4,
+    .ur-kb-markdown h5,
+    .ur-kb-markdown h6 {
+      margin-top: 1.5em;
+      margin-bottom: 0.5em;
+      color: var(--kb-text);
+    }
+
+    .ur-kb-markdown h1 { font-size: 24px; }
+    .ur-kb-markdown h2 { font-size: 20px; }
+    .ur-kb-markdown h3 { font-size: 18px; }
+    .ur-kb-markdown h4 { font-size: 16px; }
 
     /* Media Container (16:9) */
     .ur-kb-media-container {
@@ -895,6 +922,40 @@
       to { transform: rotate(360deg); }
     }
 
+    /* Sidebar Expand Button */
+    .ur-kb-sidebar-expand {
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 24px;
+      height: 48px;
+      background: var(--kb-sidebar-bg);
+      border: 1px solid var(--kb-border);
+      border-left: none;
+      border-radius: 0 var(--kb-radius) var(--kb-radius) 0;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: var(--kb-text-muted);
+      z-index: 10;
+    }
+
+    .ur-kb-sidebar-expand:hover {
+      background: var(--kb-sidebar-hover);
+      color: var(--kb-text);
+    }
+
+    .ur-kb-sidebar-expand.visible {
+      display: flex;
+    }
+
+    .ur-kb-sidebar-expand svg {
+      width: 14px;
+      height: 14px;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .ur-kb-sidebar {
@@ -923,6 +984,14 @@
         padding: 16px;
       }
 
+      .ur-kb-breadcrumb {
+        padding: 12px 16px;
+      }
+
+      .ur-kb-footer {
+        padding: 12px 16px;
+      }
+
       .ur-kb-content-title {
         font-size: 22px;
       }
@@ -945,20 +1014,10 @@
       .ur-kb-doc-cards {
         grid-template-columns: 1fr;
       }
-    }
 
-    /* Print styles for PDF */
-    @media print {
-      .ur-kb-section-header-actions,
-      .ur-kb-section-header-toggle {
-        display: none !important;
-      }
-      .ur-kb-section-body {
-        display: block !important;
-      }
-      .ur-kb-collapsible-section {
-        border: none !important;
-        page-break-inside: avoid;
+      .ur-kb-nav-btn {
+        max-width: 48%;
+        padding: 8px 12px;
       }
     }
   `;
@@ -970,10 +1029,11 @@
     search: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>',
     menu: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg>',
     chevronRight: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"></path></svg>',
+    chevronLeft: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>',
     download: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>',
     document: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>',
     home: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>',
-    sidebar: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><line x1="9" x2="9" y1="3" y2="21"></line></svg>'
+    arrowUp: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>'
   };
 
   // ============================================================
@@ -1053,7 +1113,7 @@
       this.fuse = null;
       this.sidebarCollapsed = false;
       this.mobileMenuOpen = false;
-      this.viewMode = 'home'; // 'home', 'document', 'section'
+      this.flatSections = []; // Flat list of all sections for prev/next navigation
 
       this.init();
     }
@@ -1073,6 +1133,7 @@
       await this.loadDependencies();
       this.processDocuments();
       await this.fetchAllDocuments();
+      this.buildFlatSections();
       this.buildSearchIndex();
       this.render();
       this.setupEventListeners();
@@ -1167,6 +1228,28 @@
       return headers;
     }
 
+    buildFlatSections() {
+      this.flatSections = [];
+
+      const flatten = (sections, docId, parentPath = []) => {
+        sections.forEach(section => {
+          const path = [...parentPath, section];
+          this.flatSections.push({
+            docId,
+            section,
+            path
+          });
+          if (section.children.length > 0) {
+            flatten(section.children, docId, path);
+          }
+        });
+      };
+
+      this.documents.forEach(doc => {
+        flatten(doc.sections, doc.id);
+      });
+    }
+
     buildSearchIndex() {
       const searchData = [];
 
@@ -1228,7 +1311,6 @@
               <span>Search all documents...</span>
               <kbd>⌘K</kbd>
             </div>
-            <button class="ur-kb-sidebar-expand-btn" aria-label="Show sidebar">${ICONS.sidebar}</button>
           </div>
           <div class="ur-kb-body">
             <div class="ur-kb-overlay"></div>
@@ -1241,7 +1323,12 @@
                 ${this.renderDocumentList()}
               </nav>
             </aside>
-            <main class="ur-kb-content"></main>
+            <div class="ur-kb-main">
+              <div class="ur-kb-sidebar-expand" aria-label="Expand sidebar">${ICONS.chevronRight}</div>
+              <div class="ur-kb-breadcrumb"></div>
+              <main class="ur-kb-content"></main>
+              <div class="ur-kb-footer"></div>
+            </div>
           </div>
           ${this.renderSearchModal()}
         </div>
@@ -1327,6 +1414,14 @@
         if (docHeader) {
           const docEl = docHeader.closest('.ur-kb-doc');
           const docId = docEl.dataset.docId;
+          const toggle = docEl.querySelector('.ur-kb-doc-toggle');
+          const sections = docEl.querySelector('.ur-kb-sections');
+
+          // Toggle expand/collapse
+          toggle.classList.toggle('expanded');
+          sections.classList.toggle('expanded');
+
+          // Select the document
           this.selectDocument(docId);
           return;
         }
@@ -1353,50 +1448,31 @@
           return;
         }
 
-        // TOC link click
-        const tocLink = e.target.closest('.ur-kb-toc-link');
-        if (tocLink) {
-          e.preventDefault();
-          const sectionId = tocLink.dataset.sectionId;
-          const docId = tocLink.dataset.docId;
-          if (docId && sectionId) {
+        // Breadcrumb navigation
+        const breadcrumbItem = e.target.closest('.ur-kb-breadcrumb-item');
+        if (breadcrumbItem && !breadcrumbItem.classList.contains('current')) {
+          const docId = breadcrumbItem.dataset.docId;
+          const sectionId = breadcrumbItem.dataset.sectionId;
+          if (sectionId) {
             this.selectSection(docId, sectionId);
+          } else if (docId) {
+            this.selectDocument(docId);
+          } else {
+            this.showHome();
           }
           return;
         }
 
-        // Collapsible section header toggle
-        const sectionHeaderToggle = e.target.closest('.ur-kb-section-header-toggle');
-        if (sectionHeaderToggle) {
-          const collapsible = sectionHeaderToggle.closest('.ur-kb-collapsible-section');
-          const body = collapsible.querySelector(':scope > .ur-kb-section-body');
-          body.classList.toggle('expanded');
-          sectionHeaderToggle.classList.toggle('expanded');
-          return;
-        }
-
-        // Collapsible section header (not toggle, not PDF)
-        const sectionHeader = e.target.closest('.ur-kb-section-header');
-        if (sectionHeader && !e.target.closest('.ur-kb-pdf-btn-small') && !e.target.closest('.ur-kb-section-header-toggle')) {
-          const collapsible = sectionHeader.closest('.ur-kb-collapsible-section');
-          const body = collapsible.querySelector(':scope > .ur-kb-section-body');
-          const toggle = sectionHeader.querySelector('.ur-kb-section-header-toggle');
-          body.classList.toggle('expanded');
-          if (toggle) toggle.classList.toggle('expanded');
-          return;
-        }
-
         // Section PDF button
-        const sectionPdfBtn = e.target.closest('.ur-kb-pdf-btn-small');
+        const sectionPdfBtn = e.target.closest('.ur-kb-section-pdf-btn');
         if (sectionPdfBtn) {
-          e.stopPropagation();
-          const sectionEl = sectionPdfBtn.closest('.ur-kb-collapsible-section');
-          this.exportSectionPDF(sectionEl);
+          const sectionId = sectionPdfBtn.dataset.sectionId;
+          this.exportSectionPDF(sectionId);
           return;
         }
 
         // Main PDF button
-        if (e.target.closest('.ur-kb-pdf-btn:not(.ur-kb-pdf-btn-small)')) {
+        if (e.target.closest('.ur-kb-pdf-btn:not(.ur-kb-section-pdf-btn)')) {
           this.exportPDF();
           return;
         }
@@ -1408,7 +1484,7 @@
         }
 
         // Sidebar expand button
-        if (e.target.closest('.ur-kb-sidebar-expand-btn')) {
+        if (e.target.closest('.ur-kb-sidebar-expand')) {
           this.toggleSidebar(false);
           return;
         }
@@ -1449,6 +1525,14 @@
           this.selectSearchResult(searchResult);
           return;
         }
+
+        // Prev/Next navigation
+        const navBtn = e.target.closest('.ur-kb-nav-btn');
+        if (navBtn && !navBtn.classList.contains('disabled')) {
+          const direction = navBtn.classList.contains('ur-kb-nav-prev') ? 'prev' : 'next';
+          this.navigateSection(direction);
+          return;
+        }
       });
 
       // Search input
@@ -1487,16 +1571,16 @@
     }
 
     showHome() {
-      this.viewMode = 'home';
       this.currentDoc = null;
       this.currentSection = null;
 
       // Clear sidebar active states
       const sidebar = this.container.querySelector('.ur-kb-sidebar-content');
       sidebar.querySelectorAll('.ur-kb-doc-header').forEach(el => el.classList.remove('active'));
-      sidebar.querySelectorAll('.ur-kb-sections').forEach(el => el.classList.remove('expanded'));
-      sidebar.querySelectorAll('.ur-kb-doc-toggle').forEach(el => el.classList.remove('expanded'));
       sidebar.querySelectorAll('.ur-kb-section-item').forEach(el => el.classList.remove('active'));
+
+      // Update breadcrumb
+      this.updateBreadcrumb([]);
 
       const content = this.container.querySelector('.ur-kb-content');
       content.innerHTML = `
@@ -1519,6 +1603,8 @@
         </div>
       `;
 
+      // Hide footer on home
+      this.updateFooter(null, null);
       this.toggleMobileMenu(false);
     }
 
@@ -1526,15 +1612,12 @@
       const doc = this.documents.find(d => d.id === docId);
       if (!doc) return;
 
-      this.viewMode = 'document';
       this.currentDoc = doc;
       this.currentSection = null;
 
       // Update sidebar
       const sidebar = this.container.querySelector('.ur-kb-sidebar-content');
       sidebar.querySelectorAll('.ur-kb-doc-header').forEach(el => el.classList.remove('active'));
-      sidebar.querySelectorAll('.ur-kb-sections').forEach(el => el.classList.remove('expanded'));
-      sidebar.querySelectorAll('.ur-kb-doc-toggle').forEach(el => el.classList.remove('expanded'));
       sidebar.querySelectorAll('.ur-kb-section-item').forEach(el => el.classList.remove('active'));
 
       const docEl = sidebar.querySelector(`.ur-kb-doc[data-doc-id="${docId}"]`);
@@ -1544,7 +1627,13 @@
         docEl.querySelector('.ur-kb-doc-toggle').classList.add('expanded');
       }
 
-      this.renderDocumentOverview(doc);
+      // Update breadcrumb
+      this.updateBreadcrumb([{ label: doc.title, docId: doc.id }]);
+
+      // Show full document content (all sections)
+      this.renderDocumentContent(doc);
+      this.updateFooter(null, null); // Hide prev/next on document overview
+
       this.toggleMobileMenu(false);
     }
 
@@ -1552,21 +1641,21 @@
       const doc = this.documents.find(d => d.id === docId);
       if (!doc) return;
 
-      const findSection = (sections) => {
+      const findSection = (sections, path = []) => {
         for (const section of sections) {
-          if (section.id === sectionId) return section;
+          if (section.id === sectionId) return { section, path: [...path, section] };
           if (section.children.length > 0) {
-            const found = findSection(section.children);
+            const found = findSection(section.children, [...path, section]);
             if (found) return found;
           }
         }
         return null;
       };
 
-      const section = findSection(doc.sections);
-      if (!section) return;
+      const result = findSection(doc.sections);
+      if (!result) return;
 
-      this.viewMode = 'section';
+      const { section, path } = result;
       this.currentDoc = doc;
       this.currentSection = section;
 
@@ -1586,52 +1675,137 @@
       if (sectionEl) {
         const item = sectionEl.querySelector(':scope > .ur-kb-section-item');
         if (item) item.classList.add('active');
-        const children = sectionEl.querySelector(':scope > .ur-kb-section-children');
-        if (children) {
-          children.classList.add('expanded');
-          const toggle = sectionEl.querySelector(':scope > .ur-kb-section-item .ur-kb-section-toggle');
+
+        // Expand parent sections
+        let parent = sectionEl.parentElement;
+        while (parent && parent.classList.contains('ur-kb-section-children')) {
+          parent.classList.add('expanded');
+          const toggle = parent.previousElementSibling?.querySelector('.ur-kb-section-toggle');
           if (toggle) toggle.classList.add('expanded');
+          parent = parent.parentElement?.parentElement;
         }
       }
 
+      // Update breadcrumb
+      const breadcrumbItems = [{ label: doc.title, docId: doc.id }];
+      path.forEach((s, i) => {
+        breadcrumbItems.push({
+          label: s.text,
+          docId: doc.id,
+          sectionId: s.id,
+          isCurrent: i === path.length - 1
+        });
+      });
+      this.updateBreadcrumb(breadcrumbItems);
+
       this.renderSectionContent(doc, section);
+      this.updateFooter(docId, sectionId);
       this.toggleMobileMenu(false);
     }
 
-    renderDocumentOverview(doc) {
-      const content = this.container.querySelector('.ur-kb-content');
+    updateBreadcrumb(items) {
+      const breadcrumb = this.container.querySelector('.ur-kb-breadcrumb');
 
-      const tocItems = doc.sections.map(section => `
-        <li class="ur-kb-toc-item">
-          <a class="ur-kb-toc-link" data-doc-id="${doc.id}" data-section-id="${section.id}">
-            ${escapeHtml(section.text)}
-          </a>
-        </li>
-      `).join('');
+      if (items.length === 0) {
+        breadcrumb.style.display = 'none';
+        return;
+      }
+
+      breadcrumb.style.display = 'flex';
+
+      const html = [
+        `<span class="ur-kb-breadcrumb-item" data-doc-id="">${ICONS.home}</span>`
+      ];
+
+      items.forEach((item) => {
+        html.push(`<span class="ur-kb-breadcrumb-sep">/</span>`);
+        const currentClass = item.isCurrent ? ' current' : '';
+        html.push(`<span class="ur-kb-breadcrumb-item${currentClass}" data-doc-id="${item.docId || ''}" data-section-id="${item.sectionId || ''}">${escapeHtml(item.label)}</span>`);
+      });
+
+      breadcrumb.innerHTML = html.join('');
+    }
+
+    updateFooter(docId, sectionId) {
+      const footer = this.container.querySelector('.ur-kb-footer');
+
+      if (!docId || !sectionId) {
+        footer.style.display = 'none';
+        return;
+      }
+
+      footer.style.display = 'flex';
+
+      const currentIndex = this.flatSections.findIndex(
+        s => s.docId === docId && s.section.id === sectionId
+      );
+
+      const prev = currentIndex > 0 ? this.flatSections[currentIndex - 1] : null;
+      const next = currentIndex < this.flatSections.length - 1 ? this.flatSections[currentIndex + 1] : null;
+
+      footer.innerHTML = `
+        <button class="ur-kb-nav-btn ur-kb-nav-prev ${prev ? '' : 'disabled'}">
+          ${ICONS.chevronLeft}
+          <div class="ur-kb-nav-btn-content">
+            <span class="ur-kb-nav-btn-label">Previous</span>
+            <span class="ur-kb-nav-btn-title">${prev ? escapeHtml(prev.section.text) : ''}</span>
+          </div>
+        </button>
+        <button class="ur-kb-nav-btn ur-kb-nav-next ${next ? '' : 'disabled'}">
+          <div class="ur-kb-nav-btn-content">
+            <span class="ur-kb-nav-btn-label">Next</span>
+            <span class="ur-kb-nav-btn-title">${next ? escapeHtml(next.section.text) : ''}</span>
+          </div>
+          ${ICONS.chevronRight}
+        </button>
+      `;
+    }
+
+    navigateSection(direction) {
+      if (!this.currentDoc || !this.currentSection) return;
+
+      const currentIndex = this.flatSections.findIndex(
+        s => s.docId === this.currentDoc.id && s.section.id === this.currentSection.id
+      );
+
+      const newIndex = direction === 'prev' ? currentIndex - 1 : currentIndex + 1;
+      if (newIndex < 0 || newIndex >= this.flatSections.length) return;
+
+      const target = this.flatSections[newIndex];
+      this.selectSection(target.docId, target.section.id);
+    }
+
+    renderDocumentContent(doc) {
+      const content = this.container.querySelector('.ur-kb-content');
+      const html = this.renderMarkdownWithHeaders(doc.content);
 
       content.innerHTML = `
         <div class="ur-kb-content-header">
           <h1 class="ur-kb-content-title">${escapeHtml(doc.title)}</h1>
           ${this.options.enablePdfExport ? `
-            <button class="ur-kb-pdf-btn" title="Download entire document as PDF">
+            <button class="ur-kb-pdf-btn" title="Download as PDF">
               ${ICONS.download}
               <span>PDF</span>
             </button>
           ` : ''}
         </div>
-        <div class="ur-kb-toc">
-          <div class="ur-kb-toc-title">Table of Contents</div>
-          <ul class="ur-kb-toc-list">
-            ${tocItems}
-          </ul>
+        <div class="ur-kb-markdown">
+          ${html}
         </div>
       `;
+
+      content.querySelectorAll('pre code').forEach(block => {
+        if (typeof hljs !== 'undefined') hljs.highlightElement(block);
+      });
+
+      // Scroll to top
+      content.scrollTop = 0;
     }
 
     renderSectionContent(doc, section) {
       const content = this.container.querySelector('.ur-kb-content');
       const sectionContent = this.extractSectionContent(doc.content, section);
-      const html = this.renderMarkdownWithCollapsibleHeaders(sectionContent);
+      const html = this.renderMarkdownWithHeaders(sectionContent);
 
       content.innerHTML = `
         <div class="ur-kb-content-header">
@@ -1648,19 +1822,12 @@
         </div>
       `;
 
-      // Apply syntax highlighting
       content.querySelectorAll('pre code').forEach(block => {
         if (typeof hljs !== 'undefined') hljs.highlightElement(block);
       });
 
-      // Expand first level by default
-      const firstSection = content.querySelector('.ur-kb-collapsible-section');
-      if (firstSection) {
-        const body = firstSection.querySelector(':scope > .ur-kb-section-body');
-        const toggle = firstSection.querySelector(':scope > .ur-kb-section-header .ur-kb-section-header-toggle');
-        if (body) body.classList.add('expanded');
-        if (toggle) toggle.classList.add('expanded');
-      }
+      // Scroll to top
+      content.scrollTop = 0;
     }
 
     extractSectionContent(content, section) {
@@ -1679,101 +1846,48 @@
       return lines.slice(startLine, endLine).join('\n');
     }
 
-    renderMarkdownWithCollapsibleHeaders(content) {
+    renderMarkdownWithHeaders(content) {
       if (typeof marked === 'undefined') {
         return `<pre>${escapeHtml(content)}</pre>`;
       }
 
-      // Parse the markdown into sections
       const lines = content.split('\n');
-      const sections = [];
+      let html = '';
       let currentContent = [];
+
+      const flushContent = () => {
+        if (currentContent.length > 0) {
+          html += this.renderMarkdownContent(currentContent.join('\n'));
+          currentContent = [];
+        }
+      };
 
       lines.forEach((line, index) => {
         const match = line.match(/^(#{1,6})\s+(.+)$/);
         if (match) {
-          if (currentContent.length > 0) {
-            sections.push({ type: 'content', content: currentContent.join('\n') });
-            currentContent = [];
-          }
-          sections.push({
-            type: 'header',
-            level: match[1].length,
-            text: match[2].trim(),
-            id: slugify(match[2].trim()) + '-' + index
-          });
+          flushContent();
+          const level = match[1].length;
+          const text = match[2].trim();
+          const id = slugify(text) + '-' + index;
+          const headerTag = `h${level}`;
+
+          html += `
+            <div class="ur-kb-section-title">
+              <${headerTag} id="${id}">${escapeHtml(text)}</${headerTag}>
+              ${this.options.enablePdfExport ? `
+                <button class="ur-kb-section-pdf-btn" data-section-id="${id}" title="Download this section as PDF">
+                  ${ICONS.download}
+                </button>
+              ` : ''}
+            </div>
+          `;
         } else {
           currentContent.push(line);
         }
       });
 
-      if (currentContent.length > 0) {
-        sections.push({ type: 'content', content: currentContent.join('\n') });
-      }
-
-      // Build collapsible structure
-      const buildCollapsible = (sections, startIndex = 0) => {
-        let html = '';
-        let i = startIndex;
-
-        while (i < sections.length) {
-          const section = sections[i];
-
-          if (section.type === 'content') {
-            html += this.renderMarkdownContent(section.content);
-            i++;
-          } else if (section.type === 'header') {
-            // Find all content and sub-headers until next header of same or higher level
-            let bodyContent = '';
-            let j = i + 1;
-
-            while (j < sections.length) {
-              if (sections[j].type === 'header' && sections[j].level <= section.level) {
-                break;
-              }
-              if (sections[j].type === 'content') {
-                bodyContent += this.renderMarkdownContent(sections[j].content);
-              } else if (sections[j].type === 'header') {
-                // Recursively build nested collapsible
-                const nestedResult = buildCollapsible(sections, j);
-                bodyContent += nestedResult.html;
-                j = nestedResult.endIndex;
-                continue;
-              }
-              j++;
-            }
-
-            const headerTag = `h${section.level}`;
-            html += `
-              <div class="ur-kb-collapsible-section" data-section-id="${section.id}">
-                <div class="ur-kb-section-header">
-                  <span class="ur-kb-section-header-toggle">${ICONS.chevronRight}</span>
-                  <div class="ur-kb-section-header-text">
-                    <${headerTag}>${escapeHtml(section.text)}</${headerTag}>
-                  </div>
-                  <div class="ur-kb-section-header-actions">
-                    ${this.options.enablePdfExport ? `
-                      <button class="ur-kb-pdf-btn ur-kb-pdf-btn-small" title="Download this section as PDF">
-                        ${ICONS.download}
-                      </button>
-                    ` : ''}
-                  </div>
-                </div>
-                <div class="ur-kb-section-body">
-                  ${bodyContent}
-                </div>
-              </div>
-            `;
-
-            i = j;
-          }
-        }
-
-        return { html, endIndex: i };
-      };
-
-      const result = buildCollapsible(sections);
-      return result.html;
+      flushContent();
+      return html;
     }
 
     renderMarkdownContent(content) {
@@ -1803,7 +1917,7 @@
         return `<a href="${escapeHtml(href)}" title="${escapeHtml(title || '')}"${target}>${text}</a>`;
       };
 
-      // Don't render headers in content - they're handled separately
+      // Skip headers - they're rendered separately
       renderer.heading = () => '';
 
       return marked.parse(content, { renderer });
@@ -1812,7 +1926,7 @@
     toggleSidebar(collapsed) {
       const sidebar = this.container.querySelector('.ur-kb-sidebar');
       const toggle = this.container.querySelector('.ur-kb-sidebar-toggle');
-      const expandBtn = this.container.querySelector('.ur-kb-sidebar-expand-btn');
+      const expandBtn = this.container.querySelector('.ur-kb-sidebar-expand');
 
       if (collapsed === undefined) {
         this.sidebarCollapsed = !this.sidebarCollapsed;
@@ -1933,7 +2047,7 @@
 
       if (!this.currentDoc) return;
 
-      const btn = this.container.querySelector('.ur-kb-pdf-btn:not(.ur-kb-pdf-btn-small)');
+      const btn = this.container.querySelector('.ur-kb-pdf-btn:not(.ur-kb-section-pdf-btn)');
       if (!btn) return;
 
       const originalText = btn.innerHTML;
@@ -1962,13 +2076,15 @@
       }
     }
 
-    async exportSectionPDF(sectionEl) {
+    async exportSectionPDF(sectionId) {
       if (typeof html2pdf === 'undefined') {
         alert('PDF export is not available');
         return;
       }
 
-      const btn = sectionEl.querySelector('.ur-kb-pdf-btn-small');
+      if (!this.currentDoc || !this.currentSection) return;
+
+      const btn = this.container.querySelector(`.ur-kb-section-pdf-btn[data-section-id="${sectionId}"]`);
       if (!btn) return;
 
       const originalHtml = btn.innerHTML;
@@ -1976,21 +2092,74 @@
       btn.disabled = true;
 
       try {
-        // Get the header text
-        const headerEl = sectionEl.querySelector('.ur-kb-section-header-text');
-        const title = headerEl ? headerEl.textContent.trim() : 'Section';
+        // Find the section content from the header element
+        const headerEl = btn.closest('.ur-kb-section-title');
+        const headingEl = headerEl?.querySelector('h1, h2, h3, h4, h5, h6');
+        const title = headingEl ? headingEl.textContent.trim() : 'Section';
 
-        // Clone the section and expand all nested sections
-        const clone = sectionEl.cloneNode(true);
-        clone.querySelectorAll('.ur-kb-section-body').forEach(b => b.classList.add('expanded'));
-        clone.querySelectorAll('.ur-kb-section-header-actions').forEach(a => a.remove());
-        clone.querySelectorAll('.ur-kb-section-header-toggle').forEach(t => t.remove());
+        // Get all content after this header until next header of same or higher level
+        const contentEl = this.container.querySelector('.ur-kb-markdown');
+        const allElements = Array.from(contentEl.children);
+        const headerIndex = allElements.indexOf(headerEl);
 
+        if (headerIndex === -1) {
+          throw new Error('Header not found');
+        }
+
+        // Get the level of current header
+        const currentLevel = parseInt(headingEl.tagName.charAt(1));
+
+        // Collect all content until next header of same or higher level
+        let sectionContent = [];
+        for (let i = headerIndex; i < allElements.length; i++) {
+          const el = allElements[i];
+          if (i > headerIndex && el.classList.contains('ur-kb-section-title')) {
+            const h = el.querySelector('h1, h2, h3, h4, h5, h6');
+            if (h) {
+              const level = parseInt(h.tagName.charAt(1));
+              if (level <= currentLevel) break;
+            }
+          }
+          sectionContent.push(el.cloneNode(true));
+        }
+
+        // Create temp container
         const tempDiv = document.createElement('div');
-        tempDiv.className = 'ur-kb-markdown';
-        tempDiv.style.cssText = 'padding: 20px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a2e;';
-        tempDiv.innerHTML = `<h1 style="margin-bottom: 20px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">${escapeHtml(title)}</h1>`;
-        tempDiv.appendChild(clone);
+        tempDiv.style.cssText = 'padding: 20px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a2e; max-width: 800px;';
+
+        sectionContent.forEach(el => {
+          // Remove PDF buttons from clone
+          el.querySelectorAll('.ur-kb-section-pdf-btn').forEach(b => b.remove());
+          tempDiv.appendChild(el);
+        });
+
+        // Style for PDF
+        tempDiv.querySelectorAll('.ur-kb-section-title').forEach(st => {
+          st.style.cssText = 'margin: 1.5em 0 1em 0; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;';
+        });
+        tempDiv.querySelectorAll('h1, h2, h3, h4, h5, h6').forEach(h => {
+          h.style.cssText = 'margin: 0; color: #1a1a2e;';
+        });
+        tempDiv.querySelectorAll('table').forEach(table => {
+          table.style.cssText = 'width: 100%; border-collapse: collapse; margin: 1em 0;';
+        });
+        tempDiv.querySelectorAll('th, td').forEach(cell => {
+          cell.style.cssText = 'padding: 8px 12px; border: 1px solid #e5e7eb; text-align: left;';
+        });
+        tempDiv.querySelectorAll('th').forEach(th => {
+          th.style.background = '#f9fafb';
+        });
+        tempDiv.querySelectorAll('pre').forEach(pre => {
+          pre.style.cssText = 'background: #f3f4f6; padding: 12px; border-radius: 6px; overflow-x: auto; font-size: 13px;';
+        });
+        tempDiv.querySelectorAll('code').forEach(code => {
+          if (!code.parentElement.matches('pre')) {
+            code.style.cssText = 'background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 0.9em;';
+          }
+        });
+        tempDiv.querySelectorAll('blockquote').forEach(bq => {
+          bq.style.cssText = 'margin: 1em 0; padding: 12px 20px; border-left: 4px solid #4f46e5; background: #f9fafb;';
+        });
 
         document.body.appendChild(tempDiv);
 
@@ -2014,7 +2183,6 @@
     }
 
     async generatePDF(content, title) {
-      // Render markdown to HTML
       marked.setOptions({ gfm: true, breaks: true });
 
       const renderer = new marked.Renderer();
@@ -2025,11 +2193,10 @@
       const html = marked.parse(content, { renderer });
 
       const tempDiv = document.createElement('div');
-      tempDiv.className = 'ur-kb-markdown';
       tempDiv.style.cssText = 'padding: 20px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #1a1a2e; max-width: 800px;';
       tempDiv.innerHTML = html;
 
-      // Style tables for PDF
+      // Style for PDF
       tempDiv.querySelectorAll('table').forEach(table => {
         table.style.cssText = 'width: 100%; border-collapse: collapse; margin: 1em 0;';
       });
