@@ -881,6 +881,83 @@
       border: none;
     }
 
+    /* Link Preview Card */
+    .ur-kb-link-preview {
+      display: flex;
+      border: 1px solid var(--kb-border);
+      border-radius: var(--kb-radius);
+      overflow: hidden;
+      margin: 1em 0;
+      background: var(--kb-bg);
+      text-decoration: none;
+      color: inherit;
+      transition: all var(--kb-transition);
+    }
+
+    .ur-kb-link-preview:hover {
+      border-color: var(--kb-accent);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .ur-kb-link-preview-icon {
+      width: 80px;
+      min-height: 80px;
+      background: var(--kb-code-bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .ur-kb-link-preview-icon svg {
+      width: 32px;
+      height: 32px;
+      color: var(--kb-text-muted);
+    }
+
+    .ur-kb-link-preview-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .ur-kb-link-preview-content {
+      padding: 12px 16px;
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .ur-kb-link-preview-title {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--kb-text);
+      margin: 0 0 4px 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ur-kb-link-preview-url {
+      font-size: 12px;
+      color: var(--kb-text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ur-kb-link-preview-description {
+      font-size: 13px;
+      color: var(--kb-text-muted);
+      margin-top: 4px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
     /* Search Modal */
     .ur-kb-search-modal {
       position: fixed;
@@ -1174,7 +1251,8 @@
     download: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" x2="12" y1="15" y2="3"></line></svg>',
     document: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>',
     home: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>',
-    arrowUp: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>'
+    arrowUp: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg>',
+    externalLink: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>'
   };
 
   // ============================================================
@@ -1683,6 +1761,26 @@
           this.navigateSection(direction);
           return;
         }
+
+        // Internal anchor links (TOC links) - using event delegation
+        const anchorLink = e.target.closest('a[href^="#"]');
+        if (anchorLink && this.currentDoc) {
+          e.preventDefault();
+          const hash = anchorLink.getAttribute('href').substring(1); // Remove the #
+          const matchingSection = this.findSectionByHash(this.currentDoc, hash);
+
+          if (matchingSection) {
+            this.selectSection(this.currentDoc.id, matchingSection.id);
+          } else {
+            // If no exact match, try to scroll to element with that ID
+            const content = this.container.querySelector('.ur-kb-content');
+            const targetEl = content.querySelector(`#${CSS.escape(hash)}`);
+            if (targetEl) {
+              targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }
+          return;
+        }
       });
 
       // Search input
@@ -2022,35 +2120,8 @@
         if (typeof hljs !== 'undefined') hljs.highlightElement(block);
       });
 
-      // Add click handlers for internal anchor links (TOC links)
-      this.setupInternalLinkHandlers(doc);
-
-      // Scroll to top
+      // Scroll to top (anchor link clicks handled via event delegation in setupEventListeners)
       content.scrollTop = 0;
-    }
-
-    setupInternalLinkHandlers(doc) {
-      const content = this.container.querySelector('.ur-kb-content');
-
-      content.querySelectorAll('a[href^="#"]').forEach(link => {
-        link.addEventListener('click', (e) => {
-          e.preventDefault();
-          const hash = link.getAttribute('href').substring(1); // Remove the #
-
-          // Find matching section by trying to match the hash with section IDs or text
-          const matchingSection = this.findSectionByHash(doc, hash);
-
-          if (matchingSection) {
-            this.selectSection(doc.id, matchingSection.id);
-          } else {
-            // If no exact match, try to scroll to element with that ID
-            const targetEl = content.querySelector(`#${CSS.escape(hash)}`);
-            if (targetEl) {
-              targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          }
-        });
-      });
     }
 
     findSectionByHash(doc, hash) {
@@ -2192,6 +2263,98 @@
 
       renderer.link = (href, title, text) => {
         const isExternal = href.startsWith('http://') || href.startsWith('https://');
+
+        // Check if this is a standalone link (text is the URL or very similar)
+        // This indicates the user wants rich preview, not inline link
+        const isStandalone = text === href ||
+                            text.replace(/^https?:\/\//, '') === href.replace(/^https?:\/\//, '') ||
+                            href.includes(text.replace(/^https?:\/\//, '').replace(/\/$/, ''));
+
+        if (isExternal && isStandalone) {
+          // YouTube video - embed player
+          const youtubeMatch = href.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]+)/);
+          if (youtubeMatch) {
+            return `
+              <div class="ur-kb-media-container">
+                <iframe
+                  src="https://www.youtube.com/embed/${youtubeMatch[1]}"
+                  frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen>
+                </iframe>
+              </div>`;
+          }
+
+          // Vimeo video - embed player
+          const vimeoMatch = href.match(/vimeo\.com\/(\d+)/);
+          if (vimeoMatch) {
+            return `
+              <div class="ur-kb-media-container">
+                <iframe
+                  src="https://player.vimeo.com/video/${vimeoMatch[1]}"
+                  frameborder="0"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowfullscreen>
+                </iframe>
+              </div>`;
+          }
+
+          // videos.448.global video platform - embed player
+          const globalVideoMatch = href.match(/videos\.448\.global\/w\/([\w-]+)/);
+          if (globalVideoMatch) {
+            return `
+              <div class="ur-kb-media-container">
+                <iframe
+                  src="https://videos.448.global/videos/embed/${globalVideoMatch[1]}"
+                  frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen>
+                </iframe>
+              </div>`;
+          }
+
+          // Direct video file
+          if (/\.(mp4|webm|ogg|mov)(\?.*)?$/i.test(href)) {
+            const ext = href.match(/\.(mp4|webm|ogg|mov)/i)[1];
+            return `
+              <div class="ur-kb-media-container">
+                <video controls>
+                  <source src="${escapeHtml(href)}" type="video/${ext.toLowerCase()}">
+                  Your browser does not support the video tag.
+                </video>
+              </div>`;
+          }
+
+          // Direct image URL (including Google Images)
+          if (/\.(jpg|jpeg|png|gif|webp|svg|bmp)(\?.*)?$/i.test(href) ||
+              href.includes('imgurl=') ||
+              href.includes('/imgres?')) {
+            // Extract actual image URL from Google Images link
+            let imageUrl = href;
+            const imgUrlMatch = href.match(/imgurl=([^&]+)/);
+            if (imgUrlMatch) {
+              imageUrl = decodeURIComponent(imgUrlMatch[1]);
+            }
+            return `
+              <div class="ur-kb-media-container">
+                <img src="${escapeHtml(imageUrl)}" alt="Image" loading="lazy">
+              </div>`;
+          }
+
+          // Regular website link - show as preview card
+          const domain = new URL(href).hostname.replace('www.', '');
+          const linkIcon = ICONS.externalLink || '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>';
+          return `
+            <a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer" class="ur-kb-link-preview">
+              <div class="ur-kb-link-preview-icon">${linkIcon}</div>
+              <div class="ur-kb-link-preview-content">
+                <div class="ur-kb-link-preview-title">${escapeHtml(title || domain)}</div>
+                <div class="ur-kb-link-preview-url">${escapeHtml(href)}</div>
+              </div>
+            </a>`;
+        }
+
+        // Inline link within text - render as normal link
         const target = isExternal ? ' target="_blank" rel="noopener noreferrer"' : '';
         return `<a href="${escapeHtml(href)}" title="${escapeHtml(title || '')}"${target}>${text}</a>`;
       };
