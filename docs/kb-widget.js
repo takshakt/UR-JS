@@ -45,6 +45,7 @@
       --kb-accent: #4f46e5;
       --kb-accent-hover: #4338ca;
       --kb-code-bg: #f3f4f6;
+      --kb-code-text: #1a1a2e;
       --kb-link: #4f46e5;
       --kb-search-bg: rgba(0,0,0,0.5);
       --kb-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
@@ -53,18 +54,19 @@
     }
 
     .ur-kb.dark {
-      --kb-bg: #1a1a2e;
-      --kb-text: #f3f4f6;
-      --kb-text-muted: #9ca3af;
-      --kb-border: #374151;
-      --kb-sidebar-bg: #111827;
-      --kb-sidebar-hover: #1f2937;
-      --kb-sidebar-active: #312e81;
-      --kb-sidebar-active-text: #a5b4fc;
-      --kb-accent: #6366f1;
-      --kb-accent-hover: #818cf8;
-      --kb-code-bg: #1f2937;
-      --kb-link: #818cf8;
+      --kb-bg: #0d0d0d;
+      --kb-text: #e5e5e5;
+      --kb-text-muted: #a0a0a0;
+      --kb-border: #333333;
+      --kb-sidebar-bg: #141414;
+      --kb-sidebar-hover: #1f1f1f;
+      --kb-sidebar-active: #2563eb;
+      --kb-sidebar-active-text: #ffffff;
+      --kb-accent: #3b82f6;
+      --kb-accent-hover: #60a5fa;
+      --kb-code-bg: #1a1a1a;
+      --kb-code-text: #e5e5e5;
+      --kb-link: #60a5fa;
     }
 
     /* Main Container */
@@ -779,6 +781,7 @@
 
     .ur-kb-markdown code {
       background: var(--kb-code-bg);
+      color: var(--kb-code-text);
       padding: 2px 6px;
       border-radius: 4px;
       font-family: 'SF Mono', Consolas, monospace;
@@ -787,15 +790,18 @@
 
     .ur-kb-markdown pre {
       background: var(--kb-code-bg);
+      color: var(--kb-code-text);
       padding: 16px;
       border-radius: var(--kb-radius);
       overflow-x: auto;
       margin: 1em 0;
+      border: 1px solid var(--kb-border);
     }
 
     .ur-kb-markdown pre code {
       background: none;
       padding: 0;
+      color: inherit;
     }
 
     .ur-kb-markdown ul, .ur-kb-markdown ol {
@@ -1367,7 +1373,10 @@
     externalLink: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>',
     speaker: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>',
     speakerOff: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="22" y1="9" x2="16" y2="15"></line><line x1="16" y1="9" x2="22" y2="15"></line></svg>',
-    contrast: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"></path></svg>'
+    contrast: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"></path></svg>',
+    sun: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>',
+    moon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>',
+    monitor: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>'
   };
 
   // ============================================================
@@ -1473,6 +1482,10 @@
       this.currentUtterance = null;
       this.ttsAudio = null;  // For OpenAI TTS audio playback
 
+      // Theme state: 'light', 'dark', or 'auto'
+      // Check localStorage first, then fall back to config option
+      this.currentTheme = localStorage.getItem('ur-kb-theme') || this.options.theme || 'auto';
+
       this.init();
     }
 
@@ -1504,6 +1517,18 @@
             this.speechSynthesis.getVoices();
           };
         }
+      }
+
+      // Listen for system theme changes (for auto mode)
+      if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+          if (this.currentTheme === 'auto') {
+            const kb = this.container.querySelector('.ur-kb');
+            if (kb) {
+              kb.classList.toggle('dark', e.matches);
+            }
+          }
+        });
       }
 
       // Show home view by default
@@ -1669,7 +1694,7 @@
     }
 
     render() {
-      const themeClass = this.options.theme === 'dark' ? 'dark' : '';
+      const themeClass = this.getEffectiveTheme() === 'dark' ? 'dark' : '';
       const zoomClass = `zoom-${this.zoomLevel}`;
       const contrastClass = this.highContrast ? 'high-contrast' : '';
 
@@ -1696,6 +1721,7 @@
               <button type="button" class="ur-kb-a11y-btn ur-kb-zoom-in" aria-label="Increase text size" title="Increase text size">A+</button>
               <button type="button" class="ur-kb-a11y-btn ur-kb-tts-btn" aria-label="Read aloud" title="Read aloud">${ICONS.speaker}</button>
               <button type="button" class="ur-kb-a11y-btn ur-kb-contrast-btn${this.highContrast ? ' active' : ''}" aria-label="Toggle high contrast" title="Toggle high contrast">${ICONS.contrast}</button>
+              <button type="button" class="ur-kb-a11y-btn ur-kb-theme-btn" aria-label="Toggle theme" title="Theme: ${this.currentTheme}">${this.getThemeIcon()}</button>
             </div>
             ` : ''}
           </div>
@@ -1796,19 +1822,24 @@
           return;
         }
 
-        // Document header in sidebar
+        // Document toggle arrow in sidebar (just expand/collapse, don't select)
+        const docToggle = e.target.closest('.ur-kb-doc-toggle');
+        if (docToggle) {
+          e.stopPropagation();
+          const docEl = docToggle.closest('.ur-kb-doc');
+          const sections = docEl.querySelector('.ur-kb-sections');
+          docToggle.classList.toggle('expanded');
+          sections.classList.toggle('expanded');
+          return;
+        }
+
+        // Document header in sidebar (select the document)
         const docHeader = e.target.closest('.ur-kb-doc-header');
         if (docHeader) {
           const docEl = docHeader.closest('.ur-kb-doc');
           const docId = docEl.dataset.docId;
-          const toggle = docEl.querySelector('.ur-kb-doc-toggle');
-          const sections = docEl.querySelector('.ur-kb-sections');
 
-          // Toggle expand/collapse
-          toggle.classList.toggle('expanded');
-          sections.classList.toggle('expanded');
-
-          // Select the document
+          // Select the document (this will also expand if needed)
           this.selectDocument(docId);
           return;
         }
@@ -1908,6 +1939,13 @@
         if (e.target.closest('.ur-kb-contrast-btn')) {
           e.preventDefault();
           this.toggleHighContrast();
+          return;
+        }
+
+        // Accessibility: Theme Toggle
+        if (e.target.closest('.ur-kb-theme-btn')) {
+          e.preventDefault();
+          this.cycleTheme();
           return;
         }
 
@@ -3086,6 +3124,44 @@
 
       // Persist to localStorage
       localStorage.setItem('ur-kb-contrast', this.highContrast.toString());
+    }
+
+    getEffectiveTheme() {
+      if (this.currentTheme === 'auto') {
+        // Check system preference
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      return this.currentTheme;
+    }
+
+    getThemeIcon() {
+      switch (this.currentTheme) {
+        case 'light': return ICONS.sun;
+        case 'dark': return ICONS.moon;
+        case 'auto': return ICONS.monitor;
+        default: return ICONS.monitor;
+      }
+    }
+
+    cycleTheme() {
+      const kb = this.container.querySelector('.ur-kb');
+      const themeBtn = this.container.querySelector('.ur-kb-theme-btn');
+
+      // Cycle: auto -> light -> dark -> auto
+      const themes = ['auto', 'light', 'dark'];
+      const currentIndex = themes.indexOf(this.currentTheme);
+      this.currentTheme = themes[(currentIndex + 1) % themes.length];
+
+      // Apply theme
+      const effectiveTheme = this.getEffectiveTheme();
+      kb.classList.toggle('dark', effectiveTheme === 'dark');
+
+      // Update button
+      themeBtn.innerHTML = this.getThemeIcon();
+      themeBtn.setAttribute('title', `Theme: ${this.currentTheme}`);
+
+      // Persist to localStorage
+      localStorage.setItem('ur-kb-theme', this.currentTheme);
     }
 
     toggleTTS() {
