@@ -92,6 +92,29 @@
       overflow: hidden;
     }
 
+    /* Page Header - Title Banner */
+    .ur-kb-page-header {
+      padding: 20px 24px;
+      background: var(--kb-sidebar-bg);
+      border-bottom: 1px solid var(--kb-border);
+      flex-shrink: 0;
+    }
+
+    .ur-kb-page-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 0 0 4px 0;
+      letter-spacing: 0.3px;
+      color: var(--kb-text);
+    }
+
+    .ur-kb-page-subtitle {
+      font-size: 13px;
+      color: var(--kb-text-muted);
+      margin: 0;
+      font-weight: 400;
+    }
+
     /* Search Header */
     .ur-kb-header {
       padding: 12px 20px;
@@ -1221,6 +1244,9 @@
         enableSearch: true,
         enablePdfExport: true,
         defaultDocument: null,
+        // Page Header Configuration
+        pageTitle: '',           // If empty, defaults to "{organizationName} - Knowledge Base"
+        pageSubtitle: '',        // If empty, no subtitle shown
         // PDF Configuration
         organizationName: 'Organization',
         applicationName: 'Knowledge Base',
@@ -1429,8 +1455,16 @@
     render() {
       const themeClass = this.options.theme === 'dark' ? 'dark' : '';
 
+      // Generate page title - default to "{orgName} - Knowledge Base" if not provided
+      const pageTitle = this.options.pageTitle || `${this.options.organizationName} - Knowledge Base`;
+      const pageSubtitle = this.options.pageSubtitle || '';
+
       this.container.innerHTML = `
         <div class="ur-kb ${themeClass}">
+          <div class="ur-kb-page-header">
+            <h1 class="ur-kb-page-title">${escapeHtml(pageTitle)}</h1>
+            ${pageSubtitle ? `<p class="ur-kb-page-subtitle">${escapeHtml(pageSubtitle)}</p>` : ''}
+          </div>
           <div class="ur-kb-header">
             <button class="ur-kb-home-btn" aria-label="Home">${ICONS.home}<span>Home</span></button>
             <div class="ur-kb-search-trigger" role="button" tabindex="0">
