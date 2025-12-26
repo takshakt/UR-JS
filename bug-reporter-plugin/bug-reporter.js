@@ -242,36 +242,26 @@
     /* Screenshot Preview */
     .bug-reporter-screenshot {
       margin-bottom: 20px;
-      padding: 12px;
+    }
+
+    .bug-reporter-screenshot-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
       background: var(--br-input-bg);
       border: 1px solid var(--br-border);
       border-radius: var(--br-radius-sm);
     }
 
-    .bug-reporter-screenshot-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 10px;
-    }
-
-    .bug-reporter-screenshot-label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      font-weight: 500;
+    .bug-reporter-screenshot-item .bug-reporter-file-icon {
       color: var(--br-success);
-    }
-
-    .bug-reporter-screenshot-label svg {
-      width: 16px;
-      height: 16px;
     }
 
     .bug-reporter-screenshot-actions {
       display: flex;
       gap: 8px;
+      margin-left: auto;
     }
 
     .bug-reporter-screenshot-btn {
@@ -295,6 +285,7 @@
       border-radius: 6px;
       border: 1px solid var(--br-border);
       display: none;
+      margin-top: 10px;
     }
 
     .bug-reporter-screenshot-preview.visible {
@@ -582,8 +573,7 @@
     /* Modal Footer */
     .bug-reporter-footer {
       display: flex;
-      justify-content: flex-end;
-      gap: 12px;
+      justify-content: space-between;
       padding: 16px 20px;
       border-top: 1px solid var(--br-border);
       flex-shrink: 0;
@@ -1104,23 +1094,6 @@
                   </div>
                 </div>
 
-                <!-- Screenshot -->
-                <div class="bug-reporter-screenshot">
-                  <div class="bug-reporter-screenshot-header">
-                    <span class="bug-reporter-screenshot-label">
-                      ${ICONS.check}
-                      Screenshot captured
-                    </span>
-                    <div class="bug-reporter-screenshot-actions">
-                      <button class="bug-reporter-screenshot-btn" data-br-action="preview">Preview</button>
-                      <button class="bug-reporter-screenshot-btn" data-br-action="retake">Retake</button>
-                    </div>
-                  </div>
-                  <div class="bug-reporter-screenshot-preview">
-                    <img src="" alt="Screenshot preview">
-                  </div>
-                </div>
-
                 <!-- Title -->
                 <div class="bug-reporter-field">
                   <label class="bug-reporter-label">
@@ -1191,6 +1164,27 @@
                   <div class="bug-reporter-file-list"></div>
                 </div>
 
+                <!-- Screenshot (displayed like attachment) -->
+                <div class="bug-reporter-screenshot" style="display: none;">
+                  <div class="bug-reporter-file-item bug-reporter-screenshot-item">
+                    <div class="bug-reporter-file-icon">${ICONS.file}</div>
+                    <div class="bug-reporter-file-info">
+                      <div class="bug-reporter-file-name">screenshot.png</div>
+                      <div class="bug-reporter-file-size bug-reporter-screenshot-size"></div>
+                    </div>
+                    <div class="bug-reporter-screenshot-actions">
+                      <button type="button" class="bug-reporter-screenshot-btn" data-br-action="preview">Preview</button>
+                      <button type="button" class="bug-reporter-screenshot-btn" data-br-action="retake">Retake</button>
+                    </div>
+                    <button type="button" class="bug-reporter-file-remove bug-reporter-screenshot-remove" data-br-action="remove-screenshot">
+                      ${ICONS.trash}
+                    </button>
+                  </div>
+                  <div class="bug-reporter-screenshot-preview">
+                    <img src="" alt="Screenshot preview">
+                  </div>
+                </div>
+
                 <!-- Diagnostics Summary -->
                 <div class="bug-reporter-diagnostics">
                   <div class="bug-reporter-diagnostics-title">
@@ -1222,9 +1216,6 @@
               <div class="bug-reporter-success-title">Report Submitted</div>
               <div class="bug-reporter-success-message">Thank you for your feedback!</div>
               <div class="bug-reporter-success-id"></div>
-              <button type="button" class="bug-reporter-btn-primary bug-reporter-success-close" data-br-action="close-success">
-                Close
-              </button>
             </div>
           </div>
         </div>
@@ -1258,15 +1249,8 @@
         this.close();
       });
 
-      // Close success view - both X button and Close button
-      const successCloseBtn = this.container.querySelector('[data-br-action="close-success"]');
+      // Close success view - X button only
       const successXBtn = this.container.querySelector('[data-br-action="close-success-x"]');
-
-      successCloseBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.close();
-      });
 
       successXBtn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -1320,6 +1304,14 @@
         const action = e.target.dataset.brAction;
         if (action === 'preview') this.toggleScreenshotPreview();
         if (action === 'retake') this.captureScreenshot();
+      });
+
+      // Screenshot remove button
+      const screenshotRemoveBtn = this.container.querySelector('.bug-reporter-screenshot-remove');
+      screenshotRemoveBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.removeScreenshot();
       });
 
       // File list remove buttons (delegated)
@@ -1396,7 +1388,7 @@
       const screenshotSection = this.container.querySelector('.bug-reporter-screenshot');
       const previewContainer = this.container.querySelector('.bug-reporter-screenshot-preview');
       const previewImg = previewContainer.querySelector('img');
-      const label = this.container.querySelector('.bug-reporter-screenshot-label');
+      const sizeLabel = this.container.querySelector('.bug-reporter-screenshot-size');
 
       // Hide modal temporarily for screenshot
       const overlay = this.container.querySelector('.bug-reporter-overlay');
@@ -1422,15 +1414,17 @@
         this.screenshot = canvas.toDataURL('image/png');
         previewImg.src = this.screenshot;
 
-        label.innerHTML = `${ICONS.check} Screenshot captured`;
-        label.style.color = 'var(--br-success)';
+        // Calculate approximate file size from base64
+        const base64Length = this.screenshot.length - 'data:image/png;base64,'.length;
+        const fileSize = Math.round((base64Length * 3) / 4);
+        sizeLabel.textContent = formatFileSize(fileSize);
+
         screenshotSection.style.display = 'block';
         previewContainer.classList.remove('visible');
 
       } catch (error) {
         console.error('Screenshot capture failed:', error);
-        label.innerHTML = `${ICONS.alertCircle} Screenshot failed`;
-        label.style.color = 'var(--br-warning)';
+        screenshotSection.style.display = 'none';
         this.screenshot = null;
       }
 
@@ -1441,6 +1435,14 @@
     toggleScreenshotPreview() {
       const preview = this.container.querySelector('.bug-reporter-screenshot-preview');
       preview.classList.toggle('visible');
+    }
+
+    removeScreenshot() {
+      this.screenshot = null;
+      const screenshotSection = this.container.querySelector('.bug-reporter-screenshot');
+      const preview = this.container.querySelector('.bug-reporter-screenshot-preview');
+      screenshotSection.style.display = 'none';
+      preview.classList.remove('visible');
     }
 
     handleFiles(files) {
