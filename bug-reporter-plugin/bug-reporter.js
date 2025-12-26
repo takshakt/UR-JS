@@ -164,6 +164,14 @@
       animation: bugReporterSlideIn 0.3s ease;
     }
 
+    .bug-reporter-form-view {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
     @keyframes bugReporterSlideIn {
       from {
         opacity: 0;
