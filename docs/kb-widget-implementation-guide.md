@@ -47,7 +47,7 @@ The Knowledge Base (KB) Widget is a portable, self-contained JavaScript componen
 |---------|-------------|
 | Markdown Rendering | Full GFM (GitHub Flavored Markdown) support with syntax highlighting |
 | Sidebar Navigation | Hierarchical document and section navigation |
-| Full-text Search | Fuzzy search across all documents with keyboard navigation |
+| Inline Search | Live fuzzy search with dropdown results and content highlighting |
 | PDF Export | Export individual sections or entire documents with branding |
 | Breadcrumb Navigation | Visual path indicator with clickable navigation |
 | Prev/Next Navigation | Sequential navigation through document sections |
@@ -72,6 +72,17 @@ The Knowledge Base (KB) Widget is a portable, self-contained JavaScript componen
 | Direct Video | MP4, WebM, OGG, MOV files |
 | Images | JPG, PNG, GIF, WebP, SVG, BMP |
 | External Links | Preview cards with domain display |
+
+### Enhanced User Experience Features
+
+| Feature | Description |
+|---------|-------------|
+| Copy Code Button | One-click copy for code blocks with visual feedback |
+| Reading Time Estimate | Automatic reading time calculation for each section |
+| Scroll-to-Top Button | Floating button appears after scrolling down |
+| Image Lightbox | Click images to view in fullscreen overlay |
+| Keyboard Shortcuts Help | Press `?` to view all available keyboard shortcuts |
+| Search Highlighting | Search terms are highlighted in content when navigating from search results |
 
 ---
 
@@ -296,14 +307,20 @@ kb.navigateSection('next');
 #### Search Methods
 
 ```javascript
-// Open the search modal
-kb.openSearch();
+// Perform inline search (populates dropdown and highlights in content)
+kb.performInlineSearch('search query');
 
-// Close the search modal
-kb.closeSearch();
+// Clear search input, dropdown, and highlights
+kb.clearInlineSearch();
 
-// Perform a search programmatically
-kb.performSearch('search query');
+// Highlight search terms in current content
+kb.highlightSearchTerms('query');
+
+// Clear search highlights from content
+kb.clearSearchHighlights();
+
+// Focus the search input programmatically
+document.querySelector('.ur-kb-inline-search-input').focus();
 ```
 
 #### Export Methods
@@ -959,6 +976,22 @@ console.log('Current Section:', KnowledgeBase.instance.currentSection);
 | `extractSectionContent(content, section, skipHeader)` | 2400 | Extracts markdown content for a section |
 | `async fetchLinkTitle(linkId, url)` | 2547 | Fetches page title for link preview cards |
 
+### Enhanced UX Functions
+
+| Function | Line | Description |
+|----------|------|-------------|
+| `copyCode(btn)` | 3036 | Copies code block content to clipboard with visual feedback |
+| `updateScrollTopButton()` | 3052 | Shows/hides scroll-to-top button based on scroll position |
+| `scrollToTop()` | 3060 | Smooth scrolls content area to top |
+| `openLightbox(src)` | 3066 | Opens image in fullscreen lightbox overlay |
+| `closeLightbox()` | 3076 | Closes the image lightbox |
+| `openShortcutsModal()` | 3081 | Opens keyboard shortcuts help modal |
+| `closeShortcutsModal()` | 3086 | Closes the keyboard shortcuts modal |
+| `calculateReadingTime(text)` | 3092 | Calculates estimated reading time (200 wpm average) |
+| `addCopyButtons()` | 3100 | Adds copy buttons to all code blocks in content |
+| `highlightSearchTerms(query)` | 3116 | Highlights search terms in rendered content |
+| `removeSearchHighlights()` | 3139 | Removes all search term highlights from content |
+
 ---
 
 ## Appendix C: CSS Variables
@@ -1025,6 +1058,8 @@ console.log('Current Section:', KnowledgeBase.instance.currentSection);
 
 This section outlines potential features for future versions of the KB Widget to make it more feature-rich and modern.
 
+> **Note:** Features marked with ✅ have been implemented in v4.0 (December 2025).
+
 ### Content & Navigation Enhancements
 
 | Feature | Description | Priority |
@@ -1043,7 +1078,7 @@ This section outlines potential features for future versions of the KB Widget to
 | Feature | Description | Priority |
 |---------|-------------|----------|
 | **Advanced Search Filters** | Filter by document, date, tags, content type | Medium |
-| **Search Highlighting** | Highlight search terms in content after navigation | High |
+| ✅ **Search Highlighting** | Highlight search terms in content after navigation | High |
 | **Search History** | Remember recent searches | Low |
 | **Tag/Category System** | Organize documents with tags, filterable sidebar | Medium |
 | **AI-Powered Search** | Semantic search using embeddings (OpenAI/local) | Low |
@@ -1053,12 +1088,12 @@ This section outlines potential features for future versions of the KB Widget to
 
 | Feature | Description | Priority |
 |---------|-------------|----------|
-| **Image Lightbox** | Click to expand images in modal with zoom/pan | High |
+| ✅ **Image Lightbox** | Click to expand images in modal with zoom/pan | High |
 | **Image Gallery** | Support for image galleries/carousels | Medium |
 | **Audio Player** | Embed audio files with custom player | Low |
 | **Mermaid.js Diagrams** | Support for flowcharts, ERDs, sequence diagrams | High |
 | **Code Playground** | Executable code blocks (JS, SQL with mock data) | Low |
-| **Copy Code Button** | One-click copy for code blocks | High |
+| ✅ **Copy Code Button** | One-click copy for code blocks | High |
 | **Math/LaTeX Support** | Render mathematical equations (KaTeX/MathJax) | Medium |
 | **Embedded Forms** | Simple feedback forms within documentation | Low |
 | **File Attachments** | Download links for associated files (ZIP, PDF, etc.) | Medium |
@@ -1081,9 +1116,9 @@ This section outlines potential features for future versions of the KB Widget to
 | **Reading Mode** | Distraction-free mode hiding sidebar | Medium |
 | **Focus Mode** | Highlight current paragraph while reading | Low |
 | **Dyslexia-Friendly Font** | OpenDyslexic font option | Medium |
-| **Reading Time Estimate** | Show "5 min read" for each section | High |
-| **Scroll-to-Top Button** | Floating button for long content | High |
-| **Keyboard Shortcuts Help** | Modal showing all keyboard shortcuts | Medium |
+| ✅ **Reading Time Estimate** | Show "5 min read" for each section | High |
+| ✅ **Scroll-to-Top Button** | Floating button for long content | High |
+| ✅ **Keyboard Shortcuts Help** | Modal showing all keyboard shortcuts | Medium |
 | **Custom Font Selection** | Let users choose preferred font | Low |
 | **Line Spacing Control** | Adjust line height for readability | Low |
 | **TTS Queue** | Queue multiple sections for continuous reading | Low |
@@ -1144,13 +1179,13 @@ This section outlines potential features for future versions of the KB Widget to
 
 ### Implementation Roadmap Recommendations
 
-#### Quick Wins (Easy to implement, high value)
-1. Copy Code Button
-2. Reading Time Estimate
-3. Scroll-to-Top Button
-4. Image Lightbox
-5. Keyboard Shortcuts Help Modal
-6. Search Highlighting
+#### Quick Wins (Easy to implement, high value) - ✅ All Implemented in v4.0
+1. ✅ Copy Code Button
+2. ✅ Reading Time Estimate
+3. ✅ Scroll-to-Top Button
+4. ✅ Image Lightbox
+5. ✅ Keyboard Shortcuts Help Modal
+6. ✅ Search Highlighting
 
 #### High Impact (More effort but valuable)
 1. Mermaid.js Diagrams

@@ -156,37 +156,51 @@
       height: 16px;
     }
 
-    .ur-kb-search-trigger {
+    /* Inline Search */
+    .ur-kb-inline-search {
       flex: 1;
+      position: relative;
+      max-width: 500px;
+    }
+
+    .ur-kb-inline-search-input-wrap {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 10px 16px;
+      padding: 8px 16px;
       background: var(--kb-sidebar-bg);
       border: 1px solid var(--kb-border);
       border-radius: var(--kb-radius);
-      cursor: pointer;
       transition: all var(--kb-transition);
     }
 
-    .ur-kb-search-trigger:hover {
+    .ur-kb-inline-search-input-wrap:focus-within {
       border-color: var(--kb-accent);
       box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
     }
 
-    .ur-kb-search-trigger svg {
+    .ur-kb-inline-search-input-wrap svg {
       width: 18px;
       height: 18px;
       color: var(--kb-text-muted);
+      flex-shrink: 0;
     }
 
-    .ur-kb-search-trigger span {
+    .ur-kb-inline-search-input {
       flex: 1;
-      color: var(--kb-text-muted);
-      text-align: left;
+      border: none;
+      background: transparent;
+      color: var(--kb-text);
+      font-size: 14px;
+      outline: none;
+      min-width: 0;
     }
 
-    .ur-kb-search-trigger kbd {
+    .ur-kb-inline-search-input::placeholder {
+      color: var(--kb-text-muted);
+    }
+
+    .ur-kb-search-shortcut {
       font-family: inherit;
       font-size: 12px;
       padding: 2px 6px;
@@ -194,6 +208,139 @@
       border: 1px solid var(--kb-border);
       border-radius: 4px;
       color: var(--kb-text-muted);
+      flex-shrink: 0;
+    }
+
+    .ur-kb-inline-search-input:not(:placeholder-shown) ~ .ur-kb-search-shortcut {
+      display: none;
+    }
+
+    .ur-kb-inline-search-clear {
+      background: none;
+      border: none;
+      padding: 4px;
+      cursor: pointer;
+      color: var(--kb-text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .ur-kb-inline-search-clear:hover {
+      background: var(--kb-sidebar-hover);
+      color: var(--kb-text);
+    }
+
+    .ur-kb-inline-search-clear svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Search Dropdown */
+    .ur-kb-inline-search-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 4px;
+      background: var(--kb-bg);
+      border: 1px solid var(--kb-border);
+      border-radius: var(--kb-radius);
+      box-shadow: var(--kb-shadow), 0 10px 40px rgba(0,0,0,0.15);
+      max-height: 400px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+    }
+
+    .ur-kb-inline-search-dropdown.active {
+      display: block;
+    }
+
+    .ur-kb-inline-search-dropdown:empty {
+      display: none !important;
+    }
+
+    .ur-kb-search-result {
+      padding: 12px 16px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--kb-border);
+      transition: background 0.15s ease;
+    }
+
+    .ur-kb-search-result:last-child {
+      border-bottom: none;
+    }
+
+    .ur-kb-search-result:hover,
+    .ur-kb-search-result.selected {
+      background: var(--kb-sidebar-hover);
+    }
+
+    .ur-kb-search-result-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      color: var(--kb-text);
+      margin-bottom: 4px;
+    }
+
+    .ur-kb-search-result-title svg {
+      width: 16px;
+      height: 16px;
+      color: var(--kb-accent);
+      flex-shrink: 0;
+    }
+
+    .ur-kb-search-result-path {
+      font-size: 12px;
+      color: var(--kb-text-muted);
+      margin-bottom: 4px;
+    }
+
+    .ur-kb-search-result-preview {
+      font-size: 13px;
+      color: var(--kb-text-muted);
+      line-height: 1.4;
+    }
+
+    .ur-kb-search-result-preview mark {
+      background: #fef08a;
+      color: inherit;
+      padding: 0 2px;
+      border-radius: 2px;
+    }
+
+    .ur-kb.dark .ur-kb-search-result-preview mark {
+      background: #854d0e;
+      color: #fef9c3;
+    }
+
+    .ur-kb-no-results {
+      padding: 24px 16px;
+      text-align: center;
+      color: var(--kb-text-muted);
+    }
+
+    .ur-kb-search-hint {
+      padding: 8px 16px;
+      font-size: 12px;
+      color: var(--kb-text-muted);
+      background: var(--kb-sidebar-bg);
+      border-top: 1px solid var(--kb-border);
+      display: flex;
+      gap: 16px;
+    }
+
+    .ur-kb-search-hint kbd {
+      background: var(--kb-bg);
+      padding: 1px 4px;
+      border-radius: 3px;
+      border: 1px solid var(--kb-border);
+      font-size: 11px;
     }
 
 
@@ -558,6 +705,12 @@
       margin: 0;
     }
 
+    .ur-kb-content-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
     .ur-kb-pdf-btn {
       display: inline-flex;
       align-items: center;
@@ -799,12 +952,57 @@
       overflow-x: auto;
       margin: 1em 0;
       border: 1px solid var(--kb-border);
+      position: relative;
     }
 
     .ur-kb-markdown pre code {
       background: none;
       padding: 0;
       color: inherit;
+    }
+
+    /* Copy Code Button */
+    .ur-kb-code-wrapper {
+      position: relative;
+    }
+
+    .ur-kb-copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 4px 8px;
+      background: var(--kb-sidebar-bg);
+      border: 1px solid var(--kb-border);
+      border-radius: 4px;
+      color: var(--kb-text-muted);
+      font-size: 12px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s ease, background 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      z-index: 5;
+    }
+
+    .ur-kb-code-wrapper:hover .ur-kb-copy-btn {
+      opacity: 1;
+    }
+
+    .ur-kb-copy-btn:hover {
+      background: var(--kb-sidebar-hover);
+      color: var(--kb-text);
+    }
+
+    .ur-kb-copy-btn.copied {
+      background: #10b981;
+      color: white;
+      border-color: #10b981;
+    }
+
+    .ur-kb-copy-btn svg {
+      width: 14px;
+      height: 14px;
     }
 
     .ur-kb-markdown ul, .ur-kb-markdown ol {
@@ -897,6 +1095,13 @@
       border: 1px solid var(--kb-border);
       border-radius: var(--kb-radius);
       background: var(--kb-bg);
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .ur-kb-image-container:hover {
+      transform: scale(1.02);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
     .ur-kb-image-container img {
@@ -904,6 +1109,326 @@
       max-width: 100%;
       height: auto;
       border-radius: calc(var(--kb-radius) - 4px);
+    }
+
+    /* Image Lightbox */
+    .ur-kb-lightbox {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .ur-kb-lightbox.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .ur-kb-lightbox img {
+      max-width: 90vw;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: var(--kb-radius);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    .ur-kb-lightbox-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease;
+    }
+
+    .ur-kb-lightbox-close:hover {
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* Scroll to Top Button */
+    .ur-kb-scroll-top {
+      position: absolute;
+      bottom: 80px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      background: var(--kb-accent);
+      color: white;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.2s ease;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .ur-kb-scroll-top.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .ur-kb-scroll-top:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .ur-kb-scroll-top svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Reading Time Badge */
+    .ur-kb-reading-time {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      color: var(--kb-text-muted);
+      margin-left: 12px;
+    }
+
+    .ur-kb-reading-time svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Search Highlighting */
+    .ur-kb-search-highlight {
+      background: #fef08a;
+      color: #1a1a2e;
+      padding: 1px 2px;
+      border-radius: 2px;
+    }
+
+    .ur-kb.dark .ur-kb-search-highlight {
+      background: #854d0e;
+      color: #fef9c3;
+    }
+
+    .ur-kb-search-highlight.current {
+      background: #f97316;
+      color: white;
+      outline: 2px solid #f97316;
+      outline-offset: 1px;
+    }
+
+    .ur-kb.dark .ur-kb-search-highlight.current {
+      background: #ea580c;
+      color: white;
+      outline-color: #ea580c;
+    }
+
+    /* Search Indicator Bar */
+    .ur-kb-search-indicator {
+      position: sticky;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: var(--kb-sidebar-bg);
+      border-bottom: 1px solid var(--kb-border);
+      padding: 8px 16px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      z-index: 50;
+      font-size: 13px;
+    }
+
+    .ur-kb-search-indicator.active {
+      display: flex;
+    }
+
+    .ur-kb-search-indicator-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--kb-text);
+    }
+
+    .ur-kb-search-indicator-info svg {
+      width: 16px;
+      height: 16px;
+      color: var(--kb-text-muted);
+    }
+
+    .ur-kb-search-indicator-term {
+      background: #fef08a;
+      color: #1a1a2e;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+
+    .ur-kb.dark .ur-kb-search-indicator-term {
+      background: #854d0e;
+      color: #fef9c3;
+    }
+
+    .ur-kb-search-indicator-count {
+      color: var(--kb-text-muted);
+    }
+
+    .ur-kb-search-indicator-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .ur-kb-search-indicator-nav {
+      padding: 4px 8px;
+      background: transparent;
+      border: 1px solid var(--kb-border);
+      border-radius: 4px;
+      color: var(--kb-text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      transition: background 0.2s ease;
+    }
+
+    .ur-kb-search-indicator-nav:hover {
+      background: var(--kb-sidebar-hover);
+    }
+
+    .ur-kb-search-indicator-nav svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .ur-kb-search-indicator-clear {
+      padding: 4px 8px;
+      background: transparent;
+      border: 1px solid var(--kb-border);
+      border-radius: 4px;
+      color: var(--kb-text-muted);
+      cursor: pointer;
+      font-size: 12px;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .ur-kb-search-indicator-clear:hover {
+      background: #ef4444;
+      border-color: #ef4444;
+      color: white;
+    }
+
+    /* Keyboard Shortcuts Modal */
+    .ur-kb-shortcuts-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--kb-search-bg);
+      z-index: 10001;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+
+    .ur-kb-shortcuts-modal.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .ur-kb-shortcuts-content {
+      background: var(--kb-bg);
+      border-radius: var(--kb-radius);
+      padding: 24px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    .ur-kb-shortcuts-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--kb-border);
+    }
+
+    .ur-kb-shortcuts-header h3 {
+      margin: 0;
+      font-size: 18px;
+      color: var(--kb-text);
+    }
+
+    .ur-kb-shortcuts-close {
+      background: none;
+      border: none;
+      color: var(--kb-text-muted);
+      cursor: pointer;
+      padding: 4px;
+    }
+
+    .ur-kb-shortcuts-close:hover {
+      color: var(--kb-text);
+    }
+
+    .ur-kb-shortcut-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--kb-border);
+    }
+
+    .ur-kb-shortcut-row:last-child {
+      border-bottom: none;
+    }
+
+    .ur-kb-shortcut-desc {
+      color: var(--kb-text);
+      font-size: 14px;
+    }
+
+    .ur-kb-shortcut-keys {
+      display: flex;
+      gap: 4px;
+    }
+
+    .ur-kb-shortcut-keys kbd {
+      background: var(--kb-sidebar-bg);
+      border: 1px solid var(--kb-border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-family: inherit;
+      font-size: 12px;
+      color: var(--kb-text);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
     }
 
     /* Legacy media container for backwards compatibility */
@@ -980,150 +1505,6 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-    }
-
-    /* Search Modal */
-    .ur-kb-search-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: var(--kb-search-bg);
-      display: none;
-      align-items: flex-start;
-      justify-content: center;
-      padding-top: 10vh;
-      z-index: 10000;
-      backdrop-filter: blur(4px);
-    }
-
-    .ur-kb-search-modal.active {
-      display: flex;
-    }
-
-    .ur-kb-search-dialog {
-      width: 100%;
-      max-width: 640px;
-      max-height: 70vh;
-      background: var(--kb-bg);
-      border-radius: var(--kb-radius);
-      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .ur-kb-search-input-wrap {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 16px 20px;
-      border-bottom: 1px solid var(--kb-border);
-    }
-
-    .ur-kb-search-input-wrap svg {
-      width: 20px;
-      height: 20px;
-      color: var(--kb-text-muted);
-    }
-
-    .ur-kb-search-input {
-      flex: 1;
-      border: none;
-      background: none;
-      font-size: 16px;
-      color: var(--kb-text);
-      outline: none;
-    }
-
-    .ur-kb-search-input::placeholder {
-      color: var(--kb-text-muted);
-    }
-
-    .ur-kb-search-close {
-      padding: 4px 8px;
-      background: var(--kb-sidebar-bg);
-      border: 1px solid var(--kb-border);
-      border-radius: 4px;
-      font-size: 12px;
-      color: var(--kb-text-muted);
-      cursor: pointer;
-    }
-
-    .ur-kb-search-results {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px;
-    }
-
-    .ur-kb-search-result {
-      padding: 12px 16px;
-      border-radius: var(--kb-radius);
-      cursor: pointer;
-      transition: background var(--kb-transition);
-    }
-
-    .ur-kb-search-result:hover,
-    .ur-kb-search-result.selected {
-      background: var(--kb-sidebar-hover);
-    }
-
-    .ur-kb-search-result-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 500;
-      color: var(--kb-text);
-      margin-bottom: 4px;
-    }
-
-    .ur-kb-search-result-title svg {
-      width: 16px;
-      height: 16px;
-      color: var(--kb-text-muted);
-    }
-
-    .ur-kb-search-result-path {
-      font-size: 12px;
-      color: var(--kb-text-muted);
-    }
-
-    .ur-kb-search-result-preview {
-      font-size: 14px;
-      color: var(--kb-text-muted);
-      margin-top: 6px;
-      line-height: 1.4;
-    }
-
-    .ur-kb-search-result-preview mark {
-      background: rgba(79, 70, 229, 0.2);
-      color: var(--kb-accent);
-      padding: 0 2px;
-      border-radius: 2px;
-    }
-
-    .ur-kb-search-footer {
-      padding: 12px 16px;
-      border-top: 1px solid var(--kb-border);
-      display: flex;
-      gap: 16px;
-      font-size: 12px;
-      color: var(--kb-text-muted);
-    }
-
-    .ur-kb-search-footer kbd {
-      padding: 2px 6px;
-      background: var(--kb-sidebar-bg);
-      border: 1px solid var(--kb-border);
-      border-radius: 4px;
-      font-family: inherit;
-    }
-
-    .ur-kb-no-results {
-      padding: 40px 20px;
-      text-align: center;
-      color: var(--kb-text-muted);
     }
 
     /* Loading State */
@@ -1379,7 +1760,12 @@
     contrast: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 1 0 20z" fill="currentColor"></path></svg>',
     sun: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>',
     moon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>',
-    monitor: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>'
+    monitor: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>',
+    copy: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>',
+    check: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+    clock: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>',
+    keyboard: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2" ry="2"></rect><path d="M6 8h.001"></path><path d="M10 8h.001"></path><path d="M14 8h.001"></path><path d="M18 8h.001"></path><path d="M8 12h.001"></path><path d="M12 12h.001"></path><path d="M16 12h.001"></path><path d="M7 16h10"></path></svg>',
+    close: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'
   };
 
   // ============================================================
@@ -1658,7 +2044,7 @@
           type: 'document',
           docId: doc.id,
           title: doc.title,
-          content: doc.content.substring(0, 500),
+          content: doc.content,
           path: doc.title
         });
 
@@ -1676,7 +2062,7 @@
               docId: doc.id,
               sectionId: section.id,
               title: section.text,
-              content: sectionContent.substring(0, 300),
+              content: sectionContent,
               path: `${doc.title} > ${sectionPath}`
             });
 
@@ -1689,10 +2075,15 @@
 
       this.searchIndex = searchData;
       this.fuse = new Fuse(searchData, {
-        keys: ['title', 'content'],
+        keys: [
+          { name: 'title', weight: 2 },
+          { name: 'content', weight: 1 }
+        ],
         includeMatches: true,
-        threshold: 0.3,
-        minMatchCharLength: 2
+        threshold: 0.4,
+        minMatchCharLength: 2,
+        ignoreLocation: true,
+        findAllMatches: true
       });
     }
 
@@ -1713,10 +2104,14 @@
           </div>
           <div class="ur-kb-header">
             <button class="ur-kb-home-btn" aria-label="Home">${ICONS.home}<span>Home</span></button>
-            <div class="ur-kb-search-trigger" role="button" tabindex="0">
-              ${ICONS.search}
-              <span>Search all documents...</span>
-              <kbd>⌘K</kbd>
+            <div class="ur-kb-inline-search">
+              <div class="ur-kb-inline-search-input-wrap">
+                ${ICONS.search}
+                <input type="text" class="ur-kb-inline-search-input" placeholder="Search all documents..." autocomplete="off">
+                <kbd class="ur-kb-search-shortcut">⌘K</kbd>
+                <button type="button" class="ur-kb-inline-search-clear" style="display:none">${ICONS.close}</button>
+              </div>
+              <div class="ur-kb-inline-search-dropdown"></div>
             </div>
             ${this.options.enableAccessibility ? `
             <div class="ur-kb-a11y-toolbar">
@@ -1743,10 +2138,12 @@
               <div class="ur-kb-scroll-indicator"></div>
               <main class="ur-kb-content"></main>
               <div class="ur-kb-footer"></div>
+              <button class="ur-kb-scroll-top" type="button" aria-label="Scroll to top" title="Scroll to top">${ICONS.arrowUp}</button>
             </div>
             <div class="ur-kb-overlay"></div>
           </div>
-          ${this.renderSearchModal()}
+          ${this.renderLightbox()}
+          ${this.renderShortcutsModal()}
         </div>
       `;
 
@@ -1788,20 +2185,57 @@
       `).join('');
     }
 
-    renderSearchModal() {
+
+    renderLightbox() {
       return `
-        <div class="ur-kb-search-modal">
-          <div class="ur-kb-search-dialog">
-            <div class="ur-kb-search-input-wrap">
-              ${ICONS.search}
-              <input type="text" class="ur-kb-search-input" placeholder="Search documentation...">
-              <button class="ur-kb-search-close">ESC</button>
+        <div class="ur-kb-lightbox">
+          <button class="ur-kb-lightbox-close" type="button" aria-label="Close">${ICONS.close}</button>
+          <img src="" alt="Enlarged image">
+        </div>
+      `;
+    }
+
+    renderShortcutsModal() {
+      return `
+        <div class="ur-kb-shortcuts-modal">
+          <div class="ur-kb-shortcuts-content">
+            <div class="ur-kb-shortcuts-header">
+              <h3>${ICONS.keyboard} Keyboard Shortcuts</h3>
+              <button class="ur-kb-shortcuts-close" type="button" aria-label="Close">${ICONS.close}</button>
             </div>
-            <div class="ur-kb-search-results"></div>
-            <div class="ur-kb-search-footer">
-              <span><kbd>↑↓</kbd> Navigate</span>
-              <span><kbd>↵</kbd> Open</span>
-              <span><kbd>ESC</kbd> Close</span>
+            <div class="ur-kb-shortcuts-body">
+              <div class="ur-kb-shortcut-row">
+                <span class="ur-kb-shortcut-desc">Open search</span>
+                <span class="ur-kb-shortcut-keys"><kbd>⌘</kbd><kbd>K</kbd></span>
+              </div>
+              <div class="ur-kb-shortcut-row">
+                <span class="ur-kb-shortcut-desc">Close modal / Go back</span>
+                <span class="ur-kb-shortcut-keys"><kbd>ESC</kbd></span>
+              </div>
+              <div class="ur-kb-shortcut-row">
+                <span class="ur-kb-shortcut-desc">Navigate search results</span>
+                <span class="ur-kb-shortcut-keys"><kbd>↑</kbd><kbd>↓</kbd></span>
+              </div>
+              <div class="ur-kb-shortcut-row">
+                <span class="ur-kb-shortcut-desc">Select search result</span>
+                <span class="ur-kb-shortcut-keys"><kbd>Enter</kbd></span>
+              </div>
+              <div class="ur-kb-shortcut-row">
+                <span class="ur-kb-shortcut-desc">Go to previous section</span>
+                <span class="ur-kb-shortcut-keys"><kbd>←</kbd></span>
+              </div>
+              <div class="ur-kb-shortcut-row">
+                <span class="ur-kb-shortcut-desc">Go to next section</span>
+                <span class="ur-kb-shortcut-keys"><kbd>→</kbd></span>
+              </div>
+              <div class="ur-kb-shortcut-row">
+                <span class="ur-kb-shortcut-desc">Go to home</span>
+                <span class="ur-kb-shortcut-keys"><kbd>H</kbd></span>
+              </div>
+              <div class="ur-kb-shortcut-row">
+                <span class="ur-kb-shortcut-desc">Show keyboard shortcuts</span>
+                <span class="ur-kb-shortcut-keys"><kbd>?</kbd></span>
+              </div>
             </div>
           </div>
         </div>
@@ -1911,9 +2345,19 @@
           return;
         }
 
-        // Search trigger
-        if (e.target.closest('.ur-kb-search-trigger')) {
-          this.openSearch();
+        // Inline search clear button
+        if (e.target.closest('.ur-kb-inline-search-clear')) {
+          e.preventDefault();
+          this.clearInlineSearch();
+          return;
+        }
+
+        // Inline search result click
+        const searchResult = e.target.closest('.ur-kb-search-result');
+        if (searchResult) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.selectSearchResult(searchResult);
           return;
         }
 
@@ -1952,22 +2396,56 @@
           return;
         }
 
-        // Search close
-        if (e.target.closest('.ur-kb-search-close')) {
-          this.closeSearch();
+        // Copy Code Button
+        const copyBtn = e.target.closest('.ur-kb-copy-btn');
+        if (copyBtn) {
+          e.preventDefault();
+          this.copyCode(copyBtn);
           return;
         }
 
-        // Search modal background
-        if (e.target.classList.contains('ur-kb-search-modal')) {
-          this.closeSearch();
+        // Scroll to Top Button
+        if (e.target.closest('.ur-kb-scroll-top')) {
+          e.preventDefault();
+          this.scrollToTop();
           return;
         }
 
-        // Search result click
-        const searchResult = e.target.closest('.ur-kb-search-result');
-        if (searchResult) {
-          this.selectSearchResult(searchResult);
+        // Search Indicator - Navigate highlights
+        const highlightNavBtn = e.target.closest('.ur-kb-search-indicator-nav');
+        if (highlightNavBtn) {
+          e.preventDefault();
+          const direction = parseInt(highlightNavBtn.dataset.direction, 10);
+          this.navigateHighlights(direction);
+          return;
+        }
+
+        // Search Indicator - Clear highlights
+        if (e.target.closest('.ur-kb-search-indicator-clear')) {
+          e.preventDefault();
+          this.clearSearchHighlights();
+          return;
+        }
+
+        // Image Lightbox - Open
+        const imageContainer = e.target.closest('.ur-kb-image-container');
+        if (imageContainer) {
+          const img = imageContainer.querySelector('img');
+          if (img) {
+            this.openLightbox(img.src);
+          }
+          return;
+        }
+
+        // Lightbox - Close
+        if (e.target.closest('.ur-kb-lightbox-close') || e.target.classList.contains('ur-kb-lightbox')) {
+          this.closeLightbox();
+          return;
+        }
+
+        // Keyboard Shortcuts Modal - Close
+        if (e.target.closest('.ur-kb-shortcuts-close') || e.target.classList.contains('ur-kb-shortcuts-modal')) {
+          this.closeShortcutsModal();
           return;
         }
 
@@ -2000,26 +2478,58 @@
         }
       });
 
-      // Search input
-      const searchInput = kb.querySelector('.ur-kb-search-input');
-      searchInput.addEventListener('input', debounce((e) => {
-        this.performSearch(e.target.value);
-      }, 200));
+      // Inline search input
+      const inlineSearchInput = kb.querySelector('.ur-kb-inline-search-input');
+      const searchDropdown = kb.querySelector('.ur-kb-inline-search-dropdown');
+      const clearBtn = kb.querySelector('.ur-kb-inline-search-clear');
 
-      // Keyboard shortcuts
-      document.addEventListener('keydown', (e) => {
-        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-          e.preventDefault();
-          this.openSearch();
-          return;
+      inlineSearchInput.addEventListener('input', debounce((e) => {
+        const query = e.target.value.trim();
+        this.performInlineSearch(query);
+
+        // Show/hide clear button
+        clearBtn.style.display = query ? 'flex' : 'none';
+
+        // Live highlight in current document
+        if (query.length >= 2) {
+          this.highlightSearchTerms(query);
+        } else {
+          this.clearSearchHighlights();
         }
+      }, 150));
+
+      // Focus inline search input
+      inlineSearchInput.addEventListener('focus', () => {
+        const query = inlineSearchInput.value.trim();
+        if (query.length >= 2) {
+          this.performInlineSearch(query);
+        }
+      });
+
+      // Close dropdown on outside click
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.ur-kb-inline-search')) {
+          searchDropdown.classList.remove('active');
+        }
+      });
+
+      // Keyboard navigation in search
+      inlineSearchInput.addEventListener('keydown', (e) => {
+        const dropdown = kb.querySelector('.ur-kb-inline-search-dropdown');
+        const isDropdownActive = dropdown.classList.contains('active');
 
         if (e.key === 'Escape') {
-          this.closeSearch();
+          e.preventDefault();
+          if (isDropdownActive) {
+            dropdown.classList.remove('active');
+          } else if (inlineSearchInput.value) {
+            this.clearInlineSearch();
+          }
+          inlineSearchInput.blur();
           return;
         }
 
-        if (kb.querySelector('.ur-kb-search-modal.active')) {
+        if (isDropdownActive) {
           if (e.key === 'ArrowDown') {
             e.preventDefault();
             this.navigateSearchResults(1);
@@ -2028,16 +2538,72 @@
             this.navigateSearchResults(-1);
           } else if (e.key === 'Enter') {
             e.preventDefault();
-            const selected = kb.querySelector('.ur-kb-search-result.selected');
+            const selected = dropdown.querySelector('.ur-kb-search-result.selected');
             if (selected) this.selectSearchResult(selected);
           }
         }
       });
 
-      // Scroll listener for section indicator
+      // Keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        // Don't trigger shortcuts when typing in input fields
+        const isTyping = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+
+        if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+          e.preventDefault();
+          inlineSearchInput.focus();
+          inlineSearchInput.select();
+          return;
+        }
+
+        if (e.key === 'Escape' && !isTyping) {
+          // Close modals in order of priority
+          if (kb.querySelector('.ur-kb-lightbox.active')) {
+            this.closeLightbox();
+          } else if (kb.querySelector('.ur-kb-shortcuts-modal.active')) {
+            this.closeShortcutsModal();
+          } else if (kb.querySelector('.ur-kb-search-indicator.active')) {
+            this.clearSearchHighlights();
+          }
+          return;
+        }
+
+        // Global shortcuts (when not typing)
+        if (!isTyping) {
+          // ? - Show keyboard shortcuts
+          if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+            e.preventDefault();
+            this.openShortcutsModal();
+            return;
+          }
+
+          // H - Go home
+          if (e.key === 'h' || e.key === 'H') {
+            e.preventDefault();
+            this.showHome();
+            return;
+          }
+
+          // Arrow keys - Navigate sections
+          if (e.key === 'ArrowLeft' && this.currentSection) {
+            e.preventDefault();
+            this.navigateSection('prev');
+            return;
+          }
+
+          if (e.key === 'ArrowRight' && this.currentSection) {
+            e.preventDefault();
+            this.navigateSection('next');
+            return;
+          }
+        }
+      });
+
+      // Scroll listener for section indicator and scroll-to-top button
       const content = kb.querySelector('.ur-kb-content');
       content.addEventListener('scroll', debounce(() => {
         this.updateScrollIndicator();
+        this.updateScrollTopButton();
       }, 50));
     }
 
@@ -2323,10 +2889,17 @@
     renderDocumentContent(doc) {
       const content = this.container.querySelector('.ur-kb-content');
       const html = this.renderMarkdownWithHeaders(doc.content);
+      const readingTime = this.calculateReadingTime(doc.content);
 
       content.innerHTML = `
         <div class="ur-kb-content-header">
           <h1 class="ur-kb-content-title">${escapeHtml(doc.title)}</h1>
+          <div class="ur-kb-content-meta">
+            <span class="ur-kb-reading-time" title="Estimated reading time">
+              ${ICONS.clock}
+              <span>${readingTime}</span>
+            </span>
+          </div>
         </div>
         <div class="ur-kb-markdown">
           ${html}
@@ -2336,6 +2909,9 @@
       content.querySelectorAll('pre code').forEach(block => {
         if (typeof hljs !== 'undefined') hljs.highlightElement(block);
       });
+
+      // Add copy buttons to code blocks
+      this.addCopyButtons();
 
       // Scroll to top (anchor link clicks handled via event delegation in setupEventListeners)
       content.scrollTop = 0;
@@ -2376,16 +2952,23 @@
       // Skip the main section header since it's shown in the content-header
       const sectionContent = this.extractSectionContent(doc.content, section, true);
       const html = this.renderMarkdownWithHeaders(sectionContent);
+      const readingTime = this.calculateReadingTime(sectionContent);
 
       content.innerHTML = `
         <div class="ur-kb-content-header">
           <h1 class="ur-kb-content-title">${escapeHtml(section.text)}</h1>
-          ${this.options.enablePdfExport ? `
-            <button class="ur-kb-pdf-btn" title="Download this section as PDF">
-              ${ICONS.download}
-              <span>PDF</span>
-            </button>
-          ` : ''}
+          <div class="ur-kb-content-meta">
+            <span class="ur-kb-reading-time" title="Estimated reading time">
+              ${ICONS.clock}
+              <span>${readingTime}</span>
+            </span>
+            ${this.options.enablePdfExport ? `
+              <button class="ur-kb-pdf-btn" title="Download this section as PDF">
+                ${ICONS.download}
+                <span>PDF</span>
+              </button>
+            ` : ''}
+          </div>
         </div>
         <div class="ur-kb-markdown" id="ur-kb-print-content">
           ${html}
@@ -2395,6 +2978,9 @@
       content.querySelectorAll('pre code').forEach(block => {
         if (typeof hljs !== 'undefined') hljs.highlightElement(block);
       });
+
+      // Add copy buttons to code blocks
+      this.addCopyButtons();
 
       // Scroll to top
       content.scrollTop = 0;
@@ -2602,48 +3188,268 @@
       localStorage.setItem('ur-kb-sidebar', this.sidebarCollapsed ? 'collapsed' : 'expanded');
     }
 
+    // ============================================================
+    // Quick Win Features
+    // ============================================================
 
-    openSearch() {
-      const modal = this.container.querySelector('.ur-kb-search-modal');
-      const input = modal.querySelector('.ur-kb-search-input');
+    // Copy Code Button
+    copyCode(btn) {
+      const wrapper = btn.closest('.ur-kb-code-wrapper');
+      const code = wrapper.querySelector('code');
+      const text = code.textContent;
+
+      navigator.clipboard.writeText(text).then(() => {
+        btn.classList.add('copied');
+        btn.innerHTML = `${ICONS.check}<span>Copied!</span>`;
+
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.innerHTML = `${ICONS.copy}<span>Copy</span>`;
+        }, 2000);
+      }).catch(err => {
+        console.error('Failed to copy:', err);
+      });
+    }
+
+    // Scroll to Top
+    updateScrollTopButton() {
+      const content = this.container.querySelector('.ur-kb-content');
+      const scrollTopBtn = this.container.querySelector('.ur-kb-scroll-top');
+
+      if (scrollTopBtn) {
+        const shouldShow = content.scrollTop > 300;
+        scrollTopBtn.classList.toggle('visible', shouldShow);
+      }
+    }
+
+    scrollToTop() {
+      const content = this.container.querySelector('.ur-kb-content');
+      content.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Image Lightbox
+    openLightbox(src) {
+      const lightbox = this.container.querySelector('.ur-kb-lightbox');
+      const img = lightbox.querySelector('img');
+      img.src = src;
+      lightbox.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    closeLightbox() {
+      const lightbox = this.container.querySelector('.ur-kb-lightbox');
+      lightbox.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    // Keyboard Shortcuts Modal
+    openShortcutsModal() {
+      const modal = this.container.querySelector('.ur-kb-shortcuts-modal');
       modal.classList.add('active');
-      input.focus();
-      input.select();
     }
 
-    closeSearch() {
-      const modal = this.container.querySelector('.ur-kb-search-modal');
+    closeShortcutsModal() {
+      const modal = this.container.querySelector('.ur-kb-shortcuts-modal');
       modal.classList.remove('active');
-      modal.querySelector('.ur-kb-search-input').value = '';
-      modal.querySelector('.ur-kb-search-results').innerHTML = '';
     }
 
-    performSearch(query) {
-      const resultsContainer = this.container.querySelector('.ur-kb-search-results');
+    // Reading Time Calculator
+    calculateReadingTime(text) {
+      const wordsPerMinute = 200;
+      const words = text.trim().split(/\s+/).length;
+      const minutes = Math.ceil(words / wordsPerMinute);
+      return minutes < 1 ? '< 1 min read' : `${minutes} min read`;
+    }
+
+    // Add copy buttons to code blocks after rendering
+    addCopyButtons() {
+      const codeBlocks = this.container.querySelectorAll('.ur-kb-markdown pre');
+      codeBlocks.forEach(pre => {
+        // Skip if already wrapped
+        if (pre.parentElement.classList.contains('ur-kb-code-wrapper')) return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'ur-kb-code-wrapper';
+        pre.parentNode.insertBefore(wrapper, pre);
+        wrapper.appendChild(pre);
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'ur-kb-copy-btn';
+        btn.innerHTML = `${ICONS.copy}<span>Copy</span>`;
+        btn.setAttribute('aria-label', 'Copy code');
+        wrapper.appendChild(btn);
+      });
+    }
+
+    // Highlight search terms in content
+    highlightSearchTerms(query) {
+      if (!query || query.length < 2) return;
+
+      const content = this.container.querySelector('.ur-kb-markdown');
+      if (!content) return;
+
+      // Remove existing highlights
+      this.removeSearchHighlights();
+
+      // Store current search query
+      this.currentSearchQuery = query;
+      this.currentHighlightIndex = 0;
+
+      // Create regex for search terms
+      const terms = query.split(/\s+/).filter(t => t.length >= 2);
+      if (terms.length === 0) return;
+
+      const regex = new RegExp(`(${terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'gi');
+
+      // Walk through text nodes and highlight matches
+      const walker = document.createTreeWalker(content, NodeFilter.SHOW_TEXT, null, false);
+      const textNodes = [];
+      while (walker.nextNode()) {
+        if (walker.currentNode.textContent.match(regex)) {
+          textNodes.push(walker.currentNode);
+        }
+      }
+
+      textNodes.forEach(node => {
+        const span = document.createElement('span');
+        span.innerHTML = node.textContent.replace(regex, '<mark class="ur-kb-search-highlight">$1</mark>');
+        node.parentNode.replaceChild(span, node);
+      });
+
+      // Show search indicator bar
+      this.showSearchIndicator(query);
+    }
+
+    showSearchIndicator(query) {
+      const highlights = this.container.querySelectorAll('.ur-kb-search-highlight');
+      const count = highlights.length;
+
+      if (count === 0) {
+        this.hideSearchIndicator();
+        return;
+      }
+
+      let indicator = this.container.querySelector('.ur-kb-search-indicator');
+
+      // Create indicator if it doesn't exist
+      if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.className = 'ur-kb-search-indicator';
+        const contentArea = this.container.querySelector('.ur-kb-content');
+        contentArea.insertBefore(indicator, contentArea.firstChild);
+      }
+
+      indicator.innerHTML = `
+        <div class="ur-kb-search-indicator-info">
+          ${ICONS.search}
+          <span>Showing results for</span>
+          <span class="ur-kb-search-indicator-term">${escapeHtml(query)}</span>
+          <span class="ur-kb-search-indicator-count">(${count} match${count !== 1 ? 'es' : ''})</span>
+        </div>
+        <div class="ur-kb-search-indicator-actions">
+          <button class="ur-kb-search-indicator-nav" data-direction="-1" title="Previous match">
+            ${ICONS.chevronLeft}
+            <span>Prev</span>
+          </button>
+          <button class="ur-kb-search-indicator-nav" data-direction="1" title="Next match">
+            <span>Next</span>
+            ${ICONS.chevronRight}
+          </button>
+          <button class="ur-kb-search-indicator-clear" title="Clear highlights">
+            Clear
+          </button>
+        </div>
+      `;
+
+      indicator.classList.add('active');
+
+      // Scroll to first highlight
+      if (highlights.length > 0) {
+        this.scrollToHighlight(0);
+      }
+    }
+
+    hideSearchIndicator() {
+      const indicator = this.container.querySelector('.ur-kb-search-indicator');
+      if (indicator) {
+        indicator.classList.remove('active');
+      }
+      this.currentSearchQuery = null;
+      this.currentHighlightIndex = 0;
+    }
+
+    scrollToHighlight(index) {
+      const highlights = this.container.querySelectorAll('.ur-kb-search-highlight');
+      if (highlights.length === 0) return;
+
+      // Wrap around
+      if (index < 0) index = highlights.length - 1;
+      if (index >= highlights.length) index = 0;
+
+      this.currentHighlightIndex = index;
+
+      // Remove current highlight styling from all
+      highlights.forEach(h => h.classList.remove('current'));
+
+      // Add current highlight styling
+      const current = highlights[index];
+      current.classList.add('current');
+
+      // Scroll into view
+      current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // Update counter in indicator
+      const countEl = this.container.querySelector('.ur-kb-search-indicator-count');
+      if (countEl) {
+        countEl.textContent = `(${index + 1} of ${highlights.length})`;
+      }
+    }
+
+    navigateHighlights(direction) {
+      const newIndex = this.currentHighlightIndex + direction;
+      this.scrollToHighlight(newIndex);
+    }
+
+    clearSearchHighlights() {
+      this.removeSearchHighlights();
+      this.hideSearchIndicator();
+    }
+
+    removeSearchHighlights() {
+      const highlights = this.container.querySelectorAll('.ur-kb-search-highlight');
+      highlights.forEach(mark => {
+        const parent = mark.parentNode;
+        parent.replaceChild(document.createTextNode(mark.textContent), mark);
+        parent.normalize();
+      });
+    }
+
+    // Inline Search Methods
+    performInlineSearch(query) {
+      const dropdown = this.container.querySelector('.ur-kb-inline-search-dropdown');
 
       if (!query || query.length < 2) {
-        resultsContainer.innerHTML = '';
+        dropdown.innerHTML = '';
+        dropdown.classList.remove('active');
         return;
       }
 
-      const results = this.fuse.search(query, { limit: 10 });
+      const results = this.fuse.search(query, { limit: 8 });
 
       if (results.length === 0) {
-        resultsContainer.innerHTML = `<div class="ur-kb-no-results">No results found for "${escapeHtml(query)}"</div>`;
+        dropdown.innerHTML = `
+          <div class="ur-kb-no-results">No results found for "${escapeHtml(query)}"</div>
+        `;
+        dropdown.classList.add('active');
         return;
       }
 
-      resultsContainer.innerHTML = results.map((result, index) => {
+      dropdown.innerHTML = results.map((result, index) => {
         const item = result.item;
-        let preview = item.content.substring(0, 150);
-        if (result.matches) {
-          result.matches.forEach(match => {
-            if (match.key === 'content') {
-              const regex = new RegExp(`(${escapeHtml(query)})`, 'gi');
-              preview = preview.replace(regex, '<mark>$1</mark>');
-            }
-          });
-        }
+        let preview = item.content.substring(0, 120);
+        const regex = new RegExp(`(${query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+        preview = escapeHtml(preview).replace(regex, '<mark>$1</mark>');
 
         return `
           <div class="ur-kb-search-result ${index === 0 ? 'selected' : ''}"
@@ -2658,10 +3464,34 @@
           </div>
         `;
       }).join('');
+
+      dropdown.innerHTML += `
+        <div class="ur-kb-search-hint">
+          <span><kbd>↑↓</kbd> Navigate</span>
+          <span><kbd>↵</kbd> Open</span>
+          <span><kbd>ESC</kbd> Close</span>
+        </div>
+      `;
+
+      dropdown.classList.add('active');
+    }
+
+    clearInlineSearch() {
+      const input = this.container.querySelector('.ur-kb-inline-search-input');
+      const dropdown = this.container.querySelector('.ur-kb-inline-search-dropdown');
+      const clearBtn = this.container.querySelector('.ur-kb-inline-search-clear');
+
+      input.value = '';
+      dropdown.innerHTML = '';
+      dropdown.classList.remove('active');
+      clearBtn.style.display = 'none';
+
+      this.clearSearchHighlights();
     }
 
     navigateSearchResults(direction) {
-      const results = this.container.querySelectorAll('.ur-kb-search-result');
+      const dropdown = this.container.querySelector('.ur-kb-inline-search-dropdown');
+      const results = dropdown.querySelectorAll('.ur-kb-search-result');
       if (results.length === 0) return;
 
       const currentIndex = Array.from(results).findIndex(r => r.classList.contains('selected'));
@@ -2678,12 +3508,23 @@
       const docId = resultEl.dataset.docId;
       const sectionId = resultEl.dataset.sectionId;
 
-      this.closeSearch();
+      // Capture search query before closing dropdown
+      const searchInput = this.container.querySelector('.ur-kb-inline-search-input');
+      const searchQuery = searchInput?.value?.trim() || '';
+
+      // Close dropdown but keep the search term in the input
+      const dropdown = this.container.querySelector('.ur-kb-inline-search-dropdown');
+      dropdown.classList.remove('active');
 
       if (sectionId) {
         this.selectSection(docId, sectionId);
       } else {
         this.selectDocument(docId);
+      }
+
+      // Highlight search terms after content renders
+      if (searchQuery) {
+        setTimeout(() => this.highlightSearchTerms(searchQuery), 100);
       }
     }
 
