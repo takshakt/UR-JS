@@ -951,11 +951,11 @@
   // Utility Functions
   // ============================================================
   function generateUUID() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-      const r = Math.random() * 16 | 0;
-      const v = c === 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    });
+    // Generate UUID in Oracle RAW(16) format: 32 uppercase hex chars, no hyphens
+    // xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx = 32 x's
+    return 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'.replace(/x/g, function() {
+      return (Math.random() * 16 | 0).toString(16);
+    }).toUpperCase();
   }
 
   function escapeHtml(text) {
@@ -1915,7 +1915,7 @@
       submitBtn.disabled = true;
 
       try {
-        const reportId = generateUUID();
+        const bugId = generateUUID();
         const diagnostics = this.gatherDiagnostics();
 
         // Build attachments array including screenshot if available
@@ -1935,7 +1935,7 @@
         }
 
         const payload = {
-          reportId,
+          bugId,
           timestamp: new Date().toISOString(),
           title: this.container.querySelector('#bug-reporter-title-input').value.trim(),
           description: this.container.querySelector('#bug-reporter-description').value.trim(),
@@ -1954,24 +1954,36 @@
         let apexError = null;
         let webhookError = null;
 
-        // Submit to APEX (if available)
+        // Submit to APEX first (if available) - creates the database record
         if (this.isApexAvailable() && this.options.apexProcessName) {
           try {
-            apexSuccess = await this.submitToApex(payload);
+            await this.submitToApex(payload);
+            apexSuccess = true;
           } catch (error) {
             console.warn('APEX submission failed:', error);
             apexError = error;
           }
         }
 
-        // Submit to webhook (if configured)
+        // Submit to webhook (if configured) - sends full payload with attachments
+        let webhookResponse = null;
         if (this.options.webhookUrl && this.options.webhookUrl.trim() !== '') {
           try {
-            await this.submitToWebhook(payload);
+            webhookResponse = await this.submitToWebhook(payload);
             webhookSuccess = true;
           } catch (error) {
             console.warn('Webhook submission failed:', error);
             webhookError = error;
+            webhookResponse = error.message;
+          }
+
+          // Update APEX with webhook status (if APEX is available)
+          if (this.isApexAvailable() && this.options.apexProcessName) {
+            try {
+              await this.updateWebhookStatus(bugId, webhookSuccess, webhookResponse);
+            } catch (error) {
+              console.warn('Failed to update webhook status in APEX:', error);
+            }
           }
         }
 
@@ -1985,8 +1997,8 @@
         }
 
         // Show success
-        this.showSuccess(reportId);
-        this.options.onSuccess({ reportId, apexSuccess, webhookSuccess });
+        this.showSuccess(bugId);
+        this.options.onSuccess({ bugId, apexSuccess, webhookSuccess });
 
       } catch (error) {
         console.error('Bug report submission failed:', error);
@@ -2066,14 +2078,47 @@
       return response.json().catch(() => ({}));
     }
 
-    showSuccess(reportId) {
+    async updateWebhookStatus(bugId, webhookSent, webhookResponse) {
+      return new Promise((resolve, reject) => {
+        const statusPayload = {
+          bugId,
+          webhookSent,
+          webhookResponse: typeof webhookResponse === 'string'
+            ? webhookResponse
+            : JSON.stringify(webhookResponse || {})
+        };
+
+        apex.server.process(
+          this.options.apexProcessName,
+          {
+            x01: JSON.stringify(statusPayload),
+            x02: 'UPDATE_WEBHOOK'
+          },
+          {
+            dataType: 'json',
+            success: (data) => {
+              if (data && data.success === false) {
+                reject(new Error(data.error || 'Failed to update webhook status'));
+              } else {
+                resolve(true);
+              }
+            },
+            error: (jqXHR, textStatus, errorThrown) => {
+              reject(new Error(errorThrown || textStatus || 'Failed to update webhook status'));
+            }
+          }
+        );
+      });
+    }
+
+    showSuccess(bugId) {
       const formView = this.container.querySelector('.bug-reporter-form-view');
       const successView = this.container.querySelector('.bug-reporter-success');
-      const reportIdEl = successView.querySelector('.bug-reporter-success-id');
+      const bugIdEl = successView.querySelector('.bug-reporter-success-id');
 
       formView.style.display = 'none';
       successView.classList.add('active');
-      reportIdEl.textContent = `Report ID: ${reportId}`;
+      bugIdEl.textContent = `Bug ID: ${bugId}`;
 
       // Auto-close after 5 seconds
       setTimeout(() => {
