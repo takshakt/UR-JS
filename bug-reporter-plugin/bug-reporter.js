@@ -42,11 +42,11 @@
     }
 
     .bug-reporter.dark {
-      --br-bg: #1f2937;
-      --br-text: #f3f4f6;
-      --br-text-muted: #9ca3af;
-      --br-border: #374151;
-      --br-input-bg: #111827;
+      --br-bg: #121212;
+      --br-text: #e4e4e7;
+      --br-text-muted: #a1a1aa;
+      --br-border: #27272a;
+      --br-input-bg: #18181b;
       --br-accent: #6366f1;
       --br-accent-hover: #818cf8;
       --br-accent-light: rgba(99, 102, 241, 0.2);
@@ -646,6 +646,7 @@
       justify-content: center;
       padding: 40px 20px;
       text-align: center;
+      position: relative;
     }
 
     .bug-reporter-success.active {
@@ -689,6 +690,34 @@
       background: var(--br-input-bg);
       padding: 4px 8px;
       border-radius: 4px;
+    }
+
+    .bug-reporter-success-close {
+      margin-top: 20px;
+      min-width: 120px;
+    }
+
+    .bug-reporter-success-x {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      background: none;
+      border: none;
+      color: var(--br-text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 4px;
+      transition: all var(--br-transition);
+    }
+
+    .bug-reporter-success-x:hover {
+      color: var(--br-text);
+      background: var(--br-input-bg);
+    }
+
+    .bug-reporter-success-x svg {
+      width: 20px;
+      height: 20px;
     }
 
     /* Error State */
@@ -1052,7 +1081,7 @@
                   ${ICONS.bug}
                   Report an Issue
                 </h2>
-                <button class="bug-reporter-close" aria-label="Close">
+                <button type="button" class="bug-reporter-close" data-br-action="close-modal" aria-label="Close">
                   ${ICONS.close}
                 </button>
               </div>
@@ -1075,8 +1104,8 @@
                       Screenshot captured
                     </span>
                     <div class="bug-reporter-screenshot-actions">
-                      <button class="bug-reporter-screenshot-btn" data-action="preview">Preview</button>
-                      <button class="bug-reporter-screenshot-btn" data-action="retake">Retake</button>
+                      <button class="bug-reporter-screenshot-btn" data-br-action="preview">Preview</button>
+                      <button class="bug-reporter-screenshot-btn" data-br-action="retake">Retake</button>
                     </div>
                   </div>
                   <div class="bug-reporter-screenshot-preview">
@@ -1166,8 +1195,8 @@
 
               <!-- Footer -->
               <div class="bug-reporter-footer">
-                <button class="bug-reporter-btn-secondary" data-action="cancel">Cancel</button>
-                <button class="bug-reporter-btn-primary" data-action="submit">
+                <button type="button" class="bug-reporter-btn-secondary" data-br-action="cancel">Cancel</button>
+                <button type="button" class="bug-reporter-btn-primary" data-br-action="submit">
                   ${ICONS.send}
                   Submit Report
                 </button>
@@ -1176,12 +1205,18 @@
 
             <!-- Success View -->
             <div class="bug-reporter-success">
+              <button type="button" class="bug-reporter-success-x" data-br-action="close-success-x">
+                ${ICONS.close}
+              </button>
               <div class="bug-reporter-success-icon">
                 ${ICONS.checkCircle}
               </div>
               <div class="bug-reporter-success-title">Report Submitted</div>
               <div class="bug-reporter-success-message">Thank you for your feedback!</div>
               <div class="bug-reporter-success-id"></div>
+              <button type="button" class="bug-reporter-btn-primary bug-reporter-success-close" data-br-action="close-success">
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -1194,8 +1229,8 @@
       const btn = this.container.querySelector('.bug-reporter-btn');
       const overlay = this.container.querySelector('.bug-reporter-overlay');
       const closeBtn = this.container.querySelector('.bug-reporter-close');
-      const cancelBtn = this.container.querySelector('[data-action="cancel"]');
-      const submitBtn = this.container.querySelector('[data-action="submit"]');
+      const cancelBtn = this.container.querySelector('[data-br-action="cancel"]');
+      const submitBtn = this.container.querySelector('[data-br-action="submit"]');
       const dropzone = this.container.querySelector('.bug-reporter-dropzone');
       const fileInput = this.container.querySelector('.bug-reporter-file-input');
       const screenshotActions = this.container.querySelector('.bug-reporter-screenshot-actions');
@@ -1204,10 +1239,39 @@
       btn.addEventListener('click', () => this.open());
 
       // Close modal
-      closeBtn.addEventListener('click', () => this.close());
-      cancelBtn.addEventListener('click', () => this.close());
+      closeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.close();
+      });
+      cancelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.close();
+      });
+
+      // Close success view - both X button and Close button
+      const successCloseBtn = this.container.querySelector('[data-br-action="close-success"]');
+      const successXBtn = this.container.querySelector('[data-br-action="close-success-x"]');
+
+      successCloseBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.close();
+      });
+
+      successXBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.close();
+      });
+
       overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) this.close();
+        if (e.target === overlay) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.close();
+        }
       });
 
       // Keyboard
@@ -1218,7 +1282,11 @@
       });
 
       // Submit
-      submitBtn.addEventListener('click', () => this.submit());
+      submitBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.submit();
+      });
 
       // File handling
       dropzone.addEventListener('click', () => fileInput.click());
@@ -1241,7 +1309,7 @@
 
       // Screenshot actions
       screenshotActions.addEventListener('click', (e) => {
-        const action = e.target.dataset.action;
+        const action = e.target.dataset.brAction;
         if (action === 'preview') this.toggleScreenshotPreview();
         if (action === 'retake') this.captureScreenshot();
       });
@@ -1291,7 +1359,16 @@
 
     close() {
       const overlay = this.container.querySelector('.bug-reporter-overlay');
+      const formView = this.container.querySelector('.bug-reporter-form-view');
+      const successView = this.container.querySelector('.bug-reporter-success');
+
+      // Hide modal
       overlay.classList.remove('active');
+
+      // Reset views - hide success, show form
+      successView.classList.remove('active');
+      formView.style.display = '';
+
       this.resetForm();
     }
 
@@ -1644,7 +1721,7 @@
       this.isSubmitting = true;
       this.hideError();
 
-      const submitBtn = this.container.querySelector('[data-action="submit"]');
+      const submitBtn = this.container.querySelector('[data-br-action="submit"]');
       const originalContent = submitBtn.innerHTML;
       submitBtn.innerHTML = '<div class="bug-reporter-spinner"></div> Submitting...';
       submitBtn.disabled = true;
@@ -1668,24 +1745,45 @@
         // Callback
         this.options.onSubmit(payload);
 
-        // Submit to APEX first (if available)
+        // Track submission results
         let apexSuccess = false;
+        let webhookSuccess = false;
+        let apexError = null;
+        let webhookError = null;
+
+        // Submit to APEX (if available)
         if (this.isApexAvailable() && this.options.apexProcessName) {
           try {
             apexSuccess = await this.submitToApex(payload);
           } catch (error) {
             console.warn('APEX submission failed:', error);
+            apexError = error;
           }
         }
 
-        // Submit to webhook
-        if (this.options.webhookUrl) {
-          await this.submitToWebhook(payload);
+        // Submit to webhook (if configured)
+        if (this.options.webhookUrl && this.options.webhookUrl.trim() !== '') {
+          try {
+            await this.submitToWebhook(payload);
+            webhookSuccess = true;
+          } catch (error) {
+            console.warn('Webhook submission failed:', error);
+            webhookError = error;
+          }
+        }
+
+        // Check if at least one submission succeeded
+        const hasApexConfig = this.isApexAvailable() && this.options.apexProcessName;
+        const hasWebhookConfig = this.options.webhookUrl && this.options.webhookUrl.trim() !== '';
+
+        if ((hasApexConfig || hasWebhookConfig) && !apexSuccess && !webhookSuccess) {
+          // Both configured submissions failed
+          throw new Error(apexError?.message || webhookError?.message || 'Submission failed');
         }
 
         // Show success
         this.showSuccess(reportId);
-        this.options.onSuccess({ reportId, apexSuccess });
+        this.options.onSuccess({ reportId, apexSuccess, webhookSuccess });
 
       } catch (error) {
         console.error('Bug report submission failed:', error);
@@ -1700,18 +1798,24 @@
 
     async submitToApex(payload) {
       return new Promise((resolve, reject) => {
-        // Prepare payload for APEX (separate screenshot from JSON)
+        // Prepare payload for APEX
         const jsonPayload = { ...payload };
-        delete jsonPayload.screenshot; // Will be sent separately
+
+        // Remove large data from JSON payload
+        delete jsonPayload.screenshot;
+        delete jsonPayload.attachments;
+
+        // For now, skip screenshot in APEX submission (too large for f01)
+        // Screenshot will be sent via webhook if configured
+        // TODO: Implement chunked upload for screenshots
 
         apex.server.process(
           this.options.apexProcessName,
           {
-            x01: JSON.stringify(jsonPayload),
-            // Screenshot as separate CLOB
-            f01: payload.screenshot ? [payload.screenshot] : []
+            x01: JSON.stringify(jsonPayload)
           },
           {
+            dataType: 'json',
             success: (data) => {
               if (data && data.success === false) {
                 reject(new Error(data.error || 'APEX process failed'));
@@ -1720,7 +1824,17 @@
               }
             },
             error: (jqXHR, textStatus, errorThrown) => {
-              reject(new Error(errorThrown || 'APEX request failed'));
+              // Try to get more detailed error
+              let errorMsg = errorThrown || textStatus || 'APEX request failed';
+              try {
+                if (jqXHR.responseText) {
+                  const resp = JSON.parse(jqXHR.responseText);
+                  if (resp.error) errorMsg = resp.error;
+                }
+              } catch (e) {
+                // Use original error
+              }
+              reject(new Error(errorMsg));
             }
           }
         );
@@ -1758,10 +1872,10 @@
       successView.classList.add('active');
       reportIdEl.textContent = `Report ID: ${reportId}`;
 
-      // Auto-close after 3 seconds
+      // Auto-close after 5 seconds
       setTimeout(() => {
         this.close();
-      }, 3000);
+      }, 5000);
     }
 
     // Public API
