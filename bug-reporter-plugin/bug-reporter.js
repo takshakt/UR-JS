@@ -299,6 +299,34 @@
       border-radius: 5px;
     }
 
+    /* Take Screenshot Button (shown when no screenshot) */
+    .bug-reporter-take-screenshot {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 16px;
+      background: var(--br-input-bg);
+      border: 1px dashed var(--br-border);
+      border-radius: var(--br-radius-sm);
+      color: var(--br-text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all var(--br-transition);
+      margin-bottom: 20px;
+    }
+
+    .bug-reporter-take-screenshot:hover {
+      border-color: var(--br-accent);
+      color: var(--br-accent);
+      background: var(--br-accent-light);
+    }
+
+    .bug-reporter-take-screenshot svg {
+      width: 18px;
+      height: 18px;
+    }
+
     /* Form Fields */
     .bug-reporter-field {
       margin-bottom: 16px;
@@ -397,6 +425,117 @@
       height: 16px;
       accent-color: var(--br-accent);
       cursor: pointer;
+    }
+
+    /* Urgency Tags - RAG Colors (inline with radio) */
+    .bug-reporter-urgency-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .bug-reporter-urgency-tag.low {
+      background: rgba(16, 185, 129, 0.15);
+      color: #059669;
+    }
+
+    .bug-reporter-urgency-tag.medium {
+      background: rgba(59, 130, 246, 0.15);
+      color: #2563eb;
+    }
+
+    .bug-reporter-urgency-tag.high {
+      background: rgba(245, 158, 11, 0.15);
+      color: #d97706;
+    }
+
+    .bug-reporter-urgency-tag.critical {
+      background: rgba(239, 68, 68, 0.15);
+      color: #dc2626;
+    }
+
+    /* Dark mode adjustments for urgency tags */
+    .bug-reporter.dark .bug-reporter-urgency-tag.low {
+      color: #34d399;
+    }
+    .bug-reporter.dark .bug-reporter-urgency-tag.medium {
+      color: #60a5fa;
+    }
+    .bug-reporter.dark .bug-reporter-urgency-tag.high {
+      color: #fbbf24;
+    }
+    .bug-reporter.dark .bug-reporter-urgency-tag.critical {
+      color: #f87171;
+    }
+
+    /* Impact Options with Icons (inline with radio) - Color coded */
+    .bug-reporter-impact-option {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .bug-reporter-impact-option svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+    }
+
+    .bug-reporter-impact-option.single_user {
+      background: rgba(16, 185, 129, 0.15);
+      color: #059669;
+    }
+    .bug-reporter-impact-option.single_user svg {
+      color: #059669;
+    }
+
+    .bug-reporter-impact-option.team {
+      background: rgba(59, 130, 246, 0.15);
+      color: #2563eb;
+    }
+    .bug-reporter-impact-option.team svg {
+      color: #2563eb;
+    }
+
+    .bug-reporter-impact-option.multiple_teams {
+      background: rgba(245, 158, 11, 0.15);
+      color: #d97706;
+    }
+    .bug-reporter-impact-option.multiple_teams svg {
+      color: #d97706;
+    }
+
+    .bug-reporter-impact-option.organization {
+      background: rgba(239, 68, 68, 0.15);
+      color: #dc2626;
+    }
+    .bug-reporter-impact-option.organization svg {
+      color: #dc2626;
+    }
+
+    /* Dark mode adjustments for impact options */
+    .bug-reporter.dark .bug-reporter-impact-option.single_user,
+    .bug-reporter.dark .bug-reporter-impact-option.single_user svg {
+      color: #34d399;
+    }
+    .bug-reporter.dark .bug-reporter-impact-option.team,
+    .bug-reporter.dark .bug-reporter-impact-option.team svg {
+      color: #60a5fa;
+    }
+    .bug-reporter.dark .bug-reporter-impact-option.multiple_teams,
+    .bug-reporter.dark .bug-reporter-impact-option.multiple_teams svg {
+      color: #fbbf24;
+    }
+    .bug-reporter.dark .bug-reporter-impact-option.organization,
+    .bug-reporter.dark .bug-reporter-impact-option.organization svg {
+      color: #f87171;
     }
 
     /* File Attachment */
@@ -800,7 +939,12 @@
     info: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
     alertCircle: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>',
     send: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>',
-    checkCircle: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>'
+    checkCircle: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>',
+    // People icons for impact
+    user: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+    users: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    usersGroup: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="8" r="5"/><path d="M22 20c0-3.37-2-6.5-4-8a5 5 0 0 0-.45-8.3"/></svg>',
+    building: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>'
   };
 
   // ============================================================
@@ -1118,16 +1262,20 @@
                     <div class="bug-reporter-radio-title">Urgency</div>
                     <div class="bug-reporter-radio-options">
                       <label class="bug-reporter-radio">
-                        <input type="radio" name="urgency" value="low" checked> Low
+                        <input type="radio" name="urgency" value="low" checked>
+                        <span class="bug-reporter-urgency-tag low">Low</span>
                       </label>
                       <label class="bug-reporter-radio">
-                        <input type="radio" name="urgency" value="medium"> Medium
+                        <input type="radio" name="urgency" value="medium">
+                        <span class="bug-reporter-urgency-tag medium">Medium</span>
                       </label>
                       <label class="bug-reporter-radio">
-                        <input type="radio" name="urgency" value="high"> High
+                        <input type="radio" name="urgency" value="high">
+                        <span class="bug-reporter-urgency-tag high">High</span>
                       </label>
                       <label class="bug-reporter-radio">
-                        <input type="radio" name="urgency" value="critical"> Critical
+                        <input type="radio" name="urgency" value="critical">
+                        <span class="bug-reporter-urgency-tag critical">Critical</span>
                       </label>
                     </div>
                   </div>
@@ -1135,16 +1283,20 @@
                     <div class="bug-reporter-radio-title">Impact</div>
                     <div class="bug-reporter-radio-options">
                       <label class="bug-reporter-radio">
-                        <input type="radio" name="impact" value="single_user" checked> Just me
+                        <input type="radio" name="impact" value="single_user" checked>
+                        <span class="bug-reporter-impact-option single_user">${ICONS.user} Just me</span>
                       </label>
                       <label class="bug-reporter-radio">
-                        <input type="radio" name="impact" value="team"> My team
+                        <input type="radio" name="impact" value="team">
+                        <span class="bug-reporter-impact-option team">${ICONS.users} My team</span>
                       </label>
                       <label class="bug-reporter-radio">
-                        <input type="radio" name="impact" value="multiple_teams"> Multiple teams
+                        <input type="radio" name="impact" value="multiple_teams">
+                        <span class="bug-reporter-impact-option multiple_teams">${ICONS.usersGroup} Multiple teams</span>
                       </label>
                       <label class="bug-reporter-radio">
-                        <input type="radio" name="impact" value="organization"> Entire organization
+                        <input type="radio" name="impact" value="organization">
+                        <span class="bug-reporter-impact-option organization">${ICONS.building} Organization</span>
                       </label>
                     </div>
                   </div>
@@ -1164,7 +1316,11 @@
                   <div class="bug-reporter-file-list"></div>
                 </div>
 
-                <!-- Screenshot (displayed like attachment) -->
+                <!-- Screenshot Section -->
+                <button type="button" class="bug-reporter-take-screenshot" style="display: none;">
+                  ${ICONS.camera}
+                  Take Screenshot
+                </button>
                 <div class="bug-reporter-screenshot" style="display: none;">
                   <div class="bug-reporter-file-item bug-reporter-screenshot-item">
                     <div class="bug-reporter-file-icon">${ICONS.file}</div>
@@ -1314,6 +1470,15 @@
         this.removeScreenshot();
       });
 
+      // Take Screenshot button (shown after screenshot is removed)
+      const takeScreenshotBtn = this.container.querySelector('.bug-reporter-take-screenshot');
+      takeScreenshotBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        takeScreenshotBtn.style.display = 'none';
+        await this.captureScreenshot();
+      });
+
       // File list remove buttons (delegated)
       this.container.querySelector('.bug-reporter-file-list').addEventListener('click', (e) => {
         const removeBtn = e.target.closest('.bug-reporter-file-remove');
@@ -1378,6 +1543,13 @@
       this.container.querySelector('#bug-reporter-description').value = '';
       this.container.querySelector('input[name="urgency"][value="low"]').checked = true;
       this.container.querySelector('input[name="impact"][value="single_user"]').checked = true;
+
+      // Reset screenshot state
+      this.screenshot = null;
+      this.container.querySelector('.bug-reporter-screenshot').style.display = 'none';
+      this.container.querySelector('.bug-reporter-take-screenshot').style.display = 'none';
+      this.container.querySelector('.bug-reporter-screenshot-preview').classList.remove('visible');
+
       this.attachments = [];
       this.renderFileList();
       this.hideError();
@@ -1440,9 +1612,14 @@
     removeScreenshot() {
       this.screenshot = null;
       const screenshotSection = this.container.querySelector('.bug-reporter-screenshot');
+      const takeScreenshotBtn = this.container.querySelector('.bug-reporter-take-screenshot');
       const preview = this.container.querySelector('.bug-reporter-screenshot-preview');
       screenshotSection.style.display = 'none';
       preview.classList.remove('visible');
+      // Show the "Take Screenshot" button
+      if (this.options.enableScreenshot) {
+        takeScreenshotBtn.style.display = 'flex';
+      }
     }
 
     handleFiles(files) {
