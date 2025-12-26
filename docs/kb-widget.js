@@ -1,6 +1,9 @@
 /**
  * KnowledgeBase - Portable Markdown Knowledge Base Widget
  * Version 4.0 - With left sidebar navigation, prev/next, breadcrumbs, and enhanced PDF
+ *
+ * Designed & Implemented By: Vishnu Kant (Project EIDOS)
+ * © 2025 Project EIDOS - All Rights Reserved
  */
 (function(global) {
   'use strict';
