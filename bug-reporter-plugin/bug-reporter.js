@@ -1362,7 +1362,8 @@
       const formView = this.container.querySelector('.bug-reporter-form-view');
       const successView = this.container.querySelector('.bug-reporter-success');
 
-      // Hide modal
+      // Hide modal - clear inline style set by captureScreenshot
+      overlay.style.display = '';
       overlay.classList.remove('active');
 
       // Reset views - hide success, show form
