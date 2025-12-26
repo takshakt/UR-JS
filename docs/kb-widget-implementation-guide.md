@@ -376,11 +376,14 @@ KnowledgeBase.instance.selectSection('user-guide', 'getting-started');
 #### Search from External Input
 
 ```javascript
-// Link external search box to KB search
+// Link external search box to KB inline search
 document.getElementById('external-search').addEventListener('keyup', function(e) {
-    if (e.key === 'Enter') {
-        KnowledgeBase.instance.openSearch();
-        KnowledgeBase.instance.performSearch(this.value);
+    const kb = KnowledgeBase.instance;
+    const searchInput = kb.container.querySelector('.ur-kb-inline-search-input');
+    searchInput.value = this.value;
+    kb.performInlineSearch(this.value);
+    if (this.value.length >= 2) {
+        kb.highlightSearchTerms(this.value);
     }
 });
 ```
@@ -539,8 +542,8 @@ The widget fills its container. Control size via container styles:
 /* Hide accessibility toolbar */
 .ur-kb-a11y-toolbar { display: none !important; }
 
-/* Hide search */
-.ur-kb-search-trigger { display: none !important; }
+/* Hide inline search */
+.ur-kb-inline-search { display: none !important; }
 ```
 
 ---
@@ -678,6 +681,8 @@ You **cannot** prevent determined users from viewing client-side code. However, 
 1. Ensure documents loaded successfully first
 2. Check console for Fuse.js errors
 3. Verify content has searchable text (not just images)
+4. Minimum 2 characters required to trigger search
+5. Check that inline search dropdown is visible (CSS not hiding it)
 
 #### PDF Export Fails
 
@@ -812,26 +817,27 @@ console.log('Current Section:', KnowledgeBase.instance.currentSection);
          │                    │                    │
          ▼                    ▼                    ▼
 ┌─────────────┐     ┌─────────────────┐    ┌─────────────────┐
-│ Click       │     │ Search          │    │ Export PDF      │
+│ Click       │     │ Inline Search   │    │ Export PDF      │
 │ Navigation  │     │ (Cmd+K)         │    │                 │
 └─────────────┘     └─────────────────┘    └─────────────────┘
          │                    │                    │
          ▼                    ▼                    ▼
 ┌─────────────┐     ┌─────────────────┐    ┌─────────────────┐
-│selectSection│     │ openSearch()    │    │ exportPDF()     │
-│    ()       │     │ performSearch() │    │ generatePDF()   │
+│selectSection│     │performInline    │    │ exportPDF()     │
+│    ()       │     │Search() + live  │    │ generatePDF()   │
+│             │     │highlighting     │    │                 │
 └─────────────┘     └─────────────────┘    └─────────────────┘
          │                    │                    │
          ▼                    ▼                    ▼
 ┌─────────────┐     ┌─────────────────┐    ┌─────────────────┐
-│renderSection│     │ Display results │    │ html2pdf        │
-│Content()    │     │ with fuzzy      │    │ renders to      │
-│             │     │ highlighting    │    │ downloadable    │
+│renderSection│     │ Dropdown shows  │    │ html2pdf        │
+│Content()    │     │ results + terms │    │ renders to      │
+│             │     │ highlighted     │    │ downloadable    │
 └─────────────┘     └─────────────────┘    └─────────────────┘
          │                    │                    │
          ▼                    ▼                    ▼
 ┌─────────────┐     ┌─────────────────┐    ┌─────────────────┐
-│Update:      │     │ User selects    │    │ Browser         │
+│Update:      │     │ User clicks     │    │ Browser         │
 │- Breadcrumb │     │ result →        │    │ downloads       │
 │- Sidebar    │     │ selectSection() │    │ PDF file        │
 │- Footer nav │     │                 │    │                 │
@@ -852,7 +858,9 @@ console.log('Current Section:', KnowledgeBase.instance.currentSection);
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │                  .ur-kb-toolbar                            │  │
 │  │  - Home button                                             │  │
-│  │  - Search trigger                                          │  │
+│  │  - Inline search (.ur-kb-inline-search)                    │  │
+│  │    - Search input with dropdown results                    │  │
+│  │    - Live content highlighting as you type                 │  │
 │  │  - Accessibility toolbar (A-, A+, TTS, Contrast, Theme)    │  │
 │  └───────────────────────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────────────┤
@@ -864,9 +872,13 @@ console.log('Current Section:', KnowledgeBase.instance.currentSection);
 │  │  │ - Sidebar    │  │  │    .ur-kb-breadcrumb         │  │  ││
 │  │  │   title      │  │  └──────────────────────────────┘  │  ││
 │  │  │ - Document   │  │  ┌──────────────────────────────┐  │  ││
-│  │  │   list       │  │  │    .ur-kb-content            │  │  ││
-│  │  │ - Section    │  │  │    (markdown rendered here)  │  │  ││
-│  │  │   tree       │  │  │                              │  │  ││
+│  │  │   list       │  │  │    .ur-kb-search-indicator   │  │  ││
+│  │  │ - Section    │  │  │    (shows search term/nav)   │  │  ││
+│  │  │   tree       │  │  └──────────────────────────────┘  │  ││
+│  │  │              │  │  ┌──────────────────────────────┐  │  ││
+│  │  │              │  │  │    .ur-kb-content            │  │  ││
+│  │  │              │  │  │    (markdown rendered here)  │  │  ││
+│  │  │              │  │  │                              │  │  ││
 │  │  │              │  │  └──────────────────────────────┘  │  ││
 │  │  │              │  │  ┌──────────────────────────────┐  │  ││
 │  │  │              │  │  │    .ur-kb-footer             │  │  ││
@@ -874,12 +886,6 @@ console.log('Current Section:', KnowledgeBase.instance.currentSection);
 │  │  │              │  │  └──────────────────────────────┘  │  ││
 │  │  └──────────────┘  └────────────────────────────────────┘  ││
 │  └─────────────────────────────────────────────────────────────┘│
-├─────────────────────────────────────────────────────────────────┤
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │              .ur-kb-search-modal (hidden by default)       │  │
-│  │  - Search input                                            │  │
-│  │  - Results list                                            │  │
-│  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -914,7 +920,7 @@ console.log('Current Section:', KnowledgeBase.instance.currentSection);
 | `render()` | 1696 | Renders main widget HTML structure |
 | `renderDocumentList()` | 1756 | Renders home page with document cards |
 | `renderSidebarSections(sections, docId)` | 1770 | Renders hierarchical sidebar navigation |
-| `renderSearchModal()` | 1788 | Renders search modal HTML |
+| `renderInlineSearch()` | 2104 | Renders inline search input with dropdown in toolbar |
 | `renderDocumentContent(doc)` | 2320 | Renders full document content (all sections) |
 | `renderSectionContent(doc, section)` | 2371 | Renders single section content |
 | `renderMarkdownWithHeaders(content)` | 2417 | Renders markdown preserving headers for navigation |
@@ -936,11 +942,13 @@ console.log('Current Section:', KnowledgeBase.instance.currentSection);
 
 | Function | Line | Description |
 |----------|------|-------------|
-| `openSearch()` | 2603 | Opens search modal and focuses input |
-| `closeSearch()` | 2611 | Closes search modal |
-| `performSearch(query)` | 2618 | Executes fuzzy search and displays results |
-| `navigateSearchResults(direction)` | 2660 | Keyboard navigation through search results |
-| `selectSearchResult(resultEl)` | 2674 | Handles search result selection |
+| `performInlineSearch(query)` | 3420 | Executes fuzzy search and populates dropdown results |
+| `clearInlineSearch()` | 3479 | Clears search input, dropdown, and highlights |
+| `navigateSearchResults(direction)` | 3492 | Keyboard navigation through search results |
+| `selectSearchResult(resultEl)` | 3507 | Handles search result selection and navigation |
+| `highlightSearchTerms(query)` | 3116 | Highlights search terms in rendered content |
+| `clearSearchHighlights()` | 3200 | Removes all search term highlights |
+| `navigateHighlights(direction)` | 3250 | Navigate between highlighted search terms |
 
 ### PDF Export Functions
 
