@@ -1918,6 +1918,22 @@
         const reportId = generateUUID();
         const diagnostics = this.gatherDiagnostics();
 
+        // Build attachments array including screenshot if available
+        const allAttachments = [...this.attachments];
+        if (this.screenshot) {
+          // Calculate file size from base64
+          const base64Data = this.screenshot.split(',')[1];
+          const fileSize = Math.round((base64Data.length * 3) / 4);
+
+          allAttachments.unshift({
+            name: 'screenshot.png',
+            type: 'image/png',
+            size: fileSize,
+            data: base64Data,
+            isScreenshot: true
+          });
+        }
+
         const payload = {
           reportId,
           timestamp: new Date().toISOString(),
@@ -1926,8 +1942,7 @@
           urgency: this.container.querySelector('input[name="urgency"]:checked').value,
           impact: this.container.querySelector('input[name="impact"]:checked').value,
           ...diagnostics,
-          screenshot: this.screenshot,
-          attachments: this.attachments
+          attachments: allAttachments
         };
 
         // Callback
