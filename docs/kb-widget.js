@@ -40,9 +40,9 @@
       --kb-bg: #ffffff;
       --kb-text: #1a1a2e;
       --kb-text-muted: #6b7280;
-      --kb-border: #e5e7eb;
-      --kb-sidebar-bg: #f9fafb;
-      --kb-sidebar-hover: #f3f4f6;
+      --kb-border: #d1d5db;
+      --kb-sidebar-bg: #f4f5f7;
+      --kb-sidebar-hover: #e5e7eb;
       --kb-sidebar-active: #e0e7ff;
       --kb-sidebar-active-text: #4338ca;
       --kb-accent: #4f46e5;
@@ -59,10 +59,10 @@
     .ur-kb.dark {
       --kb-bg: #0d0d0d;
       --kb-text: #e5e5e5;
-      --kb-text-muted: #a0a0a0;
-      --kb-border: #333333;
-      --kb-sidebar-bg: #141414;
-      --kb-sidebar-hover: #1f1f1f;
+      --kb-text-muted: #9ca3af;
+      --kb-border: #404040;
+      --kb-sidebar-bg: #1a1a1a;
+      --kb-sidebar-hover: #262626;
       --kb-sidebar-active: #2563eb;
       --kb-sidebar-active-text: #ffffff;
       --kb-accent: #3b82f6;
@@ -101,7 +101,7 @@
     .ur-kb-page-header {
       padding: 20px 24px;
       background: var(--kb-sidebar-bg);
-      border-bottom: 1px solid var(--kb-border);
+      border-bottom: none;
       flex-shrink: 0;
       display: flex;
       align-items: center;
@@ -125,7 +125,7 @@
     }
 
     .ur-kb-page-title {
-      font-size: 22px;
+      font-size: 32px;
       font-weight: 700;
       margin: 0 0 4px 0;
       letter-spacing: 0.3px;
@@ -146,7 +146,7 @@
     }
 
     .ur-kb-page-subtitle {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--kb-text-muted);
       margin: 0;
       font-weight: 400;
@@ -354,7 +354,7 @@
       width: 280px;
       min-width: 280px;
       background: var(--kb-sidebar-bg);
-      border-right: 1px solid var(--kb-border);
+      border-right: none;
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -372,7 +372,7 @@
 
     .ur-kb-sidebar-header {
       padding: 12px 16px;
-      border-bottom: 1px solid var(--kb-border);
+      border-bottom: none;
       display: flex;
       align-items: center;
       font-weight: 600;
@@ -469,12 +469,13 @@
     }
 
     .ur-kb-doc-header:hover {
-      background: var(--kb-sidebar-hover);
+      background: transparent;
     }
 
     .ur-kb-doc-header.active {
-      background: var(--kb-sidebar-active);
-      color: var(--kb-sidebar-active-text);
+      background: transparent;
+      color: var(--kb-text);
+      font-weight: 700;
     }
 
     .ur-kb-doc-toggle {
@@ -521,17 +522,19 @@
       border-left: 2px solid transparent;
       transition: all var(--kb-transition);
       white-space: nowrap;
+      font-weight: 400;
     }
 
     .ur-kb-section-item:hover {
       color: var(--kb-text);
-      background: var(--kb-sidebar-hover);
+      background: transparent;
     }
 
     .ur-kb-section-item.active {
-      color: var(--kb-sidebar-active-text);
+      color: var(--kb-text);
       border-left-color: var(--kb-accent);
-      background: var(--kb-sidebar-active);
+      background: transparent;
+      font-weight: 700;
     }
 
     .ur-kb-section-toggle {
@@ -599,7 +602,7 @@
       flex-wrap: wrap;
       gap: 6px 8px;
       padding: 12px 32px;
-      background: var(--kb-sidebar-bg);
+      background: var(--kb-bg);
       border-bottom: 1px solid var(--kb-border);
       font-size: 13px;
       flex-shrink: 0;
@@ -638,7 +641,7 @@
       flex-direction: column;
       padding: 8px 32px;
       background: var(--kb-sidebar-bg);
-      border-bottom: 1px solid var(--kb-border);
+      border-bottom: none;
       font-size: 12px;
       color: var(--kb-text-muted);
       flex-shrink: 0;
@@ -791,9 +794,9 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 32px;
-      background: var(--kb-sidebar-bg);
-      border-top: 1px solid var(--kb-border);
+      padding: 24px 32px;
+      background: transparent;
+      border-top: none;
       flex-shrink: 0;
     }
 
@@ -801,18 +804,21 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 10px 16px;
-      background: var(--kb-bg);
+      padding: 12px 20px;
+      background: var(--kb-sidebar-bg);
       border: 1px solid var(--kb-border);
       border-radius: var(--kb-radius);
       cursor: pointer;
       transition: all var(--kb-transition);
       max-width: 45%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .ur-kb-nav-btn:hover {
-      border-color: var(--kb-accent);
       background: var(--kb-sidebar-hover);
+      border-color: var(--kb-accent);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
 
     .ur-kb-nav-btn.disabled {
@@ -822,9 +828,9 @@
     }
 
     .ur-kb-nav-btn svg {
-      width: 16px;
-      height: 16px;
-      color: var(--kb-text-muted);
+      width: 18px;
+      height: 18px;
+      color: var(--kb-accent);
       flex-shrink: 0;
     }
 
@@ -839,6 +845,7 @@
       color: var(--kb-text-muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
+      font-weight: 600;
     }
 
     .ur-kb-nav-btn-title {
@@ -1605,7 +1612,7 @@
       }
 
       .ur-kb-footer {
-        padding: 12px 16px;
+        padding: 16px;
       }
 
       .ur-kb-content-title {
@@ -1824,6 +1831,12 @@
       .trim();
   }
 
+  function decodeHtml(text) {
+    const div = document.createElement('div');
+    div.innerHTML = text;
+    return div.textContent;
+  }
+
   function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
@@ -1987,13 +2000,34 @@
     }
 
     async fetchAllDocuments() {
-      await Promise.all(this.documents.map(async (doc) => {
+      await Promise.all(this.documents.map(async (doc, docIndex) => {
         try {
           const response = await fetch(doc.url);
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           doc.content = await response.text();
           doc.sections = this.parseHeaders(doc.content);
           doc.loaded = true;
+
+          // Check if user provided a custom title
+          const originalDoc = this.options.documents[docIndex];
+          const hasCustomTitle = originalDoc && originalDoc.title;
+
+          // Always remove the first H1 from sections to avoid duplication
+          if (doc.sections.length > 0) {
+            const firstH1 = doc.sections.find(s => s.level === 1);
+            if (firstH1) {
+              // If no custom title was provided, use the first H1 as the document title
+              if (!hasCustomTitle) {
+                doc.title = firstH1.text;
+              }
+              // Remove the first H1 but keep its children at the root level
+              const firstH1Index = doc.sections.findIndex(s => s.id === firstH1.id);
+              if (firstH1Index !== -1) {
+                // Replace the first H1 with its children
+                doc.sections.splice(firstH1Index, 1, ...firstH1.children);
+              }
+            }
+          }
         } catch (e) {
           console.error(`Failed to fetch ${doc.url}:`, e);
           doc.content = `# Error\n\nFailed to load document: ${doc.url}`;
@@ -2011,7 +2045,7 @@
         const match = line.match(/^(#{1,6})\s+(.+)$/);
         if (match) {
           const level = match[1].length;
-          const text = match[2].trim();
+          const text = decodeHtml(match[2].trim());
           const id = slugify(text) + '-' + lineIndex;
 
           const header = { level, text, id, line: lineIndex, children: [] };
@@ -2096,7 +2130,7 @@
           { name: 'content', weight: 1 }
         ],
         includeMatches: true,
-        threshold: 0.4,
+        threshold: 0.2,
         minMatchCharLength: 2,
         ignoreLocation: true,
         findAllMatches: true
@@ -2835,32 +2869,17 @@
 
       breadcrumb.style.display = 'flex';
 
-      const html = [
-        `<span class="ur-kb-breadcrumb-item" data-doc-id="">${ICONS.home}</span>`
-      ];
+      const html = [];
 
-      // Skip the first item (document name) - start from section headers only
-      const sectionItems = items.slice(1);
-
-      sectionItems.forEach((item, index) => {
-        // Add separator before each item (no separator before first section item)
+      // Add all items (document name and sections)
+      items.forEach((item, index) => {
+        // Add separator before each item except the first
         if (index > 0) {
-          html.push(`<span class="ur-kb-breadcrumb-sep">/</span>`);
-        } else {
-          // First separator after Home
           html.push(`<span class="ur-kb-breadcrumb-sep">/</span>`);
         }
         const currentClass = item.isCurrent ? ' current' : '';
         html.push(`<span class="ur-kb-breadcrumb-item${currentClass}" data-doc-id="${item.docId || ''}" data-section-id="${item.sectionId || ''}">${escapeHtml(item.label)}</span>`);
       });
-
-      // If no section items (only document selected), show document name
-      if (sectionItems.length === 0 && items.length > 0) {
-        html.push(`<span class="ur-kb-breadcrumb-sep">/</span>`);
-        const item = items[0];
-        const currentClass = item.isCurrent ? ' current' : '';
-        html.push(`<span class="ur-kb-breadcrumb-item${currentClass}" data-doc-id="${item.docId || ''}" data-section-id="${item.sectionId || ''}">${escapeHtml(item.label)}</span>`);
-      }
 
       breadcrumb.innerHTML = html.join('');
     }
