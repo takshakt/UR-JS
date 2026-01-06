@@ -103,6 +103,25 @@
       background: var(--kb-sidebar-bg);
       border-bottom: 1px solid var(--kb-border);
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    .ur-kb-page-header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .ur-kb-page-header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
     }
 
     .ur-kb-page-title {
@@ -111,6 +130,19 @@
       margin: 0 0 4px 0;
       letter-spacing: 0.3px;
       color: var(--kb-text);
+      cursor: pointer;
+      transition: color 0.2s ease;
+      user-select: none;
+    }
+
+    .ur-kb-page-title:hover {
+      color: var(--kb-accent);
+    }
+
+    .ur-kb-page-title:focus-visible {
+      outline: 2px solid var(--kb-accent);
+      outline-offset: 2px;
+      border-radius: 4px;
     }
 
     .ur-kb-page-subtitle {
@@ -120,47 +152,11 @@
       font-weight: 400;
     }
 
-    /* Search Header */
-    .ur-kb-header {
-      padding: 12px 20px;
-      border-bottom: 1px solid var(--kb-border);
-      background: var(--kb-bg);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-shrink: 0;
-    }
-
-    .ur-kb-home-btn {
-      padding: 8px 12px;
-      background: var(--kb-sidebar-bg);
-      border: 1px solid var(--kb-border);
-      border-radius: var(--kb-radius);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      color: var(--kb-text);
-      font-size: 14px;
-      font-weight: 500;
-      transition: all var(--kb-transition);
-    }
-
-    .ur-kb-home-btn:hover {
-      background: var(--kb-sidebar-hover);
-      border-color: var(--kb-accent);
-    }
-
-    .ur-kb-home-btn svg {
-      width: 16px;
-      height: 16px;
-    }
-
     /* Inline Search */
     .ur-kb-inline-search {
-      flex: 1;
       position: relative;
       max-width: 500px;
+      min-width: 300px;
     }
 
     .ur-kb-inline-search-input-wrap {
@@ -1646,6 +1642,26 @@
       .ur-kb-a11y-toolbar {
         flex-wrap: wrap;
       }
+
+      .ur-kb-page-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+      }
+
+      .ur-kb-page-header-left {
+        width: 100%;
+      }
+
+      .ur-kb-page-header-right {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .ur-kb-inline-search {
+        flex: 1;
+        min-width: 0;
+      }
     }
 
     /* Accessibility Toolbar */
@@ -2099,29 +2115,30 @@
       this.container.innerHTML = `
         <div class="ur-kb ${themeClass} ${zoomClass} ${contrastClass}">
           <div class="ur-kb-page-header">
-            <h1 class="ur-kb-page-title">${escapeHtml(pageTitle)}</h1>
-            ${pageSubtitle ? `<p class="ur-kb-page-subtitle">${escapeHtml(pageSubtitle)}</p>` : ''}
-          </div>
-          <div class="ur-kb-header">
-            <button class="ur-kb-home-btn" aria-label="Home">${ICONS.home}<span>Home</span></button>
-            <div class="ur-kb-inline-search">
-              <div class="ur-kb-inline-search-input-wrap">
-                ${ICONS.search}
-                <input type="text" class="ur-kb-inline-search-input" placeholder="Search all documents..." autocomplete="off">
-                <kbd class="ur-kb-search-shortcut">⌘K</kbd>
-                <button type="button" class="ur-kb-inline-search-clear" style="display:none">${ICONS.close}</button>
+            <div class="ur-kb-page-header-left">
+              <h1 class="ur-kb-page-title" role="button" tabindex="0" aria-label="Home">${escapeHtml(pageTitle)}</h1>
+              ${pageSubtitle ? `<p class="ur-kb-page-subtitle">${escapeHtml(pageSubtitle)}</p>` : ''}
+            </div>
+            <div class="ur-kb-page-header-right">
+              <div class="ur-kb-inline-search">
+                <div class="ur-kb-inline-search-input-wrap">
+                  ${ICONS.search}
+                  <input type="text" class="ur-kb-inline-search-input" placeholder="Search all documents..." autocomplete="off">
+                  <kbd class="ur-kb-search-shortcut">⌘K</kbd>
+                  <button type="button" class="ur-kb-inline-search-clear" style="display:none">${ICONS.close}</button>
+                </div>
+                <div class="ur-kb-inline-search-dropdown"></div>
               </div>
-              <div class="ur-kb-inline-search-dropdown"></div>
+              ${this.options.enableAccessibility ? `
+              <div class="ur-kb-a11y-toolbar">
+                <button type="button" class="ur-kb-a11y-btn ur-kb-zoom-out" aria-label="Decrease text size" title="Decrease text size">A-</button>
+                <button type="button" class="ur-kb-a11y-btn ur-kb-zoom-in" aria-label="Increase text size" title="Increase text size">A+</button>
+                <button type="button" class="ur-kb-a11y-btn ur-kb-tts-btn" aria-label="Read aloud" title="Read aloud">${ICONS.speaker}</button>
+                <button type="button" class="ur-kb-a11y-btn ur-kb-contrast-btn${this.highContrast ? ' active' : ''}" aria-label="Toggle high contrast" title="Toggle high contrast">${ICONS.contrast}</button>
+                <button type="button" class="ur-kb-a11y-btn ur-kb-theme-btn" aria-label="Toggle theme" title="Theme: ${this.currentTheme}">${this.getThemeIcon()}</button>
+              </div>
+              ` : ''}
             </div>
-            ${this.options.enableAccessibility ? `
-            <div class="ur-kb-a11y-toolbar">
-              <button type="button" class="ur-kb-a11y-btn ur-kb-zoom-out" aria-label="Decrease text size" title="Decrease text size">A-</button>
-              <button type="button" class="ur-kb-a11y-btn ur-kb-zoom-in" aria-label="Increase text size" title="Increase text size">A+</button>
-              <button type="button" class="ur-kb-a11y-btn ur-kb-tts-btn" aria-label="Read aloud" title="Read aloud">${ICONS.speaker}</button>
-              <button type="button" class="ur-kb-a11y-btn ur-kb-contrast-btn${this.highContrast ? ' active' : ''}" aria-label="Toggle high contrast" title="Toggle high contrast">${ICONS.contrast}</button>
-              <button type="button" class="ur-kb-a11y-btn ur-kb-theme-btn" aria-label="Toggle theme" title="Theme: ${this.currentTheme}">${this.getThemeIcon()}</button>
-            </div>
-            ` : ''}
           </div>
           <div class="ur-kb-body">
             <aside class="ur-kb-sidebar">
@@ -2246,8 +2263,8 @@
       const kb = this.container.querySelector('.ur-kb');
 
       kb.addEventListener('click', (e) => {
-        // Home button
-        if (e.target.closest('.ur-kb-home-btn')) {
+        // Page title click (acts as home button)
+        if (e.target.closest('.ur-kb-page-title')) {
           this.showHome();
           return;
         }
@@ -2543,6 +2560,17 @@
           }
         }
       });
+
+      // Keyboard support for page title (Enter/Space to go home)
+      const pageTitle = kb.querySelector('.ur-kb-page-title');
+      if (pageTitle) {
+        pageTitle.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            this.showHome();
+          }
+        });
+      }
 
       // Keyboard shortcuts
       document.addEventListener('keydown', (e) => {
