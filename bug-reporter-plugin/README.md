@@ -103,6 +103,23 @@ BugReporter.init({
   onSuccess: (response) => {},
   onError: (error) => {}
 });
+
+// Below code only applicable if we want Bug Reporter Button colour same as Header colour.
+
+ const btn = document.querySelector('.bug-reporter-btn');
+
+if (btn) {
+  const headerBg =
+    getComputedStyle(document.documentElement)
+      .getPropertyValue('--ut-header-background-color')
+      .trim();
+
+  btn.style.setProperty(
+    'background-color',
+    headerBg,
+    'important'
+  );
+}
 ```
 
 ---
