@@ -98,13 +98,13 @@
     }
 
 
-    /* Default container height - can be overridden by parent styles */
-    #kb-container, [id*="kb-container"] {
-      height: calc(100vh - 200px);
-      min-height: 400px;
-      max-height: calc(100vh - 200px);
-      overflow: hidden;
-    }
+    // /* Default container height - can be overridden by parent styles */
+    // #kb-container, [id*="kb-container"] {
+    //   height: calc(100vh - 200px);
+    //   min-height: 400px;
+    //   max-height: calc(100vh - 200px);
+    //   overflow: hidden;
+    // }
 
     /* Page Header - Title Banner */
     .ur-kb-page-header {
