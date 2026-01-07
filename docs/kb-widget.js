@@ -89,6 +89,15 @@
       position: relative;
     }
 
+    /* Default container height - can be overridden by parent styles */ Temp fix
+    #kb-container, [id*="kb-container"] {
+        height: calc(89vh - 35px); 
+            overflow-y: auto;
+            box-sizing: border-box; 
+    margin: 0;
+    }
+
+
     /* Default container height - can be overridden by parent styles */
     #kb-container, [id*="kb-container"] {
       height: calc(100vh - 200px);
